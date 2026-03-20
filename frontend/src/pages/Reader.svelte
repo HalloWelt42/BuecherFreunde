@@ -1,71 +1,99 @@
 <script>
-  import { router } from "svelte-spa-router";
+  import { router, push } from "svelte-spa-router";
+  import { holeBuch } from "../lib/api/books.js";
+  import ReaderToolbar from "../lib/components/reader/ReaderToolbar.svelte";
+  import PdfReader from "../lib/components/reader/PdfReader.svelte";
+  import EpubReader from "../lib/components/reader/EpubReader.svelte";
+  import MarkdownReader from "../lib/components/reader/MarkdownReader.svelte";
 
   let { params } = $props();
 
-  let position = $derived.by(() => {
+  let book = $state(null);
+  let laden = $state(true);
+  let fehler = $state(null);
+
+  let initialPage = $derived.by(() => {
     const qs = new URLSearchParams(router.querystring || "");
-    return {
-      page: qs.get("page"),
-      cfi: qs.get("cfi"),
-    };
+    return Number(qs.get("page")) || 1;
   });
+
+  let initialCfi = $derived.by(() => {
+    const qs = new URLSearchParams(router.querystring || "");
+    return qs.get("cfi") || "";
+  });
+
+  $effect(() => {
+    ladeBuch(Number(params.id));
+  });
+
+  async function ladeBuch(id) {
+    laden = true;
+    fehler = null;
+    try {
+      book = await holeBuch(id);
+    } catch (e) {
+      fehler = e.message;
+    } finally {
+      laden = false;
+    }
+  }
+
+  function goBack() {
+    push(`/book/${params.id}`);
+  }
 </script>
 
 <div class="reader-page">
-  <div class="reader-toolbar">
-    <a href="#/book/{params.id}" class="back-link">&larr; Zurück zum Buch</a>
-    <span class="reader-title">Reader - Buch #{params.id}</span>
-    {#if position.page}
-      <span class="position-info">Seite {position.page}</span>
+  {#if laden}
+    <div class="status">Buch wird geladen...</div>
+  {:else if fehler}
+    <div class="status error">
+      Fehler: {fehler}
+      <a href="#/book/{params.id}">Zurück zum Buch</a>
+    </div>
+  {:else if book}
+    <ReaderToolbar bookId={book.id} title={book.title} onBack={goBack} />
+
+    {#if book.file_format === "pdf"}
+      <PdfReader bookId={book.id} {initialPage} />
+    {:else if book.file_format === "epub" || book.file_format === "mobi"}
+      <EpubReader bookId={book.id} {initialCfi} />
+    {:else if book.file_format === "txt" || book.file_format === "md"}
+      <MarkdownReader bookId={book.id} />
+    {:else}
+      <div class="status">
+        Format "{book.file_format}" wird nicht unterstützt.
+        <a href="/api/books/{book.id}/file" download>Datei herunterladen</a>
+      </div>
     {/if}
-  </div>
-  <div class="reader-content">
-    <p class="placeholder">Reader wird geladen...</p>
-  </div>
+  {/if}
 </div>
 
 <style>
   .reader-page {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: calc(100vh - var(--header-height) - 2rem);
+    margin: -1.5rem;
   }
 
-  .reader-toolbar {
+  .status {
     display: flex;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
+    flex: 1;
     gap: 1rem;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid var(--color-border);
-    margin-bottom: 1rem;
+    color: var(--color-text-muted);
   }
 
-  .back-link {
+  .status.error {
+    color: var(--color-error);
+  }
+
+  .status a {
     color: var(--color-accent);
     text-decoration: none;
     font-size: 0.875rem;
-  }
-
-  .reader-title {
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-
-  .position-info {
-    margin-left: auto;
-    font-size: 0.8125rem;
-    color: var(--color-text-muted);
-  }
-
-  .reader-content {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .placeholder {
-    color: var(--color-text-muted);
   }
 </style>
