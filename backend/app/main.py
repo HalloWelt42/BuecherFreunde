@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.config import router as config_router
 from backend.app.core.config import settings
+from backend.app.core.database import db
 
 logger = logging.getLogger("buecherfreunde")
 
@@ -37,7 +38,9 @@ async def lifespan(app: FastAPI):
     )
     logger.info("BuecherFreunde v%s wird gestartet", settings.version)
     _ensure_directories()
+    await db.connect()
     yield
+    await db.disconnect()
     logger.info("BuecherFreunde wird heruntergefahren")
 
 
