@@ -1,0 +1,25 @@
+{
+  "name": "buecherfreunde-frontend",
+  "private": true,
+  "version": "0.0.4",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --port 8160",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "@tailwindcss/vite": "^4.2.2",
+    "@testing-library/svelte": "^5.3.1",
+    "svelte": "^5.54.0",
+    "tailwindcss": "^4.2.2",
+    "vite": "^8.0.1",
+    "vitest": "^4.1.0"
+  },
+  "dependencies": {
+    "@fontsource/barlow": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8"
+  }
+}

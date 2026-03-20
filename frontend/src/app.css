@@ -1,0 +1,164 @@
+@import "tailwindcss";
+
+/* Barlow - Normaltext */
+@font-face {
+  font-family: "Barlow";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url("./assets/fonts/barlow-latin-ext-400-normal.woff2") format("woff2"),
+    url("./assets/fonts/barlow-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0100-024F, U+0300-036F, U+2000-206F;
+}
+
+@font-face {
+  font-family: "Barlow";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src:
+    url("./assets/fonts/barlow-latin-ext-500-normal.woff2") format("woff2"),
+    url("./assets/fonts/barlow-latin-500-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0100-024F, U+0300-036F, U+2000-206F;
+}
+
+@font-face {
+  font-family: "Barlow";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src:
+    url("./assets/fonts/barlow-latin-ext-600-normal.woff2") format("woff2"),
+    url("./assets/fonts/barlow-latin-600-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0100-024F, U+0300-036F, U+2000-206F;
+}
+
+@font-face {
+  font-family: "Barlow";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    url("./assets/fonts/barlow-latin-ext-700-normal.woff2") format("woff2"),
+    url("./assets/fonts/barlow-latin-700-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0100-024F, U+0300-036F, U+2000-206F;
+}
+
+/* JetBrains Mono - Quellcode */
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    url("./assets/fonts/jetbrains-mono-latin-ext-700-normal.woff2")
+      format("woff2"),
+    url("./assets/fonts/jetbrains-mono-latin-700-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0100-024F, U+0300-036F, U+2000-206F;
+}
+
+/* Theme-Variablen */
+:root {
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f3f4f6;
+  --color-bg-tertiary: #e5e7eb;
+  --color-text-primary: #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #9ca3af;
+  --color-border: #d1d5db;
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-light: #dbeafe;
+  --color-success: #059669;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --color-favorite: #ef4444;
+
+  --font-sans: "Barlow", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --sidebar-width: 280px;
+  --header-height: 56px;
+}
+
+:root.dark {
+  --color-bg-primary: #0f172a;
+  --color-bg-secondary: #1e293b;
+  --color-bg-tertiary: #334155;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-border: #334155;
+  --color-accent: #3b82f6;
+  --color-accent-hover: #60a5fa;
+  --color-accent-light: #1e3a5f;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-favorite: #f87171;
+}
+
+/* Basis-Stile */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+}
+
+code,
+pre,
+kbd {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Suchmarkierung */
+mark {
+  background-color: var(--color-warning);
+  color: var(--color-text-primary);
+  padding: 0 2px;
+  border-radius: 2px;
+}
