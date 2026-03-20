@@ -7,8 +7,7 @@ function createUiStore() {
   let viewMode = $state(localStorage.getItem("viewMode") || "grid");
   let sidebarOpen = $state(true);
 
-  // Theme beim Start anwenden
-  applyTheme(theme);
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
   function applyTheme(mode) {
     const root = document.documentElement;
@@ -17,13 +16,19 @@ function createUiStore() {
     } else if (mode === "light") {
       root.classList.remove("dark");
     } else {
-      // System
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)",
-      ).matches;
-      root.classList.toggle("dark", prefersDark);
+      root.classList.toggle("dark", mediaQuery.matches);
     }
   }
+
+  // Theme beim Start anwenden
+  applyTheme(theme);
+
+  // Bei System-Theme-Wechsel automatisch aktualisieren
+  mediaQuery.addEventListener("change", () => {
+    if (theme === "system") {
+      applyTheme("system");
+    }
+  });
 
   return {
     get theme() {
