@@ -1,0 +1,320 @@
+"""API-Endpunkte fuer Buecher."""
+
+import math
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse, Response
+
+from backend.app.core.auth import verify_token
+from backend.app.core.database import db
+from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate
+from backend.app.services.storage import get_original_file, get_sidecar_path
+
+router = APIRouter(prefix="/api/books", tags=["Buecher"])
+
+
+async def _get_book_categories(book_id: int) -> list[dict]:
+    """Laedt Kategorien eines Buches."""
+    rows = await db.fetch_all(
+        """SELECT c.id, c.name, c.slug FROM categories c
+           JOIN book_categories bc ON bc.category_id = c.id
+           WHERE bc.book_id = ?""",
+        (book_id,),
+    )
+    return rows
+
+
+async def _get_book_tags(book_id: int) -> list[dict]:
+    """Laedt Tags eines Buches."""
+    rows = await db.fetch_all(
+        """SELECT t.id, t.name, t.slug, t.color FROM tags t
+           JOIN book_tags bt ON bt.tag_id = t.id
+           WHERE bt.book_id = ?""",
+        (book_id,),
+    )
+    return rows
+
+
+async def _get_book_collections(book_id: int) -> list[dict]:
+    """Laedt Sammlungen eines Buches."""
+    rows = await db.fetch_all(
+        """SELECT c.id, c.name, c.color FROM collections c
+           JOIN book_collections bc ON bc.collection_id = c.id
+           WHERE bc.book_id = ?""",
+        (book_id,),
+    )
+    return rows
+
+
+async def _get_user_data(book_id: int) -> dict:
+    """Laedt Nutzerdaten eines Buches."""
+    row = await db.fetch_one(
+        "SELECT * FROM user_book_data WHERE book_id = ?", (book_id,)
+    )
+    if row:
+        return row
+    return {
+        "is_favorite": False,
+        "is_to_read": False,
+        "rating": 0,
+        "reading_position": "",
+        "last_read_at": None,
+    }
+
+
+async def _enrich_book_list_item(book: dict) -> BookListItem:
+    """Reichert ein Buch-Dict mit Relationen an."""
+    ud = await _get_user_data(book["id"])
+    cats = await _get_book_categories(book["id"])
+    tags = await _get_book_tags(book["id"])
+    return BookListItem(
+        **book,
+        is_favorite=bool(ud.get("is_favorite")),
+        is_to_read=bool(ud.get("is_to_read")),
+        rating=ud.get("rating", 0),
+        reading_position=ud.get("reading_position", ""),
+        last_read_at=ud.get("last_read_at"),
+        categories=cats,
+        tags=tags,
+    )
+
+
+@router.get("", response_model=BookListResponse)
+async def list_books(
+    _token: str = Depends(verify_token),
+    seite: int = Query(1, ge=1, description="Seitennummer"),
+    pro_seite: int = Query(24, ge=1, le=100, description="Eintraege pro Seite"),
+    kategorie: int | None = Query(None, description="Kategorie-ID Filter"),
+    tag: int | None = Query(None, description="Tag-ID Filter"),
+    sammlung: int | None = Query(None, description="Sammlungs-ID Filter"),
+    favorit: bool | None = Query(None, description="Nur Favoriten"),
+    zu_lesen: bool | None = Query(None, description="Nur Zum-Lesen"),
+    bewertung_min: int | None = Query(None, ge=0, le=5, description="Mindestbewertung"),
+    format: str | None = Query(None, description="Dateiformat (.pdf, .epub, ...)"),
+    sortierung: str = Query("titel", description="Sortierung: titel, autor, datum, bewertung, groesse"),
+    richtung: str = Query("asc", description="Sortierrichtung: asc, desc"),
+):
+    """Listet Buecher paginiert und filterbar auf."""
+    # Basis-Query aufbauen
+    conditions = []
+    params: list = []
+
+    if kategorie is not None:
+        conditions.append("b.id IN (SELECT book_id FROM book_categories WHERE category_id = ?)")
+        params.append(kategorie)
+
+    if tag is not None:
+        conditions.append("b.id IN (SELECT book_id FROM book_tags WHERE tag_id = ?)")
+        params.append(tag)
+
+    if sammlung is not None:
+        conditions.append("b.id IN (SELECT book_id FROM book_collections WHERE collection_id = ?)")
+        params.append(sammlung)
+
+    if favorit is not None:
+        conditions.append("b.id IN (SELECT book_id FROM user_book_data WHERE is_favorite = 1)")
+
+    if zu_lesen is not None:
+        conditions.append("b.id IN (SELECT book_id FROM user_book_data WHERE is_to_read = 1)")
+
+    if bewertung_min is not None:
+        conditions.append("b.id IN (SELECT book_id FROM user_book_data WHERE rating >= ?)")
+        params.append(bewertung_min)
+
+    if format is not None:
+        conditions.append("b.file_format = ?")
+        params.append(format.lower().lstrip("."))
+
+    where = " AND ".join(conditions) if conditions else "1=1"
+
+    # Sortierung
+    sort_map = {
+        "titel": "b.title",
+        "autor": "b.author",
+        "datum": "b.created_at",
+        "groesse": "b.file_size",
+    }
+    sort_col = sort_map.get(sortierung, "b.title")
+    sort_dir = "DESC" if richtung.lower() == "desc" else "ASC"
+
+    # Gesamt zaehlen
+    count_sql = f"SELECT COUNT(*) as total FROM books b WHERE {where}"
+    count_row = await db.fetch_one(count_sql, tuple(params))
+    gesamt = count_row["total"] if count_row else 0
+
+    # Seite abfragen
+    offset = (seite - 1) * pro_seite
+    select_sql = f"""
+        SELECT b.id, b.hash, b.title, b.author, b.file_format,
+               b.file_size, b.cover_path, b.page_count, b.year, b.created_at
+        FROM books b
+        WHERE {where}
+        ORDER BY {sort_col} {sort_dir}
+        LIMIT ? OFFSET ?
+    """
+    rows = await db.fetch_all(select_sql, tuple(params) + (pro_seite, offset))
+
+    buecher = []
+    for row in rows:
+        item = await _enrich_book_list_item(row)
+        buecher.append(item)
+
+    return BookListResponse(
+        buecher=buecher,
+        gesamt=gesamt,
+        seite=seite,
+        pro_seite=pro_seite,
+        seiten_gesamt=math.ceil(gesamt / pro_seite) if gesamt > 0 else 0,
+    )
+
+
+@router.get("/recently-read", response_model=list[BookListItem])
+async def recently_read(
+    _token: str = Depends(verify_token),
+    limit: int = Query(10, ge=1, le=50),
+):
+    """Gibt die zuletzt gelesenen Buecher zurueck."""
+    sql = """
+        SELECT b.id, b.hash, b.title, b.author, b.file_format,
+               b.file_size, b.cover_path, b.page_count, b.year, b.created_at
+        FROM books b
+        JOIN user_book_data ud ON ud.book_id = b.id
+        WHERE ud.last_read_at IS NOT NULL
+        ORDER BY ud.last_read_at DESC
+        LIMIT ?
+    """
+    rows = await db.fetch_all(sql, (limit,))
+    return [await _enrich_book_list_item(row) for row in rows]
+
+
+@router.get("/{book_id}", response_model=BookResponse)
+async def get_book(book_id: int, _token: str = Depends(verify_token)):
+    """Gibt die vollstaendigen Details eines Buches zurueck."""
+    row = await db.fetch_one("SELECT * FROM books WHERE id = ?", (book_id,))
+    if not row:
+        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+
+    ud = await _get_user_data(book_id)
+    cats = await _get_book_categories(book_id)
+    tags = await _get_book_tags(book_id)
+    colls = await _get_book_collections(book_id)
+
+    return BookResponse(
+        **row,
+        is_favorite=bool(ud.get("is_favorite")),
+        is_to_read=bool(ud.get("is_to_read")),
+        rating=ud.get("rating", 0),
+        reading_position=ud.get("reading_position", ""),
+        last_read_at=ud.get("last_read_at"),
+        categories=cats,
+        tags=tags,
+        collections=colls,
+    )
+
+
+@router.patch("/{book_id}", response_model=BookResponse)
+async def update_book(
+    book_id: int, update: BookUpdate, _token: str = Depends(verify_token)
+):
+    """Aktualisiert Metadaten eines Buches."""
+    existing = await db.fetch_one("SELECT id FROM books WHERE id = ?", (book_id,))
+    if not existing:
+        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+
+    updates = update.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="Keine Felder zum Aktualisieren")
+
+    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    values = list(updates.values()) + [book_id]
+    await db.execute(
+        f"UPDATE books SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
+        tuple(values),
+    )
+
+    # FTS aktualisieren falls Titel oder Autor geaendert
+    if "title" in updates or "author" in updates:
+        book = await db.fetch_one("SELECT * FROM books WHERE id = ?", (book_id,))
+        if book:
+            await db.execute(
+                "INSERT INTO books_fts(books_fts, rowid, title, author, fts_content) VALUES('delete', ?, ?, ?, ?)",
+                (book_id, book["title"], book["author"], book["fts_content"]),
+            )
+            new_title = updates.get("title", book["title"])
+            new_author = updates.get("author", book["author"])
+            await db.execute(
+                "INSERT INTO books_fts(rowid, title, author, fts_content) VALUES(?, ?, ?, ?)",
+                (book_id, new_title, new_author, book["fts_content"]),
+            )
+
+    await db.commit()
+    return await get_book(book_id)
+
+
+@router.delete("/{book_id}")
+async def delete_book(
+    book_id: int,
+    datei_loeschen: bool = Query(False, description="Auch die Datei im Speicher loeschen"),
+    _token: str = Depends(verify_token),
+):
+    """Loescht ein Buch aus der Datenbank."""
+    book = await db.fetch_one("SELECT hash FROM books WHERE id = ?", (book_id,))
+    if not book:
+        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+
+    await db.execute("DELETE FROM books WHERE id = ?", (book_id,))
+    await db.commit()
+
+    if datei_loeschen:
+        from backend.app.services.storage import delete_stored_file
+
+        delete_stored_file(book["hash"])
+
+    return {"geloescht": True, "id": book_id}
+
+
+@router.get("/{book_id}/cover")
+async def get_cover(book_id: int, _token: str = Depends(verify_token)):
+    """Gibt das Cover-Bild eines Buches zurueck."""
+    book = await db.fetch_one(
+        "SELECT hash, cover_path FROM books WHERE id = ?", (book_id,)
+    )
+    if not book:
+        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+
+    cover_path = get_sidecar_path(book["hash"], "cover.jpg")
+    if not cover_path.exists():
+        raise HTTPException(status_code=404, detail="Kein Cover vorhanden")
+
+    return FileResponse(cover_path, media_type="image/jpeg")
+
+
+@router.get("/{book_id}/file")
+async def get_file(book_id: int, _token: str = Depends(verify_token)):
+    """Streamt die Buchdatei (mit Range-Request-Unterstuetzung)."""
+    book = await db.fetch_one(
+        "SELECT hash, file_name, file_format FROM books WHERE id = ?", (book_id,)
+    )
+    if not book:
+        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+
+    file_path = get_original_file(book["hash"])
+    if not file_path or not file_path.exists():
+        raise HTTPException(status_code=404, detail="Datei nicht gefunden")
+
+    media_types = {
+        "pdf": "application/pdf",
+        "epub": "application/epub+zip",
+        "mobi": "application/x-mobipocket-ebook",
+        "txt": "text/plain; charset=utf-8",
+        "md": "text/markdown; charset=utf-8",
+    }
+    media_type = media_types.get(book["file_format"], "application/octet-stream")
+
+    return FileResponse(
+        file_path,
+        media_type=media_type,
+        filename=book["file_name"],
+        headers={"Accept-Ranges": "bytes"},
+    )

@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.api.books import router as books_router
 from backend.app.api.config import router as config_router
 from backend.app.core.config import settings
 from backend.app.core.database import db
@@ -59,6 +60,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(books_router)
 app.include_router(config_router)
 
 
