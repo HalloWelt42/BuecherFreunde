@@ -1,0 +1,83 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.whl
+venv/
+.venv/
+env/
+.env
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn/
+
+# Vite / Build
+frontend/dist/
+frontend/.vite/
+
+# Datenbank
+database/*.db
+database/*.db-journal
+database/*.db-wal
+database/*.db-shm
+
+# Buchspeicher
+storage/
+
+# Backups
+backups/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.AppleDouble
+.LSOverride
+Icon?
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Docker
+docker/.env
+
+# Tests
+tests/berichte/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Versteckte Konfigurationsordner
+.*/
+!.git/
+!.github/
+!.gitignore
+!.env.example
+
+# Diverses
+*.log
+*.pid
+*.seed
+*.tgz
