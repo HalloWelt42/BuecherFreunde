@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.ai import router as ai_router
+from backend.app.api.backup import router as backup_router
 from backend.app.api.books import router as books_router
 from backend.app.api.categories import router as categories_router
 from backend.app.api.config import router as config_router
@@ -70,6 +71,7 @@ app.add_middleware(
 )
 
 app.include_router(ai_router)
+app.include_router(backup_router)
 app.include_router(books_router)
 app.include_router(categories_router)
 app.include_router(collections_router)
