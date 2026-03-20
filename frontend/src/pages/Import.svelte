@@ -1,27 +1,140 @@
+<script>
+  import UploadZone from "../lib/components/import/UploadZone.svelte";
+  import ImportStatus from "../lib/components/import/ImportStatus.svelte";
+  import ImportProgress from "../lib/components/import/ImportProgress.svelte";
+  import {
+    ladeDateienHoch,
+    scanneImportVerzeichnis,
+    scanneExternesVerzeichnis,
+    holeImportStatus,
+    importEvents,
+  } from "../lib/api/imports.js";
+
+  let tasks = $state([]);
+  let laden = $state(false);
+  let fehler = $state(null);
+  let sseConnection = $state(null);
+
+  $effect(() => {
+    aktualisiereStatus();
+    starteSSE();
+    return () => {
+      sseConnection?.close();
+    };
+  });
+
+  async function aktualisiereStatus() {
+    try {
+      tasks = await holeImportStatus();
+    } catch {
+      // Beim ersten Laden noch keine Tasks
+    }
+  }
+
+  function starteSSE() {
+    sseConnection?.close();
+    sseConnection = importEvents(
+      (event) => {
+        if (event.data && event.data.id) {
+          const idx = tasks.findIndex((t) => t.id === event.data.id);
+          if (idx >= 0) {
+            tasks[idx] = event.data;
+            tasks = [...tasks];
+          } else {
+            tasks = [...tasks, event.data];
+          }
+        }
+      },
+      () => {
+        // SSE-Fehler -- nach 5s erneut verbinden
+        setTimeout(starteSSE, 5000);
+      },
+    );
+  }
+
+  async function onFiles(files) {
+    laden = true;
+    fehler = null;
+    try {
+      const neueTasks = await ladeDateienHoch(files);
+      tasks = [...(Array.isArray(neueTasks) ? neueTasks : [neueTasks]), ...tasks];
+    } catch (e) {
+      fehler = e.message;
+    } finally {
+      laden = false;
+    }
+  }
+
+  async function scanImport() {
+    laden = true;
+    fehler = null;
+    try {
+      const result = await scanneImportVerzeichnis();
+      if (result.tasks) {
+        tasks = [...result.tasks, ...tasks];
+      }
+    } catch (e) {
+      fehler = e.message;
+    } finally {
+      laden = false;
+    }
+  }
+
+  async function scanExtern() {
+    laden = true;
+    fehler = null;
+    try {
+      const result = await scanneExternesVerzeichnis();
+      if (result.tasks) {
+        tasks = [...result.tasks, ...tasks];
+      }
+    } catch (e) {
+      fehler = e.message;
+    } finally {
+      laden = false;
+    }
+  }
+</script>
+
 <div class="import-page">
   <div class="page-header">
     <h1>Import</h1>
   </div>
 
-  <div class="upload-zone">
-    <p class="upload-icon">{"\u{1F4E4}"}</p>
-    <p class="upload-text">Bücher hierher ziehen oder klicken zum Auswählen</p>
-    <p class="upload-hint">PDF, EPUB, MOBI, TXT, MD</p>
+  <UploadZone {onFiles} />
+
+  {#if fehler}
+    <div class="error-banner">
+      <p>{fehler}</p>
+    </div>
+  {/if}
+
+  <div class="scan-actions">
+    <button class="action-btn" onclick={scanImport} disabled={laden}>
+      Import-Verzeichnis scannen
+    </button>
+    <button class="action-btn" onclick={scanExtern} disabled={laden}>
+      Externes Verzeichnis scannen
+    </button>
   </div>
 
-  <div class="import-actions">
-    <button class="action-btn">Import-Verzeichnis scannen</button>
-    <button class="action-btn">Externes Verzeichnis scannen</button>
-  </div>
+  {#if tasks.length > 0}
+    <ImportProgress {tasks} />
+
+    <div class="tasks-list">
+      {#each tasks as task (task.id)}
+        <ImportStatus {task} />
+      {/each}
+    </div>
+  {/if}
 </div>
 
 <style>
   .import-page {
     max-width: 800px;
-  }
-
-  .page-header {
-    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
   }
 
   .page-header h1 {
@@ -30,41 +143,16 @@
     color: var(--color-text-primary);
   }
 
-  .upload-zone {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 3rem 2rem;
-    border: 2px dashed var(--color-border);
-    border-radius: 12px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.15s;
-    margin-bottom: 1.5rem;
+  .error-banner {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-error);
+    border-radius: 8px;
+    background-color: color-mix(in srgb, var(--color-error) 10%, transparent);
+    color: var(--color-error);
+    font-size: 0.875rem;
   }
 
-  .upload-zone:hover {
-    border-color: var(--color-accent);
-  }
-
-  .upload-icon {
-    font-size: 2.5rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .upload-text {
-    color: var(--color-text-secondary);
-    font-size: 0.9375rem;
-  }
-
-  .upload-hint {
-    color: var(--color-text-muted);
-    font-size: 0.8125rem;
-    margin-top: 0.375rem;
-  }
-
-  .import-actions {
+  .scan-actions {
     display: flex;
     gap: 0.75rem;
   }
@@ -80,7 +168,18 @@
     transition: background-color 0.15s;
   }
 
-  .action-btn:hover {
+  .action-btn:hover:not(:disabled) {
     background-color: var(--color-bg-tertiary);
+  }
+
+  .action-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 </style>
