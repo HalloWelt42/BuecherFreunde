@@ -4,6 +4,7 @@
   import { booksStore } from "../lib/stores/books.svelte.js";
   import BookGrid from "../lib/components/book/BookGrid.svelte";
   import BookList from "../lib/components/book/BookList.svelte";
+  import ContinueReading from "../lib/components/book/ContinueReading.svelte";
   import ViewToggle from "../lib/components/ui/ViewToggle.svelte";
   import Pagination from "../lib/components/ui/Pagination.svelte";
 
@@ -53,6 +54,8 @@
       <a href="#/import" class="import-link">Bücher importieren</a>
     </div>
   {:else}
+    <ContinueReading />
+
     {#if ui.viewMode === "grid"}
       <BookGrid books={booksStore.books} />
     {:else}
