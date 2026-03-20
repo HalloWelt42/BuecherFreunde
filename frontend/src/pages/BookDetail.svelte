@@ -3,6 +3,7 @@
   import { toggleFavorit, toggleZumLesen, setzeBewertung } from "../lib/api/user-data.js";
   import RatingStars from "../lib/components/ui/RatingStars.svelte";
   import BookMeta from "../lib/components/book/BookMeta.svelte";
+  import AiCategorizeDialog from "../lib/components/book/AiCategorizeDialog.svelte";
 
   let { params } = $props();
 
@@ -10,6 +11,7 @@
   let laden = $state(true);
   let fehler = $state(null);
   let coverError = $state(false);
+  let aiDialogOpen = $state(false);
 
   $effect(() => {
     ladeBuch(Number(params.id));
@@ -114,6 +116,12 @@
           >
             {book.is_to_read ? "\u2713 Leseliste" : "+ Leseliste"}
           </button>
+          <button
+            class="action-btn ai-btn"
+            onclick={() => (aiDialogOpen = true)}
+          >
+            KI-Kategorisierung
+          </button>
         </div>
 
         <div class="meta-section">
@@ -160,6 +168,13 @@
         {/if}
       </div>
     </div>
+
+    <AiCategorizeDialog
+      bookId={book.id}
+      open={aiDialogOpen}
+      onClose={() => (aiDialogOpen = false)}
+      onDone={() => ladeBuch(book.id)}
+    />
   {/if}
 </div>
 
