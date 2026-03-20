@@ -1,14 +1,6 @@
 <script>
   import { ui } from "../../stores/ui.svelte.js";
-  import { push } from "svelte-spa-router";
-
-  let searchQuery = $state("");
-
-  function onSearch(event) {
-    if (event.key === "Enter" && searchQuery.trim()) {
-      push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  }
+  import SearchBar from "../search/SearchBar.svelte";
 
   const themeIcons = { light: "\u2600", dark: "\u263D", system: "\u25D0" };
   const themeLabels = { light: "Hell", dark: "Dunkel", system: "System" };
@@ -23,17 +15,11 @@
     >
       &#9776;
     </button>
-    <a href="#/" class="app-title">BuecherFreunde</a>
+    <a href="#/" class="app-title">BücherFreunde</a>
   </div>
 
   <div class="header-center">
-    <input
-      type="search"
-      placeholder="Buecher durchsuchen..."
-      class="search-input"
-      bind:value={searchQuery}
-      onkeydown={onSearch}
-    />
+    <SearchBar />
   </div>
 
   <div class="header-right">
@@ -85,22 +71,6 @@
   .header-center {
     flex: 1;
     max-width: 600px;
-  }
-
-  .search-input {
-    width: 100%;
-    padding: 0.5rem 1rem;
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    background-color: var(--color-bg-primary);
-    color: var(--color-text-primary);
-    font-family: var(--font-sans);
-    font-size: 0.875rem;
-  }
-
-  .search-input:focus {
-    outline: 2px solid var(--color-accent);
-    outline-offset: -1px;
   }
 
   .header-right {
