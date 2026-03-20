@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - ../backend:/app/backend
+      - ../storage:/app/storage
+      - ../external:/app/external
+      - ../import:/app/import
+      - ../database:/app/database
+      - ../VERSION:/app/VERSION
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${EXTERNAL_PORT:-8160}:80"
+    depends_on:
+      - backend
