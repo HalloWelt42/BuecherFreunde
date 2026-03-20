@@ -1,0 +1,161 @@
+"""API-Endpunkte fuer Kategorien."""
+
+import re
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+
+from backend.app.core.auth import verify_token
+from backend.app.core.database import db
+
+router = APIRouter(prefix="/api/categories", tags=["Kategorien"])
+
+
+def _slugify(text: str) -> str:
+    """Erzeugt einen URL-freundlichen Slug aus dem Text."""
+    slug = text.lower().strip()
+    slug = slug.replace("ae", "ae").replace("oe", "oe").replace("ue", "ue")
+    slug = re.sub(r"[^\w\s-]", "", slug)
+    slug = re.sub(r"[-\s]+", "-", slug)
+    return slug.strip("-")
+
+
+class CategoryCreate(BaseModel):
+    name: str
+    parent_id: int | None = None
+    sort_order: int = 0
+
+
+class CategoryUpdate(BaseModel):
+    name: str | None = None
+    parent_id: int | None = None
+    sort_order: int | None = None
+
+
+@router.get("")
+async def list_categories(_token: str = Depends(verify_token)):
+    """Gibt alle Kategorien als Baumstruktur mit Buchanzahl zurueck."""
+    rows = await db.fetch_all(
+        """SELECT c.id, c.name, c.slug, c.parent_id, c.sort_order,
+                  COUNT(bc.book_id) as buch_anzahl
+           FROM categories c
+           LEFT JOIN book_categories bc ON bc.category_id = c.id
+           GROUP BY c.id
+           ORDER BY c.sort_order, c.name"""
+    )
+
+    # Flache Liste in Baumstruktur umwandeln
+    categories = [dict(row) for row in rows]
+    by_id = {c["id"]: {**c, "kinder": []} for c in categories}
+
+    tree = []
+    for cat in categories:
+        node = by_id[cat["id"]]
+        if cat["parent_id"] and cat["parent_id"] in by_id:
+            by_id[cat["parent_id"]]["kinder"].append(node)
+        else:
+            tree.append(node)
+
+    return tree
+
+
+@router.post("", status_code=201)
+async def create_category(data: CategoryCreate, _token: str = Depends(verify_token)):
+    """Erstellt eine neue Kategorie."""
+    slug = _slugify(data.name)
+
+    # Slug-Eindeutigkeit sicherstellen
+    existing = await db.fetch_one(
+        "SELECT id FROM categories WHERE slug = ?", (slug,)
+    )
+    if existing:
+        counter = 2
+        while True:
+            new_slug = f"{slug}-{counter}"
+            exists = await db.fetch_one(
+                "SELECT id FROM categories WHERE slug = ?", (new_slug,)
+            )
+            if not exists:
+                slug = new_slug
+                break
+            counter += 1
+
+    if data.parent_id:
+        parent = await db.fetch_one(
+            "SELECT id FROM categories WHERE id = ?", (data.parent_id,)
+        )
+        if not parent:
+            raise HTTPException(status_code=404, detail="Elternkategorie nicht gefunden")
+
+    cursor = await db.execute(
+        "INSERT INTO categories (name, slug, parent_id, sort_order) VALUES (?, ?, ?, ?)",
+        (data.name, slug, data.parent_id, data.sort_order),
+    )
+    await db.commit()
+
+    return await db.fetch_one("SELECT * FROM categories WHERE id = ?", (cursor.lastrowid,))
+
+
+@router.patch("/{category_id}")
+async def update_category(
+    category_id: int, data: CategoryUpdate, _token: str = Depends(verify_token)
+):
+    """Aktualisiert eine Kategorie."""
+    existing = await db.fetch_one(
+        "SELECT * FROM categories WHERE id = ?", (category_id,)
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Kategorie nicht gefunden")
+
+    updates = data.model_dump(exclude_none=True)
+    if "name" in updates:
+        updates["slug"] = _slugify(updates["name"])
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="Keine Felder zum Aktualisieren")
+
+    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    values = list(updates.values()) + [category_id]
+    await db.execute(f"UPDATE categories SET {set_clause} WHERE id = ?", tuple(values))
+    await db.commit()
+
+    return await db.fetch_one("SELECT * FROM categories WHERE id = ?", (category_id,))
+
+
+@router.delete("/{category_id}")
+async def delete_category(category_id: int, _token: str = Depends(verify_token)):
+    """Loescht eine Kategorie (Buecher bleiben erhalten)."""
+    existing = await db.fetch_one(
+        "SELECT id FROM categories WHERE id = ?", (category_id,)
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Kategorie nicht gefunden")
+
+    # Kindkategorien auf Root-Ebene verschieben
+    await db.execute(
+        "UPDATE categories SET parent_id = NULL WHERE parent_id = ?", (category_id,)
+    )
+    await db.execute("DELETE FROM categories WHERE id = ?", (category_id,))
+    await db.commit()
+
+    return {"geloescht": True, "id": category_id}
+
+
+@router.post("/{book_id}/zuordnen")
+async def assign_categories(
+    book_id: int, kategorie_ids: list[int], _token: str = Depends(verify_token)
+):
+    """Ordnet einem Buch Kategorien zu (ersetzt bestehende)."""
+    book = await db.fetch_one("SELECT id FROM books WHERE id = ?", (book_id,))
+    if not book:
+        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+
+    await db.execute("DELETE FROM book_categories WHERE book_id = ?", (book_id,))
+    for cat_id in kategorie_ids:
+        await db.execute(
+            "INSERT OR IGNORE INTO book_categories (book_id, category_id) VALUES (?, ?)",
+            (book_id, cat_id),
+        )
+    await db.commit()
+
+    return {"book_id": book_id, "kategorien": kategorie_ids}
