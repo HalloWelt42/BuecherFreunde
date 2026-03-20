@@ -21,6 +21,7 @@
   "dependencies": {
     "@fontsource/barlow": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
+    "pdfjs-dist": "^5.5.207",
     "svelte-spa-router": "^5.0.0"
   }
 }
