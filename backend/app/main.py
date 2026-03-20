@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.api.books import router as books_router
 from backend.app.api.categories import router as categories_router
 from backend.app.api.config import router as config_router
+from backend.app.api.search import router as search_router
 from backend.app.api.tags import router as tags_router
 from backend.app.api.user_data import router as user_data_router
 from backend.app.core.config import settings
@@ -66,6 +67,7 @@ app.add_middleware(
 app.include_router(books_router)
 app.include_router(categories_router)
 app.include_router(config_router)
+app.include_router(search_router)
 app.include_router(tags_router)
 app.include_router(user_data_router)
 
