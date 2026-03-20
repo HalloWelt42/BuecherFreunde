@@ -3,6 +3,7 @@
   import { ui } from "../lib/stores/ui.svelte.js";
   import { booksStore } from "../lib/stores/books.svelte.js";
   import BookGrid from "../lib/components/book/BookGrid.svelte";
+  import BookList from "../lib/components/book/BookList.svelte";
   import ViewToggle from "../lib/components/ui/ViewToggle.svelte";
   import Pagination from "../lib/components/ui/Pagination.svelte";
 
@@ -55,8 +56,10 @@
     {#if ui.viewMode === "grid"}
       <BookGrid books={booksStore.books} />
     {:else}
-      <!-- Listenansicht folgt in Schritt 20 -->
-      <BookGrid books={booksStore.books} />
+      <BookList
+        books={booksStore.books}
+        onSort={(col, dir) => booksStore.setFilter({ sort_by: col, sort_dir: dir })}
+      />
     {/if}
 
     <Pagination
