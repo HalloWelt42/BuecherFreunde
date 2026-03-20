@@ -15,6 +15,8 @@ from backend.app.api.imports import router as imports_router
 from backend.app.api.metadata import router as metadata_router
 from backend.app.api.search import router as search_router
 from backend.app.api.tags import router as tags_router
+from backend.app.api.collections import router as collections_router
+from backend.app.api.notes import router as notes_router
 from backend.app.api.user_data import router as user_data_router
 from backend.app.core.config import settings
 from backend.app.core.database import db
@@ -70,9 +72,11 @@ app.add_middleware(
 app.include_router(ai_router)
 app.include_router(books_router)
 app.include_router(categories_router)
+app.include_router(collections_router)
 app.include_router(config_router)
 app.include_router(imports_router)
 app.include_router(metadata_router)
+app.include_router(notes_router)
 app.include_router(search_router)
 app.include_router(tags_router)
 app.include_router(user_data_router)

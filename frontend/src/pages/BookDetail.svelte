@@ -4,6 +4,7 @@
   import RatingStars from "../lib/components/ui/RatingStars.svelte";
   import BookMeta from "../lib/components/book/BookMeta.svelte";
   import AiCategorizeDialog from "../lib/components/book/AiCategorizeDialog.svelte";
+  import NoteList from "../lib/components/notes/NoteList.svelte";
 
   let { params } = $props();
 
@@ -168,6 +169,10 @@
         {/if}
       </div>
     </div>
+
+    <div class="notes-section">
+        <NoteList bookId={book.id} />
+      </div>
 
     <AiCategorizeDialog
       bookId={book.id}
