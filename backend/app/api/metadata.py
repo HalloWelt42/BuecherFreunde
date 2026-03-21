@@ -366,17 +366,51 @@ async def apply_metadata(
 
 
 @router.get("/buch/{book_id}/volltext")
-async def get_fulltext(book_id: int, _token: str = Depends(verify_token)):
-    """Gibt den Volltext eines Buches zurück."""
-    book = await db.fetch_one("SELECT hash FROM books WHERE id = ?", (book_id,))
+async def get_fulltext(
+    book_id: int,
+    seite_von: int = Query(1, ge=1, description="Startseite (1-basiert)"),
+    seite_bis: int = Query(5, ge=1, description="Endseite (inklusiv)"),
+    _token: str = Depends(verify_token),
+):
+    """Gibt einen Seitenbereich des Volltextes zurück.
+
+    Der Volltext wird anhand von Seitenumbruch-Markern oder gleichmäßig
+    in Seiten aufgeteilt.
+    """
+    book = await db.fetch_one(
+        "SELECT hash, page_count FROM books WHERE id = ?", (book_id,)
+    )
     if not book:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
 
     fulltext = load_fulltext(book["hash"])
     if not fulltext:
-        return {"volltext": ""}
+        return {"volltext": "", "seiten_gesamt": 0, "seite_von": 1, "seite_bis": 1}
 
-    return {"volltext": fulltext}
+    # Seiten aufteilen: Formfeed (\f) als Seitenumbruch oder gleichmäßig
+    if "\f" in fulltext:
+        seiten = fulltext.split("\f")
+    else:
+        # Gleichmäßig aufteilen basierend auf Seitenanzahl aus DB
+        total_pages = book["page_count"] or 1
+        chars_per_page = max(len(fulltext) // total_pages, 500)
+        seiten = []
+        for i in range(0, len(fulltext), chars_per_page):
+            seiten.append(fulltext[i:i + chars_per_page])
+
+    seiten_gesamt = len(seiten)
+    # Bereich begrenzen
+    von = max(1, min(seite_von, seiten_gesamt))
+    bis = max(von, min(seite_bis, seiten_gesamt))
+
+    ausschnitt = "\n".join(seiten[von - 1:bis])
+
+    return {
+        "volltext": ausschnitt,
+        "seiten_gesamt": seiten_gesamt,
+        "seite_von": von,
+        "seite_bis": bis,
+    }
 
 
 @router.get("/verbindungsstatus")

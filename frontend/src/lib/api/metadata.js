@@ -25,11 +25,13 @@ export function uebernehmMetadaten(bookId, metadata) {
 }
 
 /**
- * Volltext eines Buches laden.
+ * Volltext-Ausschnitt eines Buches laden.
  * @param {number} bookId
- * @returns {Promise<{volltext: string}>}
+ * @param {number} [seiteVon=1]
+ * @param {number} [seiteBis=5]
+ * @returns {Promise<{volltext: string, seiten_gesamt: number, seite_von: number, seite_bis: number}>}
  */
-export function ladeVolltext(bookId) {
-  return get(`/api/metadata/buch/${bookId}/volltext`);
+export function ladeVolltext(bookId, seiteVon = 1, seiteBis = 5) {
+  return get(`/api/metadata/buch/${bookId}/volltext`, { seite_von: seiteVon, seite_bis: seiteBis });
 }
 

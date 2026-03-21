@@ -124,13 +124,19 @@
   let volltextOffen = $state(false);
   let volltextInhalt = $state("");
   let volltextLaden = $state(false);
+  let volltextVon = $state(1);
+  let volltextBis = $state(5);
+  let volltextSeitenGesamt = $state(0);
 
-  async function volltextAlsBeschreibung() {
-    if (volltextInhalt || volltextLaden || !book) return;
+  async function volltextLadenAktion() {
+    if (volltextLaden || !book) return;
     volltextLaden = true;
     try {
-      const result = await ladeVolltext(book.id);
+      const result = await ladeVolltext(book.id, volltextVon, volltextBis);
       volltextInhalt = result.volltext || "";
+      volltextSeitenGesamt = result.seiten_gesamt || 0;
+      volltextVon = result.seite_von || 1;
+      volltextBis = result.seite_bis || 5;
     } catch {
       volltextInhalt = "";
     } finally {
@@ -272,6 +278,9 @@
     rawKatAuswahl = {};
     volltextOffen = false;
     volltextInhalt = "";
+    volltextVon = 1;
+    volltextBis = 5;
+    volltextSeitenGesamt = 0;
   }
 
   $effect(() => {
@@ -740,11 +749,31 @@
             {/if}
 
             <div class="raw-section">
-              <button class="raw-toggle" onclick={() => { volltextOffen = !volltextOffen; if (volltextOffen) volltextAlsBeschreibung(); }}>
+              <button class="raw-toggle" onclick={() => { volltextOffen = !volltextOffen; if (volltextOffen && !volltextInhalt) volltextLadenAktion(); }}>
                 <i class="fa-solid {volltextOffen ? 'fa-chevron-down' : 'fa-chevron-right'}"></i>
                 Beschreibung aus Buchtext
               </button>
               {#if volltextOffen}
+                <div class="volltext-seiten-ctrl">
+                  <label>
+                    Seite <input type="number" class="volltext-seite-input" bind:value={volltextVon} min="1" max={volltextSeitenGesamt || 999} />
+                  </label>
+                  <span>bis</span>
+                  <label>
+                    <input type="number" class="volltext-seite-input" bind:value={volltextBis} min={volltextVon} max={volltextSeitenGesamt || 999} />
+                  </label>
+                  {#if volltextSeitenGesamt}
+                    <span class="volltext-seiten-info">von {volltextSeitenGesamt}</span>
+                  {/if}
+                  <button class="btn btn-secondary btn-sm" onclick={volltextLadenAktion} disabled={volltextLaden}>
+                    {#if volltextLaden}
+                      <i class="fa-solid fa-spinner fa-spin"></i>
+                    {:else}
+                      <i class="fa-solid fa-sync"></i>
+                    {/if}
+                    Laden
+                  </button>
+                </div>
                 {#if volltextLaden}
                   <div class="volltext-laden"><i class="fa-solid fa-spinner fa-spin"></i> Volltext wird geladen...</div>
                 {:else if volltextInhalt}
@@ -1525,6 +1554,31 @@
     font-size: 0.8125rem;
     color: var(--color-text-secondary);
     word-break: break-word;
+  }
+
+  .volltext-seiten-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    flex-wrap: wrap;
+  }
+
+  .volltext-seite-input {
+    width: 4rem;
+    padding: 0.25rem 0.375rem;
+    font-size: 0.8125rem;
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem;
+    text-align: center;
+  }
+
+  .volltext-seiten-info {
+    color: var(--color-text-muted);
   }
 
   .volltext-vorschau {
