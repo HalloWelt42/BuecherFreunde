@@ -151,6 +151,18 @@
     volltextOffen = false;
   }
 
+  async function volltextDirektUebernehmen() {
+    if (!volltextInhalt || !book) return;
+    try {
+      await uebernehmMetadaten(book.id, { beschreibung: volltextInhalt });
+      volltextOffen = false;
+      volltextInhalt = "";
+      await ladeBuch(book.id);
+    } catch (e) {
+      metaFehler = e.message || "Fehler beim Speichern";
+    }
+  }
+
   // Alle Rohdaten anzeigen
   let rawOffen = $state(false);
 
@@ -620,7 +632,66 @@
             {/if}
             Wikipedia
           </button>
+          <button
+            class="action-btn meta-btn"
+            class:loading={volltextLaden}
+            onclick={() => { volltextOffen = !volltextOffen; if (volltextOffen && !volltextInhalt) volltextLadenAktion(); }}
+            disabled={volltextLaden}
+            title="Beschreibung aus dem Buchtext übernehmen"
+          >
+            {#if volltextLaden}
+              <i class="fa-solid fa-spinner fa-spin"></i>
+            {:else}
+              <i class="fa-solid fa-file-lines"></i>
+            {/if}
+            Aus Buch
+          </button>
         </div>
+
+        {#if volltextOffen && !metaVorschlag}
+          <div class="meta-vergleich">
+            <div class="meta-header">
+              <h2 class="section-title">Beschreibung aus Buchtext</h2>
+            </div>
+            <div class="volltext-seiten-ctrl">
+              <label>
+                Seite <input type="number" class="volltext-seite-input" bind:value={volltextVon} min="1" max={volltextSeitenGesamt || 999} />
+              </label>
+              <span>bis</span>
+              <label>
+                <input type="number" class="volltext-seite-input" bind:value={volltextBis} min={volltextVon} max={volltextSeitenGesamt || 999} />
+              </label>
+              {#if volltextSeitenGesamt}
+                <span class="volltext-seiten-info">von {volltextSeitenGesamt}</span>
+              {/if}
+              <button class="btn btn-secondary btn-sm" onclick={volltextLadenAktion} disabled={volltextLaden}>
+                {#if volltextLaden}
+                  <i class="fa-solid fa-spinner fa-spin"></i>
+                {:else}
+                  <i class="fa-solid fa-sync"></i>
+                {/if}
+                Laden
+              </button>
+            </div>
+            {#if volltextLaden}
+              <div class="volltext-laden"><i class="fa-solid fa-spinner fa-spin"></i> Volltext wird geladen...</div>
+            {:else if volltextInhalt}
+              <div class="volltext-vorschau">
+                <textarea class="volltext-textarea" bind:value={volltextInhalt}></textarea>
+                <div class="meta-aktionen">
+                  <button class="btn btn-primary btn-sm" onclick={() => volltextDirektUebernehmen()}>
+                    <i class="fa-solid fa-check"></i> Als Beschreibung speichern
+                  </button>
+                  <button class="btn btn-secondary btn-sm" onclick={() => { volltextOffen = false; volltextInhalt = ""; }}>
+                    Abbrechen
+                  </button>
+                </div>
+              </div>
+            {:else}
+              <p class="volltext-leer">Kein Volltext vorhanden.</p>
+            {/if}
+          </div>
+        {/if}
 
         {#if metaLaden && metaSchritt}
           <div class="meta-status">
