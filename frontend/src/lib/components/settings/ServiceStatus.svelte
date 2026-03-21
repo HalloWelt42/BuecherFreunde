@@ -49,6 +49,17 @@
         url: `http://localhost:${config.external_port}`,
       });
 
+      // Google Books
+      ergebnisse.push({
+        name: "Google Books",
+        icon: "fa-g",
+        status: config.google_books?.aktiviert ? "online" : "deaktiviert",
+        info: config.google_books?.aktiviert
+          ? config.google_books.hat_api_key ? "Mit API-Key" : "Ohne API-Key (eingeschränkt)"
+          : "Deaktiviert",
+        url: config.google_books?.aktiviert ? "https://www.googleapis.com/books/v1" : null,
+      });
+
       // Open Library
       ergebnisse.push({
         name: "Open Library",

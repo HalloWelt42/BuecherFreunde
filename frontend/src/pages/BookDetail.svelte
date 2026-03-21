@@ -23,6 +23,7 @@
   let metaAktuell = $state(null);
   let metaQuelle = $state("");
   let metaFehler = $state("");
+  let metaAuswahl = $state({});
 
   const vergleichsFelder = [
     { key: "titel", label: "Titel" },
@@ -35,16 +36,34 @@
     { key: "beschreibung", label: "Beschreibung" },
   ];
 
-  async function metadatenSuchen() {
+  function metaInitAuswahl(vorschlag, aktuell) {
+    const auswahl = {};
+    for (const feld of vergleichsFelder) {
+      const neu = vorschlag[feld.key] ?? "";
+      const alt = aktuell[feld.key] ?? "";
+      if (neu && String(neu) !== String(alt)) {
+        auswahl[feld.key] = true;
+      }
+    }
+    if (vorschlag.cover_url) auswahl.cover = true;
+    if (vorschlag.kategorien?.length) auswahl.kategorien = true;
+    return auswahl;
+  }
+
+  let metaHatAuswahl = $derived(Object.values(metaAuswahl).some(v => v));
+
+  async function metadatenSuchen(quelle) {
     if (metaLaden || !book) return;
     metaLaden = true;
-    metaSchritt = "Metadaten werden gesucht...";
+    const quelleLabel = quelle === "google_books" ? "Google Books" : quelle === "open_library" ? "Open Library" : "allen Quellen";
+    metaSchritt = `Suche in ${quelleLabel}...`;
     metaFehler = "";
     metaVorschlag = null;
     metaAktuell = null;
+    metaAuswahl = {};
 
     try {
-      const result = await sucheMetadaten(book.id);
+      const result = await sucheMetadaten(book.id, quelle);
       if (!result.angereichert) {
         metaFehler = result.grund || "Keine Metadaten gefunden";
         return;
@@ -52,6 +71,7 @@
       metaVorschlag = result.vorschlag;
       metaAktuell = result.aktuell;
       metaQuelle = result.quelle || "";
+      metaAuswahl = metaInitAuswahl(result.vorschlag, result.aktuell);
       metaSchritt = "";
     } catch (e) {
       metaFehler = e.message || "Fehler bei der Suche";
@@ -61,20 +81,32 @@
   }
 
   async function metadatenUebernehmen() {
-    if (!metaVorschlag || metaLaden) return;
+    if (!metaVorschlag || metaLaden || !metaHatAuswahl) return;
     metaLaden = true;
     metaSchritt = "Daten werden übernommen...";
     metaFehler = "";
 
     try {
-      if (metaVorschlag.cover_url) {
+      const payload = {};
+      for (const feld of vergleichsFelder) {
+        if (metaAuswahl[feld.key]) {
+          payload[feld.key] = metaVorschlag[feld.key];
+        }
+      }
+      if (metaAuswahl.cover && metaVorschlag.cover_url) {
+        payload.cover_url = metaVorschlag.cover_url;
+        payload.quelle = metaQuelle;
         metaSchritt = "Cover wird heruntergeladen...";
       }
-      await uebernehmMetadaten(book.id, metaVorschlag);
+      if (metaAuswahl.kategorien && metaVorschlag.kategorien?.length) {
+        payload.kategorien = metaVorschlag.kategorien;
+      }
+      await uebernehmMetadaten(book.id, payload);
       metaSchritt = "Buch wird neu geladen...";
       await ladeBuch(book.id);
       metaVorschlag = null;
       metaAktuell = null;
+      metaAuswahl = {};
       metaSchritt = "";
       coverError = false;
     } catch (e) {
@@ -87,6 +119,7 @@
   function metadatenVerwerfen() {
     metaVorschlag = null;
     metaAktuell = null;
+    metaAuswahl = {};
     metaSchritt = "";
     metaFehler = "";
   }
@@ -259,16 +292,30 @@
           <button
             class="action-btn meta-btn"
             class:loading={metaLaden}
-            onclick={metadatenSuchen}
+            onclick={() => metadatenSuchen("google_books")}
             disabled={metaLaden}
-            title="Metadaten online suchen (Google Books / Open Library)"
+            title="Metadaten bei Google Books suchen"
           >
-            {#if metaLaden}
+            {#if metaLaden && metaSchritt.includes("Google")}
               <i class="fa-solid fa-spinner fa-spin"></i>
             {:else}
-              <i class="fa-solid fa-globe"></i>
+              <i class="fa-solid fa-g"></i>
             {/if}
-            Metadaten
+            Google Books
+          </button>
+          <button
+            class="action-btn meta-btn"
+            class:loading={metaLaden}
+            onclick={() => metadatenSuchen("open_library")}
+            disabled={metaLaden}
+            title="Metadaten bei Open Library suchen"
+          >
+            {#if metaLaden && metaSchritt.includes("Open")}
+              <i class="fa-solid fa-spinner fa-spin"></i>
+            {:else}
+              <i class="fa-solid fa-book-open"></i>
+            {/if}
+            Open Library
           </button>
         </div>
 
@@ -295,6 +342,7 @@
 
             <div class="vergleich-tabelle">
               <div class="vergleich-kopf">
+                <span class="vergleich-check"></span>
                 <span class="vergleich-label"></span>
                 <span class="vergleich-spalte">Aktuell</span>
                 <span class="vergleich-spalte">Vorschlag</span>
@@ -303,45 +351,59 @@
                 {@const alt = metaAktuell[feld.key] ?? ""}
                 {@const neu = metaVorschlag[feld.key] ?? ""}
                 {#if neu || alt}
-                  <div class="vergleich-zeile" class:geaendert={String(neu) !== String(alt) && neu}>
+                  {@const geaendert = String(neu) !== String(alt) && !!neu}
+                  <label class="vergleich-zeile" class:geaendert={geaendert && metaAuswahl[feld.key]}>
+                    <span class="vergleich-check">
+                      {#if geaendert}
+                        <input type="checkbox" bind:checked={metaAuswahl[feld.key]} />
+                      {/if}
+                    </span>
                     <span class="vergleich-label">{feld.label}</span>
                     <span class="vergleich-alt" class:leer={!alt}>{alt || "-"}</span>
-                    <span class="vergleich-neu" class:leer={!neu}>{neu || "-"}</span>
-                  </div>
+                    <span class="vergleich-neu" class:leer={!neu} class:abgewaehlt={geaendert && !metaAuswahl[feld.key]}>{neu || "-"}</span>
+                  </label>
                 {/if}
               {/each}
 
               {#if metaVorschlag.cover_url}
-                <div class="vergleich-zeile">
+                <label class="vergleich-zeile" class:geaendert={metaAuswahl.cover}>
+                  <span class="vergleich-check">
+                    <input type="checkbox" bind:checked={metaAuswahl.cover} />
+                  </span>
                   <span class="vergleich-label">Cover</span>
                   <span class="vergleich-alt">{metaAktuell.hat_cover ? "Vorhanden" : "-"}</span>
-                  <span class="vergleich-neu"><i class="fa-solid fa-image"></i> Verfügbar</span>
-                </div>
+                  <span class="vergleich-neu" class:abgewaehlt={!metaAuswahl.cover}><i class="fa-solid fa-image"></i> Verfügbar</span>
+                </label>
               {/if}
 
               {#if metaVorschlag.kategorien && metaVorschlag.kategorien.length > 0}
-                <div class="vergleich-zeile vergleich-full">
+                <label class="vergleich-zeile" class:geaendert={metaAuswahl.kategorien}>
+                  <span class="vergleich-check">
+                    <input type="checkbox" bind:checked={metaAuswahl.kategorien} />
+                  </span>
                   <span class="vergleich-label">Kategorien</span>
                   <span class="vergleich-alt">{metaAktuell.kategorien?.length || 0}</span>
-                  <span class="vergleich-neu">+{metaVorschlag.kategorien.length}</span>
-                </div>
-                <div class="meta-kategorien">
-                  {#each metaVorschlag.kategorien.slice(0, 20) as kat}
-                    <span class="meta-kat-chip">{kat}</span>
-                  {/each}
-                  {#if metaVorschlag.kategorien.length > 20}
-                    <span class="meta-kat-more">+{metaVorschlag.kategorien.length - 20} weitere</span>
-                  {/if}
-                </div>
+                  <span class="vergleich-neu" class:abgewaehlt={!metaAuswahl.kategorien}>+{metaVorschlag.kategorien.length}</span>
+                </label>
+                {#if metaAuswahl.kategorien}
+                  <div class="meta-kategorien">
+                    {#each metaVorschlag.kategorien.slice(0, 20) as kat}
+                      <span class="meta-kat-chip">{kat}</span>
+                    {/each}
+                    {#if metaVorschlag.kategorien.length > 20}
+                      <span class="meta-kat-more">+{metaVorschlag.kategorien.length - 20} weitere</span>
+                    {/if}
+                  </div>
+                {/if}
               {/if}
             </div>
 
             <div class="meta-aktionen">
-              <button class="btn btn-primary btn-sm" onclick={metadatenUebernehmen} disabled={metaLaden}>
+              <button class="btn btn-primary btn-sm" onclick={metadatenUebernehmen} disabled={metaLaden || !metaHatAuswahl}>
                 {#if metaLaden}
                   <i class="fa-solid fa-spinner fa-spin"></i>
                 {/if}
-                Alles übernehmen
+                Ausgewählte übernehmen
               </button>
               <button class="btn btn-secondary btn-sm" onclick={metadatenVerwerfen}>
                 Verwerfen
@@ -790,7 +852,7 @@
 
   .vergleich-kopf {
     display: grid;
-    grid-template-columns: 7rem 1fr 1fr;
+    grid-template-columns: 1.5rem 7rem 1fr 1fr;
     gap: 0.5rem;
     padding: 0.375rem 0;
     border-bottom: 1px solid var(--color-border);
@@ -803,12 +865,13 @@
 
   .vergleich-zeile {
     display: grid;
-    grid-template-columns: 7rem 1fr 1fr;
+    grid-template-columns: 1.5rem 7rem 1fr 1fr;
     gap: 0.5rem;
     padding: 0.375rem 0;
     border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
     font-size: 0.8125rem;
     align-items: baseline;
+    cursor: default;
   }
 
   .vergleich-zeile:last-child {
@@ -821,6 +884,17 @@
     padding-left: 0.375rem;
     padding-right: 0.375rem;
     border-radius: 4px;
+  }
+
+  .vergleich-check {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .vergleich-check input[type="checkbox"] {
+    cursor: pointer;
+    accent-color: var(--color-accent);
   }
 
   .vergleich-label {
@@ -845,10 +919,12 @@
     word-break: break-word;
   }
 
-  .vergleich-neu.leer {
+  .vergleich-neu.leer,
+  .vergleich-neu.abgewaehlt {
     color: var(--color-text-muted);
     font-style: italic;
     font-weight: 400;
+    opacity: 0.6;
   }
 
   .meta-kategorien {

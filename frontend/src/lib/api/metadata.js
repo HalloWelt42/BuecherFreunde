@@ -1,15 +1,17 @@
 /**
- * API-Modul: Metadatenanreicherung (Open Library)
+ * API-Modul: Metadatenanreicherung (Google Books, Open Library)
  */
 import { get, post } from "./client.js";
 
 /**
  * Metadaten für ein Buch suchen (Vorschau).
  * @param {number} bookId
- * @returns {Promise<{found: boolean, metadata: Object}>}
+ * @param {string} [quelle] - "google_books" oder "open_library" (ohne = beide)
+ * @returns {Promise<Object>}
  */
-export function sucheMetadaten(bookId) {
-  return post(`/api/metadata/buch/${bookId}/anreichern`);
+export function sucheMetadaten(bookId, quelle) {
+  const params = quelle ? `?quelle=${quelle}` : "";
+  return post(`/api/metadata/buch/${bookId}/anreichern${params}`);
 }
 
 /**

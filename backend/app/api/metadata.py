@@ -3,7 +3,7 @@
 import logging
 import re
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
 from backend.app.core.auth import verify_token
 from backend.app.core.database import db
@@ -72,11 +72,15 @@ async def _assign_categories(book_id: int, cat_ids: list[int]) -> None:
 
 
 @router.post("/buch/{book_id}/anreichern")
-async def enrich_book(book_id: int, _token: str = Depends(verify_token)):
+async def enrich_book(
+    book_id: int,
+    quelle: str | None = Query(None, description="google_books oder open_library"),
+    _token: str = Depends(verify_token),
+):
     """Reichert ein Buch mit Metadaten an.
 
-    Primaerquelle: Google Books. Fallback: Open Library.
-    Gibt aktuellen und vorgeschlagenen Datensatz zum Vergleich zurueck.
+    Ohne Quellangabe: Google Books zuerst, dann Open Library.
+    Mit quelle=google_books oder quelle=open_library: nur diese Quelle.
     """
     book = await db.fetch_one(
         "SELECT id, hash, isbn, title, author, publisher, year, language, "
@@ -96,21 +100,25 @@ async def enrich_book(book_id: int, _token: str = Depends(verify_token)):
     aktuelle_kategorien = [c["name"] for c in cats]
 
     result = None
-    quelle = ""
+    quelle_name = ""
 
-    # 1. Google Books (Primaerquelle)
-    if book["isbn"]:
-        result = await googlebooks.lookup_isbn(book["isbn"])
-    if not result and book["title"]:
-        query = f"{book['title']} {book['author']}".strip()
-        results = await googlebooks.search_books(query, limit=1)
-        if results:
-            result = results[0]
-    if result:
-        quelle = "google_books"
+    suche_google = quelle in (None, "google_books")
+    suche_ol = quelle in (None, "open_library")
 
-    # 2. Open Library (Fallback)
-    if not result:
+    # 1. Google Books
+    if suche_google:
+        if book["isbn"]:
+            result = await googlebooks.lookup_isbn(book["isbn"])
+        if not result and book["title"]:
+            query = f"{book['title']} {book['author']}".strip()
+            results = await googlebooks.search_books(query, limit=1)
+            if results:
+                result = results[0]
+        if result:
+            quelle_name = "google_books"
+
+    # 2. Open Library
+    if not result and suche_ol:
         if book["isbn"]:
             result = await openlibrary.lookup_isbn(book["isbn"])
         if not result and book["title"]:
@@ -119,14 +127,15 @@ async def enrich_book(book_id: int, _token: str = Depends(verify_token)):
             if results:
                 result = results[0]
         if result:
-            quelle = "open_library"
+            quelle_name = "open_library"
 
     if not result:
-        return {"angereichert": False, "grund": "Keine Metadaten gefunden"}
+        quelle_text = {"google_books": "Google Books", "open_library": "Open Library"}.get(quelle, "allen Quellen")
+        return {"angereichert": False, "grund": f"Keine Metadaten in {quelle_text} gefunden"}
 
     return {
         "angereichert": True,
-        "quelle": quelle,
+        "quelle": quelle_name,
         "vorschlag": result,
         "aktuell": {
             "titel": book["title"],
