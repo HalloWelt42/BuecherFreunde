@@ -109,13 +109,7 @@
   }
 
   .grid-footer {
-    position: fixed;
-    bottom: 0;
-    right: 0;
-    padding: 0.25rem 0.75rem;
-    font-size: 0.6875rem;
-    color: var(--color-text-muted);
-    z-index: 10;
-    pointer-events: none;
+    grid-area: footer;
+    z-index: 50;
   }
 </style>
