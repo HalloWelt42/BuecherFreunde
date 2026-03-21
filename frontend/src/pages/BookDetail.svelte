@@ -3,7 +3,7 @@
   import { post, get as apiGet } from "../lib/api/client.js";
   import { ladeSammlungen, buchZuordnen, buchAusSammlung } from "../lib/api/collections.js";
   import { toggleFavorit, toggleZumLesen, setzeBewertung } from "../lib/api/user-data.js";
-  import { sucheMetadaten, uebernehmMetadaten } from "../lib/api/metadata.js";
+  import { sucheMetadaten, uebernehmMetadaten, ladeVolltext } from "../lib/api/metadata.js";
   import RatingStars from "../lib/components/ui/RatingStars.svelte";
   import BookMeta from "../lib/components/book/BookMeta.svelte";
   import AiCategorizeDialog from "../lib/components/book/AiCategorizeDialog.svelte";
@@ -119,6 +119,31 @@
   let metaQuelle = $state("");
   let metaFehler = $state("");
   let metaAuswahl = $state({});
+
+  // Volltext als Beschreibungsquelle
+  let volltextOffen = $state(false);
+  let volltextInhalt = $state("");
+  let volltextLaden = $state(false);
+
+  async function volltextAlsBeschreibung() {
+    if (volltextInhalt || volltextLaden || !book) return;
+    volltextLaden = true;
+    try {
+      const result = await ladeVolltext(book.id);
+      volltextInhalt = result.volltext || "";
+    } catch {
+      volltextInhalt = "";
+    } finally {
+      volltextLaden = false;
+    }
+  }
+
+  function volltextUebernehmen(text) {
+    if (!metaVorschlag) return;
+    metaVorschlag.beschreibung = text;
+    metaAuswahl.beschreibung = true;
+    volltextOffen = false;
+  }
 
   // Alle Rohdaten anzeigen
   let rawOffen = $state(false);
@@ -245,6 +270,8 @@
     metaFehler = "";
     rawOffen = false;
     rawKatAuswahl = {};
+    volltextOffen = false;
+    volltextInhalt = "";
   }
 
   $effect(() => {
@@ -711,6 +738,27 @@
                 {/if}
               </div>
             {/if}
+
+            <div class="raw-section">
+              <button class="raw-toggle" onclick={() => { volltextOffen = !volltextOffen; if (volltextOffen) volltextAlsBeschreibung(); }}>
+                <i class="fa-solid {volltextOffen ? 'fa-chevron-down' : 'fa-chevron-right'}"></i>
+                Beschreibung aus Buchtext
+              </button>
+              {#if volltextOffen}
+                {#if volltextLaden}
+                  <div class="volltext-laden"><i class="fa-solid fa-spinner fa-spin"></i> Volltext wird geladen...</div>
+                {:else if volltextInhalt}
+                  <div class="volltext-vorschau">
+                    <textarea class="volltext-textarea" bind:value={volltextInhalt}></textarea>
+                    <button class="btn btn-secondary btn-sm" onclick={() => volltextUebernehmen(volltextInhalt)}>
+                      <i class="fa-solid fa-check"></i> Als Beschreibung übernehmen
+                    </button>
+                  </div>
+                {:else}
+                  <p class="volltext-leer">Kein Volltext vorhanden.</p>
+                {/if}
+              {/if}
+            </div>
 
             <div class="meta-aktionen">
               <button class="btn btn-primary btn-sm" onclick={metadatenUebernehmen} disabled={metaLaden || !metaHatAuswahl}>
@@ -1477,6 +1525,34 @@
     font-size: 0.8125rem;
     color: var(--color-text-secondary);
     word-break: break-word;
+  }
+
+  .volltext-vorschau {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+  }
+
+  .volltext-textarea {
+    width: 100%;
+    min-height: 300px;
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    resize: vertical;
+    font-family: inherit;
+  }
+
+  .volltext-laden,
+  .volltext-leer {
+    padding: 0.5rem 0;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
   }
 
   .meta-aktionen {

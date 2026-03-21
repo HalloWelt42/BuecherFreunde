@@ -24,3 +24,12 @@ export function uebernehmMetadaten(bookId, metadata) {
   return post(`/api/metadata/buch/${bookId}/uebernehmen`, metadata);
 }
 
+/**
+ * Volltext eines Buches laden.
+ * @param {number} bookId
+ * @returns {Promise<{volltext: string}>}
+ */
+export function ladeVolltext(bookId) {
+  return get(`/api/metadata/buch/${bookId}/volltext`);
+}
+

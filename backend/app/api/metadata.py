@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from backend.app.core.auth import verify_token
 from backend.app.core.database import db
 from backend.app.services import googlebooks, openlibrary, wikipedia
-from backend.app.services.storage import save_cover
+from backend.app.services.storage import save_cover, load_fulltext
 
 logger = logging.getLogger("buecherfreunde.api.metadata")
 
@@ -363,6 +363,20 @@ async def apply_metadata(
         "cover_gespeichert": cover_gespeichert,
     }
 
+
+
+@router.get("/buch/{book_id}/volltext")
+async def get_fulltext(book_id: int, _token: str = Depends(verify_token)):
+    """Gibt den Volltext eines Buches zurück."""
+    book = await db.fetch_one("SELECT hash FROM books WHERE id = ?", (book_id,))
+    if not book:
+        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+
+    fulltext = load_fulltext(book["hash"])
+    if not fulltext:
+        return {"volltext": ""}
+
+    return {"volltext": fulltext}
 
 
 @router.get("/verbindungsstatus")
