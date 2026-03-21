@@ -10,6 +10,7 @@
     initialPage = 1,
     initialAnsicht = "",
     initialPapier = "",
+    initialZoom = 0,
     onPositionChange = () => {},
   } = $props();
 
@@ -17,7 +18,7 @@
   let pdfDoc = $state(null);
   let totalPages = $state(0);
   let currentPage = $state(initialPage);
-  let scale = $state(1.0);
+  let scale = $state(initialZoom > 0 ? initialZoom / 100 : 1.0);
   let laden = $state(true);
   let fehler = $state(null);
 
@@ -242,18 +243,21 @@
     ansicht = "scroll";
     scale = naechsterZoom(1);
     reRenderAll();
+    savePosition();
   }
 
   function zoomOut() {
     ansicht = "scroll";
     scale = naechsterZoom(-1);
     reRenderAll();
+    savePosition();
   }
 
   function setZoom(newScale) {
     ansicht = "scroll";
     scale = newScale;
     reRenderAll();
+    savePosition();
   }
 
   function setAnsicht(modus) {
@@ -270,7 +274,7 @@
     } else {
       reRenderAll();
     }
-    updateUrl();
+    savePosition();
   }
 
   function goToPage(page) {
@@ -308,7 +312,7 @@
     const modi = ["normal", "sepia", "dunkel", "kontrast"];
     const idx = modi.indexOf(papierModus);
     papierModus = modi[(idx + 1) % modi.length];
-    updateUrl();
+    savePosition();
   }
 
   // Sichtbare Seiten im Einzeln/Doppel-Modus
@@ -332,6 +336,8 @@
     const params = new URLSearchParams();
     if (currentPage > 1) params.set("page", String(currentPage));
     if (ansicht !== "scroll") params.set("ansicht", ansicht);
+    // Zoom nur bei manuellem Zoom (scroll-Modus) speichern, nicht bei Auto-Scale
+    if (ansicht === "scroll" && scale !== 1.0) params.set("zoom", String(Math.round(scale * 100)));
     if (papierModus !== "normal") params.set("papier", papierModus);
     const qs = params.toString();
     const newUrl = `/book/${bookId}/read${qs ? "?" + qs : ""}`;
@@ -343,7 +349,14 @@
     clearTimeout(saveTimeout);
     updateUrl();
     saveTimeout = setTimeout(async () => {
-      const pos = `page:${currentPage}`;
+      // Alle Einstellungen als JSON speichern
+      const settings = {
+        page: currentPage,
+        ansicht,
+        zoom: Math.round(scale * 100),
+        papier: papierModus,
+      };
+      const pos = `pdf:${JSON.stringify(settings)}`;
       onPositionChange(pos);
       try {
         await speichereLeseposition(bookId, pos);

@@ -17,6 +17,7 @@
     const sp = new URLSearchParams(window.location.search || "");
     return {
       page: Number(sp.get("page")) || 0,
+      zoom: Number(sp.get("zoom")) || 0,
       ansicht: sp.get("ansicht") || "",
       papier: sp.get("papier") || "",
       cfi: sp.get("cfi") || "",
@@ -24,6 +25,20 @@
   }
 
   let urlParams = getUrlParams();
+
+  // Gespeicherte Reader-Settings aus reading_position parsen
+  function parseGespeicherteSettings(pos) {
+    if (!pos) return {};
+    if (pos.startsWith("pdf:")) {
+      try {
+        return JSON.parse(pos.slice(4));
+      } catch { return {}; }
+    }
+    // Altes Format: "page:42"
+    const match = pos.match(/page:(\d+)/);
+    if (match) return { page: Number(match[1]) };
+    return {};
+  }
 
   $effect(() => {
     ladeBuch(Number(params.id));
@@ -41,15 +56,13 @@
     }
   }
 
-  // Startseite: URL-Parameter > gespeicherte Position > 1
-  let initialPage = $derived.by(() => {
-    if (urlParams.page > 0) return urlParams.page;
-    if (book?.reading_position) {
-      const match = book.reading_position.match(/page:(\d+)/);
-      if (match) return Number(match[1]);
-    }
-    return 1;
-  });
+  // Gespeicherte Settings (URL > DB > Defaults)
+  let saved = $derived(parseGespeicherteSettings(book?.reading_position));
+
+  let initialPage = $derived(urlParams.page > 0 ? urlParams.page : (saved.page || 1));
+  let initialAnsicht = $derived(urlParams.ansicht || saved.ansicht || "");
+  let initialPapier = $derived(urlParams.papier || saved.papier || "");
+  let initialZoom = $derived(urlParams.zoom > 0 ? urlParams.zoom : (saved.zoom || 0));
 
   let initialCfi = $derived.by(() => {
     if (urlParams.cfi) return urlParams.cfi;
@@ -58,9 +71,6 @@
     }
     return "";
   });
-
-  let initialAnsicht = $derived(urlParams.ansicht || "");
-  let initialPapier = $derived(urlParams.papier || "");
 
   function goBack() {
     navigate(`/book/${params.id}`);
@@ -84,6 +94,7 @@
         {initialPage}
         {initialAnsicht}
         {initialPapier}
+        {initialZoom}
       />
     {:else if book.file_format === "epub" || book.file_format === "mobi"}
       <EpubReader bookId={book.id} {initialCfi} />
