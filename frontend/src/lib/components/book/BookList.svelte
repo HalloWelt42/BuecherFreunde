@@ -19,7 +19,6 @@
       window.removeEventListener("click", handler, true);
     }
     window.addEventListener("click", handler, true);
-    // Sicherheits-Timeout: Listener entfernen falls kein Click kommt
     setTimeout(() => window.removeEventListener("click", handler, true), 300);
   }
 
@@ -96,8 +95,8 @@
     <p>Keine Bücher gefunden.</p>
   </div>
 {:else if detailed}
-  <!-- Detailliste mit Selection + erweiterten Details -->
-  <div class="detail-list" class:drag-active={isDragging}>
+  <!-- Detailliste mit Drag-Selection -->
+  <div class="detail-list" class:edit-mode={selectionStore.editMode} class:drag-active={isDragging}>
     {#each books as book (book.id)}
       {@const isSelected = selectionStore.has(book.id)}
       <div
@@ -107,7 +106,7 @@
         onpointerdown={(e) => handlePointerDown(e, book.id)}
         onpointerenter={() => handlePointerEnter(book.id)}
       >
-        <a href="/book/{book.id}" class="detail-link" onclick={(e) => { if (selectionStore.editMode) { e.preventDefault(); selectionStore.toggle(book.id); } }}>
+        <a href="/book/{book.id}" class="detail-link">
           <div class="detail-cover">
             <img
               src={coverUrl(book.id, book.updated_at)}
@@ -122,14 +121,13 @@
           </div>
         </a>
 
-        <a href="/book/{book.id}" class="detail-info" onclick={(e) => { if (selectionStore.editMode) { e.preventDefault(); selectionStore.toggle(book.id); } }}>
+        <a href="/book/{book.id}" class="detail-info">
           <div class="detail-header">
             <h3 class="detail-title">{book.title}</h3>
             <span class="detail-format">{formatLabel[book.file_format] || book.file_format}</span>
           </div>
           <p class="detail-author">{book.author || "Unbekannter Autor"}</p>
 
-          <!-- Erweiterte Metadaten -->
           <div class="detail-meta">
             <RatingStars rating={book.rating} size="small" />
             {#if book.page_count}
@@ -178,8 +176,8 @@
     {/each}
   </div>
 {:else}
-  <!-- Kompakte Tabelle (keine Selection) -->
-  <div class="table-wrapper">
+  <!-- Kompakte Tabelle mit Drag-Selection -->
+  <div class="table-wrapper" class:edit-mode={selectionStore.editMode} class:drag-active={isDragging}>
     <table class="book-table">
       <thead>
         <tr>
@@ -204,7 +202,13 @@
       </thead>
       <tbody>
         {#each books as book (book.id)}
-          <tr>
+          {@const isSelected = selectionStore.has(book.id)}
+          <tr
+            class:selected={isSelected}
+            data-book-id={book.id}
+            onpointerdown={(e) => handlePointerDown(e, book.id)}
+            onpointerenter={() => handlePointerEnter(book.id)}
+          >
             <td class="col-cover">
               <a href="/book/{book.id}" class="cover-link">
                 <img
@@ -240,7 +244,12 @@
 {/if}
 
 <style>
-  /* Drag-Modus */
+  /* Edit-Modus: Textauswahl verhindern */
+  .edit-mode {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
   .drag-active {
     user-select: none;
     -webkit-user-select: none;
@@ -292,6 +301,14 @@
 
   .book-table tbody tr:hover {
     background-color: var(--color-bg-tertiary);
+  }
+
+  .book-table tbody tr.selected {
+    background-color: color-mix(in srgb, var(--color-warning, #f59e0b) 10%, transparent);
+  }
+
+  .book-table tbody tr.selected td {
+    border-color: color-mix(in srgb, var(--color-warning, #f59e0b) 30%, transparent);
   }
 
   .col-cover {
@@ -369,7 +386,6 @@
     background-color: color-mix(in srgb, var(--color-warning, #f59e0b) 10%, transparent);
     border-color: color-mix(in srgb, var(--color-warning, #f59e0b) 30%, transparent);
   }
-
 
   .detail-link {
     flex-shrink: 0;
