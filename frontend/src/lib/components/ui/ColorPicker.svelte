@@ -27,7 +27,7 @@
 
   {#if open}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="cp-backdrop" onclick={() => (open = false)} onkeydown></div>
+    <div class="cp-backdrop" onclick={() => (open = false)} onkeydown={() => {}}></div>
     <div class="cp-popover">
       <div class="cp-grid">
         {#each colors as color (color)}

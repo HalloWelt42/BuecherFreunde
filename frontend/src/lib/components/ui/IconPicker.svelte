@@ -65,7 +65,7 @@
 
   {#if open}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="ip-backdrop" onclick={() => { open = false; search = ""; }} onkeydown></div>
+    <div class="ip-backdrop" onclick={() => { open = false; search = ""; }} onkeydown={() => {}}></div>
     <div class="ip-popover">
       <div class="ip-search">
         <i class="fa-solid fa-magnifying-glass"></i>
