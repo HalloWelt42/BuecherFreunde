@@ -149,7 +149,7 @@
         <!-- Checkbox -->
         <button
           class="cover-checkbox"
-          class:visible={isSelected || selectionStore.active}
+          class:visible={isSelected || selectionStore.editMode}
           onclick={(e) => { e.preventDefault(); e.stopPropagation(); selectionStore.toggle(book.id); }}
         >
           {#if isSelected}
@@ -159,7 +159,7 @@
           {/if}
         </button>
 
-        <a href="/book/{book.id}" class="cover-link" onclick={(e) => { if (selectionStore.active) { e.preventDefault(); selectionStore.toggle(book.id); } }}>
+        <a href="/book/{book.id}" class="cover-link" onclick={(e) => { if (selectionStore.editMode) { e.preventDefault(); selectionStore.toggle(book.id); } }}>
           {#if !coverErrors.has(book.id)}
             <img
               src={coverUrl(book.id, book.updated_at)}

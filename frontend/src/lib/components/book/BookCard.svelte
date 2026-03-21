@@ -80,7 +80,7 @@
 
 <a href="/book/{book.id}" class="book-card" class:selected={isSelected}
   onclick={(e) => {
-    if (e.ctrlKey || e.metaKey || selectionStore.active) {
+    if (selectionStore.editMode || e.ctrlKey || e.metaKey) {
       e.preventDefault();
       selectionStore.toggle(book.id);
     }
@@ -91,7 +91,7 @@
     <!-- Selektions-Checkbox -->
     <button
       class="select-checkbox"
-      class:visible={isSelected || selectionStore.active}
+      class:visible={isSelected || selectionStore.editMode}
       onclick={(e) => { e.preventDefault(); e.stopPropagation(); selectionStore.toggle(book.id); }}
     >
       {#if isSelected}

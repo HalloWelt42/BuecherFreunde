@@ -63,9 +63,6 @@
     >
       <i class="fa-solid {themeIcons[ui.theme]}"></i>
     </button>
-    <a href="/settings" class="header-btn" title="Einstellungen">
-      <i class="fa-solid fa-gear"></i>
-    </a>
   </div>
 </header>
 

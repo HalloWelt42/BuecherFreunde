@@ -110,7 +110,7 @@
         <!-- Checkbox -->
         <button
           class="detail-checkbox"
-          class:visible={isSelected || selectionStore.active}
+          class:visible={isSelected || selectionStore.editMode}
           onclick={(e) => { e.preventDefault(); e.stopPropagation(); selectionStore.toggle(book.id); }}
         >
           {#if isSelected}
@@ -120,7 +120,7 @@
           {/if}
         </button>
 
-        <a href="/book/{book.id}" class="detail-link" onclick={(e) => { if (selectionStore.active) { e.preventDefault(); selectionStore.toggle(book.id); } }}>
+        <a href="/book/{book.id}" class="detail-link" onclick={(e) => { if (selectionStore.editMode) { e.preventDefault(); selectionStore.toggle(book.id); } }}>
           <div class="detail-cover">
             <img
               src={coverUrl(book.id, book.updated_at)}
@@ -135,7 +135,7 @@
           </div>
         </a>
 
-        <a href="/book/{book.id}" class="detail-info" onclick={(e) => { if (selectionStore.active) { e.preventDefault(); selectionStore.toggle(book.id); } }}>
+        <a href="/book/{book.id}" class="detail-info" onclick={(e) => { if (selectionStore.editMode) { e.preventDefault(); selectionStore.toggle(book.id); } }}>
           <div class="detail-header">
             <h3 class="detail-title">{book.title}</h3>
             <span class="detail-format">{formatLabel[book.file_format] || book.file_format}</span>

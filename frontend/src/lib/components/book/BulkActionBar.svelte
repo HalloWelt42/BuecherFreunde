@@ -8,6 +8,15 @@
   let processing = $state(false);
   let showCatDropdown = $state(false);
 
+  // Titel der ausgewählten Bücher
+  let selectedTitles = $derived.by(() => {
+    if (selectionStore.count === 0) return [];
+    return booksStore.books
+      .filter(b => selectionStore.has(b.id))
+      .map(b => b.title)
+      .slice(0, 5);
+  });
+
   function handleKeydown(e) {
     if (!selectionStore.active) return;
     if (e.key === "Delete" || e.key === "Backspace") {
@@ -41,11 +50,16 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-{#if selectionStore.active}
+{#if selectionStore.editMode || selectionStore.active}
   <div class="bulk-bar">
     <div class="bulk-info">
       <i class="fa-solid fa-check-double"></i>
       <strong>{selectionStore.count}</strong> ausgewählt
+      {#if selectedTitles.length > 0}
+        <span class="bulk-titles" title={selectedTitles.join(", ")}>
+          -- {selectedTitles.join(", ")}{selectionStore.count > 5 ? ` (+${selectionStore.count - 5})` : ""}
+        </span>
+      {/if}
     </div>
 
     <div class="bulk-actions">
@@ -161,6 +175,15 @@
     font-size: 0.8125rem;
     color: var(--color-accent);
     white-space: nowrap;
+    max-width: 40vw;
+    overflow: hidden;
+  }
+
+  .bulk-titles {
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .bulk-actions {
