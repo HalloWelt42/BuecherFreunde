@@ -9,7 +9,7 @@ import { get, post } from "./client.js";
  * @returns {Promise<{suggestions: Array<{category: string, confidence: number}>}>}
  */
 export function kategorisiere(bookId) {
-  return post(`/api/ai/books/${bookId}/categorize`);
+  return post(`/api/ai/buch/${bookId}/kategorisieren`);
 }
 
 /**
@@ -18,8 +18,8 @@ export function kategorisiere(bookId) {
  * @param {string[]} categories - Akzeptierte Kategorienamen
  * @returns {Promise<{message: string}>}
  */
-export function uebernehmVorschlaege(bookId, categories) {
-  return post(`/api/ai/books/${bookId}/categorize/accept`, { categories });
+export function uebernehmVorschlaege(bookId, kategorien) {
+  return post(`/api/ai/buch/${bookId}/kategorien-uebernehmen`, { kategorien });
 }
 
 /**

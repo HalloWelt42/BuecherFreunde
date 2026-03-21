@@ -1,5 +1,5 @@
 <script>
-  import { router, push } from "svelte-spa-router";
+  import { navigate } from "../lib/router.svelte.js";
   import { holeBuch } from "../lib/api/books.js";
   import ReaderToolbar from "../lib/components/reader/ReaderToolbar.svelte";
   import PdfReader from "../lib/components/reader/PdfReader.svelte";
@@ -12,14 +12,18 @@
   let laden = $state(true);
   let fehler = $state(null);
 
+  function getQs() {
+    return window.location.search ? window.location.search.slice(1) : "";
+  }
+
   let initialPage = $derived.by(() => {
-    const qs = new URLSearchParams(router.querystring || "");
-    return Number(qs.get("page")) || 1;
+    const searchParams = new URLSearchParams(getQs());
+    return Number(searchParams.get("page")) || 1;
   });
 
   let initialCfi = $derived.by(() => {
-    const qs = new URLSearchParams(router.querystring || "");
-    return qs.get("cfi") || "";
+    const searchParams = new URLSearchParams(getQs());
+    return searchParams.get("cfi") || "";
   });
 
   $effect(() => {
@@ -39,7 +43,7 @@
   }
 
   function goBack() {
-    push(`/book/${params.id}`);
+    navigate(`/book/${params.id}`);
   }
 </script>
 
@@ -49,7 +53,7 @@
   {:else if fehler}
     <div class="status error">
       Fehler: {fehler}
-      <a href="#/book/{params.id}">Zurück zum Buch</a>
+      <a href="/book/{params.id}">Zurück zum Buch</a>
     </div>
   {:else if book}
     <ReaderToolbar bookId={book.id} title={book.title} onBack={goBack} />

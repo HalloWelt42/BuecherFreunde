@@ -12,6 +12,7 @@
 
   let canvasEl = $state(null);
   let pdfDoc = $state(null);
+  // svelte-ignore state_referenced_locally
   let currentPage = $state(initialPage);
   let totalPages = $state(0);
   let scale = $state(1.5);

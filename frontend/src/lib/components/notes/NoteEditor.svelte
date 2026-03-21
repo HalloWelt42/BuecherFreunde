@@ -6,7 +6,9 @@
     onCancel = null,
   } = $props();
 
+  // svelte-ignore state_referenced_locally
   let content = $state(initialContent);
+  // svelte-ignore state_referenced_locally
   let pageReference = $state(pageRef);
 </script>
 

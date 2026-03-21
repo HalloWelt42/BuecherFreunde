@@ -1,46 +1,44 @@
 /**
  * API-Modul: Nutzerdaten (Favoriten, Lesezeichen, Bewertung, Leseposition)
  */
-import { get, post, patch } from "./client.js";
+import { get, patch } from "./client.js";
 
 /**
  * Favorit umschalten.
  * @param {number} bookId
- * @returns {Promise<{is_favorite: boolean}>}
+ * @returns {Promise<{book_id: number, ist_favorit: boolean}>}
  */
 export function toggleFavorit(bookId) {
-  return post(`/api/user-data/books/${bookId}/favorite`);
+  return patch(`/api/books/${bookId}/favorit`);
 }
 
 /**
  * Zum-Lesen umschalten.
  * @param {number} bookId
- * @returns {Promise<{is_to_read: boolean}>}
+ * @returns {Promise<{book_id: number, zu_lesen: boolean}>}
  */
 export function toggleZumLesen(bookId) {
-  return post(`/api/user-data/books/${bookId}/to-read`);
+  return patch(`/api/books/${bookId}/zu-lesen`);
 }
 
 /**
  * Bewertung setzen (0-5).
  * @param {number} bookId
- * @param {number} rating
- * @returns {Promise<{rating: number}>}
+ * @param {number} bewertung
+ * @returns {Promise<{book_id: number, bewertung: number}>}
  */
-export function setzeBewertung(bookId, rating) {
-  return patch(`/api/user-data/books/${bookId}/rating`, { rating });
+export function setzeBewertung(bookId, bewertung) {
+  return patch(`/api/books/${bookId}/bewertung`, { bewertung });
 }
 
 /**
  * Leseposition speichern.
  * @param {number} bookId
  * @param {string} position - Seitenzahl, CFI oder Prozentwert
- * @returns {Promise<{reading_position: string}>}
+ * @returns {Promise<{book_id: number, position: string}>}
  */
 export function speichereLeseposition(bookId, position) {
-  return patch(`/api/user-data/books/${bookId}/position`, {
-    reading_position: position,
-  });
+  return patch(`/api/books/${bookId}/leseposition`, { position });
 }
 
 /**
@@ -49,5 +47,5 @@ export function speichereLeseposition(bookId, position) {
  * @returns {Promise<import("../types/index.js").Book[]>}
  */
 export function zuletztGelesen(limit) {
-  return get("/api/user-data/recently-read", { limit });
+  return get("/api/books/recently-read", { limit });
 }

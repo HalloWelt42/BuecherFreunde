@@ -9,7 +9,7 @@ import { get, post } from "./client.js";
  * @returns {Promise<{found: boolean, metadata: Object}>}
  */
 export function sucheMetadaten(bookId) {
-  return get(`/api/metadata/books/${bookId}/search`);
+  return post(`/api/metadata/buch/${bookId}/anreichern`);
 }
 
 /**
@@ -19,7 +19,7 @@ export function sucheMetadaten(bookId) {
  * @returns {Promise<import("../types/index.js").Book>}
  */
 export function uebernehmMetadaten(bookId, metadata) {
-  return post(`/api/metadata/books/${bookId}/apply`, metadata);
+  return post(`/api/metadata/buch/${bookId}/uebernehmen`, metadata);
 }
 
 /**
@@ -28,7 +28,7 @@ export function uebernehmMetadaten(bookId, metadata) {
  * @returns {Promise<{enriched: boolean, book: import("../types/index.js").Book}>}
  */
 export function anreichern(bookId) {
-  return post(`/api/metadata/books/${bookId}/enrich`);
+  return post(`/api/metadata/buch/${bookId}/anreichern`);
 }
 
 /**
@@ -36,5 +36,5 @@ export function anreichern(bookId) {
  * @returns {Promise<{message: string, total: number}>}
  */
 export function bulkAnreichern() {
-  return post("/api/metadata/enrich-all");
+  return post("/api/metadata/bulk-anreichern");
 }

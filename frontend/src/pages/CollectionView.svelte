@@ -30,7 +30,7 @@
 
 <div class="collection-page">
   <div class="page-header">
-    <a href="#/" class="back-link">&larr; Bibliothek</a>
+    <a href="/" class="back-link">&larr; Bibliothek</a>
     {#if sammlung}
       <h1>{sammlung.name}</h1>
       {#if sammlung.description}

@@ -16,7 +16,9 @@
   let books = $state([]);
   let laden = $state(true);
 
-  $effect(() => {
+  import { onMount } from "svelte";
+
+  onMount(() => {
     ladeZuletztGelesen();
   });
 
@@ -37,7 +39,7 @@
     <h2 class="section-title">Weiterlesen</h2>
     <div class="books-row">
       {#each books as book (book.id)}
-        <a href="#/book/{book.id}/read" class="continue-card">
+        <a href="/book/{book.id}/read" class="continue-card">
           <div class="card-cover">
             <img
               src={coverUrl(book.id)}

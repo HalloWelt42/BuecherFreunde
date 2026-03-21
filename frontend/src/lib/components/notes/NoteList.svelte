@@ -57,7 +57,11 @@
       class="add-btn"
       onclick={() => (showEditor = !showEditor)}
     >
-      {showEditor ? "Abbrechen" : "+ Notiz"}
+      {#if showEditor}
+        Abbrechen
+      {:else}
+        <i class="fa-solid fa-plus"></i> Notiz
+      {/if}
     </button>
   </div>
 
@@ -83,7 +87,7 @@
             onclick={() => onDelete(notiz.id)}
             title="Notiz löschen"
           >
-            &times;
+            <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
       </div>

@@ -4,7 +4,7 @@
 
 <div class="reader-toolbar">
   <button class="back-btn" onclick={onBack} title="Zurück">
-    &larr;
+    <i class="fa-solid fa-arrow-left"></i>
   </button>
   <span class="toolbar-title">{title}</span>
   <div class="toolbar-actions">
@@ -14,7 +14,7 @@
       class="action-btn"
       title="Herunterladen"
     >
-      Herunterladen
+      <i class="fa-solid fa-download"></i> Herunterladen
     </a>
   </div>
 </div>

@@ -1,12 +1,13 @@
 <script>
-  import { router } from "svelte-spa-router";
   import { suche } from "../lib/api/search.js";
   import { coverUrl } from "../lib/api/books.js";
   import SearchSnippet from "../lib/components/search/SearchSnippet.svelte";
   import Pagination from "../lib/components/ui/Pagination.svelte";
 
+  import { route } from "../lib/router.svelte.js";
+
   let query = $derived.by(() => {
-    const params = new URLSearchParams(router.querystring || "");
+    const params = new URLSearchParams(route.qs || "");
     return params.get("q") || "";
   });
 
@@ -32,8 +33,8 @@
     fehler = null;
     try {
       const data = await suche(q, { limit, offset: off });
-      results = data.results || [];
-      total = data.total || 0;
+      results = data.treffer || data.results || [];
+      total = data.gesamt ?? data.total ?? 0;
     } catch (e) {
       fehler = e.message;
       results = [];
@@ -71,7 +72,7 @@
   {:else}
     <div class="results-list">
       {#each results as result (result.book_id)}
-        <a href="#/book/{result.book_id}" class="result-item">
+        <a href="/book/{result.book_id}" class="result-item">
           <div class="result-cover">
             <img
               src={coverUrl(result.book_id)}

@@ -1,5 +1,5 @@
 <script>
-  import { push } from "svelte-spa-router";
+  import { navigate } from "../../router.svelte.js";
   import { vorschlaege } from "../../api/search.js";
 
   let query = $state("");
@@ -18,7 +18,7 @@
     debounceTimer = setTimeout(async () => {
       try {
         const result = await vorschlaege(query.trim());
-        suggestions = result.suggestions || [];
+        suggestions = result.vorschlaege || result.suggestions || [];
         showDropdown = suggestions.length > 0;
         selectedIndex = -1;
       } catch {
@@ -32,11 +32,14 @@
     if (event.key === "Enter") {
       event.preventDefault();
       if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
-        query = suggestions[selectedIndex];
+        const s = suggestions[selectedIndex];
+        showDropdown = false;
+        navigate(`/book/${s.id}`);
+        return;
       }
       if (query.trim()) {
         showDropdown = false;
-        push(`/search?q=${encodeURIComponent(query.trim())}`);
+        navigate(`/search?q=${encodeURIComponent(query.trim())}`);
       }
     } else if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -49,10 +52,9 @@
     }
   }
 
-  function selectSuggestion(text) {
-    query = text;
+  function selectSuggestion(s) {
     showDropdown = false;
-    push(`/search?q=${encodeURIComponent(text)}`);
+    navigate(`/book/${s.id}`);
   }
 
   function onBlur() {
@@ -79,14 +81,17 @@
 
   {#if showDropdown}
     <ul class="suggestions">
-      {#each suggestions as suggestion, i (suggestion)}
+      {#each suggestions as suggestion, i (suggestion.id)}
         <li>
           <button
             class="suggestion-item"
             class:selected={i === selectedIndex}
             onmousedown={() => selectSuggestion(suggestion)}
           >
-            {suggestion}
+            <span class="suggestion-title">{@html suggestion.titel}</span>
+            {#if suggestion.autor}
+              <span class="suggestion-author">{@html suggestion.autor}</span>
+            {/if}
           </button>
         </li>
       {/each}
@@ -148,5 +153,15 @@
   .suggestion-item:hover,
   .suggestion-item.selected {
     background-color: var(--color-bg-tertiary);
+  }
+
+  .suggestion-title {
+    font-weight: 500;
+  }
+
+  .suggestion-author {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-left: 0.5rem;
   }
 </style>

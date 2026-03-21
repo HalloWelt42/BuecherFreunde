@@ -21,7 +21,7 @@ export function suche(query, params) {
  * @returns {Promise<{suggestions: string[]}>}
  */
 export function vorschlaege(query) {
-  return get("/api/search/suggest", { q: query });
+  return get("/api/search/vorschlaege", { q: query });
 }
 
 /**
@@ -29,5 +29,5 @@ export function vorschlaege(query) {
  * @returns {Promise<{message: string}>}
  */
 export function indexNeuAufbauen() {
-  return post("/api/search/reindex");
+  return post("/api/search/index-neu-aufbauen");
 }

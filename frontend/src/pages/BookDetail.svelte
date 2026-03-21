@@ -34,7 +34,7 @@
     if (!book) return;
     try {
       const result = await toggleFavorit(book.id);
-      book = { ...book, is_favorite: result.is_favorite };
+      book = { ...book, is_favorite: result.ist_favorit ?? result.is_favorite };
     } catch { /* still */ }
   }
 
@@ -42,7 +42,7 @@
     if (!book) return;
     try {
       const result = await toggleZumLesen(book.id);
-      book = { ...book, is_to_read: result.is_to_read };
+      book = { ...book, is_to_read: result.zu_lesen ?? result.is_to_read };
     } catch { /* still */ }
   }
 
@@ -50,14 +50,14 @@
     if (!book) return;
     try {
       const result = await setzeBewertung(book.id, rating);
-      book = { ...book, rating: result.rating };
+      book = { ...book, rating: result.bewertung ?? result.rating };
     } catch { /* still */ }
   }
 </script>
 
 <div class="book-detail">
   <div class="page-header">
-    <a href="#/" class="back-link">&larr; Bibliothek</a>
+    <a href="/" class="back-link"><i class="fa-solid fa-arrow-left"></i> Bibliothek</a>
   </div>
 
   {#if laden}
@@ -81,7 +81,7 @@
         {/if}
 
         <div class="cover-actions">
-          <a href="#/book/{book.id}/read" class="btn btn-primary">
+          <a href="/book/{book.id}/read" class="btn btn-primary">
             Lesen
           </a>
           <a
@@ -108,20 +108,20 @@
             class:active={book.is_favorite}
             onclick={onFavoritToggle}
           >
-            {book.is_favorite ? "\u2764 Favorit" : "\u2661 Favorit"}
+            <i class="{book.is_favorite ? 'fa-solid' : 'fa-regular'} fa-heart"></i> Favorit
           </button>
           <button
             class="action-btn"
             class:active={book.is_to_read}
             onclick={onZumLesenToggle}
           >
-            {book.is_to_read ? "\u2713 Leseliste" : "+ Leseliste"}
+            <i class="fa-solid {book.is_to_read ? 'fa-check' : 'fa-plus'}"></i> Leseliste
           </button>
           <button
             class="action-btn ai-btn"
             onclick={() => (aiDialogOpen = true)}
           >
-            KI-Kategorisierung
+            <i class="fa-solid fa-wand-magic-sparkles"></i> KI-Kategorisierung
           </button>
         </div>
 
@@ -135,7 +135,7 @@
             <h2 class="section-title">Kategorien</h2>
             <div class="chip-list">
               {#each book.categories as cat (cat.id)}
-                <a href="#/?category={cat.id}" class="chip">{cat.name}</a>
+                <a href="/?category={cat.id}" class="chip">{cat.name}</a>
               {/each}
             </div>
           </div>
@@ -147,7 +147,7 @@
             <div class="chip-list">
               {#each book.tags as tag (tag.id)}
                 <a
-                  href="#/?tag={tag.id}"
+                  href="/?tag={tag.id}"
                   class="chip tag-chip"
                   style="--tag-color: {tag.color || 'var(--color-accent)'}"
                 >
@@ -162,7 +162,7 @@
           <div class="position-section">
             <h2 class="section-title">Lesefortschritt</h2>
             <p class="position-info">Position: {book.reading_position}</p>
-            <a href="#/book/{book.id}/read" class="btn btn-secondary btn-sm">
+            <a href="/book/{book.id}/read" class="btn btn-secondary btn-sm">
               Weiterlesen
             </a>
           </div>

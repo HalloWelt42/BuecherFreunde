@@ -17,9 +17,10 @@
 
     try {
       const result = await kategorisiere(bookId);
-      suggestions = result.suggestions || [];
+      suggestions = result.vorschlaege || result.suggestions || [];
       for (const s of suggestions) {
-        selected[s.category] = true;
+        const name = s.kategorie || s.category;
+        selected[name] = true;
       }
       status = "done";
     } catch (e) {
@@ -34,8 +35,8 @@
 
   async function uebernehmen() {
     const akzeptiert = suggestions
-      .filter((s) => selected[s.category])
-      .map((s) => s.category);
+      .filter((s) => selected[s.kategorie || s.category])
+      .map((s) => s.kategorie || s.category);
 
     if (akzeptiert.length === 0) {
       onClose();
@@ -98,22 +99,24 @@
         <p class="info-text">Keine Kategorievorschläge gefunden.</p>
       {:else}
         <div class="suggestions">
-          {#each suggestions as suggestion (suggestion.category)}
+          {#each suggestions as suggestion (suggestion.kategorie || suggestion.category)}
+            {@const name = suggestion.kategorie || suggestion.category}
+            {@const conf = suggestion.konfidenz ?? suggestion.confidence ?? 0.5}
             <label class="suggestion-item">
               <input
                 type="checkbox"
-                checked={selected[suggestion.category]}
-                onchange={() => toggleSelection(suggestion.category)}
+                checked={selected[name]}
+                onchange={() => toggleSelection(name)}
               />
-              <span class="suggestion-name">{suggestion.category}</span>
+              <span class="suggestion-name">{name}</span>
               <div class="confidence-bar">
                 <div
                   class="confidence-fill"
-                  style="width: {suggestion.confidence * 100}%; background-color: {confidenceColor(suggestion.confidence)}"
+                  style="width: {conf * 100}%; background-color: {confidenceColor(conf)}"
                 ></div>
               </div>
               <span class="confidence-value">
-                {Math.round(suggestion.confidence * 100)}%
+                {Math.round(conf * 100)}%
               </span>
             </label>
           {/each}
