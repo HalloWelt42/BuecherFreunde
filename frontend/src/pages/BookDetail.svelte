@@ -142,11 +142,11 @@
     for (const feld of vergleichsFelder) {
       const neu = vorschlag[feld.key] ?? "";
       if (neu) {
-        auswahl[feld.key] = false;
+        auswahl[feld.key] = true;
       }
     }
-    if (vorschlag.cover_url) auswahl.cover = false;
-    if (vorschlag.kategorien?.length) auswahl.kategorien = false;
+    if (vorschlag.cover_url) auswahl.cover = true;
+    if (vorschlag.kategorien?.length) auswahl.kategorien = true;
     return auswahl;
   }
 
