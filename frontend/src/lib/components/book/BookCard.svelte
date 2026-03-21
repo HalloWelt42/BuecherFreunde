@@ -79,27 +79,9 @@
 </script>
 
 <a href="/book/{book.id}" class="book-card" class:selected={isSelected}
-  onclick={(e) => {
-    if (selectionStore.editMode || e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      selectionStore.toggle(book.id);
-    }
-  }}
   data-book-id={book.id}
 >
   <div class="cover-container">
-    <!-- Selektions-Checkbox -->
-    <button
-      class="select-checkbox"
-      class:visible={isSelected || selectionStore.editMode}
-      onclick={(e) => { e.preventDefault(); e.stopPropagation(); selectionStore.toggle(book.id); }}
-    >
-      {#if isSelected}
-        <i class="fa-solid fa-square-check"></i>
-      {:else}
-        <i class="fa-regular fa-square"></i>
-      {/if}
-    </button>
     {#if !coverError}
       <img
         src={coverUrl(book.id, book.updated_at)}
@@ -239,40 +221,8 @@
   }
 
   .book-card.selected {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px var(--color-accent);
-  }
-
-  /* Selektions-Checkbox */
-  .select-checkbox {
-    position: absolute;
-    top: 0.375rem;
-    right: 0.375rem;
-    z-index: 5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    border: none;
-    border-radius: 4px;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    color: #fff;
-    font-size: 1rem;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.12s;
-  }
-
-  .select-checkbox.visible {
-    opacity: 1;
-  }
-
-  .book-card.selected .select-checkbox {
-    opacity: 1;
-    color: var(--color-accent);
-    background: rgba(255, 255, 255, 0.9);
+    border-color: var(--color-warning, #f59e0b);
+    box-shadow: 0 0 0 2px var(--color-warning, #f59e0b);
   }
 
   /* Cover - A4-Proportionen (1:1.414) */

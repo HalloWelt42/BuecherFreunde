@@ -107,19 +107,6 @@
         onpointerdown={(e) => handlePointerDown(e, book.id)}
         onpointerenter={() => handlePointerEnter(book.id)}
       >
-        <!-- Checkbox -->
-        <button
-          class="detail-checkbox"
-          class:visible={isSelected || selectionStore.editMode}
-          onclick={(e) => { e.preventDefault(); e.stopPropagation(); selectionStore.toggle(book.id); }}
-        >
-          {#if isSelected}
-            <i class="fa-solid fa-square-check"></i>
-          {:else}
-            <i class="fa-regular fa-square"></i>
-          {/if}
-        </button>
-
         <a href="/book/{book.id}" class="detail-link" onclick={(e) => { if (selectionStore.editMode) { e.preventDefault(); selectionStore.toggle(book.id); } }}>
           <div class="detail-cover">
             <img
@@ -379,37 +366,10 @@
   }
 
   .detail-row.selected {
-    background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
-    border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+    background-color: color-mix(in srgb, var(--color-warning, #f59e0b) 10%, transparent);
+    border-color: color-mix(in srgb, var(--color-warning, #f59e0b) 30%, transparent);
   }
 
-  /* Detail Checkbox */
-  .detail-checkbox {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    border: none;
-    border-radius: 4px;
-    background: none;
-    color: var(--color-text-muted);
-    font-size: 1rem;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.12s;
-    margin-top: 0.75rem;
-  }
-
-  .detail-checkbox.visible {
-    opacity: 1;
-  }
-
-  .detail-row.selected .detail-checkbox {
-    opacity: 1;
-    color: var(--color-accent);
-  }
 
   .detail-link {
     flex-shrink: 0;

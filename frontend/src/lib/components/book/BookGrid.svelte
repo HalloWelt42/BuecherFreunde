@@ -5,10 +5,6 @@
 
   let { books = [], large = false, coversOnly = false } = $props();
 
-  // Einzel-Drag-Select State (Klick auf ein Element und ziehen)
-  let isDragging = $state(false);
-  let dragMode = $state("add");
-
   // Marquee-Rechteck-Auswahl
   let marqueeActive = $state(false);
   let marqueeStart = $state({ x: 0, y: 0 });
@@ -16,6 +12,7 @@
   let marqueeEl = $state(null);
   let gridEl = $state(null);
   let preMarqueeSelection = $state(new Set());
+  let marqueeStartTarget = $state(null);
 
   let marqueeRect = $derived({
     left: Math.min(marqueeStart.x, marqueeEnd.x),
@@ -61,13 +58,13 @@
   function handleGridPointerDown(e) {
     if (!selectionStore.editMode) return;
     if (e.button !== 0) return;
-    const target = e.target;
-    if (target.closest("[data-book-id]") || target.closest("button")) return;
+    if (e.target.closest("button")) return;
 
     e.preventDefault();
     marqueeActive = true;
     marqueeStart = { x: e.clientX, y: e.clientY };
     marqueeEnd = { x: e.clientX, y: e.clientY };
+    marqueeStartTarget = e.target;
     preMarqueeSelection = new Set(selectionStore.ids);
   }
 
@@ -77,43 +74,21 @@
     updateMarqueeSelection();
   }
 
-  function handleGridPointerUp() {
+  function handleGridPointerUp(e) {
     if (marqueeActive) {
+      const wasSmall = marqueeRect.width <= 5 && marqueeRect.height <= 5;
       marqueeActive = false;
-      if (marqueeRect.width > 5 || marqueeRect.height > 5) {
+      if (wasSmall) {
+        // Klick ohne Ziehen -> Toggle auf dem angeklickten Element
+        const card = marqueeStartTarget?.closest?.("[data-book-id]") || document.elementFromPoint(marqueeStart.x, marqueeStart.y)?.closest("[data-book-id]");
+        if (card) {
+          const bookId = parseInt(card.dataset.bookId, 10);
+          selectionStore.toggle(bookId);
+          suppressNextClick();
+        }
+      } else {
         suppressNextClick();
       }
-    }
-    isDragging = false;
-  }
-
-  function handlePointerDown(e, bookId) {
-    if (!selectionStore.editMode) return;
-    if (e.button !== 0) return;
-    const tag = e.target.tagName.toLowerCase();
-    if (tag === "button" || tag === "i" || e.target.closest("button")) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-    suppressNextClick();
-    isDragging = true;
-
-    // Modus bestimmen: wenn bereits selektiert -> abwählen, sonst anwählen
-    if (selectionStore.has(bookId)) {
-      dragMode = "remove";
-      selectionStore.remove(bookId);
-    } else {
-      dragMode = "add";
-      selectionStore.add(bookId);
-    }
-  }
-
-  function handlePointerEnter(bookId) {
-    if (!isDragging) return;
-    if (dragMode === "add") {
-      selectionStore.add(bookId);
-    } else {
-      selectionStore.remove(bookId);
     }
   }
 
@@ -134,32 +109,17 @@
     <p class="empty-text">Passe die Filter an oder importiere neue Bücher.</p>
   </div>
 {:else if coversOnly}
-  <div class="cover-grid" class:drag-active={isDragging || marqueeActive} bind:this={gridEl} onpointerdown={handleGridPointerDown}>
+  <div class="cover-grid" class:drag-active={marqueeActive} bind:this={gridEl} onpointerdown={handleGridPointerDown}>
     {#each books as book (book.id)}
       {@const isSelected = selectionStore.has(book.id)}
       <div
         class="cover-item"
         class:selected={isSelected}
         data-book-id={book.id}
-        onpointerdown={(e) => handlePointerDown(e, book.id)}
-        onpointerenter={() => handlePointerEnter(book.id)}
         role="button"
         tabindex="-1"
       >
-        <!-- Checkbox -->
-        <button
-          class="cover-checkbox"
-          class:visible={isSelected || selectionStore.editMode}
-          onclick={(e) => { e.preventDefault(); e.stopPropagation(); selectionStore.toggle(book.id); }}
-        >
-          {#if isSelected}
-            <i class="fa-solid fa-square-check"></i>
-          {:else}
-            <i class="fa-regular fa-square"></i>
-          {/if}
-        </button>
-
-        <a href="/book/{book.id}" class="cover-link" onclick={(e) => { if (selectionStore.editMode) { e.preventDefault(); selectionStore.toggle(book.id); } }}>
+        <a href="/book/{book.id}" class="cover-link">
           {#if !coverErrors.has(book.id)}
             <img
               src={coverUrl(book.id, book.updated_at)}
@@ -192,12 +152,10 @@
     {/each}
   </div>
 {:else}
-  <div class="book-grid" class:large class:drag-active={isDragging || marqueeActive} bind:this={gridEl} onpointerdown={handleGridPointerDown}>
+  <div class="book-grid" class:large class:drag-active={marqueeActive} bind:this={gridEl} onpointerdown={handleGridPointerDown}>
     {#each books as book (book.id)}
       <div
         data-book-id={book.id}
-        onpointerdown={(e) => handlePointerDown(e, book.id)}
-        onpointerenter={() => handlePointerEnter(book.id)}
       >
         <BookCard {book} />
       </div>
@@ -254,7 +212,7 @@
   }
 
   .cover-item.selected {
-    box-shadow: 0 0 0 3px var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-warning, #f59e0b);
     transform: scale(1.02);
   }
 
@@ -297,39 +255,6 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     line-height: 1.3;
-  }
-
-  /* Cover Checkbox */
-  .cover-checkbox {
-    position: absolute;
-    top: 0.25rem;
-    right: 0.25rem;
-    z-index: 5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.25rem;
-    height: 1.25rem;
-    border: none;
-    border-radius: 3px;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    color: #fff;
-    font-size: 0.875rem;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.12s;
-  }
-
-  .cover-checkbox.visible,
-  .cover-item:hover .cover-checkbox {
-    opacity: 1;
-  }
-
-  .cover-item.selected .cover-checkbox {
-    opacity: 1;
-    color: var(--color-accent);
-    background: rgba(255, 255, 255, 0.9);
   }
 
   /* Hover-Popup fuer Cover-Only */
