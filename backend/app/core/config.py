@@ -40,7 +40,7 @@ class Settings(BaseSettings):
 
     # LM Studio
     lm_studio_enabled: bool = False
-    lm_studio_url: str = "http://localhost:1234/v1"
+    lm_studio_url: str = "http://192.168.178.45:1234/v1"
     lm_studio_model: str = "qwen2.5"
 
     # Logging
