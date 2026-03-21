@@ -5,14 +5,17 @@
   import { tagsStore } from "../lib/stores/tags.svelte.js";
   import BookGrid from "../lib/components/book/BookGrid.svelte";
   import BookList from "../lib/components/book/BookList.svelte";
-  import ContinueReading from "../lib/components/book/ContinueReading.svelte";
   import FilterDropdown from "../lib/components/ui/FilterDropdown.svelte";
   import BulkActionBar from "../lib/components/book/BulkActionBar.svelte";
   import { selectionStore } from "../lib/stores/selection.svelte.js";
 
   import { route, navigate } from "../lib/router.svelte.js";
-  import { onMount, onDestroy, untrack } from "svelte";
+  import { onMount, onDestroy, untrack, tick } from "svelte";
   import { onBooksChanged } from "../lib/stores/processes.svelte.js";
+
+  let loadTrigger = $state(null);
+  let scrollContainer = $state(null);
+  let observer = null;
 
   const sortOptions = [
     { value: "titel", label: "Titel", icon: "fa-font" },
@@ -146,8 +149,32 @@
     });
   });
 
+  // Scroll-Container finden (grid-main ist der uebergeordnete Scroll-Container)
+  onMount(() => {
+    scrollContainer = document.querySelector(".grid-main");
+  });
+
+  // Infinite Scroll: Intersection Observer auf das Load-Trigger-Element
+  $effect(() => {
+    if (!loadTrigger || !scrollContainer) return;
+    if (observer) observer.disconnect();
+
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !booksStore.laden) {
+          booksStore.mehrLaden();
+        }
+      },
+      { root: scrollContainer, rootMargin: "400px" },
+    );
+    observer.observe(loadTrigger);
+
+    return () => observer?.disconnect();
+  });
+
   onDestroy(() => {
     if (_unsubProcesses) _unsubProcesses();
+    if (observer) observer.disconnect();
   });
 </script>
 
@@ -297,7 +324,7 @@
 
   <!-- Content -->
   <div class="library-content">
-    {#if booksStore.laden}
+    {#if booksStore.laden && booksStore.books.length === 0}
       <div class="state-message">
         <i class="fa-solid fa-spinner fa-spin state-icon"></i>
         <p>Bücher werden geladen...</p>
@@ -320,8 +347,6 @@
         </a>
       </div>
     {:else}
-      <ContinueReading />
-
       {#if ui.viewMode === "covers"}
         <BookGrid books={booksStore.books} coversOnly={true} />
       {:else if ui.viewMode === "grid" || ui.viewMode === "grid-large"}
@@ -340,21 +365,18 @@
       {/if}
 
       {#if booksStore.books.length < booksStore.total}
-        <div class="load-more">
-          <button
-            class="load-more-btn"
-            onclick={mehrLaden}
-            disabled={booksStore.laden}
-          >
-            {#if booksStore.laden}
+        <div class="load-more" bind:this={loadTrigger}>
+          {#if booksStore.laden}
+            <div class="load-more-indicator">
               <i class="fa-solid fa-spinner fa-spin"></i> Wird geladen...
-            {:else}
-              <i class="fa-solid fa-angles-down"></i> Mehr laden
+            </div>
+          {:else}
+            <div class="load-more-indicator">
               <span class="load-more-info">
-                ({booksStore.books.length} von {booksStore.total})
+                {booksStore.books.length} von {booksStore.total} Büchern
               </span>
-            {/if}
-          </button>
+            </div>
+          {/if}
         </div>
       {/if}
     {/if}
@@ -365,7 +387,6 @@
 
 <style>
   .library-page {
-    height: 100%;
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -561,7 +582,6 @@
   /* Content */
   .library-content {
     flex: 1;
-    overflow-y: auto;
   }
 
   /* Zustände */
@@ -646,29 +666,13 @@
     padding: 1.5rem 0;
   }
 
-  .load-more-btn {
-    display: inline-flex;
+  .load-more-indicator {
+    display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
-    padding: 0.625rem 2rem;
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    background-color: var(--color-bg-secondary);
-    color: var(--color-text-primary);
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.12s;
-  }
-
-  .load-more-btn:hover:not(:disabled) {
-    background-color: var(--color-bg-tertiary);
-    border-color: var(--color-accent);
-  }
-
-  .load-more-btn:disabled {
-    opacity: 0.6;
-    cursor: default;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
   }
 
   .load-more-info {

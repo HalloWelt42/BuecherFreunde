@@ -62,7 +62,7 @@ function createBooksStore() {
         weiterlesen: neueFilter.weiterlesen ?? null,
       };
       seite = 1;
-      books = [];
+      // books nicht leeren - verhindert Scroll-Jump
       this.laden_();
     },
 
