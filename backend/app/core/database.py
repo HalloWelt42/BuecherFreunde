@@ -10,7 +10,7 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.db")
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 SCHEMA_SQL = """
 -- Bücher
@@ -531,6 +531,32 @@ Verwende deutsche Begriffe. Sei spezifisch, nicht zu allgemein.',
 
             await self._connection.commit()
             logger.info("Schema-Migration v8 abgeschlossen: Erweiterte Autorendaten + Werke")
+
+        if from_version < 9:
+            # v9: HTML-Beschreibungen in Markdown konvertieren
+            await self._migrate_html_descriptions()
+            await self._connection.commit()
+            logger.info("Schema-Migration v9 abgeschlossen: HTML-Beschreibungen bereinigt")
+
+    async def _migrate_html_descriptions(self) -> None:
+        """Konvertiert bestehende HTML-Beschreibungen in Markdown."""
+        from backend.app.services.html_utils import html_to_markdown
+
+        assert self._connection is not None
+        cursor = await self._connection.execute(
+            "SELECT id, description FROM books WHERE description LIKE '%<%' AND description LIKE '%>%'"
+        )
+        rows = await cursor.fetchall()
+        count = 0
+        for row in rows:
+            clean = html_to_markdown(row["description"])
+            if clean != row["description"]:
+                await self._connection.execute(
+                    "UPDATE books SET description = ? WHERE id = ?",
+                    (clean, row["id"]),
+                )
+                count += 1
+        logger.info("HTML-Beschreibungen bereinigt: %d Bücher", count)
 
     async def _migrate_authors(self) -> None:
         """Migriert bestehende Autoren-Strings aus books.author in die authors-Tabelle."""

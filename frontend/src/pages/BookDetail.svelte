@@ -143,11 +143,11 @@
       const neu = vorschlag[feld.key] ?? "";
       const alt = aktuell[feld.key] ?? "";
       if (neu && String(neu) !== String(alt)) {
-        auswahl[feld.key] = true;
+        auswahl[feld.key] = false;
       }
     }
-    if (vorschlag.cover_url) auswahl.cover = true;
-    if (vorschlag.kategorien?.length) auswahl.kategorien = true;
+    if (vorschlag.cover_url) auswahl.cover = false;
+    if (vorschlag.kategorien?.length) auswahl.kategorien = false;
     return auswahl;
   }
 

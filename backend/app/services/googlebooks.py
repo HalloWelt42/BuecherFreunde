@@ -8,6 +8,7 @@ import httpx
 from PIL import Image
 
 from backend.app.core.config import settings
+from backend.app.services.html_utils import html_to_markdown
 
 logger = logging.getLogger("buecherfreunde.googlebooks")
 
@@ -114,31 +115,6 @@ async def _search(query: str) -> dict | None:
         return None
 
 
-def _html_to_markdown(html: str) -> str:
-    """Konvertiert einfaches HTML aus Google Books in Markdown."""
-    if not html:
-        return ""
-    text = html
-    # Block-Elemente in Absaetze wandeln
-    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
-    text = re.sub(r"</p>\s*<p[^>]*>", "\n\n", text, flags=re.IGNORECASE)
-    text = re.sub(r"<p[^>]*>", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"</p>", "\n\n", text, flags=re.IGNORECASE)
-    # Inline-Formatierung
-    text = re.sub(r"<b>(.*?)</b>", r"**\1**", text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r"<strong>(.*?)</strong>", r"**\1**", text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r"<i>(.*?)</i>", r"*\1*", text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r"<em>(.*?)</em>", r"*\1*", text, flags=re.IGNORECASE | re.DOTALL)
-    # Restliche Tags entfernen
-    text = re.sub(r"<[^>]+>", "", text)
-    # HTML-Entities
-    text = text.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
-    text = text.replace("&quot;", '"').replace("&#39;", "'").replace("&nbsp;", " ")
-    # Mehrfache Leerzeilen bereinigen
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()
-
-
 def _parse_volume(item: dict) -> dict | None:
     """Parst ein Google Books Volume-Objekt."""
     info = item.get("volumeInfo", {})
@@ -178,7 +154,7 @@ def _parse_volume(item: dict) -> dict | None:
         "verlag": info.get("publisher", ""),
         "jahr": _extract_year(info.get("publishedDate", "")),
         "seiten": info.get("pageCount", 0),
-        "beschreibung": _html_to_markdown(info.get("description", "")),
+        "beschreibung": html_to_markdown(info.get("description", "")),
         "sprache": sprache,
         "kategorien": _clean_categories(info.get("categories", [])),
         "cover_url": cover_url,
