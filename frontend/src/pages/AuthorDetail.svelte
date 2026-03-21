@@ -707,33 +707,32 @@
     color: var(--color-accent);
   }
 
-  /* Bücher-Liste (vertikal) */
+  /* Bücher-Liste (Flexbox, gleich groß, umbrechen) */
   .buecher-liste {
     display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .buch-eintrag {
+    flex: 1 1 80px;
+    max-width: 120px;
     display: flex;
-    gap: 0.5rem;
-    align-items: center;
+    flex-direction: column;
     text-decoration: none;
-    padding: 0.25rem;
     border-radius: 4px;
-    transition: background-color 0.1s;
+    transition: transform 0.1s;
   }
 
   .buch-eintrag:hover {
-    background-color: var(--color-bg-tertiary);
+    transform: translateY(-2px);
   }
 
   .buch-cover-wrap {
-    width: 36px;
-    flex-shrink: 0;
+    width: 100%;
     aspect-ratio: 3 / 4;
     background-color: var(--color-bg-tertiary);
-    border-radius: 3px;
+    border-radius: 4px;
     overflow: hidden;
   }
 
@@ -749,7 +748,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.5rem;
+    font-size: 0.5625rem;
     font-weight: 700;
     font-family: var(--font-mono);
     color: var(--color-text-muted);
@@ -759,22 +758,25 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
+    margin-top: 0.25rem;
   }
 
   .buch-titel {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     color: var(--color-text-primary);
     font-weight: 500;
     line-height: 1.3;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
 
   .buch-format {
     font-family: var(--font-mono);
     font-weight: 600;
-    font-size: 0.5625rem;
+    font-size: 0.5rem;
     color: var(--color-text-muted);
   }
 
