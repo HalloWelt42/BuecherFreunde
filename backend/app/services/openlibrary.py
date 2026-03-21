@@ -42,7 +42,7 @@ async def lookup_isbn(isbn: str) -> dict | None:
     await _rate_limit()
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
             response = await client.get(
                 url,
                 headers={"User-Agent": "BuecherFreunde/1.0 (Buchverwaltung)"},

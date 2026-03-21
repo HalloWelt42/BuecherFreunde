@@ -4,7 +4,8 @@
   import { tagsStore } from "../../stores/tags.svelte.js";
   import { route, navigate } from "../../router.svelte.js";
   import { get } from "../../api/client.js";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
+  import { onBooksChanged } from "../../stores/processes.svelte.js";
 
   let stats = $state({
     buecher_gesamt: 0, favoriten: 0, leseliste: 0,
@@ -121,10 +122,22 @@
     navigate(qs ? `/?${qs}` : "/");
   }
 
+  let _unsubProcesses;
+
   onMount(() => {
     ladeStats();
     categoriesStore.aktualisieren();
     tagsStore.aktualisieren();
+
+    // Bei neuen Importen Sidebar-Zaehler aktualisieren
+    _unsubProcesses = onBooksChanged(() => {
+      ladeStats();
+      categoriesStore.aktualisieren();
+    });
+  });
+
+  onDestroy(() => {
+    if (_unsubProcesses) _unsubProcesses();
   });
 </script>
 

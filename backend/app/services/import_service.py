@@ -223,15 +223,21 @@ async def import_single_file(file_path: Path, task_id: int | None = None) -> dic
     # Buecher ohne ISBN -> Kategorie "Ungeordnet"
     if not proc_result.isbn:
         ungeordnet = await db.fetch_one(
-            "SELECT id FROM categories WHERE name = ?", ("Ungeordnet",)
+            "SELECT id FROM categories WHERE slug = ?", ("ungeordnet",)
         )
         if not ungeordnet:
             cur = await db.execute(
-                "INSERT INTO categories (name, description) VALUES (?, ?)",
-                ("Ungeordnet", "Bücher ohne ISBN oder Zuordnung"),
+                "INSERT OR IGNORE INTO categories (name, slug, description) VALUES (?, ?, ?)",
+                ("Ungeordnet", "ungeordnet", "Bücher ohne ISBN oder Zuordnung"),
             )
             await db.commit()
-            kat_id = cur.lastrowid
+            if cur.lastrowid:
+                kat_id = cur.lastrowid
+            else:
+                row = await db.fetch_one(
+                    "SELECT id FROM categories WHERE slug = ?", ("ungeordnet",)
+                )
+                kat_id = row["id"]
         else:
             kat_id = ungeordnet["id"]
         await db.execute(
@@ -298,5 +304,5 @@ async def get_import_status() -> list[dict]:
                   error, book_id, created_at, updated_at
            FROM import_tasks
            ORDER BY created_at DESC
-           LIMIT 100"""
+           LIMIT 500"""
     )

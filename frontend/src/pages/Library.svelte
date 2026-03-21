@@ -11,7 +11,8 @@
   import { selectionStore } from "../lib/stores/selection.svelte.js";
 
   import { route, navigate } from "../lib/router.svelte.js";
-  import { onMount, untrack } from "svelte";
+  import { onMount, onDestroy, untrack } from "svelte";
+  import { onBooksChanged } from "../lib/stores/processes.svelte.js";
 
   const sortOptions = [
     { value: "titel", label: "Titel", icon: "fa-font" },
@@ -132,9 +133,21 @@
     ui.viewMode = mode;
   }
 
+  let _unsubProcesses;
+
   onMount(() => {
     categoriesStore.aktualisieren();
     tagsStore.aktualisieren();
+
+    // Bei neuen Import-Ergebnissen Bibliothek automatisch aktualisieren
+    _unsubProcesses = onBooksChanged(() => {
+      booksStore.laden_();
+      categoriesStore.aktualisieren();
+    });
+  });
+
+  onDestroy(() => {
+    if (_unsubProcesses) _unsubProcesses();
   });
 </script>
 
