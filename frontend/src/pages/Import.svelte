@@ -162,7 +162,7 @@
   .page-header {
     position: sticky;
     top: -1.5rem;
-    z-index: 5;
+    z-index: 10;
     background-color: var(--color-bg-primary);
     margin: -1.5rem -1.5rem 0;
     padding: 1.5rem 1.5rem 0.75rem;

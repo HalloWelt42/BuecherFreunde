@@ -193,7 +193,7 @@
     justify-content: space-between;
     position: sticky;
     top: 0;
-    z-index: 5;
+    z-index: 10;
     background-color: var(--color-bg-primary);
     padding: 0.5rem 0;
   }

@@ -514,7 +514,7 @@
     flex-wrap: wrap;
     position: sticky;
     top: 0;
-    z-index: 5;
+    z-index: 10;
     background-color: var(--color-bg-primary);
     margin-left: -1.5rem;
     margin-right: -1.5rem;
