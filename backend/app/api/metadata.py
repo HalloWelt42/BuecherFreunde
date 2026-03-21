@@ -3,7 +3,7 @@
 import logging
 import re
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.app.core.auth import verify_token
 from backend.app.core.database import db
@@ -228,104 +228,6 @@ async def apply_metadata(
         "cover_gespeichert": cover_gespeichert,
     }
 
-
-@router.post("/bulk-anreichern")
-async def enrich_all(
-    background_tasks: BackgroundTasks,
-    _token: str = Depends(verify_token),
-):
-    """Reichert alle Buecher ohne vollstaendige Metadaten an."""
-    books = await db.fetch_all(
-        """SELECT id, hash, isbn, title, author FROM books
-           WHERE (isbn = '' OR isbn IS NULL)
-              OR (author = '' OR author IS NULL)
-              OR (publisher = '' OR publisher IS NULL)
-           LIMIT 100"""
-    )
-
-    if not books:
-        return {"zu_bearbeiten": 0}
-
-    async def _enrich_batch():
-        for b in books:
-            try:
-                result = await _lookup_all(b["isbn"], b["title"], b["author"])
-                if not result:
-                    continue
-
-                # Felder aktualisieren
-                field_map = {
-                    "titel": "title", "autor": "author", "isbn": "isbn",
-                    "verlag": "publisher", "jahr": "year",
-                    "sprache": "language", "beschreibung": "description",
-                    "seiten": "page_count",
-                }
-                updates = {}
-                for key, value in result.items():
-                    db_key = field_map.get(key)
-                    if db_key and value:
-                        updates[db_key] = value
-                if updates:
-                    set_clause = ", ".join(f"{k} = ?" for k in updates)
-                    values = list(updates.values()) + [b["id"]]
-                    await db.execute(
-                        f"UPDATE books SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
-                        tuple(values),
-                    )
-
-                # Kategorien
-                kategorien = result.get("kategorien", [])
-                if kategorien:
-                    cat_ids = await _ensure_categories(kategorien)
-                    await _assign_categories(b["id"], cat_ids)
-
-                # Cover
-                cover_url = result.get("cover_url", "")
-                if cover_url:
-                    if "google" in cover_url:
-                        cover_data = await googlebooks.download_cover(cover_url)
-                    else:
-                        cover_data = await openlibrary.download_cover(cover_url)
-                    if cover_data:
-                        save_cover(b["hash"], cover_data)
-                        await db.execute(
-                            "UPDATE books SET cover_path = 'cover.jpg', updated_at = datetime('now') WHERE id = ?",
-                            (b["id"],),
-                        )
-
-                await db.commit()
-
-            except Exception as e:
-                logger.warning("Anreicherung fehlgeschlagen fuer Buch %d: %s", b["id"], e)
-
-    background_tasks.add_task(_enrich_batch)
-    return {"zu_bearbeiten": len(books), "status": "gestartet"}
-
-
-async def _lookup_all(isbn: str, title: str, author: str) -> dict | None:
-    """Sucht in allen Quellen: Google Books zuerst, dann Open Library."""
-    result = None
-
-    # Google Books
-    if isbn:
-        result = await googlebooks.lookup_isbn(isbn)
-    if not result and title:
-        query = f"{title} {author}".strip()
-        results = await googlebooks.search_books(query, limit=1)
-        if results:
-            result = results[0]
-
-    # Open Library Fallback
-    if not result:
-        if isbn:
-            result = await openlibrary.lookup_isbn(isbn)
-        if not result and title:
-            query = f"{title} {author}".strip()
-            results = await openlibrary.search_books(query, limit=1)
-            if results:
-                result = results[0]
-
-    return result
 
 
 @router.get("/verbindungsstatus")
