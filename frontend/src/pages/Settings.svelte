@@ -1,5 +1,4 @@
 <script>
-  import { ui } from "../lib/stores/ui.svelte.js";
   import { getToken, setToken } from "../lib/api/client.js";
   import { get } from "../lib/api/client.js";
   import { indexNeuAufbauen } from "../lib/api/search.js";
@@ -79,38 +78,6 @@
     <div class="settings-grid">
       <!-- Linke Spalte -->
       <div class="settings-col">
-        <section class="settings-section">
-          <h2><i class="fa-solid fa-palette"></i> Darstellung</h2>
-          <div class="setting-row">
-            <span class="setting-label">Theme</span>
-            <div class="btn-group">
-              {#each [["light", "Hell", "fa-sun"], ["dark", "Dunkel", "fa-moon"], ["system", "System", "fa-display"]] as [mode, label, icon]}
-                <button
-                  class="seg-btn"
-                  class:active={ui.theme === mode}
-                  onclick={() => (ui.theme = mode)}
-                >
-                  <i class="fa-solid {icon}"></i> {label}
-                </button>
-              {/each}
-            </div>
-          </div>
-          <div class="setting-row">
-            <span class="setting-label">Standardansicht</span>
-            <div class="btn-group">
-              {#each [["grid", "Kacheln", "fa-table-cells"], ["list", "Liste", "fa-list"], ["covers", "Cover", "fa-image"]] as [mode, label, icon]}
-                <button
-                  class="seg-btn"
-                  class:active={ui.viewMode === mode}
-                  onclick={() => (ui.viewMode = mode)}
-                >
-                  <i class="fa-solid {icon}"></i> {label}
-                </button>
-              {/each}
-            </div>
-          </div>
-        </section>
-
         <section class="settings-section">
           <h2><i class="fa-solid fa-key"></i> API-Token</h2>
           <div class="token-row">
@@ -289,48 +256,6 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.25rem 0;
-  }
-
-  .setting-label {
-    font-size: 0.8125rem;
-    color: var(--color-text-secondary);
-    min-width: 110px;
-    flex-shrink: 0;
-  }
-
-  /* Segmented Buttons */
-  .btn-group {
-    display: flex;
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-
-  .seg-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.3125rem 0.625rem;
-    border: none;
-    background: none;
-    color: var(--color-text-secondary);
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: all 0.1s;
-  }
-
-  .seg-btn + .seg-btn {
-    border-left: 1px solid var(--color-border);
-  }
-
-  .seg-btn:hover {
-    background-color: var(--color-bg-tertiary);
-    color: var(--color-text-primary);
-  }
-
-  .seg-btn.active {
-    background-color: var(--color-accent);
-    color: #fff;
   }
 
   /* Token */

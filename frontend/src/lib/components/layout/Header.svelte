@@ -26,9 +26,6 @@
   </div>
 
   <div class="header-right">
-    <a href="/import" class="header-btn" title="Import">
-      <i class="fa-solid fa-file-import"></i>
-    </a>
     <button
       class="header-btn"
       onclick={() => ui.cycleTheme()}
