@@ -25,10 +25,10 @@ async def get_version() -> dict:
 async def get_paths(_token: str = Depends(verify_token)) -> dict:
     """Gibt die konfigurierten Verzeichnispfade zurueck."""
     return {
-        "datenbank": str(settings.database_path),
-        "speicher": str(settings.storage_dir),
-        "import": str(settings.import_dir),
-        "extern": str(settings.external_dir) if settings.external_dir else "",
+        "datenbank": str(settings.database_path.resolve()),
+        "speicher": str(settings.storage_dir.resolve()),
+        "import": str(settings.import_dir.resolve()),
+        "extern": str(settings.external_dir.resolve()) if settings.external_dir else "",
     }
 
 
