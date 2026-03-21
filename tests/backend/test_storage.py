@@ -184,7 +184,7 @@ class TestDateiSpeichern:
         datei = erstelle_textdatei("bild.jpg", "Kein Buch")
         with patch("backend.app.services.storage.settings") as mock:
             mock.storage_dir = storage_dir
-            with pytest.raises(ValueError, match="nicht unterstuetzt"):
+            with pytest.raises(ValueError, match="nicht unterstützt"):
                 store_file(datei, storage_dir=storage_dir)
 
     def test_fehlende_datei_wirft_fehler(self, tmp_path, storage_dir):

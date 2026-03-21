@@ -3,7 +3,7 @@
 import pytest
 from httpx import AsyncClient
 
-from tests.api.conftest import buch_erstellen, kategorie_erstellen, tag_erstellen
+from tests.api.conftest import buch_erstellen, kategorie_erstellen, sammlung_erstellen
 
 
 # -- Authentifizierung --
@@ -13,7 +13,7 @@ from tests.api.conftest import buch_erstellen, kategorie_erstellen, tag_erstelle
 async def test_buecher_liste_ohne_token_gibt_401(client_ohne_auth: AsyncClient):
     """Anfrage ohne Bearer-Token wird mit 401 abgelehnt."""
     response = await client_ohne_auth.get("/api/books")
-    assert response.status_code == 403  # HTTPBearer gibt 403 ohne Header
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
@@ -58,8 +58,7 @@ async def test_buch_details_abrufen(client: AsyncClient, test_db):
     assert data["file_format"] == "pdf"
     assert data["isbn"] == "978-3-16-148410-0"
     assert isinstance(data["categories"], list)
-    assert isinstance(data["tags"], list)
-    assert isinstance(data["collections"], list)
+    assert isinstance(data["authors"], list)
 
 
 @pytest.mark.asyncio
@@ -162,23 +161,23 @@ async def test_buecher_filter_nach_kategorie(client: AsyncClient, test_db):
 
 
 @pytest.mark.asyncio
-async def test_buecher_filter_nach_tag(client: AsyncClient, test_db):
-    """Filter nach Tag-ID liefert nur zugeordnete Buecher."""
-    buch_id = await buch_erstellen(test_db, hash="tag_filter01", title="Getaggtes Buch")
-    tag_id = await tag_erstellen(test_db, name="Python")
+async def test_buecher_filter_nach_sammlung(client: AsyncClient, test_db):
+    """Filter nach Sammlungs-ID liefert nur zugeordnete Buecher."""
+    samml_id = await sammlung_erstellen(test_db, name="Python-Regal")
+    buch_id = await buch_erstellen(test_db, hash="samml_filter01", title="Sammlungsbuch")
     await test_db.execute(
-        "INSERT INTO book_tags (book_id, tag_id) VALUES (?, ?)",
-        (buch_id, tag_id),
+        "UPDATE books SET sammlung_id = ? WHERE id = ?",
+        (samml_id, buch_id),
     )
     await test_db.commit()
 
-    await buch_erstellen(test_db, hash="tag_filter02", title="Ungetaggt")
+    await buch_erstellen(test_db, hash="samml_filter02", title="Ohne Sammlung")
 
-    response = await client.get(f"/api/books?tag={tag_id}")
+    response = await client.get(f"/api/books?sammlung={samml_id}")
     assert response.status_code == 200
     data = response.json()
     assert data["gesamt"] == 1
-    assert data["buecher"][0]["title"] == "Getaggtes Buch"
+    assert data["buecher"][0]["title"] == "Sammlungsbuch"
 
 
 # -- Buch aktualisieren --
@@ -249,19 +248,14 @@ async def test_buch_loeschen_nicht_gefunden(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_buch_listet_kategorien_und_tags(client: AsyncClient, test_db):
-    """Buecher in der Liste enthalten ihre Kategorien und Tags."""
+async def test_buch_listet_kategorien(client: AsyncClient, test_db):
+    """Buecher in der Liste enthalten ihre Kategorien."""
     buch_id = await buch_erstellen(test_db, hash="rel01", title="Relationen-Buch")
     kat_id = await kategorie_erstellen(test_db, name="Wissenschaft")
-    tag_id = await tag_erstellen(test_db, name="Sachbuch")
 
     await test_db.execute(
         "INSERT INTO book_categories (book_id, category_id) VALUES (?, ?)",
         (buch_id, kat_id),
-    )
-    await test_db.execute(
-        "INSERT INTO book_tags (book_id, tag_id) VALUES (?, ?)",
-        (buch_id, tag_id),
     )
     await test_db.commit()
 
@@ -270,5 +264,3 @@ async def test_buch_listet_kategorien_und_tags(client: AsyncClient, test_db):
     buch = response.json()["buecher"][0]
     assert len(buch["categories"]) == 1
     assert buch["categories"][0]["name"] == "Wissenschaft"
-    assert len(buch["tags"]) == 1
-    assert buch["tags"][0]["name"] == "Sachbuch"

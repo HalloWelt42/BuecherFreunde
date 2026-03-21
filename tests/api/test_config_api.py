@@ -75,7 +75,7 @@ async def test_config_enthaelt_keinen_token(client: AsyncClient):
 async def test_config_ohne_auth_gibt_fehler(client_ohne_auth: AsyncClient):
     """Config-Endpunkt erfordert Authentifizierung."""
     response = await client_ohne_auth.get("/api/config")
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio

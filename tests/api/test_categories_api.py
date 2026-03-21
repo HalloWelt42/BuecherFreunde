@@ -13,7 +13,7 @@ from tests.api.conftest import buch_erstellen, kategorie_erstellen
 async def test_kategorien_ohne_token_gibt_fehler(client_ohne_auth: AsyncClient):
     """Anfrage ohne Token wird abgelehnt."""
     response = await client_ohne_auth.get("/api/categories")
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
@@ -51,40 +51,7 @@ async def test_kategorie_erstellen(client: AsyncClient):
     data = response.json()
     assert data["name"] == "Belletristik"
     assert data["slug"] == "belletristik"
-    assert data["parent_id"] is None
     assert "id" in data
-
-
-@pytest.mark.asyncio
-async def test_kategorie_mit_elternkategorie_erstellen(client: AsyncClient):
-    """POST erstellt eine Unterkategorie mit parent_id."""
-    # Elternkategorie erstellen
-    response = await client.post(
-        "/api/categories",
-        json={"name": "Sachbuch"},
-    )
-    parent_id = response.json()["id"]
-
-    # Unterkategorie erstellen
-    response = await client.post(
-        "/api/categories",
-        json={"name": "Wissenschaft", "parent_id": parent_id},
-    )
-    assert response.status_code == 201
-    data = response.json()
-    assert data["parent_id"] == parent_id
-    assert data["name"] == "Wissenschaft"
-
-
-@pytest.mark.asyncio
-async def test_kategorie_mit_ungueltiger_elternkategorie(client: AsyncClient):
-    """POST mit nicht existierender parent_id gibt 404 zurueck."""
-    response = await client.post(
-        "/api/categories",
-        json={"name": "Waise", "parent_id": 99999},
-    )
-    assert response.status_code == 404
-    assert "Elternkategorie" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
@@ -99,40 +66,26 @@ async def test_kategorie_slug_eindeutigkeit(client: AsyncClient):
     assert data["slug"] != "roman"
 
 
-# -- Baumstruktur --
+# -- Flache Liste --
 
 
 @pytest.mark.asyncio
-async def test_kategorien_baumstruktur(client: AsyncClient):
-    """GET gibt Kategorien als verschachtelte Baumstruktur zurueck."""
-    # Elternkategorie
-    response = await client.post(
-        "/api/categories",
-        json={"name": "Literatur"},
-    )
-    parent_id = response.json()["id"]
-
-    # Kindkategorien
-    await client.post(
-        "/api/categories",
-        json={"name": "Lyrik", "parent_id": parent_id},
-    )
-    await client.post(
-        "/api/categories",
-        json={"name": "Prosa", "parent_id": parent_id},
-    )
+async def test_kategorien_flache_liste(client: AsyncClient):
+    """GET gibt Kategorien als flache Liste zurueck."""
+    await client.post("/api/categories", json={"name": "Literatur"})
+    await client.post("/api/categories", json={"name": "Lyrik"})
+    await client.post("/api/categories", json={"name": "Prosa"})
 
     response = await client.get("/api/categories")
     assert response.status_code == 200
-    tree = response.json()
+    kategorien = response.json()
 
-    # Es sollte nur ein Root-Element geben
-    assert len(tree) == 1
-    assert tree[0]["name"] == "Literatur"
-    assert len(tree[0]["kinder"]) == 2
-    kindernamen = [k["name"] for k in tree[0]["kinder"]]
-    assert "Lyrik" in kindernamen
-    assert "Prosa" in kindernamen
+    # Alle drei auf gleicher Ebene
+    assert len(kategorien) == 3
+    namen = [k["name"] for k in kategorien]
+    assert "Literatur" in namen
+    assert "Lyrik" in namen
+    assert "Prosa" in namen
 
 
 @pytest.mark.asyncio
@@ -217,34 +170,6 @@ async def test_kategorie_loeschen(client: AsyncClient):
     # Liste muss jetzt leer sein
     response = await client.get("/api/categories")
     assert response.json() == []
-
-
-@pytest.mark.asyncio
-async def test_kategorie_loeschen_verschiebt_kinder(client: AsyncClient):
-    """Beim Loeschen einer Kategorie werden Kinder auf Root-Ebene verschoben."""
-    # Elternkategorie
-    response = await client.post(
-        "/api/categories",
-        json={"name": "Eltern"},
-    )
-    parent_id = response.json()["id"]
-
-    # Kindkategorie
-    response = await client.post(
-        "/api/categories",
-        json={"name": "Kind", "parent_id": parent_id},
-    )
-    child_id = response.json()["id"]
-
-    # Elternkategorie loeschen
-    await client.delete(f"/api/categories/{parent_id}")
-
-    # Kind sollte jetzt auf Root-Ebene sein
-    response = await client.get("/api/categories")
-    tree = response.json()
-    assert len(tree) == 1
-    assert tree[0]["name"] == "Kind"
-    assert tree[0]["parent_id"] is None
 
 
 @pytest.mark.asyncio

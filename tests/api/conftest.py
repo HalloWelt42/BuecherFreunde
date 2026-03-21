@@ -140,7 +140,6 @@ async def buch_erstellen(test_db: Database, **kwargs) -> int:
 
 
 async def kategorie_erstellen(test_db: Database, name: str = "Testkategorie",
-                               parent_id: int | None = None,
                                sort_order: int = 0) -> int:
     """Hilfsfunktion: Legt eine Testkategorie an. Gibt die ID zurueck."""
     import re
@@ -148,23 +147,20 @@ async def kategorie_erstellen(test_db: Database, name: str = "Testkategorie",
     slug = re.sub(r"[-\s]+", "-", slug).strip("-")
 
     cursor = await test_db.execute(
-        "INSERT INTO categories (name, slug, parent_id, sort_order) VALUES (?, ?, ?, ?)",
-        (name, slug, parent_id, sort_order),
+        "INSERT INTO categories (name, slug, sort_order) VALUES (?, ?, ?)",
+        (name, slug, sort_order),
     )
     await test_db.commit()
     return cursor.lastrowid
 
 
-async def tag_erstellen(test_db: Database, name: str = "Testtag",
-                         color: str = "#ff0000") -> int:
-    """Hilfsfunktion: Legt einen Testtag an. Gibt die ID zurueck."""
-    import re
-    slug = re.sub(r"[^\w\s-]", "", name.lower().strip())
-    slug = re.sub(r"[-\s]+", "-", slug).strip("-")
-
+async def sammlung_erstellen(test_db: Database, name: str = "Testsammlung",
+                              description: str = "",
+                              color: str = "#3b82f6") -> int:
+    """Hilfsfunktion: Legt eine Testsammlung an. Gibt die ID zurueck."""
     cursor = await test_db.execute(
-        "INSERT INTO tags (name, slug, color) VALUES (?, ?, ?)",
-        (name, slug, color),
+        "INSERT INTO collections (name, description, color) VALUES (?, ?, ?)",
+        (name, description, color),
     )
     await test_db.commit()
     return cursor.lastrowid

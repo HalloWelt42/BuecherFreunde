@@ -115,7 +115,7 @@ describe("BookCard", () => {
     const buch = erstelleTestBuch({ page_count: 250 });
     render(BookCard, { props: { book: buch } });
 
-    expect(screen.getByText("250 S.")).toBeTruthy();
+    expect(screen.getByText("250 Seiten")).toBeTruthy();
   });
 
   it("zeigt Kategorien als Chips an", () => {

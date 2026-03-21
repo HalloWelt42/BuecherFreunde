@@ -13,7 +13,7 @@ from tests.api.conftest import buch_erstellen
 async def test_suche_ohne_token_gibt_fehler(client_ohne_auth: AsyncClient):
     """Anfrage ohne Token wird abgelehnt."""
     response = await client_ohne_auth.get("/api/search?q=test")
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
@@ -246,7 +246,7 @@ async def test_index_optimieren(client: AsyncClient):
 async def test_index_operationen_ohne_token(client_ohne_auth: AsyncClient):
     """Index-Operationen ohne Token werden abgelehnt."""
     response = await client_ohne_auth.post("/api/search/index-neu-aufbauen")
-    assert response.status_code == 403
+    assert response.status_code == 401
 
     response = await client_ohne_auth.post("/api/search/index-optimieren")
-    assert response.status_code == 403
+    assert response.status_code == 401

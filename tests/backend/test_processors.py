@@ -145,7 +145,7 @@ class TestTextProcessor:
             ergebnis = processor.process(datei)
 
         assert ergebnis.error != ""
-        assert "zu gross" in ergebnis.error
+        assert "zu groß" in ergebnis.error
 
 
 # ---------------------------------------------------------------------------
@@ -298,7 +298,7 @@ class TestPdfProzessorMock:
             datei.write_bytes(b"kein pdf")
             ergebnis = processor.process(datei)
 
-        assert "geoeffnet" in ergebnis.error
+        assert "geöffnet" in ergebnis.error
 
 
 # ---------------------------------------------------------------------------
@@ -373,7 +373,7 @@ class TestEpubProzessorMock:
             datei.write_bytes(b"kein epub")
             ergebnis = processor.process(datei)
 
-        assert "geoeffnet" in ergebnis.error
+        assert "geöffnet" in ergebnis.error
 
 
 # ---------------------------------------------------------------------------
