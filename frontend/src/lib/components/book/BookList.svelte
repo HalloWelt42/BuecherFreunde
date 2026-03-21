@@ -210,15 +210,28 @@
             onpointerenter={() => handlePointerEnter(book.id)}
           >
             <td class="col-cover">
-              <a href="/book/{book.id}" class="cover-link">
-                <img
-                  src={coverUrl(book.id, book.updated_at)}
-                  alt=""
-                  class="mini-cover"
-                  loading="lazy"
-                  onerror={(e) => (e.target.style.display = "none")}
-                />
-              </a>
+              <div class="cover-cell">
+                <a href="/book/{book.id}" class="cover-link">
+                  <img
+                    src={coverUrl(book.id, book.updated_at)}
+                    alt=""
+                    class="mini-cover"
+                    loading="lazy"
+                    onerror={(e) => { e.target.style.display = "none"; e.target.nextElementSibling.style.display = "flex"; }}
+                  />
+                  <div class="mini-cover-placeholder" style="display: none;">
+                    <i class="fa-solid fa-book"></i>
+                  </div>
+                </a>
+                <div class="cover-hover-popup">
+                  <img
+                    src={coverUrl(book.id, book.updated_at)}
+                    alt={book.title}
+                    class="cover-hover-img"
+                    onerror={(e) => (e.target.parentElement.style.display = "none")}
+                  />
+                </div>
+              </div>
             </td>
             <td class="col-title">
               <a href="/book/{book.id}" class="title-link">
@@ -312,18 +325,68 @@
   }
 
   .col-cover {
-    width: 36px;
+    width: 48px;
+  }
+
+  .cover-cell {
+    position: relative;
+    width: 40px;
+    height: 57px;
   }
 
   .cover-link {
     display: block;
+    width: 100%;
+    height: 100%;
   }
 
   .mini-cover {
-    width: 28px;
-    height: 40px;
+    width: 40px;
+    height: 57px;
     object-fit: cover;
     border-radius: 3px;
+  }
+
+  .mini-cover-placeholder {
+    width: 40px;
+    height: 57px;
+    border-radius: 3px;
+    background: linear-gradient(135deg, var(--color-bg-tertiary), var(--color-bg-secondary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    opacity: 0.4;
+  }
+
+  .cover-hover-popup {
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%) scale(0.9);
+    width: 320px;
+    height: 453px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-secondary);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s, transform 0.15s;
+    z-index: 50;
+  }
+
+  .cover-cell:hover .cover-hover-popup {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+
+  .cover-hover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .title-link {
