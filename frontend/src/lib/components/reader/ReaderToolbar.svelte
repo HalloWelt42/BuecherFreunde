@@ -1,5 +1,16 @@
 <script>
+  import { dateiUrl } from "../../api/books.js";
+
   let { bookId, title = "", onBack = () => {} } = $props();
+
+  function downloadFile() {
+    const a = document.createElement("a");
+    a.href = dateiUrl(bookId);
+    a.download = title || `buch-${bookId}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
 </script>
 
 <div class="reader-toolbar">
@@ -8,14 +19,9 @@
   </button>
   <span class="toolbar-title" title={title}>{title}</span>
   <div class="toolbar-actions">
-    <a
-      href="/api/books/{bookId}/file"
-      download
-      class="action-btn"
-      title="Herunterladen"
-    >
+    <button class="action-btn" onclick={downloadFile} title="Herunterladen">
       <i class="fa-solid fa-download"></i>
-    </a>
+    </button>
   </div>
 </div>
 
@@ -60,6 +66,11 @@
     white-space: nowrap;
   }
 
+  .toolbar-actions {
+    display: flex;
+    gap: 0.25rem;
+  }
+
   .action-btn {
     display: flex;
     align-items: center;
@@ -70,7 +81,8 @@
     border-radius: 4px;
     font-size: 0.75rem;
     color: var(--color-text-secondary);
-    text-decoration: none;
+    background: none;
+    cursor: pointer;
   }
 
   .action-btn:hover {

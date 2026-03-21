@@ -22,10 +22,10 @@
   });
 </script>
 
+{#if hatProzesse}
 <footer class="app-footer">
   <!-- Prozessbereich links -->
   <div class="footer-left">
-    {#if hatProzesse}
       <button class="process-bar" onclick={toggleExpanded} class:active={istAktiv}>
         {#if istAktiv}
           <i class="fa-solid fa-spinner fa-spin process-icon"></i>
@@ -54,14 +54,13 @@
           class="fa-solid {processes.expanded ? 'fa-chevron-down' : 'fa-chevron-up'} expand-icon"
         ></i>
       </button>
-    {/if}
   </div>
 
-  <!-- Rechts: leer (Version jetzt in Sidebar) -->
+  <!-- Rechts: leer -->
   <div class="footer-right"></div>
 
   <!-- Aufgeklappte Details -->
-  {#if hatProzesse && processes.expanded}
+  {#if processes.expanded}
     <div class="process-details">
       <div class="details-header">
         <span class="details-title">Hintergrundprozesse</span>
@@ -132,6 +131,7 @@
     </div>
   {/if}
 </footer>
+{/if}
 
 <style>
   .app-footer {

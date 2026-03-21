@@ -1,7 +1,6 @@
 <script>
   import { navigate } from "../lib/router.svelte.js";
   import { holeBuch } from "../lib/api/books.js";
-  import ReaderToolbar from "../lib/components/reader/ReaderToolbar.svelte";
   import PdfReader from "../lib/components/reader/PdfReader.svelte";
   import EpubReader from "../lib/components/reader/EpubReader.svelte";
   import MarkdownReader from "../lib/components/reader/MarkdownReader.svelte";
@@ -29,12 +28,26 @@
   // Gespeicherte Reader-Settings aus reading_position parsen
   function parseGespeicherteSettings(pos) {
     if (!pos) return {};
-    if (pos.startsWith("pdf:")) {
-      try {
-        return JSON.parse(pos.slice(4));
-      } catch { return {}; }
+    // JSON-Formate: "pdf:{...}", "epub:{...}", "txt:50"
+    for (const prefix of ["pdf:", "epub:"]) {
+      if (pos.startsWith(prefix)) {
+        try {
+          return JSON.parse(pos.slice(prefix.length));
+        } catch { return {}; }
+      }
     }
-    // Altes Format: "page:42"
+    if (pos.startsWith("txt:")) {
+      // Neues JSON-Format oder altes Zahl-Format
+      const rest = pos.slice(4);
+      if (rest.startsWith("{")) {
+        try { return JSON.parse(rest); } catch { return {}; }
+      }
+      return { scrollPct: Number(rest) || 0 };
+    }
+    // Altes Format: "cfi:..." oder "page:42"
+    if (pos.startsWith("cfi:")) {
+      return { cfi: pos.slice(4) };
+    }
     const match = pos.match(/page:(\d+)/);
     if (match) return { page: Number(match[1]) };
     return {};
@@ -64,13 +77,7 @@
   let initialPapier = $derived(urlParams.papier || saved.papier || "");
   let initialZoom = $derived(urlParams.zoom > 0 ? urlParams.zoom : (saved.zoom || 0));
 
-  let initialCfi = $derived.by(() => {
-    if (urlParams.cfi) return urlParams.cfi;
-    if (book?.reading_position?.startsWith("cfi:")) {
-      return book.reading_position.slice(4);
-    }
-    return "";
-  });
+  let initialCfi = $derived(urlParams.cfi || saved.cfi || "");
 
   function goBack() {
     navigate(`/book/${params.id}`);
@@ -86,24 +93,44 @@
       <a href="/book/{params.id}">Zurück zum Buch</a>
     </div>
   {:else if book}
-    <ReaderToolbar bookId={book.id} title={book.title} onBack={goBack} />
-
     {#if book.file_format === "pdf"}
       <PdfReader
         bookId={book.id}
+        title={book.title}
         {initialPage}
         {initialAnsicht}
         {initialPapier}
         {initialZoom}
+        onBack={goBack}
       />
     {:else if book.file_format === "epub" || book.file_format === "mobi"}
-      <EpubReader bookId={book.id} {initialCfi} />
+      <EpubReader
+        bookId={book.id}
+        title={book.title}
+        {initialCfi}
+        {initialPapier}
+        initialFontSize={saved.fontSize || 0}
+        initialFontFamily={saved.fontFamily || ""}
+        initialLineHeight={saved.lineHeight || 0}
+        initialFgColor={saved.fgColor || ""}
+        initialBgColor={saved.bgColor || ""}
+        initialMaxWidthSingle={saved.maxWidthSingle || 0}
+        initialMaxWidthDouble={saved.maxWidthDouble || 0}
+        initialSinglePage={saved.singlePage || false}
+        onBack={goBack}
+      />
     {:else if book.file_format === "txt" || book.file_format === "md"}
-      <MarkdownReader bookId={book.id} />
+      <MarkdownReader
+        bookId={book.id}
+        title={book.title}
+        {initialPapier}
+        initialFontSize={saved.fontSize || 0}
+        initialScrollPct={saved.scrollPct || 0}
+        onBack={goBack}
+      />
     {:else}
       <div class="status">
         Format "{book.file_format}" wird nicht unterstützt.
-        <a href="/api/books/{book.id}/file" download>Datei herunterladen</a>
       </div>
     {/if}
   {/if}

@@ -7,10 +7,12 @@
 
   let {
     bookId,
+    title = "",
     initialPage = 1,
     initialAnsicht = "",
     initialPapier = "",
     initialZoom = 0,
+    onBack = () => {},
     onPositionChange = () => {},
   } = $props();
 
@@ -452,6 +454,15 @@
     einzeln: "fa-file",
   };
 
+  function downloadFile() {
+    const a = document.createElement("a");
+    a.href = dateiUrl(bookId);
+    a.download = title || `buch-${bookId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
   let showAnsichtMenu = $state(false);
   function toggleAnsichtMenu() {
     showAnsichtMenu = !showAnsichtMenu;
@@ -476,8 +487,16 @@
       <span>{fehler}</span>
     </div>
   {:else}
-    <!-- Toolbar -->
+    <!-- Einheitliche Toolbar -->
     <div class="pdf-toolbar">
+      <!-- Links: Zurueck + Titel -->
+      <button class="tool-btn back-btn" onclick={onBack} title="Zurück">
+        <i class="fa-solid fa-arrow-left"></i>
+      </button>
+      <span class="toolbar-title" title={title}>{title}</span>
+
+      <div class="toolbar-sep"></div>
+
       <!-- Seiten-Navigation -->
       <div class="toolbar-group">
         <button class="tool-btn" onclick={prevPage} disabled={currentPage <= 1} title="Vorherige Seite">
@@ -518,37 +537,17 @@
       <div class="toolbar-sep"></div>
 
       <!-- Ansichtsmodus -->
-      <div class="toolbar-group ansicht-group">
-        <button
-          class="tool-btn ansicht-btn"
-          class:active={ansicht === "breite"}
-          onclick={() => setAnsicht(ansicht === "breite" ? "scroll" : "breite")}
-          title="Seitenbreite"
-        >
+      <div class="toolbar-group">
+        <button class="tool-btn" class:active={ansicht === "breite"} onclick={() => setAnsicht(ansicht === "breite" ? "scroll" : "breite")} title="Seitenbreite">
           <i class="fa-solid fa-arrows-left-right"></i>
         </button>
-        <button
-          class="tool-btn ansicht-btn"
-          class:active={ansicht === "seite"}
-          onclick={() => setAnsicht(ansicht === "seite" ? "scroll" : "seite")}
-          title="Ganze Seite einpassen"
-        >
+        <button class="tool-btn" class:active={ansicht === "seite"} onclick={() => setAnsicht(ansicht === "seite" ? "scroll" : "seite")} title="Ganze Seite">
           <i class="fa-solid fa-expand"></i>
         </button>
-        <button
-          class="tool-btn ansicht-btn"
-          class:active={ansicht === "doppel"}
-          onclick={() => setAnsicht(ansicht === "doppel" ? "scroll" : "doppel")}
-          title="Doppelseite"
-        >
+        <button class="tool-btn" class:active={ansicht === "doppel"} onclick={() => setAnsicht(ansicht === "doppel" ? "scroll" : "doppel")} title="Doppelseite">
           <i class="fa-solid fa-book-open"></i>
         </button>
-        <button
-          class="tool-btn ansicht-btn"
-          class:active={ansicht === "einzeln"}
-          onclick={() => setAnsicht(ansicht === "einzeln" ? "scroll" : "einzeln")}
-          title="Einzelseite blättern"
-        >
+        <button class="tool-btn" class:active={ansicht === "einzeln"} onclick={() => setAnsicht(ansicht === "einzeln" ? "scroll" : "einzeln")} title="Einzelseite">
           <i class="fa-solid fa-file"></i>
         </button>
       </div>
@@ -556,24 +555,28 @@
       <div class="toolbar-sep"></div>
 
       <!-- Papier-Modus -->
-      <div class="toolbar-group">
-        <button
-          class="tool-btn papier-btn"
-          class:active={papierModus !== "normal"}
-          onclick={togglePapierModus}
-          title="Papier: {papierModus === 'normal' ? 'Normal' : papierModus === 'sepia' ? 'Sepia' : papierModus === 'dunkel' ? 'Dunkel' : 'Hoher Kontrast'}"
-        >
-          {#if papierModus === "normal"}
-            <i class="fa-solid fa-sun"></i>
-          {:else if papierModus === "sepia"}
-            <i class="fa-solid fa-cloud-sun" style="color: #d4a574"></i>
-          {:else if papierModus === "dunkel"}
-            <i class="fa-solid fa-moon"></i>
-          {:else}
-            <i class="fa-solid fa-circle-half-stroke"></i>
-          {/if}
-        </button>
-      </div>
+      <button
+        class="tool-btn"
+        class:active={papierModus !== "normal"}
+        onclick={togglePapierModus}
+        title="Papier: {papierModus === 'normal' ? 'Normal' : papierModus === 'sepia' ? 'Sepia' : papierModus === 'dunkel' ? 'Dunkel' : 'Kontrast'}"
+      >
+        {#if papierModus === "normal"}
+          <i class="fa-solid fa-sun"></i>
+        {:else if papierModus === "sepia"}
+          <i class="fa-solid fa-cloud-sun" style="color: #d4a574"></i>
+        {:else if papierModus === "dunkel"}
+          <i class="fa-solid fa-moon"></i>
+        {:else}
+          <i class="fa-solid fa-circle-half-stroke"></i>
+        {/if}
+      </button>
+
+      <!-- Rechts: Download -->
+      <div class="toolbar-spacer"></div>
+      <button class="tool-btn" onclick={downloadFile} title="Herunterladen">
+        <i class="fa-solid fa-download"></i>
+      </button>
     </div>
 
     <!-- Scroll-Container -->
@@ -644,6 +647,24 @@
     flex-shrink: 0;
     height: 36px;
     flex-wrap: wrap;
+  }
+
+  .back-btn {
+    flex-shrink: 0;
+  }
+
+  .toolbar-title {
+    font-weight: 600;
+    font-size: 0.8125rem;
+    color: var(--color-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 180px;
+  }
+
+  .toolbar-spacer {
+    flex: 1;
   }
 
   .toolbar-group {
@@ -781,6 +802,8 @@
     min-width: 200px;
     min-height: 280px;
     flex-shrink: 0;
+    border-radius: 4px;
+    overflow: hidden;
   }
 
   .page-wrapper :global(canvas) {
