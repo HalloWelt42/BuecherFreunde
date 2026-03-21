@@ -197,9 +197,11 @@ async def list_books(
         "groesse": "b.file_size",
         "jahr": "b.year",
         "verlag": "b.publisher",
+        "bewertung": "COALESCE(ud_sort.rating, 0)",
     }
     sort_col = sort_map.get(sortierung, "b.title")
     sort_dir = "DESC" if richtung.lower() == "desc" else "ASC"
+    needs_ud_join = sortierung == "bewertung"
 
     # Gesamt zählen
     count_sql = f"SELECT COUNT(*) as total FROM books b WHERE {where}"
@@ -208,11 +210,13 @@ async def list_books(
 
     # Seite abfragen
     offset = (seite - 1) * pro_seite
+    ud_join = "LEFT JOIN user_book_data ud_sort ON ud_sort.book_id = b.id" if needs_ud_join else ""
     select_sql = f"""
         SELECT b.id, b.hash, b.title, b.author, b.publisher, b.file_format,
                b.file_size, b.cover_path, b.page_count, b.year, b.isbn,
                b.typ, b.sammlung_id, b.band_nummer, b.created_at, b.updated_at
         FROM books b
+        {ud_join}
         WHERE {where}
         ORDER BY {sort_col} {sort_dir}
         LIMIT ? OFFSET ?
@@ -251,6 +255,85 @@ async def recently_read(
     """
     rows = await db.fetch_all(sql, (limit,))
     return [await _enrich_book_list_item(row) for row in rows]
+
+
+@router.get("/{book_id}/aehnliche")
+async def similar_books(
+    book_id: int,
+    _token: str = Depends(verify_token),
+    limit: int = Query(6, ge=1, le=20),
+):
+    """Gibt aehnliche Buecher zurueck (gleicher Autor, gleiche Kategorie)."""
+    book = await db.fetch_one(
+        "SELECT id, author FROM books WHERE id = ?", (book_id,)
+    )
+    if not book:
+        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+
+    result = {"vom_autor": [], "in_kategorie": []}
+
+    # Vom selben Autor (ueber authors-Tabelle oder author-Feld)
+    author_ids = await db.fetch_all(
+        "SELECT author_id FROM book_authors WHERE book_id = ?", (book_id,)
+    )
+    if author_ids:
+        placeholders = ",".join("?" for _ in author_ids)
+        ids = [a["author_id"] for a in author_ids]
+        rows = await db.fetch_all(
+            f"""SELECT DISTINCT b.id, b.hash, b.title, b.author, b.publisher,
+                       b.file_format, b.file_size, b.cover_path, b.page_count,
+                       b.year, b.isbn, b.typ, b.sammlung_id, b.band_nummer,
+                       b.created_at, b.updated_at
+                FROM books b
+                JOIN book_authors ba ON ba.book_id = b.id
+                WHERE ba.author_id IN ({placeholders}) AND b.id != ?
+                ORDER BY b.title LIMIT ?""",
+            (*ids, book_id, limit),
+        )
+        result["vom_autor"] = [await _enrich_book_list_item(r) for r in rows]
+    elif book["author"]:
+        rows = await db.fetch_all(
+            """SELECT id, hash, title, author, publisher, file_format,
+                      file_size, cover_path, page_count, year, isbn,
+                      typ, sammlung_id, band_nummer, created_at, updated_at
+               FROM books WHERE author = ? AND id != ?
+               ORDER BY title LIMIT ?""",
+            (book["author"], book_id, limit),
+        )
+        result["vom_autor"] = [await _enrich_book_list_item(r) for r in rows]
+
+    # In derselben Kategorie
+    cat_ids = await db.fetch_all(
+        "SELECT category_id FROM book_categories WHERE book_id = ?", (book_id,)
+    )
+    if cat_ids:
+        # Spezial-Kategorien wie "Ungeordnet" ausschliessen
+        filtered = []
+        for c in cat_ids:
+            is_special = await db.fetch_one(
+                "SELECT spezial FROM categories WHERE id = ?", (c["category_id"],)
+            )
+            if not is_special or not is_special.get("spezial"):
+                filtered.append(c["category_id"])
+
+        if filtered:
+            already = {book_id} | {b.id for b in result["vom_autor"]}
+            placeholders = ",".join("?" for _ in filtered)
+            exclude_ph = ",".join("?" for _ in already)
+            rows = await db.fetch_all(
+                f"""SELECT DISTINCT b.id, b.hash, b.title, b.author, b.publisher,
+                           b.file_format, b.file_size, b.cover_path, b.page_count,
+                           b.year, b.isbn, b.typ, b.sammlung_id, b.band_nummer,
+                           b.created_at, b.updated_at
+                    FROM books b
+                    JOIN book_categories bc ON bc.book_id = b.id
+                    WHERE bc.category_id IN ({placeholders}) AND b.id NOT IN ({exclude_ph})
+                    ORDER BY b.title LIMIT ?""",
+                (*filtered, *already, limit),
+            )
+            result["in_kategorie"] = [await _enrich_book_list_item(r) for r in rows]
+
+    return result
 
 
 @router.get("/{book_id}", response_model=BookResponse)
@@ -369,7 +452,7 @@ async def bulk_action(
         kat_id = int(action.wert)
         for bid in action.book_ids:
             await db.execute(
-                "INSERT OR IGNORE INTO book_categories (book_id, category_id) VALUES (?, ?)",
+                "INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'manuell')",
                 (bid, kat_id),
             )
             betroffen += 1
@@ -589,4 +672,81 @@ async def isbn_scan(book_id: int, _token: str = Depends(verify_token)):
         "gefunden": ergebnisse,
         "aktuell": book["isbn"] or "",
         "anzahl": len(ergebnisse),
+    }
+
+
+@router.get("/{book_id}/volltext-suche")
+async def fulltext_search_book(
+    book_id: int,
+    q: str = Query(..., min_length=1, description="Suchbegriff"),
+    limit: int = Query(50, ge=1, le=200),
+    _token: str = Depends(verify_token),
+):
+    """Durchsucht den Volltext eines einzelnen Buches.
+
+    Gibt Treffer mit Seitennummer und Kontext-Snippet zurueck.
+    """
+    import re
+
+    book = await db.fetch_one(
+        "SELECT id, hash, page_count FROM books WHERE id = ?", (book_id,)
+    )
+    if not book:
+        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+
+    fulltext_path = get_sidecar_path(book["hash"], "fulltext.txt")
+    if not fulltext_path.exists():
+        return {"treffer": [], "gesamt": 0, "suchbegriff": q}
+
+    text = fulltext_path.read_text(encoding="utf-8", errors="ignore")
+    if not text:
+        return {"treffer": [], "gesamt": 0, "suchbegriff": q}
+
+    # In Seiten aufteilen (gleiche Logik wie Volltext-Endpunkt)
+    if "\f" in text:
+        seiten = text.split("\f")
+    else:
+        total_pages = book["page_count"] or 1
+        chars_per_page = max(len(text) // total_pages, 500)
+        seiten = []
+        for i in range(0, len(text), chars_per_page):
+            seiten.append(text[i:i + chars_per_page])
+
+    # Suche in jeder Seite
+    try:
+        pattern = re.compile(re.escape(q), re.IGNORECASE)
+    except re.error:
+        return {"treffer": [], "gesamt": 0, "suchbegriff": q}
+
+    treffer = []
+    for seiten_nr, seite in enumerate(seiten, 1):
+        for match in pattern.finditer(seite):
+            start = max(0, match.start() - 80)
+            end = min(len(seite), match.end() + 80)
+            kontext = seite[start:end].strip()
+            # Treffer hervorheben
+            kontext_marked = pattern.sub(
+                lambda m: f"<mark>{m.group()}</mark>", kontext
+            )
+            if start > 0:
+                kontext_marked = "..." + kontext_marked
+            if end < len(seite):
+                kontext_marked = kontext_marked + "..."
+
+            treffer.append({
+                "seite": seiten_nr,
+                "kontext": kontext_marked,
+                "position": match.start(),
+            })
+
+            if len(treffer) >= limit:
+                break
+        if len(treffer) >= limit:
+            break
+
+    return {
+        "treffer": treffer,
+        "gesamt": len(treffer),
+        "seiten_gesamt": len(seiten),
+        "suchbegriff": q,
     }

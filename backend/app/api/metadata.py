@@ -184,7 +184,7 @@ async def _assign_categories(book_id: int, cat_ids: list[int]) -> None:
     """Ordnet Kategorien einem Buch zu (addiert, ersetzt nicht)."""
     for cat_id in cat_ids:
         await db.execute(
-            "INSERT OR IGNORE INTO book_categories (book_id, category_id) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'metadaten')",
             (book_id, cat_id),
         )
 

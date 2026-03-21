@@ -10,7 +10,7 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.db")
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 SCHEMA_SQL = """
 -- Bücher
@@ -66,6 +66,8 @@ CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
 CREATE TABLE IF NOT EXISTS book_categories (
     book_id INTEGER NOT NULL,
     category_id INTEGER NOT NULL,
+    quelle TEXT NOT NULL DEFAULT 'manuell',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (book_id, category_id),
     FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
@@ -537,6 +539,59 @@ Verwende deutsche Begriffe. Sei spezifisch, nicht zu allgemein.',
             await self._migrate_html_descriptions()
             await self._connection.commit()
             logger.info("Schema-Migration v9 abgeschlossen: HTML-Beschreibungen bereinigt")
+
+        if from_version < 10:
+            # v10: Quelle und Zeitstempel in book_categories + ai_-Kategorien bereinigen
+            for col in [
+                "ALTER TABLE book_categories ADD COLUMN quelle TEXT NOT NULL DEFAULT 'manuell'",
+                "ALTER TABLE book_categories ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime('now'))",
+            ]:
+                try:
+                    await self._connection.execute(col)
+                except Exception as e:
+                    if "duplicate column" not in str(e).lower():
+                        logger.warning("Migration-Warnung: %s", e)
+
+            # ai_-Prefix aus Kategorienamen entfernen, Quelle auf 'ki' setzen
+            ai_cats = await self._connection.execute(
+                "SELECT id, name, slug FROM categories WHERE name LIKE 'ai\\_%' ESCAPE '\\'"
+            )
+            rows = await ai_cats.fetchall()
+            for row in rows:
+                clean_name = row[1][3:]  # "ai_Foo" -> "Foo"
+                clean_slug = row[2][3:] if row[2].startswith("ai_") else row[2]
+                # Pruefen ob eine Kategorie mit dem bereinigten Namen existiert
+                existing = await self._connection.execute(
+                    "SELECT id FROM categories WHERE slug = ? AND id != ?",
+                    (clean_slug, row[0]),
+                )
+                existing_row = await existing.fetchone()
+                if existing_row:
+                    # Zuordnungen auf bestehende Kategorie umziehen
+                    await self._connection.execute(
+                        "UPDATE OR IGNORE book_categories SET category_id = ?, quelle = 'ki' WHERE category_id = ?",
+                        (existing_row[0], row[0]),
+                    )
+                    await self._connection.execute(
+                        "DELETE FROM book_categories WHERE category_id = ?", (row[0],)
+                    )
+                    await self._connection.execute(
+                        "DELETE FROM categories WHERE id = ?", (row[0],)
+                    )
+                else:
+                    # Kategorie umbenennen
+                    await self._connection.execute(
+                        "UPDATE categories SET name = ?, slug = ? WHERE id = ?",
+                        (clean_name, clean_slug, row[0]),
+                    )
+                    # Quelle auf 'ki' setzen
+                    await self._connection.execute(
+                        "UPDATE book_categories SET quelle = 'ki' WHERE category_id = ?",
+                        (row[0],),
+                    )
+
+            await self._connection.commit()
+            logger.info("Schema-Migration v10 abgeschlossen: Kategorie-Quellen + ai_-Bereinigung")
 
     async def _migrate_html_descriptions(self) -> None:
         """Konvertiert bestehende HTML-Beschreibungen in Markdown."""

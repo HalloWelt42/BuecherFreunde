@@ -241,7 +241,7 @@ async def import_single_file(file_path: Path, task_id: int | None = None) -> dic
         else:
             kat_id = ungeordnet["id"]
         await db.execute(
-            "INSERT OR IGNORE INTO book_categories (book_id, category_id) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'import')",
             (book_id, kat_id),
         )
         await db.commit()
@@ -306,3 +306,12 @@ async def get_import_status() -> list[dict]:
            ORDER BY created_at DESC
            LIMIT 500"""
     )
+
+
+async def clear_finished_tasks() -> int:
+    """Löscht alle fertigen, fehlerhaften und duplikat Tasks aus der DB."""
+    result = await db.execute(
+        "DELETE FROM import_tasks WHERE status IN ('fertig', 'fehler', 'duplikat')"
+    )
+    await db.commit()
+    return result

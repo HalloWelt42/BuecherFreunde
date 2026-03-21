@@ -75,6 +75,32 @@ async def toggle_to_read(book_id: int, _token: str = Depends(verify_token)):
     return {"book_id": book_id, "zu_lesen": bool(new_value)}
 
 
+@router.patch("/{book_id}/gelesen")
+async def toggle_read(book_id: int, _token: str = Depends(verify_token)):
+    """Wechselt den Gelesen-Status eines Buches (setzt/löscht last_read_at)."""
+    await _check_book_exists(book_id)
+    await _ensure_user_data(book_id)
+
+    current = await db.fetch_one(
+        "SELECT last_read_at FROM user_book_data WHERE book_id = ?", (book_id,)
+    )
+    is_read = current and current["last_read_at"] is not None
+
+    if is_read:
+        await db.execute(
+            "UPDATE user_book_data SET last_read_at = NULL WHERE book_id = ?",
+            (book_id,),
+        )
+    else:
+        await db.execute(
+            "UPDATE user_book_data SET last_read_at = datetime('now') WHERE book_id = ?",
+            (book_id,),
+        )
+    await db.commit()
+
+    return {"book_id": book_id, "gelesen": not is_read}
+
+
 @router.patch("/{book_id}/bewertung")
 async def set_rating(
     book_id: int, data: RatingUpdate, _token: str = Depends(verify_token)

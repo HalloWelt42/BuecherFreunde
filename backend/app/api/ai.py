@@ -65,11 +65,8 @@ async def accept_categories(
         if not name:
             continue
 
-        # ai_-Prefix für KI-zugewiesene Kategorien
-        ai_name = f"ai_{name}" if not name.startswith("ai_") else name
-
         # Slug erzeugen
-        slug = re.sub(r"[^\w\s-]", "", ai_name.lower())
+        slug = re.sub(r"[^\w\s-]", "", name.lower())
         slug = re.sub(r"[-\s]+", "-", slug).strip("-")
 
         # Kategorie suchen oder erstellen
@@ -78,16 +75,16 @@ async def accept_categories(
         )
         if not cat:
             cursor = await db.execute(
-                "INSERT INTO categories (name, slug) VALUES (?, ?)", (ai_name, slug)
+                "INSERT INTO categories (name, slug) VALUES (?, ?)", (name, slug)
             )
             cat_id = cursor.lastrowid
-            created.append(ai_name)
+            created.append(name)
         else:
             cat_id = cat["id"]
 
-        # Buch zuordnen
+        # Buch zuordnen mit Quelle 'ki'
         await db.execute(
-            "INSERT OR IGNORE INTO book_categories (book_id, category_id) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'ki')",
             (book_id, cat_id),
         )
         assigned.append(name)
@@ -127,13 +124,19 @@ class AiConfigUpdate(BaseModel):
 @router.get("/config")
 async def get_ai_config(_token: str = Depends(verify_token)):
     """Gibt die KI-Konfiguration zurück."""
-    # Gespeichertes Modell aus DB laden (überschreibt .env)
-    saved = await db.fetch_one(
+    saved_model = await db.fetch_one(
         "SELECT value FROM app_settings WHERE key = 'lm_studio_model'"
     )
-    modell = saved["value"] if saved else settings.lm_studio_model
+    saved_url = await db.fetch_one(
+        "SELECT value FROM app_settings WHERE key = 'lm_studio_url'"
+    )
+    modell = saved_model["value"] if saved_model else settings.lm_studio_model
+    url = saved_url["value"] if saved_url else settings.lm_studio_url
+    # Runtime-Settings synchronisieren
+    if saved_url:
+        settings.lm_studio_url = url
     return {
-        "url": settings.lm_studio_url,
+        "url": url,
         "modell": modell,
         "aktiviert": settings.lm_studio_enabled,
     }
@@ -141,26 +144,84 @@ async def get_ai_config(_token: str = Depends(verify_token)):
 
 @router.patch("/config")
 async def update_ai_config(data: AiConfigUpdate, _token: str = Depends(verify_token)):
-    """Aktualisiert die KI-Konfiguration (persistiert Modellwahl)."""
+    """Aktualisiert die KI-Konfiguration (persistiert Modellwahl und URL)."""
     if data.lm_studio_model is not None:
         await db.execute(
             """INSERT INTO app_settings (key, value) VALUES ('lm_studio_model', ?)
                ON CONFLICT(key) DO UPDATE SET value = ?""",
             (data.lm_studio_model, data.lm_studio_model),
         )
-        # Auch Runtime-Setting aktualisieren
         settings.lm_studio_model = data.lm_studio_model
-        await db.commit()
 
-    saved = await db.fetch_one(
+    if data.lm_studio_url is not None:
+        await db.execute(
+            """INSERT INTO app_settings (key, value) VALUES ('lm_studio_url', ?)
+               ON CONFLICT(key) DO UPDATE SET value = ?""",
+            (data.lm_studio_url, data.lm_studio_url),
+        )
+        settings.lm_studio_url = data.lm_studio_url
+
+    await db.commit()
+
+    saved_model = await db.fetch_one(
         "SELECT value FROM app_settings WHERE key = 'lm_studio_model'"
     )
-    modell = saved["value"] if saved else settings.lm_studio_model
+    saved_url = await db.fetch_one(
+        "SELECT value FROM app_settings WHERE key = 'lm_studio_url'"
+    )
     return {
-        "url": settings.lm_studio_url,
-        "modell": modell,
+        "url": saved_url["value"] if saved_url else settings.lm_studio_url,
+        "modell": saved_model["value"] if saved_model else settings.lm_studio_model,
         "aktiviert": settings.lm_studio_enabled,
     }
+
+
+@router.get("/scan")
+async def scan_network(_token: str = Depends(verify_token)):
+    """Scannt das lokale Netzwerk nach LM Studio Instanzen."""
+    import httpx
+    import socket
+
+    gefunden = []
+
+    # Eigene IPs ermitteln
+    ips_to_scan = set()
+    try:
+        hostname = socket.gethostname()
+        for info in socket.getaddrinfo(hostname, None, socket.AF_INET):
+            ip = info[4][0]
+            if ip.startswith("127."):
+                continue
+            # Subnet scannen
+            parts = ip.split(".")
+            prefix = ".".join(parts[:3])
+            ips_to_scan.add(prefix)
+    except Exception:
+        pass
+
+    # Localhost immer prüfen
+    standard_urls = [
+        "http://localhost:1234",
+        "http://127.0.0.1:1234",
+    ]
+
+    # Subnet-IPs auf Port 1234 prüfen (nur .1, .2, ... .20 und .100-.110)
+    for prefix in ips_to_scan:
+        for last in list(range(1, 21)) + list(range(100, 111)):
+            standard_urls.append(f"http://{prefix}.{last}:1234")
+
+    async with httpx.AsyncClient(timeout=1.5) as client:
+        for url in standard_urls:
+            try:
+                resp = await client.get(f"{url}/v1/models")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    modelle = len(data.get("data", []))
+                    gefunden.append({"url": url, "modelle": modelle})
+            except Exception:
+                continue
+
+    return {"gefunden": gefunden}
 
 
 # --- Prompt-Verwaltung ---

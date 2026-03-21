@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from backend.app.core.auth import verify_token, verify_token_query
 from backend.app.core.config import settings
 from backend.app.services.import_service import (
+    clear_finished_tasks,
     create_import_task,
     get_import_status,
     import_single_file,
@@ -169,6 +170,14 @@ async def scan_external_dir(
 @router.get("/status")
 async def import_status(_token: str = Depends(verify_token)):
     """Gibt den Status aller Import-Aufgaben zurück."""
+    tasks = await get_import_status()
+    return {"aufgaben": tasks}
+
+
+@router.delete("/bereinigen")
+async def clear_finished(_token: str = Depends(verify_token)):
+    """Löscht alle abgeschlossenen Import-Aufgaben aus der Datenbank."""
+    await clear_finished_tasks()
     tasks = await get_import_status()
     return {"aufgaben": tasks}
 

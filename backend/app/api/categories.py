@@ -138,7 +138,7 @@ async def assign_categories(
     await db.execute("DELETE FROM book_categories WHERE book_id = ?", (book_id,))
     for cat_id in kategorie_ids:
         await db.execute(
-            "INSERT OR IGNORE INTO book_categories (book_id, category_id) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'manuell')",
             (book_id, cat_id),
         )
     await db.commit()
