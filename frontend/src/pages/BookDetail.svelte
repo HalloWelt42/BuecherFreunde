@@ -53,6 +53,62 @@
       book = { ...book, rating: result.bewertung ?? result.rating };
     } catch { /* still */ }
   }
+
+  const papierLabel = { normal: "Normal", sepia: "Sepia", dunkel: "Dunkel" };
+  const ansichtLabel = { breite: "Seitenbreite", seite: "Ganze Seite" };
+
+  function parseLeseposition(pos, format) {
+    if (!pos) return { items: [], fontPreview: null };
+    const items = [];
+    let fontPreview = null;
+
+    if (pos.startsWith("pdf:")) {
+      try {
+        const d = JSON.parse(pos.slice(4));
+        if (d.page) items.push({ label: "Seite", value: d.page });
+        if (d.zoom) items.push({ label: "Zoom", value: `${d.zoom}%` });
+        if (d.ansicht) items.push({ label: "Ansicht", value: d.ansicht, type: "pdf-ansicht" });
+        if (d.papier) items.push({ label: "Papier", value: d.papier, type: "papier" });
+      } catch { items.push({ label: "Position", value: pos }); }
+    } else if (pos.startsWith("epub:")) {
+      try {
+        const d = JSON.parse(pos.slice(5));
+        if (d.fontSize) items.push({ label: "Schrift", value: `${d.fontSize}%` });
+        if (d.fontFamily) {
+          fontPreview = {
+            family: d.fontFamily,
+            name: d.fontFamily.split(",")[0].trim(),
+            fg: d.fgColor || null,
+            bg: d.bgColor || null,
+          };
+        }
+        if (d.lineHeight) items.push({ label: "Zeilenabstand", value: `${d.lineHeight}` });
+        if (d.singlePage != null) items.push({ label: "Layout", value: d.singlePage ? "single" : "double", type: "layout" });
+        if (d.maxWidthSingle) items.push({ label: "Breite (1-seitig)", value: `${d.maxWidthSingle}px` });
+        if (d.maxWidthDouble) items.push({ label: "Breite (2-seitig)", value: `${d.maxWidthDouble}px` });
+      } catch { items.push({ label: "Position", value: pos }); }
+    } else if (pos.startsWith("txt:")) {
+      const rest = pos.slice(4);
+      if (rest.startsWith("{")) {
+        try {
+          const d = JSON.parse(rest);
+          if (d.scrollPct != null) items.push({ label: "Fortschritt", value: `${d.scrollPct}%` });
+          if (d.fontSize) items.push({ label: "Schrift", value: `${d.fontSize}%` });
+          if (d.papier) items.push({ label: "Papier", value: d.papier, type: "papier" });
+        } catch { items.push({ label: "Position", value: pos }); }
+      } else {
+        items.push({ label: "Fortschritt", value: `${rest}%` });
+      }
+    } else if (pos.startsWith("cfi:")) {
+      items.push({ label: "EPUB-Position", value: "Gespeichert" });
+    } else {
+      const m = pos.match(/page:(\d+)/);
+      if (m) items.push({ label: "Seite", value: m[1] });
+      else items.push({ label: "Position", value: pos });
+    }
+
+    return { items, fontPreview };
+  }
 </script>
 
 <div class="book-detail">
@@ -159,9 +215,52 @@
         {/if}
 
         {#if book.reading_position}
+          {@const pos = parseLeseposition(book.reading_position, book.file_format)}
           <div class="position-section">
             <h2 class="section-title">Lesefortschritt</h2>
-            <p class="position-info">Position: {book.reading_position}</p>
+            <div class="position-details">
+              {#each pos.items as item}
+                <div class="pos-item">
+                  <span class="pos-label">{item.label}</span>
+                  {#if item.type === "layout"}
+                    <span class="pos-value pos-icon" title={item.value === "single" ? "Einzelseite" : "Doppelseite"}>
+                      {#if item.value === "single"}
+                        <svg width="16" height="14" viewBox="0 0 16 14"><rect x="3" y="0" width="10" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                      {:else}
+                        <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0.75" y="0" width="8" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="11.25" y="0" width="8" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                      {/if}
+                    </span>
+                  {:else if item.type === "pdf-ansicht"}
+                    <span class="pos-value pos-icon" title={ansichtLabel[item.value] || item.value}>
+                      {#if item.value === "scroll"}
+                        <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="0" width="12" height="5.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="1" y="8.5" width="12" height="5.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+                      {:else if item.value === "breite"}
+                        <svg width="18" height="14" viewBox="0 0 18 14"><rect x="0.75" y="1" width="16.5" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="4" y1="5" x2="14" y2="5" stroke="currentColor" stroke-width="1" opacity="0.4"/><line x1="4" y1="7.5" x2="12" y2="7.5" stroke="currentColor" stroke-width="1" opacity="0.4"/><line x1="4" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="1" opacity="0.4"/></svg>
+                      {:else if item.value === "seite"}
+                        <svg width="12" height="14" viewBox="0 0 12 14"><rect x="0.75" y="0" width="10.5" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+                      {:else if item.value === "einzeln"}
+                        <svg width="16" height="14" viewBox="0 0 16 14"><rect x="3" y="0" width="10" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                      {:else if item.value === "doppel"}
+                        <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0.75" y="0" width="8" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="11.25" y="0" width="8" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                      {/if}
+                    </span>
+                  {:else if item.type === "papier"}
+                    <span class="pos-value pos-papier pos-papier-{item.value}" title={papierLabel[item.value] || item.value}></span>
+                  {:else}
+                    <span class="pos-value">{item.value}</span>
+                  {/if}
+                </div>
+              {/each}
+              {#if pos.fontPreview}
+                <div class="pos-item">
+                  <span class="pos-label">Schriftart</span>
+                  <span
+                    class="pos-font-preview"
+                    style="font-family: {pos.fontPreview.family}; {pos.fontPreview.fg ? `color: ${pos.fontPreview.fg};` : ''} {pos.fontPreview.bg ? `background-color: ${pos.fontPreview.bg};` : ''}"
+                  >{pos.fontPreview.name}</span>
+                </div>
+              {/if}
+            </div>
             <a href="/book/{book.id}/read" class="btn btn-secondary btn-sm">
               Weiterlesen
             </a>
@@ -382,8 +481,66 @@
     align-items: flex-start;
   }
 
-  .position-info {
-    font-size: 0.875rem;
-    color: var(--color-text-secondary);
+  .position-details {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 0.75rem;
+    margin-bottom: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    background-color: var(--color-bg-tertiary);
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+  }
+
+  .pos-item {
+    display: contents;
+  }
+
+  .pos-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+
+  .pos-value {
+    font-size: 0.75rem;
+    color: var(--color-text-primary);
+    font-family: var(--font-mono);
+  }
+
+  .pos-icon {
+    display: flex;
+    align-items: center;
+  }
+
+  .pos-papier {
+    width: 18px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid var(--color-border);
+  }
+
+  .pos-papier-normal {
+    background-color: #ffffff;
+  }
+
+  .pos-papier-sepia {
+    background-color: #f4ecd8;
+  }
+
+  .pos-papier-dunkel {
+    background-color: #1e1e1e;
+  }
+
+  .pos-papier-kontrast {
+    background-color: #000000;
+  }
+
+  .pos-font-preview {
+    font-size: 0.8125rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--color-border);
+    display: inline-block;
   }
 </style>
