@@ -52,12 +52,24 @@ export function loescheBuch(id) {
 }
 
 /**
+ * Massenbearbeitung fuer mehrere Buecher.
+ * @param {number[]} bookIds
+ * @param {string} aktion - "loeschen", "kategorie_zuweisen", "tag_zuweisen", "favorit", "zu_lesen"
+ * @param {*} [wert]
+ * @returns {Promise<{betroffen: number, aktion: string}>}
+ */
+export function bulkAction(bookIds, aktion, wert) {
+  return post("/api/books/bulk", { book_ids: bookIds, aktion, wert });
+}
+
+/**
  * Cover-URL für ein Buch.
  * @param {number} id
  * @returns {string}
  */
 export function coverUrl(id) {
-  return `/api/books/${id}/cover`;
+  const token = localStorage.getItem("api_token") || "bitte-aendern-sicherer-token-hier";
+  return `/api/books/${id}/cover?token=${encodeURIComponent(token)}`;
 }
 
 /**
@@ -66,7 +78,8 @@ export function coverUrl(id) {
  * @returns {string}
  */
 export function dateiUrl(id) {
-  return `/api/books/${id}/file`;
+  const token = localStorage.getItem("api_token") || "bitte-aendern-sicherer-token-hier";
+  return `/api/books/${id}/file?token=${encodeURIComponent(token)}`;
 }
 
 /**

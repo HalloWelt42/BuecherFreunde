@@ -1,4 +1,6 @@
 <script>
+  import CategoryTree from "./CategoryTree.svelte";
+
   let { categories = [], level = 0, activeId = null } = $props();
 
   let expanded = $state({});
@@ -18,13 +20,13 @@
             onclick={() => toggle(cat.id)}
             title={expanded[cat.id] ? "Zuklappen" : "Aufklappen"}
           >
-            {expanded[cat.id] ? "\u25BE" : "\u25B8"}
+            <i class="fa-solid {expanded[cat.id] ? 'fa-chevron-down' : 'fa-chevron-right'}"></i>
           </button>
         {:else}
           <span class="expand-placeholder"></span>
         {/if}
 
-        <a href="#/?category={cat.id}" class="category-link">
+        <a href="/?category={cat.id}" class="category-link">
           <span class="category-name">{cat.name}</span>
           {#if cat.buch_anzahl > 0}
             <span class="category-count">{cat.buch_anzahl}</span>
@@ -33,7 +35,7 @@
       </div>
 
       {#if expanded[cat.id] && cat.kinder && cat.kinder.length > 0}
-        <svelte:self
+        <CategoryTree
           categories={cat.kinder}
           level={level + 1}
           {activeId}

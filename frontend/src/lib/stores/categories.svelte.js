@@ -1,5 +1,5 @@
 /**
- * Store: Kategorien mit Baumstruktur.
+ * Store: Kategorien (flache Liste).
  */
 import { ladeKategorien } from "../api/categories.js";
 

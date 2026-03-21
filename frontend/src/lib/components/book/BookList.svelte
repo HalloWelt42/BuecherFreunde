@@ -2,7 +2,7 @@
   import RatingStars from "../ui/RatingStars.svelte";
   import { coverUrl } from "../../api/books.js";
 
-  let { books = [], onSort = null } = $props();
+  let { books = [], onSort = null, detailed = false } = $props();
 
   let sortColumn = $state("title");
   let sortDir = $state("asc");
@@ -19,14 +19,15 @@
     }
   }
 
-  function sortIndicator(column) {
-    if (sortColumn !== column) return "";
-    return sortDir === "asc" ? " \u25B4" : " \u25BE";
+  function sortIcon(column) {
+    if (sortColumn !== column) return "fa-sort";
+    return sortDir === "asc" ? "fa-sort-up" : "fa-sort-down";
   }
 
   function formatSize(bytes) {
+    if (!bytes) return "-";
     if (bytes < 1024) return bytes + " B";
-    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+    if (bytes < 1048576) return (bytes / 1024).toFixed(0) + " KB";
     return (bytes / 1048576).toFixed(1) + " MB";
   }
 
@@ -41,29 +42,92 @@
 
 {#if books.length === 0}
   <div class="empty">
+    <i class="fa-solid fa-book-open empty-icon"></i>
     <p>Keine Bücher gefunden.</p>
   </div>
+{:else if detailed}
+  <!-- Detailliste -->
+  <div class="detail-list">
+    {#each books as book (book.id)}
+      <a href="/book/{book.id}" class="detail-row">
+        <div class="detail-cover">
+          <img
+            src={coverUrl(book.id)}
+            alt=""
+            class="detail-cover-img"
+            loading="lazy"
+            onerror={(e) => { e.target.style.display = "none"; e.target.nextElementSibling.style.display = "flex"; }}
+          />
+          <div class="detail-cover-placeholder" style="display: none;">
+            <i class="fa-solid fa-book"></i>
+          </div>
+        </div>
+        <div class="detail-info">
+          <div class="detail-header">
+            <h3 class="detail-title">{book.title}</h3>
+            <span class="detail-format">{formatLabel[book.file_format] || book.file_format}</span>
+          </div>
+          <p class="detail-author">{book.author || "Unbekannter Autor"}</p>
+          <div class="detail-meta">
+            <RatingStars rating={book.rating} size="small" />
+            {#if book.page_count}
+              <span class="detail-meta-item">
+                <i class="fa-solid fa-file-lines"></i> {book.page_count} S.
+              </span>
+            {/if}
+            <span class="detail-meta-item">
+              {formatSize(book.file_size)}
+            </span>
+            {#if book.year}
+              <span class="detail-meta-item">
+                <i class="fa-solid fa-calendar"></i> {book.year}
+              </span>
+            {/if}
+          </div>
+          {#if book.categories && book.categories.length > 0}
+            <div class="detail-categories">
+              {#each book.categories.slice(0, 4) as cat (cat.id)}
+                <span class="detail-chip">{cat.name}</span>
+              {/each}
+              {#if book.categories.length > 4}
+                <span class="detail-chip more">+{book.categories.length - 4}</span>
+              {/if}
+            </div>
+          {/if}
+        </div>
+        <div class="detail-actions">
+          {#if book.is_favorite}
+            <i class="fa-solid fa-heart detail-fav"></i>
+          {/if}
+          {#if book.is_to_read}
+            <i class="fa-solid fa-bookmark detail-bookmark"></i>
+          {/if}
+        </div>
+      </a>
+    {/each}
+  </div>
 {:else}
+  <!-- Kompakte Tabelle -->
   <div class="table-wrapper">
     <table class="book-table">
       <thead>
         <tr>
           <th class="col-cover"></th>
           <th class="col-title sortable" onclick={() => handleSort("title")}>
-            Titel{sortIndicator("title")}
+            Titel <i class="fa-solid {sortIcon('title')} sort-icon"></i>
           </th>
           <th class="col-author sortable" onclick={() => handleSort("author")}>
-            Autor{sortIndicator("author")}
+            Autor <i class="fa-solid {sortIcon('author')} sort-icon"></i>
           </th>
           <th class="col-format">Format</th>
           <th class="col-size sortable" onclick={() => handleSort("file_size")}>
-            Größe{sortIndicator("file_size")}
+            Größe <i class="fa-solid {sortIcon('file_size')} sort-icon"></i>
           </th>
           <th class="col-rating sortable" onclick={() => handleSort("rating")}>
-            Bewertung{sortIndicator("rating")}
+            Bewertung <i class="fa-solid {sortIcon('rating')} sort-icon"></i>
           </th>
           <th class="col-year sortable" onclick={() => handleSort("year")}>
-            Jahr{sortIndicator("year")}
+            Jahr <i class="fa-solid {sortIcon('year')} sort-icon"></i>
           </th>
         </tr>
       </thead>
@@ -71,7 +135,7 @@
         {#each books as book (book.id)}
           <tr>
             <td class="col-cover">
-              <a href="#/book/{book.id}" class="cover-link">
+              <a href="/book/{book.id}" class="cover-link">
                 <img
                   src={coverUrl(book.id)}
                   alt=""
@@ -82,7 +146,7 @@
               </a>
             </td>
             <td class="col-title">
-              <a href="#/book/{book.id}" class="title-link">
+              <a href="/book/{book.id}" class="title-link">
                 {book.title}
               </a>
             </td>
@@ -94,7 +158,7 @@
             </td>
             <td class="col-size">{formatSize(book.file_size)}</td>
             <td class="col-rating">
-              <RatingStars rating={book.rating} />
+              <RatingStars rating={book.rating} size="small" />
             </td>
             <td class="col-year">{book.year || "-"}</td>
           </tr>
@@ -105,6 +169,7 @@
 {/if}
 
 <style>
+  /* Kompakte Tabelle */
   .table-wrapper {
     overflow-x: auto;
   }
@@ -112,17 +177,17 @@
   .book-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
   }
 
   .book-table th {
     text-align: left;
     font-weight: 600;
     color: var(--color-text-muted);
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    padding: 0.625rem 0.5rem;
+    padding: 0.5rem;
     border-bottom: 2px solid var(--color-border);
     white-space: nowrap;
   }
@@ -136,8 +201,14 @@
     color: var(--color-text-primary);
   }
 
+  .sort-icon {
+    font-size: 0.5rem;
+    opacity: 0.5;
+    margin-left: 0.125rem;
+  }
+
   .book-table td {
-    padding: 0.5rem;
+    padding: 0.375rem 0.5rem;
     border-bottom: 1px solid var(--color-border);
     vertical-align: middle;
   }
@@ -147,7 +218,7 @@
   }
 
   .col-cover {
-    width: 40px;
+    width: 36px;
   }
 
   .cover-link {
@@ -155,8 +226,8 @@
   }
 
   .mini-cover {
-    width: 32px;
-    height: 48px;
+    width: 28px;
+    height: 40px;
     object-fit: cover;
     border-radius: 3px;
   }
@@ -177,10 +248,10 @@
 
   .format-tag {
     font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
     font-weight: 700;
-    padding: 0.125rem 0.375rem;
-    border-radius: 4px;
+    padding: 0.0625rem 0.3125rem;
+    border-radius: 3px;
     background-color: var(--color-bg-tertiary);
     color: var(--color-text-muted);
   }
@@ -188,19 +259,170 @@
   .col-size {
     color: var(--color-text-muted);
     white-space: nowrap;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
   }
 
   .col-year {
     color: var(--color-text-muted);
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
   }
 
+  /* Detailliste */
+  .detail-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .detail-row {
+    display: flex;
+    gap: 1rem;
+    padding: 0.75rem 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+    text-decoration: none;
+    color: inherit;
+    transition: background-color 0.08s;
+    align-items: flex-start;
+  }
+
+  .detail-row:hover {
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .detail-cover {
+    flex-shrink: 0;
+    width: 56px;
+    height: 80px;
+    border-radius: 4px;
+    overflow: hidden;
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .detail-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .detail-cover-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    font-size: 1.25rem;
+    opacity: 0.4;
+  }
+
+  .detail-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .detail-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .detail-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .detail-format {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    font-weight: 700;
+    padding: 0.0625rem 0.3125rem;
+    border-radius: 3px;
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-muted);
+  }
+
+  .detail-author {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+  }
+
+  .detail-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.125rem;
+  }
+
+  .detail-meta-item {
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  .detail-meta-item i {
+    font-size: 0.5625rem;
+  }
+
+  .detail-categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+  }
+
+  .detail-chip {
+    font-size: 0.5625rem;
+    padding: 0.0625rem 0.375rem;
+    border-radius: 999px;
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-muted);
+  }
+
+  .detail-chip.more {
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+
+  .detail-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    padding-top: 0.25rem;
+  }
+
+  .detail-fav {
+    color: var(--color-favorite);
+    font-size: 0.75rem;
+  }
+
+  .detail-bookmark {
+    color: var(--color-accent);
+    font-size: 0.75rem;
+  }
+
+  /* Empty */
   .empty {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 3rem;
     color: var(--color-text-muted);
+    gap: 0.5rem;
+  }
+
+  .empty-icon {
+    font-size: 2rem;
+    opacity: 0.3;
   }
 </style>
