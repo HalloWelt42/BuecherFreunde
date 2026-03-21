@@ -65,14 +65,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     background: none;
     border: 1px solid transparent;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
     color: var(--color-text-secondary);
-    font-size: 1rem;
+    font-size: 0.875rem;
     text-decoration: none;
     transition: background-color 0.12s, color 0.12s, border-color 0.12s;
   }
@@ -92,12 +92,12 @@
   }
 
   .brand-icon {
-    font-size: 1.25rem;
+    font-size: 1rem;
     color: var(--color-accent);
   }
 
   .brand-text {
-    font-size: 1.125rem;
+    font-size: 0.9375rem;
     font-weight: 700;
     color: var(--color-text-primary);
     letter-spacing: -0.01em;

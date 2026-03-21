@@ -71,9 +71,10 @@
     display: grid;
     grid-template-areas:
       "header header"
-      "sidebar main";
+      "sidebar main"
+      "footer footer";
     grid-template-columns: var(--sidebar-width) 1fr;
-    grid-template-rows: var(--header-height) 1fr;
+    grid-template-rows: var(--header-height) 1fr auto;
     height: 100vh;
     overflow: hidden;
   }

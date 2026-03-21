@@ -13,6 +13,20 @@
     weiterlesen: 0,
   });
 
+  let version = $state("...");
+
+  async function ladeVersion() {
+    try {
+      const res = await fetch("/api/config/version");
+      if (res.ok) {
+        const data = await res.json();
+        version = data.version;
+      }
+    } catch {
+      version = "?";
+    }
+  }
+
   // Aktive Kategorie-IDs aus URL lesen
   let activeCategories = $derived.by(() => {
     const v = new URLSearchParams(route.qs || "").get("category");
@@ -126,6 +140,7 @@
 
   onMount(() => {
     ladeStats();
+    ladeVersion();
     categoriesStore.aktualisieren();
     tagsStore.aktualisieren();
 
@@ -289,6 +304,10 @@
       <span class="nav-label">Einstellungen</span>
     </a>
   </nav>
+
+  <!-- Spacer + Version -->
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-version">BücherFreunde v{version}</div>
 </aside>
 
 <style>
@@ -536,5 +555,18 @@
 
   .tag-btn.active .tag-count {
     color: var(--color-accent);
+  }
+
+  /* Spacer + Version */
+  .sidebar-spacer {
+    flex: 1;
+  }
+
+  .sidebar-version {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.625rem;
+    color: var(--color-text-muted);
+    text-align: center;
+    opacity: 0.6;
   }
 </style>

@@ -112,3 +112,13 @@ export function stopPolling() {
 export function toggleExpanded() {
   processes.expanded = !processes.expanded;
 }
+
+/** Fertige und fehlerhafte Tasks aus der Liste entfernen */
+export function clearFinished() {
+  processes.importTasks = processes.importTasks.filter(
+    (t) => t.status === "wartend" || t.status === "verarbeite",
+  );
+  if (processes.importTasks.length === 0) {
+    processes.expanded = false;
+  }
+}

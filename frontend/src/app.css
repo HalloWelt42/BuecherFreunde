@@ -80,7 +80,7 @@
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --sidebar-width: 280px;
-  --header-height: 56px;
+  --header-height: 44px;
 }
 
 :root.dark {

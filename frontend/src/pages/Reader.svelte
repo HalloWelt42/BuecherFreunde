@@ -77,7 +77,7 @@
   .reader-page {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - var(--header-height) - 2rem);
+    height: 100%;
     margin: -1.5rem;
   }
 
