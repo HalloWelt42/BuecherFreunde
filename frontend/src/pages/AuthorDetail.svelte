@@ -174,6 +174,26 @@
     }
   }
 
+  function konfidenzInfo(stufe, score) {
+    const erklaerung = [
+      `Konfidenz: ${stufe} (${score || 0} Punkte)`,
+      "",
+      "Scoring:",
+      "+10  Beruf: Schriftsteller/Autor",
+      "+8   Exakter Namens-Match",
+      "+5   Deutscher Wikipedia-Artikel",
+      "+1-10 Sitelinks (Bekanntheit)",
+      "+15  Werke stimmen mit Bibliothek überein",
+      "+30  ISBN-Übereinstimmung",
+      "",
+      "Konfidenz-Stufen:",
+      "Hoch: ab 15 Pkt. oder Buch/ISBN-Treffer",
+      "Mittel: 8-14 Pkt.",
+      "Niedrig: unter 8 Pkt.",
+    ];
+    return erklaerung.join("\n");
+  }
+
   function verwerfen() {
     enrichVorschlag = null;
     enrichAktuell = null;
@@ -242,7 +262,8 @@
             </a>
           {/if}
           {#if autor.konfidenz}
-            <div class="meta-zeile konfidenz-{autor.konfidenz}">
+            <div class="meta-zeile konfidenz-{autor.konfidenz}" title={konfidenzInfo(autor.konfidenz, autor.score)}>
+              <i class="fa-solid fa-shield-halved"></i>
               {autor.konfidenz}{#if autor.score} ({autor.score} Pkt.){/if}
             </div>
           {/if}
@@ -384,7 +405,7 @@
       <div class="meta-vergleich">
         <div class="enrich-header">
           <h2 class="section-title">Wikipedia-Daten</h2>
-          <span class="konfidenz-badge konfidenz-{enrichVorschlag.konfidenz || 'niedrig'}">
+          <span class="konfidenz-badge konfidenz-{enrichVorschlag.konfidenz || 'niedrig'}" title={konfidenzInfo(enrichVorschlag.konfidenz, enrichVorschlag.score)}>
             {enrichVorschlag.konfidenz || "niedrig"}
             {#if enrichVorschlag.score}
               <span class="konfidenz-score">({enrichVorschlag.score} Pkt.)</span>

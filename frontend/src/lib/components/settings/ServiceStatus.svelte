@@ -48,7 +48,7 @@
       raw: ["identifiers", "excerpts", "links", "subjects", "subject_places", "subject_people", "subject_times"],
     },
     "Wikipedia/Wikidata": {
-      beschreibung: "Strukturierte Daten aus Wikidata und Beschreibungstexte aus Wikipedia. Suche über ISBN (P212/P957). Liefert Autor, Verlag, Genre, Themen und Wikipedia-Einleitungstexte auf Deutsch.",
+      beschreibung: "Strukturierte Daten aus Wikidata und Beschreibungstexte aus Wikipedia. Suche über ISBN (P212/P957) für Bücher und über Namens-Match mit Konfidenz-Scoring für Autoren. Liefert Metadaten, Biografien und Werklisten.",
       url: "https://www.wikidata.org/w/api.php",
       feldmapping: [
         { api: "labels (de/en)", lokal: "titel" },
@@ -61,7 +61,21 @@
         { api: "dewiki Extrakt", lokal: "beschreibung" },
         { api: "P136 (Genre) + P921 (Thema)", lokal: "kategorien" },
       ],
+      autorenmapping: [
+        { api: "P106 (Beruf)", lokal: "konfidenz (+10 Pkt.)" },
+        { api: "Name-Match", lokal: "konfidenz (+8 Pkt.)" },
+        { api: "dewiki Sitelink", lokal: "konfidenz (+5 Pkt.)" },
+        { api: "Sitelinks (Anzahl)", lokal: "konfidenz (+1-10 Pkt.)" },
+        { api: "P800 (Werke) vs. Bibliothek", lokal: "konfidenz (+15 Pkt.)" },
+        { api: "ISBN-Match in Werken", lokal: "konfidenz (+30 Pkt.)" },
+        { api: "dewiki Volltext", lokal: "biografie (Markdown)" },
+        { api: "P18 (Bild)", lokal: "foto (3 Größen)" },
+        { api: "P800 (notable works)", lokal: "werke-liste" },
+        { api: "P27 (Staatsangehörigkeit)", lokal: "nationalität" },
+        { api: "P569/P570 (Geburt/Tod)", lokal: "geburts-/todesjahr" },
+      ],
       raw: ["wikidata_id", "kurzbeschreibung", "isbn13", "isbn10", "autoren", "verlage", "sprachen", "genres", "themen", "typen", "wikipedia_titel", "sitelinks"],
+      konfidenz: "Hoch: ab 15 Pkt. oder Buch/ISBN-Treffer | Mittel: 8-14 Pkt. | Niedrig: unter 8 Pkt.",
     },
     "LM Studio": {
       beschreibung: "Lokale KI für automatische Buchkategorisierung. OpenAI-kompatible API auf konfigurierbarem Host. Analysiert Titel, Autor und Textauszug und schlägt Kategorien mit Konfidenzwerten vor.",
@@ -250,6 +264,27 @@
                 </div>
               {/each}
             </div>
+          </div>
+        {/if}
+
+        {#if info?.autorenmapping}
+          <div class="mapping-section">
+            <h4 class="mapping-titel">Autoren-Anreicherung</h4>
+            <div class="mapping-tabelle">
+              <div class="mapping-kopf">
+                <span>Quelle</span>
+                <span>Ziel</span>
+              </div>
+              {#each info.autorenmapping as m}
+                <div class="mapping-zeile">
+                  <code class="mapping-api">{m.api}</code>
+                  <span class="mapping-lokal">{m.lokal}</span>
+                </div>
+              {/each}
+            </div>
+            {#if info.konfidenz}
+              <p class="konfidenz-erklaerung">{info.konfidenz}</p>
+            {/if}
           </div>
         {/if}
 
@@ -455,6 +490,16 @@
     padding: 0.125rem 0.375rem;
     border-radius: 3px;
     border: 1px solid var(--color-border);
+  }
+
+  .konfidenz-erklaerung {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-top: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    background-color: var(--color-bg-secondary);
+    border-radius: 4px;
+    border-left: 3px solid var(--color-accent);
   }
 
   /* Refresh */
