@@ -33,6 +33,12 @@
       <span class="meta-value">{book.page_count}</span>
     </div>
   {/if}
+  {#if book.isbn}
+    <div class="meta-item">
+      <span class="meta-label">ISBN</span>
+      <span class="meta-value mono">{book.isbn}</span>
+    </div>
+  {/if}
   {#if book.year}
     <div class="meta-item">
       <span class="meta-label">Jahr</span>
@@ -80,5 +86,10 @@
   .meta-value.format {
     font-family: var(--font-mono);
     font-weight: 700;
+  }
+
+  .meta-value.mono {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
   }
 </style>

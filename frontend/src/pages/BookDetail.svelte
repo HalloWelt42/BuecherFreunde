@@ -1,5 +1,6 @@
 <script>
-  import { holeBuch, coverUrl } from "../lib/api/books.js";
+  import { holeBuch, coverUrl, aktualisiereBuch } from "../lib/api/books.js";
+  import { post } from "../lib/api/client.js";
   import { toggleFavorit, toggleZumLesen, setzeBewertung } from "../lib/api/user-data.js";
   import { sucheMetadaten, uebernehmMetadaten } from "../lib/api/metadata.js";
   import RatingStars from "../lib/components/ui/RatingStars.svelte";
@@ -15,6 +16,80 @@
   let coverError = $state(false);
   let aiDialogOpen = $state(false);
   let kategorienAlle = $state(false);
+
+  // Editiermodus
+  let editMode = $state(false);
+  let editData = $state({});
+  let editSpeichern = $state(false);
+
+  // ISBN-Scan
+  let isbnScanLaden = $state(false);
+  let isbnScanErgebnis = $state(null);
+
+  function startEdit() {
+    editData = {
+      title: book.title || "",
+      author: book.author || "",
+      isbn: book.isbn || "",
+      publisher: book.publisher || "",
+      year: book.year || "",
+      language: book.language || "",
+      description: book.description || "",
+      page_count: book.page_count || "",
+    };
+    editMode = true;
+  }
+
+  function cancelEdit() {
+    editMode = false;
+    editData = {};
+  }
+
+  async function saveEdit() {
+    if (editSpeichern) return;
+    editSpeichern = true;
+    try {
+      const daten = {};
+      for (const [key, val] of Object.entries(editData)) {
+        if (key === "year" || key === "page_count") {
+          const num = parseInt(val) || null;
+          if (num !== (book[key] || null)) daten[key] = num;
+        } else {
+          if (val !== (book[key] || "")) daten[key] = val;
+        }
+      }
+      if (Object.keys(daten).length > 0) {
+        await aktualisiereBuch(book.id, daten);
+        await ladeBuch(book.id);
+      }
+      editMode = false;
+      editData = {};
+    } catch (e) {
+      fehler = e.message || "Fehler beim Speichern";
+    } finally {
+      editSpeichern = false;
+    }
+  }
+
+  async function isbnScannen() {
+    if (isbnScanLaden || !book) return;
+    isbnScanLaden = true;
+    isbnScanErgebnis = null;
+    try {
+      isbnScanErgebnis = await post(`/api/books/${book.id}/isbn-scan`);
+    } catch (e) {
+      fehler = e.message || "ISBN-Scan fehlgeschlagen";
+    } finally {
+      isbnScanLaden = false;
+    }
+  }
+
+  function isbnUebernehmen(isbn) {
+    if (editMode) {
+      editData.isbn = isbn;
+    }
+    isbnScanErgebnis = null;
+  }
 
   // Metadaten-Anreicherung
   let metaLaden = $state(false);
@@ -261,14 +336,107 @@
       </div>
 
       <div class="info-section">
-        <h1 class="book-title">{book.title}</h1>
-        <p class="book-author">{book.author || "Unbekannter Autor"}</p>
+        {#if editMode}
+          <div class="edit-form">
+            <div class="edit-field">
+              <label class="edit-label">Titel</label>
+              <input type="text" class="edit-input" bind:value={editData.title} />
+            </div>
+            <div class="edit-field">
+              <label class="edit-label">Autor</label>
+              <input type="text" class="edit-input" bind:value={editData.author} />
+            </div>
+            <div class="edit-row">
+              <div class="edit-field">
+                <label class="edit-label">ISBN</label>
+                <div class="edit-isbn-row">
+                  <input type="text" class="edit-input mono" bind:value={editData.isbn} />
+                  <button class="btn btn-sm btn-secondary" onclick={isbnScannen} disabled={isbnScanLaden} title="ISBN aus Buch extrahieren">
+                    {#if isbnScanLaden}
+                      <i class="fa-solid fa-spinner fa-spin"></i>
+                    {:else}
+                      <i class="fa-solid fa-barcode"></i>
+                    {/if}
+                  </button>
+                </div>
+              </div>
+              <div class="edit-field">
+                <label class="edit-label">Jahr</label>
+                <input type="number" class="edit-input" bind:value={editData.year} />
+              </div>
+            </div>
+            {#if isbnScanErgebnis}
+              <div class="isbn-scan-ergebnis">
+                {#if isbnScanErgebnis.gefunden.length === 0}
+                  <span class="isbn-scan-leer">Keine ISBN im Buch gefunden</span>
+                {:else}
+                  <span class="isbn-scan-titel">Gefundene ISBNs:</span>
+                  {#each isbnScanErgebnis.gefunden as eintrag}
+                    <div class="isbn-scan-gruppe">
+                      {#if eintrag.isbn13}
+                        <button class="isbn-chip" onclick={() => isbnUebernehmen(eintrag.isbn13)}>
+                          ISBN-13: {eintrag.isbn13}
+                        </button>
+                      {/if}
+                      {#if eintrag.isbn10}
+                        <button class="isbn-chip" onclick={() => isbnUebernehmen(eintrag.isbn10)}>
+                          ISBN-10: {eintrag.isbn10}
+                        </button>
+                      {/if}
+                    </div>
+                  {/each}
+                {/if}
+              </div>
+            {/if}
+            <div class="edit-row">
+              <div class="edit-field">
+                <label class="edit-label">Verlag</label>
+                <input type="text" class="edit-input" bind:value={editData.publisher} />
+              </div>
+              <div class="edit-field">
+                <label class="edit-label">Sprache</label>
+                <input type="text" class="edit-input" bind:value={editData.language} />
+              </div>
+            </div>
+            <div class="edit-row">
+              <div class="edit-field">
+                <label class="edit-label">Seiten</label>
+                <input type="number" class="edit-input" bind:value={editData.page_count} />
+              </div>
+            </div>
+            <div class="edit-field">
+              <label class="edit-label">Beschreibung</label>
+              <textarea class="edit-input edit-textarea" bind:value={editData.description} rows="3"></textarea>
+            </div>
+            <div class="edit-aktionen">
+              <button class="btn btn-primary btn-sm" onclick={saveEdit} disabled={editSpeichern}>
+                {#if editSpeichern}
+                  <i class="fa-solid fa-spinner fa-spin"></i>
+                {/if}
+                Speichern
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick={cancelEdit}>Abbrechen</button>
+            </div>
+          </div>
+        {:else}
+          <h1 class="book-title">{book.title}</h1>
+          <p class="book-author">{book.author || "Unbekannter Autor"}</p>
+        {/if}
 
         <div class="rating-row">
           <RatingStars rating={book.rating} interactive onRate={onRate} />
         </div>
 
         <div class="action-row">
+          {#if !editMode}
+            <button
+              class="action-btn"
+              onclick={startEdit}
+              title="Buchdetails bearbeiten"
+            >
+              <i class="fa-solid fa-pen"></i> Bearbeiten
+            </button>
+          {/if}
           <button
             class="action-btn"
             class:active={book.is_favorite}
@@ -957,5 +1125,117 @@
 
   .notes-section {
     margin-top: 1.5rem;
+  }
+
+  /* Editiermodus */
+  .edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .edit-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1875rem;
+    flex: 1;
+  }
+
+  .edit-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+  }
+
+  .edit-input {
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+    font-family: inherit;
+    width: 100%;
+  }
+
+  .edit-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .edit-input.mono {
+    font-family: var(--font-mono);
+  }
+
+  .edit-textarea {
+    resize: vertical;
+    min-height: 3rem;
+  }
+
+  .edit-row {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .edit-isbn-row {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .edit-isbn-row .edit-input {
+    flex: 1;
+  }
+
+  .edit-aktionen {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+
+  /* ISBN-Scan */
+  .isbn-scan-ergebnis {
+    padding: 0.5rem;
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .isbn-scan-titel {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  .isbn-scan-leer {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+
+  .isbn-scan-gruppe {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+  }
+
+  .isbn-chip {
+    padding: 0.1875rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+
+  .isbn-chip:hover {
+    border-color: var(--color-accent);
+    background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
   }
 </style>

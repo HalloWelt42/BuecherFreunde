@@ -437,3 +437,73 @@ async def get_file(book_id: int, _token: str = Depends(verify_token_query)):
         filename=book["file_name"],
         headers={"Accept-Ranges": "bytes"},
     )
+
+
+@router.post("/{book_id}/isbn-scan")
+async def isbn_scan(book_id: int, _token: str = Depends(verify_token)):
+    """Scannt ein Buch erneut nach ISBNs.
+
+    Liest den Volltext und extrahiert alle gueltigen ISBNs.
+    Liefert fuer jede gefundene ISBN beide Varianten (ISBN-10/13).
+    """
+    import isbnlib
+
+    from backend.app.services.isbn_extractor import extract_isbns_from_text
+
+    book = await db.fetch_one(
+        "SELECT id, hash, isbn FROM books WHERE id = ?", (book_id,)
+    )
+    if not book:
+        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+
+    # Volltext laden
+    fulltext_path = get_sidecar_path(book["hash"], "fulltext.txt")
+    if not fulltext_path.exists():
+        return {"gefunden": [], "aktuell": book["isbn"] or ""}
+
+    text = fulltext_path.read_text(encoding="utf-8", errors="ignore")
+    # Erste und letzte 30.000 Zeichen durchsuchen
+    scan_text = text[:30000]
+    if len(text) > 30000:
+        scan_text += "\n" + text[-30000:]
+
+    raw_isbns = extract_isbns_from_text(scan_text)
+
+    # Alle Varianten mit isbnlib berechnen
+    ergebnisse = []
+    gesehen = set()
+    for isbn in raw_isbns:
+        canonical = isbnlib.canonical(isbn)
+        if not canonical or canonical in gesehen:
+            continue
+        gesehen.add(canonical)
+
+        eintrag = {"original": canonical, "varianten": []}
+
+        # ISBN-13 Variante
+        isbn13 = isbnlib.to_isbn13(canonical) if len(canonical) == 10 else canonical
+        if isbn13 and isbnlib.is_isbn13(isbn13):
+            eintrag["isbn13"] = isbn13
+            if isbn13 not in gesehen:
+                gesehen.add(isbn13)
+
+        # ISBN-10 Variante
+        isbn10 = isbnlib.to_isbn10(canonical) if len(canonical) == 13 else canonical
+        if isbn10 and isbnlib.is_isbn10(isbn10):
+            eintrag["isbn10"] = isbn10
+            if isbn10 not in gesehen:
+                gesehen.add(isbn10)
+
+        # Formatiert
+        try:
+            eintrag["formatiert"] = isbnlib.mask(canonical)
+        except Exception:
+            eintrag["formatiert"] = canonical
+
+        ergebnisse.append(eintrag)
+
+    return {
+        "gefunden": ergebnisse,
+        "aktuell": book["isbn"] or "",
+        "anzahl": len(ergebnisse),
+    }
