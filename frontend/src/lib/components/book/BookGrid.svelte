@@ -16,7 +16,7 @@
     {#each books as book (book.id)}
       <a href="/book/{book.id}" class="cover-item">
         <img
-          src={coverUrl(book.id)}
+          src={coverUrl(book.id, book.updated_at)}
           alt={book.title}
           class="cover-img"
           loading="lazy"
@@ -28,7 +28,7 @@
         </div>
         <!-- Hover-Popup -->
         <div class="cover-popup">
-          <img src={coverUrl(book.id)} alt="" class="popup-img" />
+          <img src={coverUrl(book.id, book.updated_at)} alt="" class="popup-img" />
           <div class="popup-info">
             <strong class="popup-title">{book.title}</strong>
             {#if book.author}

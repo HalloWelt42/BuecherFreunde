@@ -322,7 +322,7 @@
                 <a href="/book/{buch.id}" class="buch-eintrag">
                   <div class="buch-cover-wrap">
                     {#if buch.cover_path}
-                      <img src={coverUrl(buch.id)} alt={buch.title} class="buch-cover" loading="lazy" />
+                      <img src={coverUrl(buch.id, buch.updated_at)} alt={buch.title} class="buch-cover" loading="lazy" />
                     {:else}
                       <div class="buch-cover-placeholder">
                         <span>{(buch.file_format || "?").toUpperCase()}</span>

@@ -211,7 +211,7 @@ async def list_books(
     select_sql = f"""
         SELECT b.id, b.hash, b.title, b.author, b.publisher, b.file_format,
                b.file_size, b.cover_path, b.page_count, b.year, b.isbn,
-               b.typ, b.sammlung_id, b.band_nummer, b.created_at
+               b.typ, b.sammlung_id, b.band_nummer, b.created_at, b.updated_at
         FROM books b
         WHERE {where}
         ORDER BY {sort_col} {sort_dir}
@@ -242,7 +242,7 @@ async def recently_read(
     sql = """
         SELECT b.id, b.hash, b.title, b.author, b.publisher, b.file_format,
                b.file_size, b.cover_path, b.page_count, b.year, b.isbn,
-               b.typ, b.sammlung_id, b.band_nummer, b.created_at
+               b.typ, b.sammlung_id, b.band_nummer, b.created_at, b.updated_at
         FROM books b
         JOIN user_book_data ud ON ud.book_id = b.id
         WHERE ud.last_read_at IS NOT NULL

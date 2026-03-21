@@ -52,7 +52,7 @@
       <a href="/book/{book.id}" class="detail-row">
         <div class="detail-cover">
           <img
-            src={coverUrl(book.id)}
+            src={coverUrl(book.id, book.updated_at)}
             alt=""
             class="detail-cover-img"
             loading="lazy"
@@ -137,7 +137,7 @@
             <td class="col-cover">
               <a href="/book/{book.id}" class="cover-link">
                 <img
-                  src={coverUrl(book.id)}
+                  src={coverUrl(book.id, book.updated_at)}
                   alt=""
                   class="mini-cover"
                   loading="lazy"

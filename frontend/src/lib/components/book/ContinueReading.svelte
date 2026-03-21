@@ -42,7 +42,7 @@
         <a href="/book/{book.id}/read" class="continue-card">
           <div class="card-cover">
             <img
-              src={coverUrl(book.id)}
+              src={coverUrl(book.id, book.updated_at)}
               alt={book.title}
               loading="lazy"
               onerror={(e) => (e.target.style.display = "none")}

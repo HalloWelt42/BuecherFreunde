@@ -77,7 +77,7 @@
     </button>
     {#if !coverError}
       <img
-        src={coverUrl(book.id)}
+        src={coverUrl(book.id, book.updated_at)}
         alt=""
         class="cover-image"
         loading="lazy"

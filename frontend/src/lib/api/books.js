@@ -67,9 +67,13 @@ export function bulkAction(bookIds, aktion, wert) {
  * @param {number} id
  * @returns {string}
  */
-export function coverUrl(id) {
+export function coverUrl(id, updatedAt) {
   const token = getToken();
-  return `/api/books/${id}/cover?token=${encodeURIComponent(token)}`;
+  let url = `/api/books/${id}/cover?token=${encodeURIComponent(token)}`;
+  if (updatedAt) {
+    url += `&_v=${encodeURIComponent(updatedAt)}`;
+  }
+  return url;
 }
 
 /**

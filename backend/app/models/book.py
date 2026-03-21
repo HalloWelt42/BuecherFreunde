@@ -28,6 +28,7 @@ class BookListItem(BaseModel):
     categories: list[dict] = Field(default_factory=list)
     sammlung: dict | None = None
     created_at: str = ""
+    updated_at: str = ""
 
 
 class BookResponse(BaseModel):
