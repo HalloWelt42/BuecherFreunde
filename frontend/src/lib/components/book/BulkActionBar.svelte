@@ -3,10 +3,20 @@
   import { bulkAction } from "../../api/books.js";
   import { booksStore } from "../../stores/books.svelte.js";
   import { categoriesStore } from "../../stores/categories.svelte.js";
+  import { ui } from "../../stores/ui.svelte.js";
 
   let confirmDelete = $state(false);
   let processing = $state(false);
   let showCatDropdown = $state(false);
+  let catSearch = $state("");
+  let catSearchInput = $state(null);
+
+  let filteredKategorien = $derived.by(() => {
+    const all = categoriesStore.kategorien;
+    if (!catSearch.trim()) return all;
+    const q = catSearch.trim().toLowerCase();
+    return all.filter(k => k.name.toLowerCase().includes(q));
+  });
 
   // Titel der ausgewählten Bücher
   let selectedTitles = $derived.by(() => {
@@ -51,7 +61,7 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if selectionStore.editMode || selectionStore.active}
-  <div class="bulk-bar">
+  <div class="bulk-bar" style="left: calc({ui.sidebarOpen ? 'var(--sidebar-width, 280px)' : '0px'} + (100vw - {ui.sidebarOpen ? 'var(--sidebar-width, 280px)' : '0px'}) / 2)">
     <div class="bulk-info">
       <i class="fa-solid fa-check-double"></i>
       <strong>{selectionStore.count}</strong> ausgewählt
@@ -84,7 +94,7 @@
       <div class="bulk-dropdown-wrap">
         <button
           class="bulk-btn"
-          onclick={() => (showCatDropdown = !showCatDropdown)}
+          onclick={() => { showCatDropdown = !showCatDropdown; catSearch = ""; if (showCatDropdown) setTimeout(() => catSearchInput?.focus(), 50); }}
           disabled={processing}
         >
           <i class="fa-solid fa-folder-plus"></i> Kategorie
@@ -92,18 +102,33 @@
         </button>
         {#if showCatDropdown}
           <div class="bulk-dropdown">
-            {#if categoriesStore.kategorien.length === 0}
-              <div class="dropdown-empty">Keine Kategorien</div>
-            {:else}
-              {#each categoriesStore.kategorien as kat (kat.id)}
-                <button
-                  class="dropdown-option"
-                  onclick={() => handleAction("kategorie_zuweisen", kat.id)}
-                >
-                  {kat.name}
-                </button>
-              {/each}
-            {/if}
+            <div class="dropdown-search">
+              <i class="fa-solid fa-magnifying-glass dropdown-search-icon"></i>
+              <input
+                type="text"
+                class="dropdown-search-input"
+                placeholder="Kategorie suchen..."
+                bind:value={catSearch}
+                bind:this={catSearchInput}
+                onkeydown={(e) => { if (e.key === "Escape") { showCatDropdown = false; } }}
+              />
+            </div>
+            <div class="dropdown-list">
+              {#if filteredKategorien.length === 0}
+                <div class="dropdown-empty">{catSearch ? "Keine Treffer" : "Keine Kategorien"}</div>
+              {:else}
+                {#each filteredKategorien as kat (kat.id)}
+                  <button
+                    class="dropdown-option"
+                    onclick={() => handleAction("kategorie_zuweisen", kat.id)}
+                  >
+                    {#if kat.icon}<i class="fa-solid {kat.icon}"></i>{/if}
+                    {kat.name}
+                    {#if kat.buch_anzahl}<span class="dropdown-count">{kat.buch_anzahl}</span>{/if}
+                  </button>
+                {/each}
+              {/if}
+            </div>
           </div>
         {/if}
       </div>
@@ -154,7 +179,6 @@
   .bulk-bar {
     position: fixed;
     bottom: 2rem;
-    left: 50%;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
@@ -245,18 +269,54 @@
     position: absolute;
     bottom: calc(100% + 4px);
     left: 0;
-    min-width: 180px;
-    max-height: 200px;
-    overflow-y: auto;
+    min-width: 240px;
     background-color: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
     border-radius: 8px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .dropdown-search {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .dropdown-search-icon {
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+  }
+
+  .dropdown-search-input {
+    flex: 1;
+    border: none;
+    background: none;
+    color: var(--color-text-primary);
+    font-size: 0.8125rem;
+    font-family: var(--font-sans);
+    outline: none;
+  }
+
+  .dropdown-search-input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .dropdown-list {
+    max-height: 240px;
+    overflow-y: auto;
     padding: 0.25rem 0;
   }
 
   .dropdown-option {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
     width: 100%;
     padding: 0.375rem 0.75rem;
     border: none;
@@ -272,10 +332,25 @@
     color: var(--color-text-primary);
   }
 
+  .dropdown-option i {
+    font-size: 0.6875rem;
+    width: 1rem;
+    text-align: center;
+    color: var(--color-text-muted);
+  }
+
+  .dropdown-count {
+    margin-left: auto;
+    font-size: 0.625rem;
+    font-family: var(--font-mono);
+    color: var(--color-text-muted);
+  }
+
   .dropdown-empty {
-    padding: 0.5rem 0.75rem;
+    padding: 0.75rem;
     font-size: 0.75rem;
     color: var(--color-text-muted);
+    text-align: center;
   }
 
   .bulk-close {
