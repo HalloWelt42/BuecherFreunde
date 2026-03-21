@@ -22,18 +22,20 @@ def _slugify(text: str) -> str:
 class TagCreate(BaseModel):
     name: str
     color: str = "#6b7280"
+    icon: str = ""
 
 
 class TagUpdate(BaseModel):
     name: str | None = None
     color: str | None = None
+    icon: str | None = None
 
 
 @router.get("")
 async def list_tags(_token: str = Depends(verify_token)):
     """Gibt alle Tags mit Buchanzahl zurueck."""
     return await db.fetch_all(
-        """SELECT t.id, t.name, t.slug, t.color,
+        """SELECT t.id, t.name, t.slug, t.color, t.icon,
                   COUNT(bt.book_id) as buch_anzahl
            FROM tags t
            LEFT JOIN book_tags bt ON bt.tag_id = t.id
@@ -52,8 +54,8 @@ async def create_tag(data: TagCreate, _token: str = Depends(verify_token)):
         raise HTTPException(status_code=409, detail="Tag existiert bereits")
 
     cursor = await db.execute(
-        "INSERT INTO tags (name, slug, color) VALUES (?, ?, ?)",
-        (data.name, slug, data.color),
+        "INSERT INTO tags (name, slug, color, icon) VALUES (?, ?, ?, ?)",
+        (data.name, slug, data.color, data.icon),
     )
     await db.commit()
 

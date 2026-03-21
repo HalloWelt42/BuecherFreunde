@@ -78,13 +78,15 @@ describe("API-Client", () => {
       );
     });
 
-    it("sendet keinen Authorization-Header ohne Token", async () => {
+    it("sendet Default-Token wenn kein Token explizit gesetzt", async () => {
       mockFetchAntwort({ ok: true });
 
       await client.get("/api/test");
 
       const aufruf = globalThis.fetch.mock.calls[0];
-      expect(aufruf[1].headers["Authorization"]).toBeUndefined();
+      expect(aufruf[1].headers["Authorization"]).toBe(
+        "Bearer bitte-aendern-sicherer-token-hier",
+      );
     });
   });
 

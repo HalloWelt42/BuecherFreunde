@@ -7,7 +7,9 @@
   let erstellungLaeuft = $state(false);
   let meldung = $state("");
 
-  $effect(() => {
+  import { onMount } from "svelte";
+
+  onMount(() => {
     ladeBackups();
   });
 

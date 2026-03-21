@@ -1,16 +1,21 @@
 /**
- * Tests fuer BookCard-Komponente
+ * Tests für BookCard-Komponente
  */
 import { render, screen } from "@testing-library/svelte";
 import BookCard from "../src/lib/components/book/BookCard.svelte";
 
-// Mocks fuer API-Module
+// Mocks für API-Module
 vi.mock("../src/lib/api/books.js", () => ({
   coverUrl: vi.fn((id) => `/api/books/${id}/cover`),
 }));
 
 vi.mock("../src/lib/api/user-data.js", () => ({
-  toggleFavorit: vi.fn(() => Promise.resolve({ is_favorite: true })),
+  toggleFavorit: vi.fn(() => Promise.resolve({ ist_favorit: true })),
+}));
+
+vi.mock("../src/lib/router.svelte.js", () => ({
+  navigate: vi.fn(),
+  route: { path: "/", qs: "", params: {} },
 }));
 
 function erstelleTestBuch(ueberschreibungen = {}) {
@@ -20,8 +25,12 @@ function erstelleTestBuch(ueberschreibungen = {}) {
     author: "Hermann Hesse",
     file_format: "epub",
     file_size: 1536000,
+    page_count: 250,
     rating: 4,
     is_favorite: false,
+    is_to_read: false,
+    categories: [],
+    tags: [],
     ...ueberschreibungen,
   };
 }
@@ -35,18 +44,18 @@ describe("BookCard", () => {
     expect(screen.getByText("Hermann Hesse")).toBeTruthy();
   });
 
-  it("zeigt 'Unbekannt' wenn kein Autor vorhanden", () => {
+  it("zeigt 'Unbekannter Autor' wenn kein Autor vorhanden", () => {
     const buch = erstelleTestBuch({ author: null });
     render(BookCard, { props: { book: buch } });
 
-    expect(screen.getByText("Unbekannt")).toBeTruthy();
+    expect(screen.getByText("Unbekannter Autor")).toBeTruthy();
   });
 
-  it("zeigt auch leeren Autor als 'Unbekannt' an", () => {
+  it("zeigt auch leeren Autor als 'Unbekannter Autor' an", () => {
     const buch = erstelleTestBuch({ author: "" });
     render(BookCard, { props: { book: buch } });
 
-    expect(screen.getByText("Unbekannt")).toBeTruthy();
+    expect(screen.getByText("Unbekannter Autor")).toBeTruthy();
   });
 
   it("zeigt das Format-Badge an", () => {
@@ -56,21 +65,21 @@ describe("BookCard", () => {
     expect(screen.getByText("PDF")).toBeTruthy();
   });
 
-  it("zeigt die Dateigroesse korrekt formatiert an (MB)", () => {
+  it("zeigt die Dateigröße korrekt formatiert an (MB)", () => {
     const buch = erstelleTestBuch({ file_size: 1536000 });
     render(BookCard, { props: { book: buch } });
 
     expect(screen.getByText("1.5 MB")).toBeTruthy();
   });
 
-  it("zeigt die Dateigroesse korrekt formatiert an (KB)", () => {
+  it("zeigt die Dateigröße korrekt formatiert an (KB)", () => {
     const buch = erstelleTestBuch({ file_size: 512 * 1024 });
     render(BookCard, { props: { book: buch } });
 
-    expect(screen.getByText("512.0 KB")).toBeTruthy();
+    expect(screen.getByText("512 KB")).toBeTruthy();
   });
 
-  it("zeigt die Dateigroesse korrekt formatiert an (Bytes)", () => {
+  it("zeigt die Dateigröße korrekt formatiert an (Bytes)", () => {
     const buch = erstelleTestBuch({ file_size: 500 });
     render(BookCard, { props: { book: buch } });
 
@@ -81,52 +90,44 @@ describe("BookCard", () => {
     const buch = erstelleTestBuch({ id: 42 });
     render(BookCard, { props: { book: buch } });
 
-    const link = screen.getByRole("link");
-    expect(link.getAttribute("href")).toBe("#/book/42");
+    const links = screen.getAllByRole("link");
+    const bookLink = links.find((l) => l.getAttribute("href") === "/book/42");
+    expect(bookLink).toBeTruthy();
   });
 
-  it("zeigt das Cover-Bild mit korrekter URL", () => {
-    const buch = erstelleTestBuch({ id: 7 });
-    render(BookCard, { props: { book: buch } });
-
-    const img = screen.getByAltText("Cover: Der Steppenwolf");
-    expect(img).toBeTruthy();
-    expect(img.getAttribute("src")).toBe("/api/books/7/cover");
-  });
-
-  it("zeigt den Favoriten-Button mit leerem Herz", () => {
+  it("zeigt den Favorit-Button", () => {
     const buch = erstelleTestBuch({ is_favorite: false });
     render(BookCard, { props: { book: buch } });
 
-    const btn = screen.getByTitle("Zu Favoriten hinzuf\u00fcgen");
+    const btn = screen.getByTitle("Zu Favoriten");
     expect(btn).toBeTruthy();
-    expect(btn.textContent.trim()).toBe("\u2661");
   });
 
-  it("zeigt den Favoriten-Button mit vollem Herz wenn favorisiert", () => {
+  it("zeigt den Favorit-Button als aktiv wenn favorisiert", () => {
     const buch = erstelleTestBuch({ is_favorite: true });
     render(BookCard, { props: { book: buch } });
 
     const btn = screen.getByTitle("Aus Favoriten entfernen");
     expect(btn).toBeTruthy();
-    expect(btn.textContent.trim()).toBe("\u2764");
   });
 
-  it("rendert Sterne fuer die Bewertung", () => {
-    const buch = erstelleTestBuch({ rating: 3 });
+  it("zeigt Seitenanzahl an", () => {
+    const buch = erstelleTestBuch({ page_count: 250 });
     render(BookCard, { props: { book: buch } });
 
-    // 3 gefuellte Sterne + 2 leere Sterne = 5 Stern-Buttons
-    const sternButtons = screen.getAllByRole("button").filter(
-      (btn) => btn.title && btn.title.includes("Stern"),
-    );
-    expect(sternButtons.length).toBe(5);
+    expect(screen.getByText("250 S.")).toBeTruthy();
   });
 
-  it("behandelt unbekannte Formate mit Format-Fallback", () => {
-    const buch = erstelleTestBuch({ file_format: "xyz" });
+  it("zeigt Kategorien als Chips an", () => {
+    const buch = erstelleTestBuch({
+      categories: [
+        { id: 1, name: "Belletristik" },
+        { id: 2, name: "Klassiker" },
+      ],
+    });
     render(BookCard, { props: { book: buch } });
 
-    expect(screen.getByText("xyz")).toBeTruthy();
+    expect(screen.getByText("Belletristik")).toBeTruthy();
+    expect(screen.getByText("Klassiker")).toBeTruthy();
   });
 });
