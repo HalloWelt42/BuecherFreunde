@@ -23,6 +23,7 @@
     "@fontsource/barlow": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@fortawesome/fontawesome-free": "^7.2.0",
+    "@humanspeak/svelte-markdown": "^1.0.5",
     "foliate-js": "^1.0.1",
     "pdfjs-dist": "^5.5.207",
     "svelte-spa-router": "^5.0.0"
