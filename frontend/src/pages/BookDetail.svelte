@@ -28,6 +28,23 @@
   let isbnScanLaden = $state(false);
   let isbnScanErgebnis = $state(null);
 
+  // Cover neu extrahieren
+  let coverNeuLaden = $state(false);
+
+  async function coverNeuExtrahieren() {
+    if (coverNeuLaden || !book) return;
+    coverNeuLaden = true;
+    try {
+      await post(`/api/books/${book.id}/cover/neu-extrahieren`);
+      coverError = false;
+      await ladeBuch(book.id);
+    } catch (e) {
+      metaFehler = e.message || "Cover-Extraktion fehlgeschlagen";
+    } finally {
+      coverNeuLaden = false;
+    }
+  }
+
   async function startEdit() {
     editData = {
       title: book.title || "",
@@ -645,6 +662,20 @@
               <i class="fa-solid fa-file-lines"></i>
             {/if}
             Aus Buch
+          </button>
+          <button
+            class="action-btn meta-btn"
+            class:loading={coverNeuLaden}
+            onclick={coverNeuExtrahieren}
+            disabled={coverNeuLaden}
+            title="Cover neu aus der Buchdatei extrahieren"
+          >
+            {#if coverNeuLaden}
+              <i class="fa-solid fa-spinner fa-spin"></i>
+            {:else}
+              <i class="fa-solid fa-image"></i>
+            {/if}
+            Cover neu
           </button>
         </div>
 

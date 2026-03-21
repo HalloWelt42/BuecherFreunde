@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from backend.app.core.auth import verify_token, verify_token_query
 from backend.app.core.database import db
 from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate
-from backend.app.services.storage import get_original_file, get_sidecar_path
+from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover
 
 router = APIRouter(prefix="/api/books", tags=["Bücher"])
 
@@ -441,6 +441,59 @@ async def get_cover(book_id: int, _token: str = Depends(verify_token_query)):
         raise HTTPException(status_code=404, detail="Kein Cover vorhanden")
 
     return FileResponse(cover_path, media_type="image/jpeg")
+
+
+@router.post("/{book_id}/cover/neu-extrahieren")
+async def re_extract_cover(book_id: int, _token: str = Depends(verify_token)):
+    """Extrahiert das Cover neu aus der Buchdatei und überschreibt das bestehende."""
+    import logging
+    logger = logging.getLogger("buecherfreunde.api.books")
+
+    book = await db.fetch_one(
+        "SELECT id, hash, file_format FROM books WHERE id = ?", (book_id,)
+    )
+    if not book:
+        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+
+    original = get_original_file(book["hash"])
+    if not original or not original.exists():
+        raise HTTPException(status_code=404, detail="Buchdatei nicht gefunden")
+
+    fmt = book["file_format"].lower()
+    cover_data = None
+
+    if fmt == "pdf":
+        from backend.app.services.processors.pdf_processor import PdfProcessor
+        import fitz
+        try:
+            doc = fitz.open(str(original))
+            proc = PdfProcessor()
+            cover_data = proc._extract_cover(doc)
+            doc.close()
+        except Exception as e:
+            logger.warning("PDF Cover-Extraktion fehlgeschlagen: %s", e)
+
+    elif fmt == "epub":
+        from backend.app.services.processors.epub_processor import EpubProcessor
+        import ebooklib.epub
+        try:
+            epub_book = ebooklib.epub.read_epub(str(original), options={"ignore_ncx": True})
+            proc = EpubProcessor()
+            cover_data = proc._extract_cover(epub_book)
+        except Exception as e:
+            logger.warning("EPUB Cover-Extraktion fehlgeschlagen: %s", e)
+
+    if not cover_data:
+        raise HTTPException(status_code=404, detail="Kein Cover im Buch gefunden")
+
+    save_cover(book["hash"], cover_data)
+    await db.execute(
+        "UPDATE books SET cover_path = 'cover.jpg', updated_at = datetime('now') WHERE id = ?",
+        (book_id,),
+    )
+    await db.commit()
+
+    return {"gespeichert": True, "groesse": len(cover_data)}
 
 
 @router.get("/{book_id}/file")
