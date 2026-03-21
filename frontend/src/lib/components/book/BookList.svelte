@@ -210,7 +210,22 @@
             onpointerenter={() => handlePointerEnter(book.id)}
           >
             <td class="col-cover">
-              <div class="cover-cell">
+              <div class="cover-cell"
+                onmouseenter={(e) => {
+                  const popup = e.currentTarget.querySelector('.cover-hover-popup');
+                  if (!popup) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const popupH = 453;
+                  const viewH = window.innerHeight;
+                  let top = rect.top + rect.height / 2 - popupH / 2;
+                  if (top < 8) top = 8;
+                  if (top + popupH > viewH - 8) top = viewH - popupH - 8;
+                  popup.style.position = 'fixed';
+                  popup.style.left = (rect.right + 8) + 'px';
+                  popup.style.top = top + 'px';
+                  popup.style.transform = 'none';
+                }}
+              >
                 <a href="/book/{book.id}" class="cover-link">
                   <img
                     src={coverUrl(book.id, book.updated_at)}
@@ -361,10 +376,7 @@
   }
 
   .cover-hover-popup {
-    position: absolute;
-    left: calc(100% + 8px);
-    top: 50%;
-    transform: translateY(-50%) scale(0.9);
+    position: fixed;
     width: 320px;
     height: 453px;
     border-radius: 8px;
@@ -374,13 +386,12 @@
     background-color: var(--color-bg-secondary);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.15s, transform 0.15s;
-    z-index: 50;
+    transition: opacity 0.15s;
+    z-index: 200;
   }
 
   .cover-cell:hover .cover-hover-popup {
     opacity: 1;
-    transform: translateY(-50%) scale(1);
   }
 
   .cover-hover-img {
