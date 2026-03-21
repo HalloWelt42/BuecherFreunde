@@ -8,6 +8,8 @@
   let {
     bookId,
     initialPage = 1,
+    initialAnsicht = "",
+    initialPapier = "",
     onPositionChange = () => {},
   } = $props();
 
@@ -20,10 +22,16 @@
   let fehler = $state(null);
 
   // Papier-Modus: "normal", "dunkel", "sepia", "kontrast"
-  let papierModus = $state("normal");
+  const gueltigePapierModi = ["normal", "sepia", "dunkel", "kontrast"];
+  let papierModus = $state(
+    gueltigePapierModi.includes(initialPapier) ? initialPapier : "normal"
+  );
 
   // Ansichtsmodus: "scroll", "breite", "seite", "doppel", "einzeln"
-  let ansicht = $state("scroll");
+  const gueltigeAnsichten = ["scroll", "breite", "seite", "doppel", "einzeln"];
+  let ansicht = $state(
+    gueltigeAnsichten.includes(initialAnsicht) ? initialAnsicht : "scroll"
+  );
 
   // Seiten-Canvases
   let pageElements = $state([]);
@@ -260,9 +268,9 @@
       scale = berechneAutoScale("seite");
       reRenderAll();
     } else {
-      // scroll: Scale beibehalten
       reRenderAll();
     }
+    updateUrl();
   }
 
   function goToPage(page) {
@@ -300,6 +308,7 @@
     const modi = ["normal", "sepia", "dunkel", "kontrast"];
     const idx = modi.indexOf(papierModus);
     papierModus = modi[(idx + 1) % modi.length];
+    updateUrl();
   }
 
   // Sichtbare Seiten im Einzeln/Doppel-Modus
@@ -318,9 +327,21 @@
     return null;
   });
 
+  // URL aktualisieren (ohne Navigation auszuloesen)
+  function updateUrl() {
+    const params = new URLSearchParams();
+    if (currentPage > 1) params.set("page", String(currentPage));
+    if (ansicht !== "scroll") params.set("ansicht", ansicht);
+    if (papierModus !== "normal") params.set("papier", papierModus);
+    const qs = params.toString();
+    const newUrl = `/book/${bookId}/read${qs ? "?" + qs : ""}`;
+    history.replaceState(null, "", newUrl);
+  }
+
   let saveTimeout;
   function savePosition() {
     clearTimeout(saveTimeout);
+    updateUrl();
     saveTimeout = setTimeout(async () => {
       const pos = `page:${currentPage}`;
       onPositionChange(pos);
@@ -357,6 +378,12 @@
   $effect(() => {
     if (!laden && pdfDoc && scrollContainer && totalPages > 0) {
       requestAnimationFrame(() => {
+        // Initialen Ansichtsmodus anwenden (berechnet Scale)
+        if (ansicht !== "scroll") {
+          const modus = ansicht === "einzeln" ? "seite" : ansicht;
+          scale = berechneAutoScale(modus);
+        }
+
         if (ansicht === "einzeln" || ansicht === "doppel") {
           renderEinzelSeiten();
         } else {

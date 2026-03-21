@@ -12,19 +12,18 @@
   let laden = $state(true);
   let fehler = $state(null);
 
-  function getQs() {
-    return window.location.search ? window.location.search.slice(1) : "";
+  // URL-Parameter auslesen
+  function getUrlParams() {
+    const sp = new URLSearchParams(window.location.search || "");
+    return {
+      page: Number(sp.get("page")) || 0,
+      ansicht: sp.get("ansicht") || "",
+      papier: sp.get("papier") || "",
+      cfi: sp.get("cfi") || "",
+    };
   }
 
-  let initialPage = $derived.by(() => {
-    const searchParams = new URLSearchParams(getQs());
-    return Number(searchParams.get("page")) || 1;
-  });
-
-  let initialCfi = $derived.by(() => {
-    const searchParams = new URLSearchParams(getQs());
-    return searchParams.get("cfi") || "";
-  });
+  let urlParams = getUrlParams();
 
   $effect(() => {
     ladeBuch(Number(params.id));
@@ -41,6 +40,27 @@
       laden = false;
     }
   }
+
+  // Startseite: URL-Parameter > gespeicherte Position > 1
+  let initialPage = $derived.by(() => {
+    if (urlParams.page > 0) return urlParams.page;
+    if (book?.reading_position) {
+      const match = book.reading_position.match(/page:(\d+)/);
+      if (match) return Number(match[1]);
+    }
+    return 1;
+  });
+
+  let initialCfi = $derived.by(() => {
+    if (urlParams.cfi) return urlParams.cfi;
+    if (book?.reading_position?.startsWith("cfi:")) {
+      return book.reading_position.slice(4);
+    }
+    return "";
+  });
+
+  let initialAnsicht = $derived(urlParams.ansicht || "");
+  let initialPapier = $derived(urlParams.papier || "");
 
   function goBack() {
     navigate(`/book/${params.id}`);
@@ -59,7 +79,12 @@
     <ReaderToolbar bookId={book.id} title={book.title} onBack={goBack} />
 
     {#if book.file_format === "pdf"}
-      <PdfReader bookId={book.id} {initialPage} />
+      <PdfReader
+        bookId={book.id}
+        {initialPage}
+        {initialAnsicht}
+        {initialPapier}
+      />
     {:else if book.file_format === "epub" || book.file_format === "mobi"}
       <EpubReader bookId={book.id} {initialCfi} />
     {:else if book.file_format === "txt" || book.file_format === "md"}
