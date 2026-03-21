@@ -1,4 +1,4 @@
-"""Bearer Token Authentifizierung fuer die API."""
+"""Bearer Token Authentifizierung für die API."""
 
 from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -13,28 +13,28 @@ async def verify_token(
 ) -> str:
     """Validiert den Bearer Token gegen den konfigurierten API-Token.
 
-    Gibt den Token zurueck wenn gueltig, wirft 401 wenn ungueltig.
+    Gibt den Token zurück wenn gültig, wirft 401 wenn ungültig.
     """
     if credentials.credentials != settings.api_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungueltiger API-Token",
+            detail="Ungültiger API-Token",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return credentials.credentials
 
 
 async def verify_token_query(
-    token: str = Query(..., description="API-Token als Query-Parameter (fuer SSE/EventSource)"),
+    token: str = Query(..., description="API-Token als Query-Parameter (für SSE/EventSource)"),
 ) -> str:
     """Validiert den Token als Query-Parameter.
 
     EventSource kann keine HTTP-Header setzen, daher wird der Token
-    als Query-Parameter uebergeben.
+    als Query-Parameter übergeben.
     """
     if token != settings.api_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungueltiger API-Token",
+            detail="Ungültiger API-Token",
         )
     return token

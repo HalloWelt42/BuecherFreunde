@@ -1,4 +1,4 @@
-"""LM Studio KI-Kategorisierung ueber OpenAI-kompatible API."""
+"""LM Studio KI-Kategorisierung über OpenAI-kompatible API."""
 
 import json
 import logging
@@ -10,18 +10,18 @@ from backend.app.core.config import settings
 logger = logging.getLogger("buecherfreunde.ai")
 
 # Fallback-Prompt falls DB noch leer
-FALLBACK_PROMPT = """Du bist ein Bibliothekar der Buecher kategorisiert.
+FALLBACK_PROMPT = """Du bist ein Bibliothekar der Bücher kategorisiert.
 Analysiere den gegebenen Buchtitel, Autor und Textauszug.
 Schlage 3-5 passende Kategorien vor.
 
-Antworte ausschliesslich als JSON-Array mit Objekten:
+Antworte ausschließlich als JSON-Array mit Objekten:
 [{"kategorie": "Name", "konfidenz": 0.0-1.0}]
 
 Verwende deutsche Kategorienamen."""
 
 
 async def _load_prompt(schluessel: str) -> dict | None:
-    """Laedt einen Prompt aus der Datenbank."""
+    """Lädt einen Prompt aus der Datenbank."""
     from backend.app.core.database import db
     return await db.fetch_one(
         "SELECT * FROM ai_prompts WHERE schluessel = ? AND aktiv = 1",
@@ -33,7 +33,7 @@ async def send_prompt(
     schluessel: str,
     user_message: str,
 ) -> str | None:
-    """Sendet einen Prompt an LM Studio und gibt die Antwort zurueck.
+    """Sendet einen Prompt an LM Studio und gibt die Antwort zurück.
 
     Nutzt die Prompt-Konfiguration aus der Datenbank.
     """
@@ -87,7 +87,7 @@ async def categorize_book(
         text_excerpt: Erste 2000 Zeichen des Textes
 
     Returns:
-        Liste von Kategorie-Vorschlaegen mit Konfidenz.
+        Liste von Kategorie-Vorschlägen mit Konfidenz.
     """
     excerpt = text_excerpt[:2000] if text_excerpt else ""
     user_msg = f"Titel: {title}\nAutor: {author}"
@@ -100,7 +100,7 @@ async def categorize_book(
 
     categories = _parse_categories(content)
     logger.info(
-        "KI-Kategorisierung fuer '%s': %d Vorschlaege",
+        "KI-Kategorisierung für '%s': %d Vorschläge",
         title,
         len(categories),
     )
@@ -147,7 +147,7 @@ def _parse_categories(content: str) -> list[dict]:
 
 
 async def check_connection() -> dict:
-    """Prueft ob LM Studio erreichbar ist."""
+    """Prüft ob LM Studio erreichbar ist."""
     if not settings.lm_studio_enabled:
         return {"erreichbar": False, "grund": "Deaktiviert"}
 

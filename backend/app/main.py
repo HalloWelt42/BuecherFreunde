@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.ai import router as ai_router
+from backend.app.api.authors import router as authors_router
 from backend.app.api.backup import router as backup_router
 from backend.app.api.books import router as books_router
 from backend.app.api.categories import router as categories_router
@@ -15,7 +16,6 @@ from backend.app.api.config import router as config_router
 from backend.app.api.imports import router as imports_router
 from backend.app.api.metadata import router as metadata_router
 from backend.app.api.search import router as search_router
-from backend.app.api.tags import router as tags_router
 from backend.app.api.collections import router as collections_router
 from backend.app.api.notes import router as notes_router
 from backend.app.api.user_data import router as user_data_router
@@ -26,7 +26,7 @@ logger = logging.getLogger("buecherfreunde")
 
 
 def _ensure_directories() -> None:
-    """Erstellt alle benoetigten Verzeichnisse beim Start."""
+    """Erstellt alle benötigten Verzeichnisse beim Start."""
     dirs = [
         settings.storage_dir,
         settings.external_dir,
@@ -41,7 +41,7 @@ def _ensure_directories() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialisierung beim Start, Aufraeuemen beim Herunterfahren."""
+    """Initialisierung beim Start, Aufräumen beim Herunterfahren."""
     logging.basicConfig(
         level=getattr(logging, settings.log_level.upper(), logging.INFO),
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -71,6 +71,7 @@ app.add_middleware(
 )
 
 app.include_router(ai_router)
+app.include_router(authors_router)
 app.include_router(backup_router)
 app.include_router(books_router)
 app.include_router(categories_router)
@@ -80,7 +81,6 @@ app.include_router(imports_router)
 app.include_router(metadata_router)
 app.include_router(notes_router)
 app.include_router(search_router)
-app.include_router(tags_router)
 app.include_router(user_data_router)
 
 

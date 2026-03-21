@@ -1,7 +1,7 @@
 """ISBN-Extraktion aus Buchtext mit mehreren Strategien.
 
 Durchsucht die ersten und letzten Seiten eines Textes nach ISBN-10 und ISBN-13
-Mustern. Validiert gefundene Kandidaten mit Pruefsummen.
+Mustern. Validiert gefundene Kandidaten mit Prüfsummen.
 """
 
 import re
@@ -27,7 +27,7 @@ ISBN_LABELED_PATTERN = re.compile(
 
 
 def validate_isbn_13(isbn: str) -> bool:
-    """Prueft die ISBN-13 Pruefsumme."""
+    """Prüft die ISBN-13 Prüfsumme."""
     if len(isbn) != 13 or not isbn.isdigit():
         return False
     total = sum(
@@ -38,7 +38,7 @@ def validate_isbn_13(isbn: str) -> bool:
 
 
 def validate_isbn_10(isbn: str) -> bool:
-    """Prueft die ISBN-10 Pruefsumme."""
+    """Prüft die ISBN-10 Prüfsumme."""
     if len(isbn) != 10:
         return False
     if not isbn[:9].isdigit():
@@ -68,7 +68,7 @@ def validate_isbn(isbn: str) -> bool:
 
 
 def extract_isbns_from_text(text: str) -> list[str]:
-    """Extrahiert alle gueltigen ISBNs aus einem Text.
+    """Extrahiert alle gültigen ISBNs aus einem Text.
 
     Returns:
         Liste validierter ISBNs, ISBN-13 bevorzugt, dedupliziert.
@@ -84,7 +84,7 @@ def extract_isbns_from_text(text: str) -> list[str]:
     # Strategie 2: ISBN-13 Muster (978/979...)
     for match in ISBN_13_PATTERN.finditer(text):
         raw = clean_isbn(match.group())
-        # "ISBN" Praefix entfernen falls vorhanden
+        # "ISBN" Präfix entfernen falls vorhanden
         raw = re.sub(r"^ISBN[-:\s]*", "", raw, flags=re.IGNORECASE)
         raw = clean_isbn(raw)
         if validate_isbn(raw):
@@ -118,7 +118,7 @@ def extract_isbn_from_pages(page_texts: list[str], scan_pages: int = 10) -> str:
     if not page_texts:
         return ""
 
-    # Erste N Seiten und letzte N Seiten zusammenfuegen
+    # Erste N Seiten und letzte N Seiten zusammenfügen
     first_pages = page_texts[:scan_pages]
     last_pages = page_texts[-scan_pages:] if len(page_texts) > scan_pages else []
 
@@ -139,7 +139,7 @@ def extract_isbn_from_pages(page_texts: list[str], scan_pages: int = 10) -> str:
 def extract_isbn_from_fulltext(fulltext: str, char_limit: int = 20000) -> str:
     """Durchsucht die ersten und letzten Zeichen des Volltexts nach ISBNs.
 
-    Fallback wenn keine seitenweise Aufteilung verfuegbar ist.
+    Fallback wenn keine seitenweise Aufteilung verfügbar ist.
 
     Args:
         fulltext: Gesamter Text des Buches.

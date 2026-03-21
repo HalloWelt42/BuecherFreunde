@@ -10,10 +10,10 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.db")
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 8
 
 SCHEMA_SQL = """
--- Buecher
+-- Bücher
 CREATE TABLE IF NOT EXISTS books (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     hash TEXT UNIQUE NOT NULL,
@@ -30,9 +30,13 @@ CREATE TABLE IF NOT EXISTS books (
     storage_path TEXT NOT NULL,
     cover_path TEXT DEFAULT '',
     page_count INTEGER DEFAULT 0,
+    typ TEXT DEFAULT '',
+    sammlung_id INTEGER DEFAULT NULL,
+    band_nummer TEXT DEFAULT '',
     fts_content TEXT DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (sammlung_id) REFERENCES collections(id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_books_hash ON books(hash);
@@ -50,6 +54,7 @@ CREATE TABLE IF NOT EXISTS categories (
     icon TEXT DEFAULT '',
     parent_id INTEGER DEFAULT NULL,
     sort_order INTEGER DEFAULT 0,
+    spezial INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL
 );
@@ -64,27 +69,6 @@ CREATE TABLE IF NOT EXISTS book_categories (
     PRIMARY KEY (book_id, category_id),
     FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-);
-
--- Tags
-CREATE TABLE IF NOT EXISTS tags (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE NOT NULL,
-    slug TEXT UNIQUE NOT NULL,
-    color TEXT DEFAULT '#6b7280',
-    icon TEXT DEFAULT '',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_tags_slug ON tags(slug);
-
--- Buch-Tags (n:m)
-CREATE TABLE IF NOT EXISTS book_tags (
-    book_id INTEGER NOT NULL,
-    tag_id INTEGER NOT NULL,
-    PRIMARY KEY (book_id, tag_id),
-    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
-    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
 );
 
 -- Nutzerdaten pro Buch
@@ -108,15 +92,7 @@ CREATE TABLE IF NOT EXISTS collections (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Buch-Sammlungen (n:m)
-CREATE TABLE IF NOT EXISTS book_collections (
-    book_id INTEGER NOT NULL,
-    collection_id INTEGER NOT NULL,
-    sort_order INTEGER DEFAULT 0,
-    PRIMARY KEY (book_id, collection_id),
-    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
-    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
-);
+CREATE INDEX IF NOT EXISTS idx_books_sammlung ON books(sammlung_id);
 
 -- Notizen
 CREATE TABLE IF NOT EXISTS book_notes (
@@ -170,6 +146,55 @@ CREATE TABLE IF NOT EXISTS ai_prompts (
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Autoren
+CREATE TABLE IF NOT EXISTS authors (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    biography TEXT DEFAULT '',
+    beschreibung TEXT DEFAULT '',
+    birth_year INTEGER DEFAULT NULL,
+    death_year INTEGER DEFAULT NULL,
+    photo_path TEXT DEFAULT '',
+    wikidata_id TEXT DEFAULT '',
+    wikipedia_url TEXT DEFAULT '',
+    website TEXT DEFAULT '',
+    nationality TEXT DEFAULT '',
+    quelle TEXT DEFAULT '',
+    konfidenz TEXT DEFAULT '',
+    score INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_authors_slug ON authors(slug);
+CREATE INDEX IF NOT EXISTS idx_authors_name ON authors(name);
+
+-- Autoren-Werke (aus Wikidata P800)
+CREATE TABLE IF NOT EXISTS author_works (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    author_id INTEGER NOT NULL,
+    wikidata_id TEXT DEFAULT '',
+    titel TEXT NOT NULL,
+    book_id INTEGER DEFAULT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (author_id) REFERENCES authors(id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_author_works_author ON author_works(author_id);
+
+-- Buch-Autoren (n:m)
+CREATE TABLE IF NOT EXISTS book_authors (
+    book_id INTEGER NOT NULL,
+    author_id INTEGER NOT NULL,
+    role TEXT DEFAULT 'autor',
+    sort_order INTEGER DEFAULT 0,
+    PRIMARY KEY (book_id, author_id),
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+    FOREIGN KEY (author_id) REFERENCES authors(id) ON DELETE CASCADE
+);
+
 -- Schema-Version
 CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER PRIMARY KEY
@@ -185,7 +210,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS books_fts USING fts5(
     tokenize='unicode61 remove_diacritics 2'
 );
 
--- Trigger fuer automatische FTS-Synchronisation
+-- Trigger für automatische FTS-Synchronisation
 CREATE TRIGGER IF NOT EXISTS books_ai AFTER INSERT ON books BEGIN
     INSERT INTO books_fts(rowid, title, author, fts_content)
     VALUES (new.id, new.title, new.author, new.fts_content);
@@ -218,7 +243,7 @@ class Database:
         self._connection = await aiosqlite.connect(str(self.db_path))
         self._connection.row_factory = aiosqlite.Row
 
-        # WAL-Modus fuer bessere Performance
+        # WAL-Modus für bessere Performance
         await self._connection.execute("PRAGMA journal_mode=WAL")
         await self._connection.execute("PRAGMA foreign_keys=ON")
         await self._connection.execute("PRAGMA busy_timeout=5000")
@@ -237,7 +262,7 @@ class Database:
         """Schema erstellen falls nicht vorhanden."""
         assert self._connection is not None
 
-        # Pruefen ob Schema bereits existiert
+        # Prüfen ob Schema bereits existiert
         cursor = await self._connection.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='schema_version'"
         )
@@ -269,11 +294,11 @@ class Database:
                 await self._connection.commit()
 
     async def _migrate(self, from_version: int) -> None:
-        """Fuehrt Schema-Migrationen durch."""
+        """Führt Schema-Migrationen durch."""
         assert self._connection is not None
 
         if from_version < 2:
-            # v2: color, icon, description fuer Kategorien; icon fuer Tags
+            # v2: color, icon, description für Kategorien; icon für Tags
             migrations = [
                 "ALTER TABLE categories ADD COLUMN description TEXT DEFAULT ''",
                 "ALTER TABLE categories ADD COLUMN color TEXT DEFAULT '#6b7280'",
@@ -313,18 +338,18 @@ class Database:
                     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
                 )
             """)
-            # Standard-Prompts einfuegen
+            # Standard-Prompts einfügen
             await self._connection.execute("""
                 INSERT OR IGNORE INTO ai_prompts (schluessel, name, beschreibung, system_prompt, temperatur, max_tokens)
                 VALUES (
                     'kategorisierung',
                     'Buch-Kategorisierung',
-                    'Analysiert Titel, Autor und Textauszug und schlaegt passende Kategorien vor.',
-                    'Du bist ein Bibliothekar der Buecher kategorisiert.
+                    'Analysiert Titel, Autor und Textauszug und schlägt passende Kategorien vor.',
+                    'Du bist ein Bibliothekar der Bücher kategorisiert.
 Analysiere den gegebenen Buchtitel, Autor und Textauszug.
 Schlage 3-5 passende Kategorien vor.
 
-Antworte ausschliesslich als JSON-Array mit Objekten:
+Antworte ausschließlich als JSON-Array mit Objekten:
 [{"kategorie": "Name", "konfidenz": 0.0-1.0}]
 
 Verwende deutsche Kategorienamen. Beispiele:
@@ -341,7 +366,7 @@ Science-Fiction, Fantasy, Krimi, Biografie, Ratgeber, Sachbuch',
                     'zusammenfassung',
                     'Buch-Zusammenfassung',
                     'Erstellt eine kurze Zusammenfassung basierend auf dem Textauszug.',
-                    'Du bist ein Bibliothekar. Erstelle eine praegnante Zusammenfassung des Buches in 2-3 Saetzen auf Deutsch. Basiere dich auf den gegebenen Informationen. Antworte nur mit der Zusammenfassung, ohne Einleitung.',
+                    'Du bist ein Bibliothekar. Erstelle eine prägnante Zusammenfassung des Buches in 2-3 Sätzen auf Deutsch. Basiere dich auf den gegebenen Informationen. Antworte nur mit der Zusammenfassung, ohne Einleitung.',
                     0.4,
                     300
                 )
@@ -354,7 +379,7 @@ Science-Fiction, Fantasy, Krimi, Biografie, Ratgeber, Sachbuch',
                     'Extrahiert relevante Schlagworte/Tags aus dem Buchinhalt.',
                     'Du bist ein Bibliothekar. Extrahiere 5-10 relevante Schlagworte aus dem gegebenen Buch.
 
-Antworte ausschliesslich als JSON-Array mit Strings:
+Antworte ausschließlich als JSON-Array mit Strings:
 ["Schlagwort1", "Schlagwort2", ...]
 
 Verwende deutsche Begriffe. Sei spezifisch, nicht zu allgemein.',
@@ -365,35 +390,230 @@ Verwende deutsche Begriffe. Sei spezifisch, nicht zu allgemein.',
             await self._connection.commit()
             logger.info("Schema-Migration v3 abgeschlossen: ai_prompts Tabelle")
 
+        if from_version < 4:
+            # v4: Autoren-Tabelle + Buch-Autoren (n:m) + Migration
+            await self._connection.execute("""
+                CREATE TABLE IF NOT EXISTS authors (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    slug TEXT UNIQUE NOT NULL,
+                    biography TEXT DEFAULT '',
+                    birth_year INTEGER DEFAULT NULL,
+                    death_year INTEGER DEFAULT NULL,
+                    photo_path TEXT DEFAULT '',
+                    wikidata_id TEXT DEFAULT '',
+                    wikipedia_url TEXT DEFAULT '',
+                    website TEXT DEFAULT '',
+                    nationality TEXT DEFAULT '',
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )
+            """)
+            await self._connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_authors_slug ON authors(slug)"
+            )
+            await self._connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_authors_name ON authors(name)"
+            )
+            await self._connection.execute("""
+                CREATE TABLE IF NOT EXISTS book_authors (
+                    book_id INTEGER NOT NULL,
+                    author_id INTEGER NOT NULL,
+                    role TEXT DEFAULT 'autor',
+                    sort_order INTEGER DEFAULT 0,
+                    PRIMARY KEY (book_id, author_id),
+                    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+                    FOREIGN KEY (author_id) REFERENCES authors(id) ON DELETE CASCADE
+                )
+            """)
+
+            # Bestehende books.author-Strings migrieren
+            await self._migrate_authors()
+            await self._connection.commit()
+            logger.info("Schema-Migration v4 abgeschlossen: Autoren-Tabelle + Migration")
+
+        if from_version < 5:
+            # v5: Sammlungen direkt auf books (1:1 statt n:m), Typ-Feld, Tags entfernen
+            add_columns = [
+                "ALTER TABLE books ADD COLUMN typ TEXT DEFAULT ''",
+                "ALTER TABLE books ADD COLUMN sammlung_id INTEGER DEFAULT NULL REFERENCES collections(id) ON DELETE SET NULL",
+                "ALTER TABLE books ADD COLUMN band_nummer TEXT DEFAULT ''",
+            ]
+            for sql in add_columns:
+                try:
+                    await self._connection.execute(sql)
+                except Exception as e:
+                    if "duplicate column" not in str(e).lower():
+                        logger.warning("Migration-Warnung: %s", e)
+
+            # Index für Sammlungs-FK
+            await self._connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_books_sammlung ON books(sammlung_id)"
+            )
+
+            # Bestehende book_collections migrieren (nur erste Zuordnung, da 1:1)
+            try:
+                cursor = await self._connection.execute(
+                    "SELECT book_id, collection_id, sort_order FROM book_collections ORDER BY sort_order"
+                )
+                rows = await cursor.fetchall()
+                migrated = set()
+                for row in rows:
+                    book_id = row[0]
+                    if book_id not in migrated:
+                        await self._connection.execute(
+                            "UPDATE books SET sammlung_id = ? WHERE id = ?",
+                            (row[1], book_id),
+                        )
+                        migrated.add(book_id)
+                logger.info("Sammlungs-Migration: %d Bücher migriert", len(migrated))
+            except Exception as e:
+                logger.warning("book_collections Migration: %s", e)
+
+            await self._connection.commit()
+            logger.info("Schema-Migration v5 abgeschlossen: Typ + Sammlungs-FK auf books")
+
+        if from_version < 6:
+            # v6: Spezialkategorien-Flag
+            try:
+                await self._connection.execute(
+                    "ALTER TABLE categories ADD COLUMN spezial INTEGER DEFAULT 0"
+                )
+            except Exception as e:
+                if "duplicate column" not in str(e).lower():
+                    logger.warning("Migration-Warnung: %s", e)
+
+            # "Ungeordnet" als Spezialkategorie markieren
+            await self._connection.execute(
+                "UPDATE categories SET spezial = 1 WHERE LOWER(name) = 'ungeordnet'"
+            )
+
+            await self._connection.commit()
+            logger.info("Schema-Migration v6 abgeschlossen: Spezialkategorien-Flag")
+
+        if from_version < 7:
+            # v7: "Ungeordnet" als Spezialkategorie markieren
+            await self._connection.execute(
+                "UPDATE categories SET spezial = 1 WHERE LOWER(name) = 'ungeordnet'"
+            )
+            await self._connection.commit()
+            logger.info("Schema-Migration v7 abgeschlossen: Ungeordnet als Spezialkategorie")
+
+        if from_version < 8:
+            # v8: Erweiterte Autorendaten + Werke-Tabelle
+            for col in [
+                "ALTER TABLE authors ADD COLUMN beschreibung TEXT DEFAULT ''",
+                "ALTER TABLE authors ADD COLUMN quelle TEXT DEFAULT ''",
+                "ALTER TABLE authors ADD COLUMN konfidenz TEXT DEFAULT ''",
+                "ALTER TABLE authors ADD COLUMN score INTEGER DEFAULT 0",
+            ]:
+                try:
+                    await self._connection.execute(col)
+                except Exception as e:
+                    if "duplicate column" not in str(e).lower():
+                        logger.warning("Migration-Warnung: %s", e)
+
+            await self._connection.execute("""
+                CREATE TABLE IF NOT EXISTS author_works (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    author_id INTEGER NOT NULL,
+                    wikidata_id TEXT DEFAULT '',
+                    titel TEXT NOT NULL,
+                    book_id INTEGER DEFAULT NULL,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    FOREIGN KEY (author_id) REFERENCES authors(id) ON DELETE CASCADE,
+                    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE SET NULL
+                )
+            """)
+            await self._connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_author_works_author ON author_works(author_id)"
+            )
+
+            await self._connection.commit()
+            logger.info("Schema-Migration v8 abgeschlossen: Erweiterte Autorendaten + Werke")
+
+    async def _migrate_authors(self) -> None:
+        """Migriert bestehende Autoren-Strings aus books.author in die authors-Tabelle."""
+        import re
+
+        assert self._connection is not None
+
+        cursor = await self._connection.execute(
+            "SELECT id, author FROM books WHERE author IS NOT NULL AND author != ''"
+        )
+        rows = await cursor.fetchall()
+
+        for row in rows:
+            book_id = row[0]
+            author_str = row[1]
+
+            # Autoren aufsplitten: Komma, Semikolon, " und ", " & "
+            namen = re.split(r'\s*[,;]\s*|\s+und\s+|\s+&\s+', author_str)
+
+            for i, name in enumerate(namen):
+                name = name.strip()
+                if not name or len(name) < 2:
+                    continue
+
+                slug = re.sub(r'[^\w\s-]', '', name.lower().strip())
+                slug = re.sub(r'[-\s]+', '-', slug).strip('-')
+                if not slug:
+                    continue
+
+                # Autor anlegen falls nicht vorhanden
+                existing = await self._connection.execute(
+                    "SELECT id FROM authors WHERE slug = ?", (slug,)
+                )
+                existing_row = await existing.fetchone()
+
+                if existing_row:
+                    author_id = existing_row[0]
+                else:
+                    cursor = await self._connection.execute(
+                        "INSERT INTO authors (name, slug) VALUES (?, ?)",
+                        (name, slug),
+                    )
+                    author_id = cursor.lastrowid
+
+                # Verknüpfung anlegen
+                await self._connection.execute(
+                    "INSERT OR IGNORE INTO book_authors (book_id, author_id, sort_order) VALUES (?, ?, ?)",
+                    (book_id, author_id, i),
+                )
+
+        count = await self._connection.execute("SELECT COUNT(*) FROM authors")
+        count_row = await count.fetchone()
+        logger.info("Autoren-Migration: %d Autoren aus Büchern extrahiert", count_row[0])
+
     @property
     def connection(self) -> aiosqlite.Connection:
-        """Gibt die aktive Datenbankverbindung zurueck."""
+        """Gibt die aktive Datenbankverbindung zurück."""
         if self._connection is None:
             raise RuntimeError("Datenbank ist nicht verbunden")
         return self._connection
 
     async def execute(self, sql: str, params: tuple = ()) -> aiosqlite.Cursor:
-        """SQL ausfuehren und Cursor zurueckgeben."""
+        """SQL ausführen und Cursor zurückgeben."""
         return await self.connection.execute(sql, params)
 
     async def execute_many(self, sql: str, params_list: list[tuple]) -> None:
-        """SQL mehrfach ausfuehren."""
+        """SQL mehrfach ausführen."""
         await self.connection.executemany(sql, params_list)
 
     async def fetch_one(self, sql: str, params: tuple = ()) -> dict | None:
-        """Eine Zeile abfragen und als dict zurueckgeben."""
+        """Eine Zeile abfragen und als dict zurückgeben."""
         cursor = await self.execute(sql, params)
         row = await cursor.fetchone()
         return dict(row) if row else None
 
     async def fetch_all(self, sql: str, params: tuple = ()) -> list[dict]:
-        """Alle Zeilen abfragen und als Liste von dicts zurueckgeben."""
+        """Alle Zeilen abfragen und als Liste von dicts zurückgeben."""
         cursor = await self.execute(sql, params)
         rows = await cursor.fetchall()
         return [dict(row) for row in rows]
 
     async def commit(self) -> None:
-        """Transaktion bestaetigen."""
+        """Transaktion bestätigen."""
         await self.connection.commit()
 
 

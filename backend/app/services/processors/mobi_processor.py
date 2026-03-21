@@ -51,7 +51,7 @@ class MobiProcessor(BaseProcessor):
                         result.isbn = isbn
                         logger.info("ISBN aus MOBI-Text extrahiert: %s", isbn)
 
-                # Metadaten aus dem Pfadnamen ableiten falls noetig
+                # Metadaten aus dem Pfadnamen ableiten falls nötig
                 if not result.title:
                     result.title = file_path.stem.replace("_", " ").replace("-", " ")
 

@@ -20,7 +20,7 @@ class TextProcessor(BaseProcessor):
         try:
             file_size = file_path.stat().st_size
             if file_size > MAX_TEXT_SIZE:
-                result.error = f"Datei zu gross: {file_size / 1024 / 1024:.1f} MB"
+                result.error = f"Datei zu groß: {file_size / 1024 / 1024:.1f} MB"
                 logger.error(result.error)
                 return result
 
@@ -34,11 +34,11 @@ class TextProcessor(BaseProcessor):
                 result.isbn = isbn
                 logger.info("ISBN aus Text extrahiert: %s", isbn)
 
-            # Zeilenanzahl als Seitennaherung (ca. 40 Zeilen pro Seite)
+            # Zeilenanzahl als Seitennäherung (ca. 40 Zeilen pro Seite)
             lines = text.count("\n") + 1
             result.page_count = max(1, lines // 40)
 
-            # Erste Zeile als Titel wenn Markdown-Ueberschrift
+            # Erste Zeile als Titel wenn Markdown-Überschrift
             if file_path.suffix.lower() == ".md":
                 for line in text.split("\n"):
                     line = line.strip()

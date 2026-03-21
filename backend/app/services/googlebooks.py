@@ -1,4 +1,4 @@
-"""Google Books API-Anbindung fuer Metadatenanreicherung (Primaerquelle)."""
+"""Google Books API-Anbindung für Metadatenanreicherung (Primärquelle)."""
 
 import io
 import logging
@@ -51,7 +51,7 @@ async def lookup_isbn(isbn: str) -> dict | None:
 
 
 async def search_books(query: str, limit: int = 5) -> list[dict]:
-    """Sucht Buecher bei Google Books nach Titel/Autor."""
+    """Sucht Bücher bei Google Books nach Titel/Autor."""
     if not settings.google_books_enabled or not query or len(query.strip()) < 3:
         return []
 
@@ -82,7 +82,7 @@ async def search_books(query: str, limit: int = 5) -> list[dict]:
 
 
 async def _search(query: str) -> dict | None:
-    """Interne Suche, gibt das erste Ergebnis zurueck."""
+    """Interne Suche, gibt das erste Ergebnis zurück."""
     params = {"q": query, "maxResults": 1, "printType": "books"}
     if settings.google_books_api_key:
         params["key"] = settings.google_books_api_key
@@ -129,16 +129,16 @@ def _parse_volume(item: dict) -> dict | None:
         if ident.get("type") == "ISBN_10" and not isbn:
             isbn = ident.get("identifier", "")
 
-    # Cover-URL: Beste Qualitaet holen
+    # Cover-URL: Beste Qualität holen
     cover_url = ""
     image_links = info.get("imageLinks", {})
     for key in ("extraLarge", "large", "medium", "thumbnail", "smallThumbnail"):
         if key in image_links:
             url = image_links[key]
             # Google liefert oft HTTP - auf HTTPS umstellen
-            # und zoom-Parameter erhoehen fuer bessere Qualitaet
+            # und zoom-Parameter erhöhen für bessere Qualität
             url = url.replace("http://", "https://")
-            # Edge-Curling entfernen fuer sauberes Bild
+            # Edge-Curling entfernen für sauberes Bild
             url = re.sub(r"&edge=\w+", "", url)
             cover_url = url
             break
@@ -160,11 +160,42 @@ def _parse_volume(item: dict) -> dict | None:
         "quelle": "google_books",
     }
 
+    # Rohdaten: alle Felder die nicht direkt gemappt sind
+    raw = {}
+    if info.get("subtitle"):
+        raw["untertitel"] = info["subtitle"]
+    if info.get("publishedDate"):
+        raw["erscheinungsdatum"] = info["publishedDate"]
+    if info.get("industryIdentifiers"):
+        raw["identifiers"] = {
+            i.get("type", ""): i.get("identifier", "")
+            for i in info["industryIdentifiers"]
+        }
+    if info.get("readingModes"):
+        raw["lesemodi"] = info["readingModes"]
+    if info.get("maturityRating"):
+        raw["altersfreigabe"] = info["maturityRating"]
+    if info.get("contentVersion"):
+        raw["inhaltsversion"] = info["contentVersion"]
+    if info.get("previewLink"):
+        raw["vorschau_link"] = info["previewLink"]
+    if info.get("infoLink"):
+        raw["info_link"] = info["infoLink"]
+    if info.get("canonicalVolumeLink"):
+        raw["google_books_link"] = info["canonicalVolumeLink"]
+    if info.get("averageRating"):
+        raw["durchschnittsbewertung"] = info["averageRating"]
+    if info.get("ratingsCount"):
+        raw["anzahl_bewertungen"] = info["ratingsCount"]
+    if info.get("dimensions"):
+        raw["abmessungen"] = info["dimensions"]
+    result["raw"] = raw
+
     return result
 
 
 async def download_cover(cover_url: str) -> bytes | None:
-    """Laedt ein Cover-Bild herunter, skaliert und optimiert es."""
+    """Lädt ein Cover-Bild herunter, skaliert und optimiert es."""
     if not cover_url:
         return None
 
@@ -198,7 +229,7 @@ async def download_cover(cover_url: str) -> bytes | None:
 
 
 async def check_connection() -> dict:
-    """Prueft die Verbindung zu Google Books."""
+    """Prüft die Verbindung zu Google Books."""
     if not settings.google_books_enabled:
         return {"erreichbar": False, "grund": "Deaktiviert"}
 

@@ -1,4 +1,4 @@
-"""Basisklasse fuer Buchprozessoren."""
+"""Basisklasse für Buchprozessoren."""
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -23,7 +23,7 @@ class BookProcessingResult:
 
     @property
     def fts_content(self) -> str:
-        """Gibt den Text fuer den FTS-Index zurueck (max 100.000 Zeichen)."""
+        """Gibt den Text für den FTS-Index zurück (max 100.000 Zeichen)."""
         return self.fulltext[:100_000]
 
 
@@ -31,5 +31,5 @@ class BaseProcessor:
     """Basisklasse - jeder Prozessor implementiert process()."""
 
     def process(self, file_path: Path) -> BookProcessingResult:
-        """Verarbeitet eine Buchdatei und gibt das Ergebnis zurueck."""
+        """Verarbeitet eine Buchdatei und gibt das Ergebnis zurück."""
         raise NotImplementedError

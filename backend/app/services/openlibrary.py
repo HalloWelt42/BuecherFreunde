@@ -1,4 +1,4 @@
-"""Open Library API-Anbindung fuer Metadatenanreicherung."""
+"""Open Library API-Anbindung für Metadatenanreicherung."""
 
 import asyncio
 import io
@@ -16,14 +16,14 @@ logger = logging.getLogger("buecherfreunde.openlibrary")
 
 _last_request: datetime | None = None
 
-# Cover-Zielgroessen
+# Cover-Zielgrößen
 COVER_MAX_WIDTH = 800
 COVER_MAX_HEIGHT = 1200
 COVER_QUALITY = 85
 
 
 async def _rate_limit() -> None:
-    """Wartet falls noetig um das Rate-Limit einzuhalten."""
+    """Wartet falls nötig um das Rate-Limit einzuhalten."""
     global _last_request
     if _last_request is not None:
         elapsed = (datetime.now() - _last_request).total_seconds()
@@ -73,7 +73,7 @@ def _collect_subjects(data: dict) -> list[str]:
             name = entry.get("name", "") if isinstance(entry, dict) else str(entry)
             name = name.strip()
             if name and not name.startswith("series:"):
-                # Meta-Eintraege filtern
+                # Meta-Einträge filtern
                 skip_patterns = (
                     "Reading Level-",
                     "open_syllabus_project",
@@ -87,7 +87,7 @@ def _collect_subjects(data: dict) -> list[str]:
 
 
 async def lookup_bibkeys(isbn: str) -> dict | None:
-    """Holt vollstaendige Buchdaten ueber die Bibkeys-API.
+    """Holt vollständige Buchdaten über die Bibkeys-API.
 
     Diese API liefert alles in einem Call: Titel, Autor, Verlag,
     Subjects, Cover-URLs, Excerpts, Links etc.
@@ -136,8 +136,8 @@ async def lookup_bibkeys(isbn: str) -> dict | None:
 async def lookup_isbn(isbn: str) -> dict | None:
     """Sucht ein Buch anhand der ISBN bei Open Library.
 
-    Nutzt zuerst die Bibkeys-API (vollstaendig), faellt zurueck
-    auf die Edition-API falls noetig.
+    Nutzt zuerst die Bibkeys-API (vollständig), fällt zurück
+    auf die Edition-API falls nötig.
     """
     # Zuerst Bibkeys versuchen (liefert alles)
     result = await lookup_bibkeys(isbn)
@@ -157,7 +157,7 @@ async def lookup_isbn(isbn: str) -> dict | None:
     result = _parse_edition(data)
     result["isbn"] = clean_isbn
 
-    # Autorennamen aufloesen
+    # Autorennamen auflösen
     if "authors" in data:
         author_names = []
         for author_ref in data["authors"]:
@@ -174,7 +174,7 @@ async def lookup_isbn(isbn: str) -> dict | None:
 
 
 async def search_books(query: str, limit: int = 5) -> list[dict]:
-    """Sucht Buecher bei Open Library nach Titel/Autor."""
+    """Sucht Bücher bei Open Library nach Titel/Autor."""
     if not settings.openlibrary_enabled:
         return []
 
@@ -208,9 +208,9 @@ async def search_books(query: str, limit: int = 5) -> list[dict]:
 
 
 async def download_cover(cover_url: str) -> bytes | None:
-    """Laedt ein Cover-Bild herunter, skaliert und optimiert es.
+    """Lädt ein Cover-Bild herunter, skaliert und optimiert es.
 
-    Gibt JPEG-Bytes zurueck (max 800x1200, Qualitaet 85).
+    Gibt JPEG-Bytes zurück (max 800x1200, Qualität 85).
     """
     if not cover_url:
         return None
@@ -236,7 +236,7 @@ async def download_cover(cover_url: str) -> bytes | None:
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
 
-            # Skalieren wenn zu gross
+            # Skalieren wenn zu groß
             img.thumbnail((COVER_MAX_WIDTH, COVER_MAX_HEIGHT), Image.LANCZOS)
 
             # Als JPEG speichern
@@ -250,7 +250,7 @@ async def download_cover(cover_url: str) -> bytes | None:
 
 
 async def _resolve_author(author_key: str) -> str | None:
-    """Loest einen Autoren-Key in den Namen auf."""
+    """Löst einen Autoren-Key in den Namen auf."""
     url = f"https://openlibrary.org{author_key}.json"
     data = await _fetch_json(url)
     if data:
@@ -292,14 +292,14 @@ def _parse_edition(data: dict) -> dict:
 
 
 async def get_cover_url(cover_id: int, size: str = "M") -> str | None:
-    """Gibt die URL fuer ein Open Library Cover zurueck."""
+    """Gibt die URL für ein Open Library Cover zurück."""
     if not cover_id:
         return None
     return f"https://covers.openlibrary.org/b/id/{cover_id}-{size}.jpg"
 
 
 async def check_connection() -> dict:
-    """Prueft die Verbindung zu Open Library."""
+    """Prüft die Verbindung zu Open Library."""
     if not settings.openlibrary_enabled:
         return {"erreichbar": False, "grund": "Deaktiviert"}
 

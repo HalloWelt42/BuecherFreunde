@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 
 
 def _project_root() -> Path:
-    """Ermittelt das Projektstammverzeichnis (zwei Ebenen ueber diesem Modul)."""
+    """Ermittelt das Projektstammverzeichnis (zwei Ebenen über diesem Modul)."""
     return Path(__file__).resolve().parent.parent.parent.parent
 
 
@@ -34,13 +34,16 @@ class Settings(BaseSettings):
     import_dir: Path = _project_root() / "import"
     database_dir: Path = _project_root() / "database"
 
-    # Google Books (Primaerquelle)
+    # Google Books (Primärquelle)
     google_books_enabled: bool = True
     google_books_api_key: str = ""
 
     # Open Library (Fallback)
     openlibrary_enabled: bool = True
     openlibrary_rate_limit: int = 1
+
+    # Wikipedia/Wikidata
+    wikipedia_enabled: bool = True
 
     # LM Studio
     lm_studio_enabled: bool = False
@@ -68,7 +71,7 @@ class Settings(BaseSettings):
         return self.database_dir / "backups"
 
     def public_config(self) -> dict:
-        """Gibt die oeffentlich sichtbaren Konfigurationswerte zurueck (ohne Token)."""
+        """Gibt die öffentlich sichtbaren Konfigurationswerte zurück (ohne Token)."""
         return {
             "version": self.version,
             "external_port": self.external_port,
@@ -79,6 +82,9 @@ class Settings(BaseSettings):
             "openlibrary": {
                 "aktiviert": self.openlibrary_enabled,
                 "rate_limit": self.openlibrary_rate_limit,
+            },
+            "wikipedia": {
+                "aktiviert": self.wikipedia_enabled,
             },
             "lm_studio": {
                 "aktiviert": self.lm_studio_enabled,

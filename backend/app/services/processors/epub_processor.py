@@ -22,7 +22,7 @@ class EpubProcessor(BaseProcessor):
         try:
             book = epub.read_epub(str(file_path), options={"ignore_ncx": True})
         except Exception as e:
-            result.error = f"EPUB konnte nicht geoeffnet werden: {e}"
+            result.error = f"EPUB konnte nicht geöffnet werden: {e}"
             logger.error(result.error)
             return result
 

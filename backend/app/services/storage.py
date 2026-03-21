@@ -34,30 +34,30 @@ def compute_hash_from_bytes(data: bytes) -> str:
 
 
 def get_storage_path(file_hash: str, storage_dir: Path | None = None) -> Path:
-    """Gibt den Speicherpfad fuer einen Hash zurueck: /ab/cd/abcdef.../"""
+    """Gibt den Speicherpfad für einen Hash zurück: /ab/cd/abcdef.../"""
     base = storage_dir or settings.storage_dir
     return base / file_hash[:2] / file_hash[2:4] / file_hash
 
 
 def file_exists_in_storage(file_hash: str, storage_dir: Path | None = None) -> bool:
-    """Prueft ob eine Datei mit diesem Hash bereits im Speicher existiert."""
+    """Prüft ob eine Datei mit diesem Hash bereits im Speicher existiert."""
     path = get_storage_path(file_hash, storage_dir)
     return path.exists()
 
 
 def check_duplicate(file_hash: str) -> dict | None:
-    """Prueft beide Speicherorte auf Duplikate.
+    """Prüft beide Speicherorte auf Duplikate.
 
-    Gibt ein dict mit Infos zurueck wenn Duplikat gefunden, sonst None.
+    Gibt ein dict mit Infos zurück wenn Duplikat gefunden, sonst None.
     """
-    # Hauptspeicher pruefen
+    # Hauptspeicher prüfen
     if file_exists_in_storage(file_hash, settings.storage_dir):
         return {
             "gefunden_in": "hauptspeicher",
             "pfad": str(get_storage_path(file_hash, settings.storage_dir)),
         }
 
-    # Externen Speicher pruefen (falls konfiguriert und vorhanden)
+    # Externen Speicher prüfen (falls konfiguriert und vorhanden)
     if settings.external_dir.exists():
         if file_exists_in_storage(file_hash, settings.external_dir):
             return {
@@ -85,7 +85,7 @@ def store_file(
 
     Raises:
         FileExistsError: Wenn die Datei bereits existiert
-        ValueError: Wenn das Dateiformat nicht unterstuetzt wird
+        ValueError: Wenn das Dateiformat nicht unterstützt wird
     """
     if not source_path.exists():
         raise FileNotFoundError(f"Datei nicht gefunden: {source_path}")
@@ -93,7 +93,7 @@ def store_file(
     suffix = source_path.suffix.lower()
     if suffix not in SUPPORTED_FORMATS:
         raise ValueError(
-            f"Format '{suffix}' nicht unterstuetzt. "
+            f"Format '{suffix}' nicht unterstützt. "
             f"Erlaubt: {', '.join(sorted(SUPPORTED_FORMATS))}"
         )
 
@@ -119,7 +119,7 @@ def store_file(
 
 
 def get_sidecar_path(file_hash: str, filename: str, storage_dir: Path | None = None) -> Path:
-    """Gibt den Pfad zu einer Sidecar-Datei zurueck."""
+    """Gibt den Pfad zu einer Sidecar-Datei zurück."""
     return get_storage_path(file_hash, storage_dir) / filename
 
 
@@ -131,7 +131,7 @@ def save_metadata(file_hash: str, metadata: dict, storage_dir: Path | None = Non
 
 
 def load_metadata(file_hash: str, storage_dir: Path | None = None) -> dict | None:
-    """Laedt Metadaten aus dem JSON-Sidecar."""
+    """Lädt Metadaten aus dem JSON-Sidecar."""
     path = get_sidecar_path(file_hash, "metadata.json", storage_dir)
     if not path.exists():
         return None
@@ -146,7 +146,7 @@ def save_fulltext(file_hash: str, text: str, storage_dir: Path | None = None) ->
 
 
 def load_fulltext(file_hash: str, storage_dir: Path | None = None) -> str | None:
-    """Laedt den Volltext aus dem Sidecar."""
+    """Lädt den Volltext aus dem Sidecar."""
     path = get_sidecar_path(file_hash, "fulltext.txt", storage_dir)
     if not path.exists():
         return None
@@ -174,15 +174,15 @@ def get_original_file(file_hash: str, storage_dir: Path | None = None) -> Path |
 
 
 def delete_stored_file(file_hash: str, storage_dir: Path | None = None) -> bool:
-    """Loescht eine Datei und alle Sidecars aus dem Speicher."""
+    """Löscht eine Datei und alle Sidecars aus dem Speicher."""
     dir_path = get_storage_path(file_hash, storage_dir)
     if not dir_path.exists():
         return False
 
     shutil.rmtree(dir_path)
-    logger.info("Datei geloescht: %s", file_hash)
+    logger.info("Datei gelöscht: %s", file_hash)
 
-    # Leere Elternverzeichnisse aufraeumen
+    # Leere Elternverzeichnisse aufräumen
     parent = dir_path.parent
     try:
         parent.rmdir()
@@ -194,7 +194,7 @@ def delete_stored_file(file_hash: str, storage_dir: Path | None = None) -> bool:
 
 
 def get_storage_stats(storage_dir: Path | None = None) -> dict:
-    """Gibt Statistiken zum Speicher zurueck."""
+    """Gibt Statistiken zum Speicher zurück."""
     base = storage_dir or settings.storage_dir
     if not base.exists():
         return {"anzahl_dateien": 0, "gesamtgroesse": 0, "pfad": str(base)}

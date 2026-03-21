@@ -24,12 +24,12 @@ async def search_books(
     limit: int = 20,
     offset: int = 0,
 ) -> list[SearchResult]:
-    """Durchsucht den FTS-Index und gibt Ergebnisse mit Snippets zurueck.
+    """Durchsucht den FTS-Index und gibt Ergebnisse mit Snippets zurück.
 
-    Unterstuetzt:
+    Unterstützt:
     - Einfache Suche: "python programmierung"
     - Phrasensuche: '"machine learning"'
-    - Praefixsuche: "program*"
+    - Präfixsuche: "program*"
     - Boolsche Operatoren: "python AND NOT java"
     """
     if not query or not query.strip():
@@ -62,12 +62,12 @@ async def search_books(
             for row in rows
         ]
     except Exception as e:
-        logger.error("Suchfehler fuer '%s': %s", query, e)
+        logger.error("Suchfehler für '%s': %s", query, e)
         return []
 
 
 async def search_count(query: str) -> int:
-    """Zaehlt die Gesamtanzahl der Treffer fuer eine Suchanfrage."""
+    """Zählt die Gesamtanzahl der Treffer für eine Suchanfrage."""
     if not query or not query.strip():
         return 0
 
@@ -84,9 +84,9 @@ async def search_count(query: str) -> int:
 
 
 async def suggest(query: str, limit: int = 5) -> list[dict]:
-    """Autovervollstaendigung fuer die Suchleiste.
+    """Autovervollständigung für die Suchleiste.
 
-    Sucht in Titeln und Autoren nach Praefixuebereinstimmungen.
+    Sucht in Titeln und Autoren nach Präfixübereinstimmungen.
     """
     if not query or len(query.strip()) < 2:
         return []
@@ -137,21 +137,21 @@ async def suggest(query: str, limit: int = 5) -> list[dict]:
 
         return results
     except Exception as e:
-        logger.error("Vorschlagsfehler fuer '%s': %s", query, e)
+        logger.error("Vorschlagsfehler für '%s': %s", query, e)
         return []
 
 
 async def rebuild_index() -> int:
     """Baut den FTS-Index komplett neu auf.
 
-    Gibt die Anzahl der indexierten Buecher zurueck.
+    Gibt die Anzahl der indexierten Bücher zurück.
     """
     logger.info("FTS-Index wird neu aufgebaut...")
 
     # Index leeren
     await db.execute("INSERT INTO books_fts(books_fts) VALUES('delete-all')")
 
-    # Alle Buecher neu indexieren
+    # Alle Bücher neu indexieren
     sql = """
         INSERT INTO books_fts(rowid, title, author, fts_content)
         SELECT id, title, author, fts_content FROM books
@@ -159,10 +159,10 @@ async def rebuild_index() -> int:
     await db.execute(sql)
     await db.commit()
 
-    # Zaehlen
+    # Zählen
     row = await db.fetch_one("SELECT COUNT(*) as total FROM books")
     count = row["total"] if row else 0
-    logger.info("FTS-Index neu aufgebaut: %d Buecher indexiert", count)
+    logger.info("FTS-Index neu aufgebaut: %d Bücher indexiert", count)
     return count
 
 

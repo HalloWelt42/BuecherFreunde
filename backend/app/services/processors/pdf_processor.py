@@ -25,7 +25,7 @@ class PdfProcessor(BaseProcessor):
         try:
             doc = fitz.open(str(file_path))
         except Exception as e:
-            result.error = f"PDF konnte nicht geoeffnet werden: {e}"
+            result.error = f"PDF konnte nicht geöffnet werden: {e}"
             logger.error(result.error)
             return result
 
@@ -38,7 +38,7 @@ class PdfProcessor(BaseProcessor):
             result.page_count = len(doc)
             result.metadata_raw = meta
 
-            # Text extrahieren (seitenweise fuer ISBN-Suche)
+            # Text extrahieren (seitenweise für ISBN-Suche)
             page_texts = []
             for page in doc:
                 text = page.get_text("text")
@@ -73,7 +73,7 @@ class PdfProcessor(BaseProcessor):
 
         try:
             page = doc[0]
-            # Hohe Aufloesung fuer gute Qualitaet
+            # Hohe Auflösung für gute Qualität
             zoom = 2.0
             mat = fitz.Matrix(zoom, zoom)
             pixmap = page.get_pixmap(matrix=mat)

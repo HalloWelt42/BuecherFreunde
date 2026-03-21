@@ -1,7 +1,7 @@
-"""Import-Service fuer Buecher.
+"""Import-Service für Bücher.
 
 Verarbeitet einzelne Dateien und Verzeichnisse, erkennt Duplikate,
-speichert im Hash-System und indexiert fuer die Volltextsuche.
+speichert im Hash-System und indexiert für die Volltextsuche.
 """
 
 import asyncio
@@ -67,13 +67,13 @@ async def import_single_file(file_path: Path, task_id: int | None = None) -> dic
         result["fehler"] = error
         return result
 
-    # 2. Duplikat pruefen
+    # 2. Duplikat prüfen
     if task_id:
-        await update_task_status(task_id, "verarbeite", 20, "Duplikat wird geprueft")
+        await update_task_status(task_id, "verarbeite", 20, "Duplikat wird geprüft")
 
     dup = check_duplicate(file_hash)
     if dup:
-        # Auch in DB pruefen
+        # Auch in DB prüfen
         existing = await db.fetch_one(
             "SELECT id, title FROM books WHERE hash = ?", (file_hash,)
         )
@@ -138,10 +138,10 @@ async def import_single_file(file_path: Path, task_id: int | None = None) -> dic
                     proc_result.language = ol_data["sprache"]
                 if not proc_result.description and ol_data.get("beschreibung"):
                     proc_result.description = ol_data["beschreibung"]
-                # Titel nur uebernehmen wenn bisher nur Dateiname
+                # Titel nur übernehmen wenn bisher nur Dateiname
                 if ol_data.get("titel") and proc_result.title == file_path.stem.replace("_", " ").replace("-", " "):
                     proc_result.title = ol_data["titel"]
-                logger.info("Metadaten angereichert via Open Library fuer ISBN %s", proc_result.isbn)
+                logger.info("Metadaten angereichert via Open Library für ISBN %s", proc_result.isbn)
         except Exception as e:
             logger.warning("Open Library Anreicherung fehlgeschlagen: %s", e)
     elif not proc_result.isbn and proc_result.title and settings.openlibrary_enabled:
@@ -220,7 +220,7 @@ async def import_single_file(file_path: Path, task_id: int | None = None) -> dic
     await db.commit()
     book_id = cursor.lastrowid
 
-    # Buecher ohne ISBN -> Kategorie "Ungeordnet"
+    # Bücher ohne ISBN -> Kategorie "Ungeordnet"
     if not proc_result.isbn:
         ungeordnet = await db.fetch_one(
             "SELECT id FROM categories WHERE slug = ?", ("ungeordnet",)
@@ -260,7 +260,7 @@ async def import_single_file(file_path: Path, task_id: int | None = None) -> dic
 async def scan_directory(directory: Path) -> list[dict]:
     """Scannt ein Verzeichnis nach importierbaren Dateien.
 
-    Gibt eine Liste von Datei-Infos zurueck (ohne Import).
+    Gibt eine Liste von Datei-Infos zurück (ohne Import).
     """
     files = []
     if not directory.exists():
@@ -288,7 +288,7 @@ async def scan_directory(directory: Path) -> list[dict]:
 
 
 async def create_import_task(filename: str, file_path: str = "") -> int:
-    """Erstellt eine neue Import-Aufgabe und gibt die ID zurueck."""
+    """Erstellt eine neue Import-Aufgabe und gibt die ID zurück."""
     cursor = await db.execute(
         "INSERT INTO import_tasks (filename, file_path, status) VALUES (?, ?, 'wartend')",
         (filename, file_path),
@@ -298,7 +298,7 @@ async def create_import_task(filename: str, file_path: str = "") -> int:
 
 
 async def get_import_status() -> list[dict]:
-    """Gibt den Status aller Import-Aufgaben zurueck."""
+    """Gibt den Status aller Import-Aufgaben zurück."""
     return await db.fetch_all(
         """SELECT id, filename, status, progress_percent, current_step,
                   error, book_id, created_at, updated_at

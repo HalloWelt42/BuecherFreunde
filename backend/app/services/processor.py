@@ -1,4 +1,4 @@
-"""Format-Dispatcher fuer Buchverarbeitung."""
+"""Format-Dispatcher für Buchverarbeitung."""
 
 import logging
 from pathlib import Path
@@ -21,13 +21,13 @@ PROCESSORS: dict[str, BaseProcessor] = {
 
 
 def get_processor(file_path: Path) -> BaseProcessor | None:
-    """Gibt den passenden Prozessor fuer das Dateiformat zurueck."""
+    """Gibt den passenden Prozessor für das Dateiformat zurück."""
     suffix = file_path.suffix.lower()
     return PROCESSORS.get(suffix)
 
 
 def process_book(file_path: Path) -> BookProcessingResult:
-    """Verarbeitet eine Buchdatei und gibt das Ergebnis zurueck.
+    """Verarbeitet eine Buchdatei und gibt das Ergebnis zurück.
 
     Erkennt das Format automatisch und delegiert an den passenden Prozessor.
     """
@@ -40,8 +40,8 @@ def process_book(file_path: Path) -> BookProcessingResult:
     if processor is None:
         result = BookProcessingResult()
         result.error = (
-            f"Kein Prozessor fuer Format '{file_path.suffix}'. "
-            f"Unterstuetzt: {', '.join(sorted(PROCESSORS.keys()))}"
+            f"Kein Prozessor für Format '{file_path.suffix}'. "
+            f"Unterstützt: {', '.join(sorted(PROCESSORS.keys()))}"
         )
         return result
 
