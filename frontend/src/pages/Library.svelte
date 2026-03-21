@@ -317,6 +317,15 @@
           >
             <i class="fa-solid fa-image"></i>
           </button>
+
+          <button
+            class="view-btn edit-mode-btn"
+            class:active={selectionStore.editMode}
+            onclick={() => selectionStore.toggleEditMode()}
+            title="Bearbeitungsmodus"
+          >
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
         </div>
       </div>
     </div>
@@ -355,12 +364,18 @@
         <BookList
           books={booksStore.books}
           detailed={true}
-          onSort={(col, dir) => booksStore.setFilter({ sort_by: col, sort_dir: dir })}
+          onSort={(col, dir) => {
+            const map = { title: "titel", author: "autor", file_size: "groesse", rating: "bewertung", year: "jahr" };
+            booksStore.setFilter({ ...booksStore.filter, sortierung: map[col] || col, richtung: dir });
+          }}
         />
       {:else}
         <BookList
           books={booksStore.books}
-          onSort={(col, dir) => booksStore.setFilter({ sort_by: col, sort_dir: dir })}
+          onSort={(col, dir) => {
+            const map = { title: "titel", author: "autor", file_size: "groesse", rating: "bewertung", year: "jahr" };
+            booksStore.setFilter({ ...booksStore.filter, sortierung: map[col] || col, richtung: dir });
+          }}
         />
       {/if}
 
@@ -397,6 +412,12 @@
     padding: 0.5rem 0;
     border-bottom: 1px solid var(--color-border);
     flex-shrink: 0;
+    position: sticky;
+    top: -1.5rem;
+    z-index: 5;
+    background-color: var(--color-bg-primary);
+    margin: -1.5rem -1.5rem 0;
+    padding: 1.5rem 1.5rem 0.5rem;
   }
 
   .toolbar-row {
@@ -459,7 +480,7 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
     border-radius: 6px;
     background: none;
     color: var(--color-text-muted);
@@ -469,6 +490,8 @@
   }
 
   .toggle-btn:hover {
+    background: var(--glass-bg-btn);
+    backdrop-filter: blur(var(--glass-blur-btn));
     border-color: var(--color-accent);
     color: var(--color-text-primary);
   }
@@ -516,7 +539,8 @@
     padding: 0.25rem 0.5rem;
     border: 1px solid var(--color-border);
     border-radius: 6px;
-    background-color: var(--color-bg-secondary);
+    background: var(--glass-placeholder);
+    backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
     font-size: 0.75rem;
     font-family: var(--font-sans);
@@ -529,7 +553,7 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
     border-radius: 6px;
     background: none;
     color: var(--color-text-secondary);
@@ -539,14 +563,15 @@
   }
 
   .sort-dir-btn:hover {
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn);
+    backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
   }
 
   /* Ansicht-Toggle */
   .view-group {
     display: flex;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
     border-radius: 6px;
     overflow: hidden;
   }
@@ -567,7 +592,8 @@
 
   .view-btn:hover {
     color: var(--color-text-primary);
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn);
+    backdrop-filter: blur(var(--glass-blur-btn));
   }
 
   .view-btn.active {
@@ -577,6 +603,12 @@
 
   .view-btn + .view-btn {
     border-left: 1px solid var(--color-border);
+  }
+
+  .edit-mode-btn {
+    margin-left: 0.5rem;
+    border-left: none !important;
+    border-radius: 4px;
   }
 
   /* Content */
@@ -627,16 +659,18 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.5rem 1rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
     border-radius: 6px;
-    background-color: var(--color-bg-secondary);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
     color: var(--color-text-primary);
     font-size: 0.8125rem;
     cursor: pointer;
   }
 
   .retry-btn:hover {
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn);
+    backdrop-filter: blur(var(--glass-blur-btn));
   }
 
   .btn-primary {

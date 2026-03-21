@@ -70,6 +70,12 @@
     align-items: center;
     gap: 0.75rem;
     margin-bottom: 1.5rem;
+    position: sticky;
+    top: -1.5rem;
+    z-index: 5;
+    background-color: var(--color-bg-primary);
+    margin: -1.5rem -1.5rem 1.5rem;
+    padding: 1.5rem 1.5rem 0.75rem;
   }
 
   .page-header h1 {

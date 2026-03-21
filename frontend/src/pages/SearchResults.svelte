@@ -111,6 +111,12 @@
     align-items: baseline;
     gap: 0.75rem;
     margin-bottom: 1.5rem;
+    position: sticky;
+    top: -1.5rem;
+    z-index: 5;
+    background-color: var(--color-bg-primary);
+    margin: -1.5rem -1.5rem 1.5rem;
+    padding: 1.5rem 1.5rem 0.75rem;
   }
 
   .page-header h1 {
@@ -145,7 +151,7 @@
     display: flex;
     gap: 1rem;
     padding: 1rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
     border-radius: 8px;
     text-decoration: none;
     color: inherit;
@@ -153,7 +159,8 @@
   }
 
   .result-item:hover {
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn);
+    backdrop-filter: blur(var(--glass-blur-btn));
   }
 
   .result-cover {

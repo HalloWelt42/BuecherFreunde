@@ -191,6 +191,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background-color: var(--color-bg-primary);
+    padding: 0.5rem 0;
   }
 
   .mgr-title {

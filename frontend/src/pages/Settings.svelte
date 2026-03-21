@@ -82,6 +82,7 @@
     <div class="settings-single">
       <section class="settings-section">
         <h2><i class="fa-solid fa-folder-open"></i> Verzeichnisse</h2>
+        <p class="section-hint">Diese Pfade werden beim Start aus der Konfiguration geladen. Hier wird nichts geändert -- die Übersicht zeigt nur, wo deine Daten liegen.</p>
         <div class="path-list">
           <div class="path-row">
             <span class="path-label">Datenbank</span>
@@ -113,6 +114,7 @@
 
       <section class="settings-section">
         <h2><i class="fa-solid fa-database"></i> Datenbank</h2>
+        <p class="section-hint">Der Suchindex (FTS) macht die Volltextsuche möglich. Normalerweise aktualisiert er sich automatisch. Nur bei Problemen mit der Suche manuell neu aufbauen.</p>
         <div class="setting-row">
           <button class="btn-secondary" onclick={reindex}>
             <i class="fa-solid fa-rotate"></i> FTS-Index neu aufbauen
@@ -125,6 +127,7 @@
 
       <section class="settings-section">
         <h2><i class="fa-solid fa-box-archive"></i> Backup</h2>
+        <p class="section-hint">Erstellt ein Backup deiner Datenbank, Einstellungen und Metadaten als ZIP-Datei. Die Buchdateien selbst sind nicht enthalten -- die sicherst du am besten per rsync vom Bücherspeicher-Verzeichnis.</p>
         <BackupPanel />
       </section>
     </div>
@@ -132,6 +135,7 @@
     <div class="settings-single">
       <section class="settings-section">
         <h2><i class="fa-solid fa-key"></i> API-Token</h2>
+        <p class="section-hint">Das Token verbindet dein Frontend mit dem Backend. Es wird beim ersten Start automatisch generiert. Nur ändern, wenn du es bewusst neu setzen möchtest.</p>
         <div class="token-row">
           <input
             type="text"
@@ -147,6 +151,7 @@
 
       <section class="settings-section">
         <h2><i class="fa-solid fa-plug"></i> Externe Dienste</h2>
+        <p class="section-hint">Hier siehst du, welche externen Dienste verbunden sind. Grün bedeutet erreichbar, rot bedeutet nicht verfügbar -- betroffene Funktionen werden dann automatisch deaktiviert. Nichts davon ist zwingend nötig.</p>
         <ServiceStatus />
       </section>
     </div>
@@ -163,6 +168,12 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    position: sticky;
+    top: -1.5rem;
+    z-index: 5;
+    background-color: var(--color-bg-primary);
+    margin: -1.5rem -1.5rem 1.5rem;
+    padding: 1.5rem 1.5rem 0;
   }
 
   .page-header h1 {
@@ -235,9 +246,10 @@
 
   .settings-section {
     padding: 1rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
     border-radius: 8px;
-    background-color: var(--color-bg-secondary);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
   }
 
   .settings-section h2 {
@@ -255,6 +267,13 @@
     color: var(--color-accent);
     width: 1rem;
     text-align: center;
+  }
+
+  .section-hint {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+    margin: -0.25rem 0 0.75rem 0;
   }
 
   .setting-row {
@@ -275,7 +294,8 @@
     padding: 0.375rem 0.5rem;
     border: 1px solid var(--color-border);
     border-radius: 6px;
-    background-color: var(--color-bg-primary);
+    background: var(--glass-placeholder);
+    backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
     font-size: 0.8125rem;
     font-family: var(--font-sans);
@@ -317,7 +337,7 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.375rem 0.75rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
     border-radius: 6px;
     background: none;
     color: var(--color-text-secondary);
@@ -328,7 +348,8 @@
   }
 
   .btn-secondary:hover {
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn);
+    backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
     border-color: var(--color-accent);
   }
