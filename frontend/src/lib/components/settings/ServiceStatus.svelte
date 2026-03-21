@@ -78,8 +78,8 @@
           ergebnisse.push({
             name: "LM Studio",
             icon: "fa-robot",
-            status: ki.available ? "online" : "offline",
-            info: ki.available ? `Modell: ${ki.model}` : "Nicht erreichbar",
+            status: ki.erreichbar ? "online" : "offline",
+            info: ki.erreichbar ? `Modell: ${ki.konfiguriertes_modell || ki.modell}` : "Nicht erreichbar",
             url: config.lm_studio.url,
           });
         } catch {
@@ -195,7 +195,8 @@
     padding: 0.125rem 0.3125rem;
     border-radius: 3px;
     border: 1px solid var(--color-border);
-    margin-left: auto;
+    width: 100%;
+    word-break: break-all;
   }
 
   .svc-refresh {
