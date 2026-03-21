@@ -417,7 +417,7 @@
   }
 
   .path-label {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--color-text-muted);
     text-transform: uppercase;
@@ -425,7 +425,7 @@
   }
 
   .path-value {
-    font-size: 0.6875rem;
+    font-size: 0.8125rem;
     font-family: var(--font-mono);
     color: var(--color-text-secondary);
     background-color: var(--color-bg-primary);
@@ -436,9 +436,9 @@
   }
 
   .path-hint {
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     color: var(--color-text-muted);
-    line-height: 1.3;
+    line-height: 1.4;
   }
 
   .stats-row {

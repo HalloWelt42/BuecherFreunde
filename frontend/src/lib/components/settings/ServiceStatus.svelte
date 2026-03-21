@@ -168,31 +168,31 @@
   }
 
   .svc-icon {
-    font-size: 0.6875rem;
+    font-size: 0.8125rem;
     color: var(--color-text-muted);
-    width: 1rem;
+    width: 1.25rem;
     text-align: center;
     flex-shrink: 0;
   }
 
   .svc-name {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     font-weight: 500;
     color: var(--color-text-primary);
     min-width: 80px;
   }
 
   .svc-info {
-    font-size: 0.6875rem;
+    font-size: 0.8125rem;
     color: var(--color-text-muted);
   }
 
   .svc-url {
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     font-family: var(--font-mono);
     color: var(--color-text-secondary);
     background-color: var(--color-bg-primary);
-    padding: 0.125rem 0.3125rem;
+    padding: 0.1875rem 0.375rem;
     border-radius: 3px;
     border: 1px solid var(--color-border);
     width: 100%;
@@ -208,7 +208,7 @@
     border-radius: 5px;
     background: none;
     color: var(--color-text-muted);
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     cursor: pointer;
     margin-top: 0.25rem;
     align-self: flex-start;
