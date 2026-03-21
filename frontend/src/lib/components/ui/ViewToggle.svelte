@@ -9,7 +9,7 @@
     onclick={() => (ui.viewMode = "grid")}
     title="Grid-Ansicht"
   >
-    &#9638;&#9638;
+    <i class="fa-solid fa-table-cells"></i>
   </button>
   <button
     class="toggle-btn"
@@ -17,7 +17,7 @@
     onclick={() => (ui.viewMode = "list")}
     title="Listenansicht"
   >
-    &#9776;
+    <i class="fa-solid fa-list"></i>
   </button>
 </div>
 

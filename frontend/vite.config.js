@@ -25,7 +25,7 @@ export default defineConfig({
     sourcemap: false,
   },
   resolve: {
-    conditions: process.env.VITEST ? ["browser"] : [],
+    conditions: ["browser"],
   },
   test: {
     globals: true,

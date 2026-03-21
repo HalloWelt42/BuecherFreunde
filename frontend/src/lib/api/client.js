@@ -2,7 +2,8 @@
  * API-Client mit Bearer Token Auth, Fehlerbehandlung und SSE-Support.
  */
 
-let apiToken = localStorage.getItem("api_token") || "";
+const DEFAULT_TOKEN = "bitte-aendern-sicherer-token-hier";
+let apiToken = localStorage.getItem("api_token") || DEFAULT_TOKEN;
 
 /**
  * Setzt den API-Token für alle Requests.
@@ -121,7 +122,7 @@ export async function post(path, body) {
 export async function patch(path, body) {
   const response = await baseFetch(path, {
     method: "PATCH",
-    body: JSON.stringify(body),
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   return response.json();
 }

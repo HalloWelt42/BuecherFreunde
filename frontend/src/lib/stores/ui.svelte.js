@@ -3,7 +3,8 @@
  */
 
 function createUiStore() {
-  let theme = $state(localStorage.getItem("theme") || "system");
+  const initialTheme = localStorage.getItem("theme") || "system";
+  let theme = $state(initialTheme);
   let viewMode = $state(localStorage.getItem("viewMode") || "grid");
   let sidebarOpen = $state(true);
 
@@ -20,12 +21,16 @@ function createUiStore() {
     }
   }
 
+  function currentTheme() {
+    return theme;
+  }
+
   // Theme beim Start anwenden
-  applyTheme(theme);
+  applyTheme(initialTheme);
 
   // Bei System-Theme-Wechsel automatisch aktualisieren
   mediaQuery.addEventListener("change", () => {
-    if (theme === "system") {
+    if (currentTheme() === "system") {
       applyTheme("system");
     }
   });

@@ -2,20 +2,23 @@
   import { ui } from "../../stores/ui.svelte.js";
   import SearchBar from "../search/SearchBar.svelte";
 
-  const themeIcons = { light: "\u2600", dark: "\u263D", system: "\u25D0" };
+  const themeIcons = { light: "fa-sun", dark: "fa-moon", system: "fa-circle-half-stroke" };
   const themeLabels = { light: "Hell", dark: "Dunkel", system: "System" };
 </script>
 
 <header class="app-header">
   <div class="header-left">
     <button
-      class="sidebar-toggle"
+      class="header-btn sidebar-toggle"
       onclick={() => ui.toggleSidebar()}
-      title="Seitenleiste"
+      title="Seitenleiste {ui.sidebarOpen ? 'einklappen' : 'ausklappen'}"
     >
-      &#9776;
+      <i class="fa-solid {ui.sidebarOpen ? 'fa-bars-staggered' : 'fa-bars'}"></i>
     </button>
-    <a href="#/" class="app-title">BücherFreunde</a>
+    <a href="/" class="app-brand">
+      <i class="fa-solid fa-book-open brand-icon"></i>
+      <span class="brand-text">BücherFreunde</span>
+    </a>
   </div>
 
   <div class="header-center">
@@ -23,13 +26,19 @@
   </div>
 
   <div class="header-right">
+    <a href="/import" class="header-btn" title="Import">
+      <i class="fa-solid fa-file-import"></i>
+    </a>
     <button
-      class="theme-toggle"
+      class="header-btn"
       onclick={() => ui.cycleTheme()}
       title="Theme: {themeLabels[ui.theme]}"
     >
-      {themeIcons[ui.theme]}
+      <i class="fa-solid {themeIcons[ui.theme]}"></i>
     </button>
+    <a href="/settings" class="header-btn" title="Einstellungen">
+      <i class="fa-solid fa-gear"></i>
+    </a>
   </div>
 </header>
 
@@ -49,23 +58,49 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    flex-shrink: 0;
   }
 
-  .sidebar-toggle {
+  .header-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
     background: none;
-    border: none;
-    font-size: 1.25rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
     cursor: pointer;
     color: var(--color-text-secondary);
-    padding: 0.25rem;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: background-color 0.12s, color 0.12s, border-color 0.12s;
   }
 
-  .app-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--color-accent);
+  .header-btn:hover {
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+  }
+
+  .app-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     text-decoration: none;
     white-space: nowrap;
+  }
+
+  .brand-icon {
+    font-size: 1.25rem;
+    color: var(--color-accent);
+  }
+
+  .brand-text {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    letter-spacing: -0.01em;
   }
 
   .header-center {
@@ -76,20 +111,7 @@
   .header-right {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-  }
-
-  .theme-toggle {
-    background: none;
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    padding: 0.4rem 0.6rem;
-    cursor: pointer;
-    font-size: 1.1rem;
-    color: var(--color-text-secondary);
-  }
-
-  .theme-toggle:hover {
-    background-color: var(--color-bg-tertiary);
+    gap: 0.25rem;
+    flex-shrink: 0;
   }
 </style>

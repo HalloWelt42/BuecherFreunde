@@ -13,7 +13,9 @@
     }
   }
 
-  $effect(() => {
+  import { onMount } from "svelte";
+
+  onMount(() => {
     ladeVersion();
   });
 </script>

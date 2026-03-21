@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@fortawesome/fontawesome-free/css/all.min.css";
 
 /* Barlow - Normaltext */
 @font-face {
@@ -108,16 +109,15 @@
   padding: 0;
 }
 
-html {
+html,
+body {
   font-family: var(--font-sans);
   color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 code,

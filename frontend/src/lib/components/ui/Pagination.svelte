@@ -16,8 +16,9 @@
       class="page-btn"
       disabled={currentPage <= 1}
       onclick={() => goTo(currentPage - 1)}
+      aria-label="Vorherige Seite"
     >
-      &larr;
+      <i class="fa-solid fa-chevron-left"></i>
     </button>
 
     <span class="page-info">
@@ -29,8 +30,9 @@
       class="page-btn"
       disabled={currentPage >= totalPages}
       onclick={() => goTo(currentPage + 1)}
+      aria-label="Nächste Seite"
     >
-      &rarr;
+      <i class="fa-solid fa-chevron-right"></i>
     </button>
   </div>
 {/if}
