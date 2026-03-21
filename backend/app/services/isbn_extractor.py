@@ -10,13 +10,15 @@ import logging
 logger = logging.getLogger("buecherfreunde.isbn")
 
 # ISBN-13: 978 oder 979, gefolgt von 10 Ziffern (mit optionalen Trennzeichen)
+# Flexibel: beliebige Gruppierung mit Bindestrichen/Leerzeichen erlaubt
 ISBN_13_PATTERN = re.compile(
-    r"(?:ISBN[-:\s]*)?(?:97[89])[-\s]?\d[-\s]?\d{2}[-\s]?\d{3}[-\s]?\d{3}[-\s]?\d"
+    r"(?:ISBN[-:\s]*)?97[89](?:[-\s]?\d){10}"
 )
 
 # ISBN-10: 10 Ziffern (letzte kann X sein), mit optionalen Trennzeichen
+# Flexibel: beliebige Gruppierung erlaubt
 ISBN_10_PATTERN = re.compile(
-    r"(?:ISBN[-:\s]*)?\d[-\s]?\d{2}[-\s]?\d{3}[-\s]?\d{3}[-\s]?[\dXx]"
+    r"(?:ISBN[-:\s]*)?\d(?:[-\s]?\d){8}[-\s]?[\dXx]"
 )
 
 # Einfaches Muster: "ISBN" gefolgt von Ziffern mit Trennzeichen
