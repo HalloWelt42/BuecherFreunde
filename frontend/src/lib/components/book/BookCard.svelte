@@ -228,6 +228,8 @@
     text-decoration: none;
     color: inherit;
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .book-card:hover {
@@ -263,8 +265,7 @@
     transition: opacity 0.12s;
   }
 
-  .select-checkbox.visible,
-  .book-card:hover .select-checkbox {
+  .select-checkbox.visible {
     opacity: 1;
   }
 

@@ -402,8 +402,7 @@
     margin-top: 0.75rem;
   }
 
-  .detail-checkbox.visible,
-  .detail-row:hover .detail-checkbox {
+  .detail-checkbox.visible {
     opacity: 1;
   }
 
