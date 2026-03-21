@@ -34,7 +34,11 @@ class Settings(BaseSettings):
     import_dir: Path = _project_root() / "import"
     database_dir: Path = _project_root() / "database"
 
-    # Open Library
+    # Google Books (Primaerquelle)
+    google_books_enabled: bool = True
+    google_books_api_key: str = ""
+
+    # Open Library (Fallback)
     openlibrary_enabled: bool = True
     openlibrary_rate_limit: int = 1
 
@@ -68,6 +72,10 @@ class Settings(BaseSettings):
         return {
             "version": self.version,
             "external_port": self.external_port,
+            "google_books": {
+                "aktiviert": self.google_books_enabled,
+                "hat_api_key": bool(self.google_books_api_key),
+            },
             "openlibrary": {
                 "aktiviert": self.openlibrary_enabled,
                 "rate_limit": self.openlibrary_rate_limit,

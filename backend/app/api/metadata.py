@@ -7,12 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from backend.app.core.auth import verify_token
 from backend.app.core.database import db
-from backend.app.services.openlibrary import (
-    check_connection,
-    download_cover,
-    lookup_isbn,
-    search_books,
-)
+from backend.app.services import googlebooks, openlibrary
 from backend.app.services.storage import save_cover
 
 logger = logging.getLogger("buecherfreunde.api.metadata")
@@ -78,9 +73,10 @@ async def _assign_categories(book_id: int, cat_ids: list[int]) -> None:
 
 @router.post("/buch/{book_id}/anreichern")
 async def enrich_book(book_id: int, _token: str = Depends(verify_token)):
-    """Reichert ein Buch mit Metadaten von Open Library an.
+    """Reichert ein Buch mit Metadaten an.
 
-    Gibt die kompletten Rohdaten als Vorschau zurueck.
+    Primaerquelle: Google Books. Fallback: Open Library.
+    Gibt aktuellen und vorgeschlagenen Datensatz zum Vergleich zurueck.
     """
     book = await db.fetch_one(
         "SELECT id, hash, isbn, title, author, publisher, year, language, "
@@ -90,24 +86,47 @@ async def enrich_book(book_id: int, _token: str = Depends(verify_token)):
     if not book:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
 
+    # Bestehende Kategorien laden
+    cats = await db.fetch_all(
+        """SELECT c.name FROM categories c
+           JOIN book_categories bc ON bc.category_id = c.id
+           WHERE bc.book_id = ?""",
+        (book_id,),
+    )
+    aktuelle_kategorien = [c["name"] for c in cats]
+
     result = None
+    quelle = ""
 
-    # Zuerst ISBN-Lookup versuchen
+    # 1. Google Books (Primaerquelle)
     if book["isbn"]:
-        result = await lookup_isbn(book["isbn"])
-
-    # Falls kein ISBN-Treffer, nach Titel/Autor suchen
+        result = await googlebooks.lookup_isbn(book["isbn"])
     if not result and book["title"]:
         query = f"{book['title']} {book['author']}".strip()
-        results = await search_books(query, limit=1)
+        results = await googlebooks.search_books(query, limit=1)
         if results:
             result = results[0]
+    if result:
+        quelle = "google_books"
+
+    # 2. Open Library (Fallback)
+    if not result:
+        if book["isbn"]:
+            result = await openlibrary.lookup_isbn(book["isbn"])
+        if not result and book["title"]:
+            query = f"{book['title']} {book['author']}".strip()
+            results = await openlibrary.search_books(query, limit=1)
+            if results:
+                result = results[0]
+        if result:
+            quelle = "open_library"
 
     if not result:
         return {"angereichert": False, "grund": "Keine Metadaten gefunden"}
 
     return {
         "angereichert": True,
+        "quelle": quelle,
         "vorschlag": result,
         "aktuell": {
             "titel": book["title"],
@@ -119,6 +138,7 @@ async def enrich_book(book_id: int, _token: str = Depends(verify_token)):
             "beschreibung": book["description"],
             "seiten": book["page_count"],
             "hat_cover": bool(book["cover_path"]),
+            "kategorien": aktuelle_kategorien,
         },
     }
 
@@ -177,7 +197,11 @@ async def apply_metadata(
     cover_url = felder.get("cover_url", "")
     cover_gespeichert = False
     if cover_url:
-        cover_data = await download_cover(cover_url)
+        quelle = felder.get("quelle", "")
+        if "google" in cover_url or quelle == "google_books":
+            cover_data = await googlebooks.download_cover(cover_url)
+        else:
+            cover_data = await openlibrary.download_cover(cover_url)
         if cover_data:
             save_cover(book["hash"], cover_data)
             await db.execute(
@@ -216,15 +240,7 @@ async def enrich_all(
     async def _enrich_batch():
         for b in books:
             try:
-                result = None
-                if b["isbn"]:
-                    result = await lookup_isbn(b["isbn"])
-                if not result and b["title"]:
-                    query = f"{b['title']} {b['author']}".strip()
-                    results = await search_books(query, limit=1)
-                    if results:
-                        result = results[0]
-
+                result = await _lookup_all(b["isbn"], b["title"], b["author"])
                 if not result:
                     continue
 
@@ -257,7 +273,10 @@ async def enrich_all(
                 # Cover
                 cover_url = result.get("cover_url", "")
                 if cover_url:
-                    cover_data = await download_cover(cover_url)
+                    if "google" in cover_url:
+                        cover_data = await googlebooks.download_cover(cover_url)
+                    else:
+                        cover_data = await openlibrary.download_cover(cover_url)
                     if cover_data:
                         save_cover(b["hash"], cover_data)
                         await db.execute(
@@ -274,7 +293,38 @@ async def enrich_all(
     return {"zu_bearbeiten": len(books), "status": "gestartet"}
 
 
+async def _lookup_all(isbn: str, title: str, author: str) -> dict | None:
+    """Sucht in allen Quellen: Google Books zuerst, dann Open Library."""
+    result = None
+
+    # Google Books
+    if isbn:
+        result = await googlebooks.lookup_isbn(isbn)
+    if not result and title:
+        query = f"{title} {author}".strip()
+        results = await googlebooks.search_books(query, limit=1)
+        if results:
+            result = results[0]
+
+    # Open Library Fallback
+    if not result:
+        if isbn:
+            result = await openlibrary.lookup_isbn(isbn)
+        if not result and title:
+            query = f"{title} {author}".strip()
+            results = await openlibrary.search_books(query, limit=1)
+            if results:
+                result = results[0]
+
+    return result
+
+
 @router.get("/verbindungsstatus")
 async def connection_status(_token: str = Depends(verify_token)):
-    """Prueft die Verbindung zu Open Library."""
-    return await check_connection()
+    """Prueft die Verbindung zu den Metadaten-Diensten."""
+    gb = await googlebooks.check_connection()
+    ol = await openlibrary.check_connection()
+    return {
+        "google_books": gb,
+        "open_library": ol,
+    }

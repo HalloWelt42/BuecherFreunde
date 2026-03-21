@@ -1,6 +1,7 @@
 <script>
   import { holeBuch, coverUrl } from "../lib/api/books.js";
   import { toggleFavorit, toggleZumLesen, setzeBewertung } from "../lib/api/user-data.js";
+  import { sucheMetadaten, uebernehmMetadaten } from "../lib/api/metadata.js";
   import RatingStars from "../lib/components/ui/RatingStars.svelte";
   import BookMeta from "../lib/components/book/BookMeta.svelte";
   import AiCategorizeDialog from "../lib/components/book/AiCategorizeDialog.svelte";
@@ -13,6 +14,82 @@
   let fehler = $state(null);
   let coverError = $state(false);
   let aiDialogOpen = $state(false);
+  let kategorienAlle = $state(false);
+
+  // Metadaten-Anreicherung
+  let metaLaden = $state(false);
+  let metaSchritt = $state("");
+  let metaVorschlag = $state(null);
+  let metaAktuell = $state(null);
+  let metaQuelle = $state("");
+  let metaFehler = $state("");
+
+  const vergleichsFelder = [
+    { key: "titel", label: "Titel" },
+    { key: "autor", label: "Autor" },
+    { key: "verlag", label: "Verlag" },
+    { key: "jahr", label: "Jahr" },
+    { key: "seiten", label: "Seiten" },
+    { key: "isbn", label: "ISBN" },
+    { key: "sprache", label: "Sprache" },
+    { key: "beschreibung", label: "Beschreibung" },
+  ];
+
+  async function metadatenSuchen() {
+    if (metaLaden || !book) return;
+    metaLaden = true;
+    metaSchritt = "Metadaten werden gesucht...";
+    metaFehler = "";
+    metaVorschlag = null;
+    metaAktuell = null;
+
+    try {
+      const result = await sucheMetadaten(book.id);
+      if (!result.angereichert) {
+        metaFehler = result.grund || "Keine Metadaten gefunden";
+        return;
+      }
+      metaVorschlag = result.vorschlag;
+      metaAktuell = result.aktuell;
+      metaQuelle = result.quelle || "";
+      metaSchritt = "";
+    } catch (e) {
+      metaFehler = e.message || "Fehler bei der Suche";
+    } finally {
+      metaLaden = false;
+    }
+  }
+
+  async function metadatenUebernehmen() {
+    if (!metaVorschlag || metaLaden) return;
+    metaLaden = true;
+    metaSchritt = "Daten werden übernommen...";
+    metaFehler = "";
+
+    try {
+      if (metaVorschlag.cover_url) {
+        metaSchritt = "Cover wird heruntergeladen...";
+      }
+      await uebernehmMetadaten(book.id, metaVorschlag);
+      metaSchritt = "Buch wird neu geladen...";
+      await ladeBuch(book.id);
+      metaVorschlag = null;
+      metaAktuell = null;
+      metaSchritt = "";
+      coverError = false;
+    } catch (e) {
+      metaFehler = e.message || "Fehler beim Übernehmen";
+    } finally {
+      metaLaden = false;
+    }
+  }
+
+  function metadatenVerwerfen() {
+    metaVorschlag = null;
+    metaAktuell = null;
+    metaSchritt = "";
+    metaFehler = "";
+  }
 
   $effect(() => {
     ladeBuch(Number(params.id));
@@ -179,7 +256,99 @@
           >
             <i class="fa-solid fa-wand-magic-sparkles"></i> KI-Kategorisierung
           </button>
+          <button
+            class="action-btn meta-btn"
+            class:loading={metaLaden}
+            onclick={metadatenSuchen}
+            disabled={metaLaden}
+            title="Metadaten online suchen (Google Books / Open Library)"
+          >
+            {#if metaLaden}
+              <i class="fa-solid fa-spinner fa-spin"></i>
+            {:else}
+              <i class="fa-solid fa-globe"></i>
+            {/if}
+            Metadaten
+          </button>
         </div>
+
+        {#if metaLaden && metaSchritt}
+          <div class="meta-status">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <span>{metaSchritt}</span>
+          </div>
+        {/if}
+
+        {#if metaFehler}
+          <div class="meta-status meta-fehler">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>{metaFehler}</span>
+          </div>
+        {/if}
+
+        {#if metaVorschlag && metaAktuell}
+          <div class="meta-vergleich">
+            <div class="meta-header">
+              <h2 class="section-title">Metadaten-Vergleich</h2>
+              <span class="meta-quelle">{metaQuelle === "google_books" ? "Google Books" : "Open Library"}</span>
+            </div>
+
+            <div class="vergleich-tabelle">
+              <div class="vergleich-kopf">
+                <span class="vergleich-label"></span>
+                <span class="vergleich-spalte">Aktuell</span>
+                <span class="vergleich-spalte">Vorschlag</span>
+              </div>
+              {#each vergleichsFelder as feld}
+                {@const alt = metaAktuell[feld.key] ?? ""}
+                {@const neu = metaVorschlag[feld.key] ?? ""}
+                {#if neu || alt}
+                  <div class="vergleich-zeile" class:geaendert={String(neu) !== String(alt) && neu}>
+                    <span class="vergleich-label">{feld.label}</span>
+                    <span class="vergleich-alt" class:leer={!alt}>{alt || "-"}</span>
+                    <span class="vergleich-neu" class:leer={!neu}>{neu || "-"}</span>
+                  </div>
+                {/if}
+              {/each}
+
+              {#if metaVorschlag.cover_url}
+                <div class="vergleich-zeile">
+                  <span class="vergleich-label">Cover</span>
+                  <span class="vergleich-alt">{metaAktuell.hat_cover ? "Vorhanden" : "-"}</span>
+                  <span class="vergleich-neu"><i class="fa-solid fa-image"></i> Verfügbar</span>
+                </div>
+              {/if}
+
+              {#if metaVorschlag.kategorien && metaVorschlag.kategorien.length > 0}
+                <div class="vergleich-zeile vergleich-full">
+                  <span class="vergleich-label">Kategorien</span>
+                  <span class="vergleich-alt">{metaAktuell.kategorien?.length || 0}</span>
+                  <span class="vergleich-neu">+{metaVorschlag.kategorien.length}</span>
+                </div>
+                <div class="meta-kategorien">
+                  {#each metaVorschlag.kategorien.slice(0, 20) as kat}
+                    <span class="meta-kat-chip">{kat}</span>
+                  {/each}
+                  {#if metaVorschlag.kategorien.length > 20}
+                    <span class="meta-kat-more">+{metaVorschlag.kategorien.length - 20} weitere</span>
+                  {/if}
+                </div>
+              {/if}
+            </div>
+
+            <div class="meta-aktionen">
+              <button class="btn btn-primary btn-sm" onclick={metadatenUebernehmen} disabled={metaLaden}>
+                {#if metaLaden}
+                  <i class="fa-solid fa-spinner fa-spin"></i>
+                {/if}
+                Alles übernehmen
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick={metadatenVerwerfen}>
+                Verwerfen
+              </button>
+            </div>
+          </div>
+        {/if}
 
         <div class="meta-section">
           <h2 class="section-title">Details</h2>
@@ -188,11 +357,16 @@
 
         {#if book.categories && book.categories.length > 0}
           <div class="tags-section">
-            <h2 class="section-title">Kategorien</h2>
+            <h2 class="section-title">Kategorien ({book.categories.length})</h2>
             <div class="chip-list">
-              {#each book.categories as cat (cat.id)}
+              {#each (kategorienAlle ? book.categories : book.categories.slice(0, 5)) as cat (cat.id)}
                 <a href="/?category={cat.id}" class="chip">{cat.name}</a>
               {/each}
+              {#if book.categories.length > 5}
+                <button class="chip chip-toggle" onclick={() => kategorienAlle = !kategorienAlle}>
+                  {kategorienAlle ? "weniger" : `+${book.categories.length - 5} weitere`}
+                </button>
+              {/if}
             </div>
           </div>
         {/if}
@@ -542,5 +716,170 @@
     border-radius: 4px;
     border: 1px solid var(--color-border);
     display: inline-block;
+  }
+
+  /* Kategorien Toggle */
+  .chip-toggle {
+    background: none;
+    border: 1px dashed var(--color-border);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 0.75rem;
+  }
+
+  .chip-toggle:hover {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  /* Metadaten-Anreicherung */
+  .action-btn.loading {
+    opacity: 0.6;
+    cursor: wait;
+  }
+
+  .meta-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    padding: 0.25rem 0;
+  }
+
+  .meta-fehler {
+    color: var(--color-error);
+  }
+
+  .meta-vergleich {
+    padding: 0.75rem;
+    background-color: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+
+  .meta-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .meta-header .section-title {
+    margin: 0;
+  }
+
+  .meta-quelle {
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+    background-color: var(--color-bg-secondary);
+    padding: 0.125rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+  }
+
+  .vergleich-tabelle {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .vergleich-kopf {
+    display: grid;
+    grid-template-columns: 7rem 1fr 1fr;
+    gap: 0.5rem;
+    padding: 0.375rem 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .vergleich-zeile {
+    display: grid;
+    grid-template-columns: 7rem 1fr 1fr;
+    gap: 0.5rem;
+    padding: 0.375rem 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+    font-size: 0.8125rem;
+    align-items: baseline;
+  }
+
+  .vergleich-zeile:last-child {
+    border-bottom: none;
+  }
+
+  .vergleich-zeile.geaendert {
+    background-color: color-mix(in srgb, var(--color-accent) 8%, transparent);
+    margin: 0 -0.375rem;
+    padding-left: 0.375rem;
+    padding-right: 0.375rem;
+    border-radius: 4px;
+  }
+
+  .vergleich-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+
+  .vergleich-alt {
+    color: var(--color-text-secondary);
+    word-break: break-word;
+  }
+
+  .vergleich-alt.leer {
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+
+  .vergleich-neu {
+    color: var(--color-text-primary);
+    font-weight: 500;
+    word-break: break-word;
+  }
+
+  .vergleich-neu.leer {
+    color: var(--color-text-muted);
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  .meta-kategorien {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.25rem 0;
+  }
+
+  .meta-kat-chip {
+    padding: 0.125rem 0.5rem;
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+  }
+
+  .meta-kat-more {
+    padding: 0.125rem 0.5rem;
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+  }
+
+  .meta-aktionen {
+    display: flex;
+    gap: 0.5rem;
+    padding-top: 0.25rem;
+  }
+
+  .notes-section {
+    margin-top: 1.5rem;
   }
 </style>
