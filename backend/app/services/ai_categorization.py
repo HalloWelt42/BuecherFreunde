@@ -160,7 +160,6 @@ async def check_connection() -> dict:
                 return {
                     "erreichbar": True,
                     "modelle": models,
-                    "konfiguriertes_modell": settings.lm_studio_model,
                 }
             return {"erreichbar": False, "status_code": response.status_code}
     except httpx.ConnectError:

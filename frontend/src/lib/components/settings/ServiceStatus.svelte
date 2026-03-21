@@ -79,7 +79,7 @@
             name: "LM Studio",
             icon: "fa-robot",
             status: ki.erreichbar ? "online" : "offline",
-            info: ki.erreichbar ? `Modell: ${ki.konfiguriertes_modell || ki.modell}` : "Nicht erreichbar",
+            info: ki.erreichbar ? `Modell: ${ki.modell}` : "Nicht erreichbar",
             url: config.lm_studio.url,
           });
         } catch {

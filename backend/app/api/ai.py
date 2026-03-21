@@ -105,9 +105,13 @@ async def accept_categories(
 async def ai_status(_token: str = Depends(verify_token)):
     """Prueft ob LM Studio erreichbar ist und welche Modelle verfuegbar sind."""
     result = await check_connection()
-    # Verbindungsdaten aus den Settings ergaenzen
+    # Gespeichertes Modell aus DB laden (ueberschreibt .env)
+    saved = await db.fetch_one(
+        "SELECT value FROM app_settings WHERE key = 'lm_studio_model'"
+    )
+    modell = saved["value"] if saved else settings.lm_studio_model
     result["url"] = settings.lm_studio_url
-    result["modell"] = settings.lm_studio_model
+    result["modell"] = modell
     result["aktiviert"] = settings.lm_studio_enabled
     return result
 
