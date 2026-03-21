@@ -22,11 +22,15 @@
   // Papier-Modus: "normal", "dunkel", "sepia", "kontrast"
   let papierModus = $state("normal");
 
+  // Ansichtsmodus: "scroll", "breite", "seite", "doppel", "einzeln"
+  let ansicht = $state("scroll");
+
   // Seiten-Canvases
   let pageElements = $state([]);
   let renderedPages = new Set();
   let renderQueue = new Set();
   let observer = null;
+  let _baseViewport = null; // Viewport bei scale=1 fuer Seite 1
 
   // Worker lokal buendeln
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -48,6 +52,29 @@
     }
   }
 
+  // Scale berechnen fuer Breite/Seite einpassen
+  function berechneAutoScale(modus) {
+    if (!_baseViewport || !scrollContainer) return 1.0;
+    const containerW = scrollContainer.clientWidth - 24; // padding abziehen
+    const containerH = scrollContainer.clientHeight - 24;
+    const pageW = _baseViewport.width;
+    const pageH = _baseViewport.height;
+
+    if (modus === "breite") {
+      const targetW = (ansicht === "doppel") ? (containerW - 16) / 2 : containerW;
+      return targetW / pageW;
+    } else if (modus === "seite") {
+      const scaleW = containerW / pageW;
+      const scaleH = containerH / pageH;
+      return Math.min(scaleW, scaleH);
+    } else if (modus === "doppel") {
+      const scaleW = (containerW - 16) / (pageW * 2);
+      const scaleH = containerH / pageH;
+      return Math.min(scaleW, scaleH);
+    }
+    return 1.0;
+  }
+
   $effect(() => {
     ladePdf(bookId);
   });
@@ -67,6 +94,10 @@
       totalPages = pdfDoc.numPages;
       currentPage = Math.min(initialPage, totalPages);
 
+      // Base viewport speichern
+      const page1 = await pdfDoc.getPage(1);
+      _baseViewport = page1.getViewport({ scale: 1.0 });
+
       // Platzhalter fuer alle Seiten erstellen
       pageElements = new Array(totalPages).fill(null);
     } catch (e) {
@@ -76,10 +107,11 @@
     }
   }
 
-  // IntersectionObserver fuer Lazy-Rendering
+  // IntersectionObserver fuer Lazy-Rendering (nur im Scroll-Modus)
   function setupObserver() {
     if (observer) observer.disconnect();
     if (!scrollContainer) return;
+    if (ansicht === "einzeln" || ansicht === "doppel") return;
 
     observer = new IntersectionObserver(
       (entries) => {
@@ -87,7 +119,6 @@
           const pageNum = Number(entry.target.dataset.page);
           if (entry.isIntersecting) {
             renderPageIfNeeded(pageNum);
-            // Auch Nachbarseiten vorladen
             if (pageNum > 1) renderPageIfNeeded(pageNum - 1);
             if (pageNum < totalPages) renderPageIfNeeded(pageNum + 1);
           }
@@ -106,7 +137,6 @@
       { root: scrollContainer, rootMargin: "200px 0px" },
     );
 
-    // Alle Seiten-Wrapper beobachten
     const wrappers = scrollContainer.querySelectorAll(".page-wrapper");
     for (const w of wrappers) {
       observer.observe(w);
@@ -115,6 +145,7 @@
 
   async function renderPageIfNeeded(pageNum) {
     if (renderedPages.has(pageNum) || renderQueue.has(pageNum) || !pdfDoc) return;
+    if (pageNum < 1 || pageNum > totalPages) return;
     renderQueue.add(pageNum);
 
     try {
@@ -126,7 +157,6 @@
       let canvas = wrapper.querySelector("canvas");
       if (!canvas) {
         canvas = document.createElement("canvas");
-        // Vorherige Inhalte loeschen
         wrapper.innerHTML = "";
         wrapper.appendChild(canvas);
       }
@@ -154,7 +184,13 @@
     renderedPages = new Set();
     renderQueue = new Set();
 
-    // Wrapper-Groessen aktualisieren
+    if (ansicht === "einzeln" || ansicht === "doppel") {
+      // Nur aktuelle Seite(n) rendern
+      await renderEinzelSeiten();
+      return;
+    }
+
+    // Scroll-Modus: Wrapper-Groessen aktualisieren
     for (let i = 1; i <= totalPages; i++) {
       const wrapper = scrollContainer.querySelector(`[data-page="${i}"]`);
       if (wrapper) {
@@ -162,47 +198,102 @@
         const viewport = page.getViewport({ scale });
         wrapper.style.width = viewport.width + "px";
         wrapper.style.height = viewport.height + "px";
-        // Canvas leeren
         const canvas = wrapper.querySelector("canvas");
         if (canvas) canvas.remove();
       }
     }
 
-    // Observer neu aufsetzen -> rendert sichtbare Seiten
     setupObserver();
   }
 
-  // Seiten-Dimensionen ermitteln fuer Platzhalter
-  async function getPageDimensions(pageNum) {
-    if (!pdfDoc) return { width: 600, height: 800 };
-    const page = await pdfDoc.getPage(pageNum);
-    const viewport = page.getViewport({ scale });
-    return { width: viewport.width, height: viewport.height };
+  // Einzelseiten/Doppelseiten rendern
+  async function renderEinzelSeiten() {
+    if (!pdfDoc || !scrollContainer) return;
+    renderedPages = new Set();
+    renderQueue = new Set();
+
+    // Alle Wrapper leeren
+    const wrappers = scrollContainer.querySelectorAll(".page-wrapper");
+    for (const w of wrappers) {
+      const canvas = w.querySelector("canvas");
+      if (canvas) canvas.remove();
+    }
+
+    if (ansicht === "einzeln") {
+      await renderPageIfNeeded(currentPage);
+    } else if (ansicht === "doppel") {
+      // Linke Seite: gerade, Rechte: ungerade (oder umgekehrt)
+      const leftPage = currentPage % 2 === 0 ? currentPage - 1 : currentPage;
+      const rightPage = leftPage + 1;
+      if (leftPage >= 1) await renderPageIfNeeded(leftPage);
+      if (rightPage <= totalPages) await renderPageIfNeeded(rightPage);
+    }
   }
 
   function zoomIn() {
+    ansicht = "scroll";
     scale = naechsterZoom(1);
     reRenderAll();
   }
 
   function zoomOut() {
+    ansicht = "scroll";
     scale = naechsterZoom(-1);
     reRenderAll();
   }
 
   function setZoom(newScale) {
+    ansicht = "scroll";
     scale = newScale;
     reRenderAll();
+  }
+
+  function setAnsicht(modus) {
+    ansicht = modus;
+    if (modus === "breite" || modus === "seite") {
+      scale = berechneAutoScale(modus);
+      reRenderAll();
+    } else if (modus === "doppel") {
+      scale = berechneAutoScale("doppel");
+      reRenderAll();
+    } else if (modus === "einzeln") {
+      scale = berechneAutoScale("seite");
+      reRenderAll();
+    } else {
+      // scroll: Scale beibehalten
+      reRenderAll();
+    }
   }
 
   function goToPage(page) {
     if (page < 1 || page > totalPages) return;
     currentPage = page;
-    const wrapper = scrollContainer?.querySelector(`[data-page="${page}"]`);
-    if (wrapper) {
-      wrapper.scrollIntoView({ behavior: "auto", block: "start" });
+
+    if (ansicht === "einzeln" || ansicht === "doppel") {
+      renderEinzelSeiten();
+    } else {
+      const wrapper = scrollContainer?.querySelector(`[data-page="${page}"]`);
+      if (wrapper) {
+        wrapper.scrollIntoView({ behavior: "auto", block: "start" });
+      }
     }
     savePosition();
+  }
+
+  function prevPage() {
+    if (ansicht === "doppel") {
+      goToPage(Math.max(1, currentPage - 2));
+    } else {
+      goToPage(currentPage - 1);
+    }
+  }
+
+  function nextPage() {
+    if (ansicht === "doppel") {
+      goToPage(Math.min(totalPages, currentPage + 2));
+    } else {
+      goToPage(currentPage + 1);
+    }
   }
 
   function togglePapierModus() {
@@ -210,6 +301,22 @@
     const idx = modi.indexOf(papierModus);
     papierModus = modi[(idx + 1) % modi.length];
   }
+
+  // Sichtbare Seiten im Einzeln/Doppel-Modus
+  let sichtbareSeiten = $derived.by(() => {
+    if (ansicht === "einzeln") {
+      return [currentPage];
+    } else if (ansicht === "doppel") {
+      const left = currentPage % 2 === 0 ? currentPage - 1 : currentPage;
+      const right = left + 1;
+      const pages = [];
+      if (left >= 1) pages.push(left);
+      if (right <= totalPages) pages.push(right);
+      return pages;
+    }
+    // Scroll-Modi: alle Seiten
+    return null;
+  });
 
   let saveTimeout;
   function savePosition() {
@@ -224,28 +331,52 @@
   }
 
   function handleKeydown(event) {
+    if (event.target.tagName === "INPUT") return;
     if (event.key === "+" || event.key === "=") {
       event.preventDefault();
       zoomIn();
     } else if (event.key === "-") {
       event.preventDefault();
       zoomOut();
+    } else if (event.key === "ArrowRight" || event.key === "PageDown") {
+      event.preventDefault();
+      nextPage();
+    } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
+      event.preventDefault();
+      prevPage();
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      goToPage(1);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      goToPage(totalPages);
     }
   }
 
   // Observer aufsetzen wenn PDF geladen und Container bereit
   $effect(() => {
     if (!laden && pdfDoc && scrollContainer && totalPages > 0) {
-      // Kurz warten bis DOM gerendert ist
       requestAnimationFrame(() => {
-        setupObserver();
-        // Zur Startseite scrollen
+        if (ansicht === "einzeln" || ansicht === "doppel") {
+          renderEinzelSeiten();
+        } else {
+          setupObserver();
+        }
         if (initialPage > 1) {
           setTimeout(() => goToPage(initialPage), 100);
         }
       });
     }
   });
+
+  // Bei Fenster-Resize Auto-Scale neu berechnen
+  function handleResize() {
+    if (ansicht === "breite" || ansicht === "seite" || ansicht === "doppel" || ansicht === "einzeln") {
+      const modus = ansicht === "einzeln" ? "seite" : ansicht;
+      scale = berechneAutoScale(modus);
+      reRenderAll();
+    }
+  }
 
   onDestroy(() => {
     if (observer) observer.disconnect();
@@ -264,9 +395,34 @@
       e.target.blur();
     }
   }
+
+  // Ansichtsmodus-Labels
+  const ansichtLabels = {
+    scroll: "Scrollen",
+    breite: "Seitenbreite",
+    seite: "Ganze Seite",
+    doppel: "Doppelseite",
+    einzeln: "Einzelseite",
+  };
+  const ansichtIcons = {
+    scroll: "fa-arrows-up-down",
+    breite: "fa-arrows-left-right",
+    seite: "fa-expand",
+    doppel: "fa-columns",
+    einzeln: "fa-file",
+  };
+
+  let showAnsichtMenu = $state(false);
+  function toggleAnsichtMenu() {
+    showAnsichtMenu = !showAnsichtMenu;
+  }
+  function waehleAnsicht(modus) {
+    showAnsichtMenu = false;
+    setAnsicht(modus);
+  }
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} onresize={handleResize} />
 
 <div class="pdf-reader">
   {#if laden}
@@ -282,14 +438,10 @@
   {:else}
     <!-- Toolbar -->
     <div class="pdf-toolbar">
+      <!-- Seiten-Navigation -->
       <div class="toolbar-group">
-        <button
-          class="tool-btn"
-          onclick={() => goToPage(currentPage - 1)}
-          disabled={currentPage <= 1}
-          title="Vorherige Seite"
-        >
-          <i class="fa-solid fa-chevron-up"></i>
+        <button class="tool-btn" onclick={prevPage} disabled={currentPage <= 1} title="Vorherige Seite">
+          <i class="fa-solid fa-chevron-left"></i>
         </button>
         <div class="page-nav">
           <input
@@ -303,23 +455,19 @@
           />
           <span class="page-total">/ {totalPages}</span>
         </div>
-        <button
-          class="tool-btn"
-          onclick={() => goToPage(currentPage + 1)}
-          disabled={currentPage >= totalPages}
-          title="Nächste Seite"
-        >
-          <i class="fa-solid fa-chevron-down"></i>
+        <button class="tool-btn" onclick={nextPage} disabled={currentPage >= totalPages} title="Nächste Seite">
+          <i class="fa-solid fa-chevron-right"></i>
         </button>
       </div>
 
       <div class="toolbar-sep"></div>
 
+      <!-- Zoom -->
       <div class="toolbar-group">
         <button class="tool-btn" onclick={zoomOut} title="Verkleinern" disabled={scale <= 0.5}>
           <i class="fa-solid fa-minus"></i>
         </button>
-        <button class="zoom-display" onclick={() => setZoom(1.0)} title="Zoom zurücksetzen">
+        <button class="zoom-display" onclick={() => setZoom(1.0)} title="100% zurücksetzen">
           {Math.round(scale * 100)}%
         </button>
         <button class="tool-btn" onclick={zoomIn} title="Vergrößern" disabled={scale >= 3.0}>
@@ -329,12 +477,51 @@
 
       <div class="toolbar-sep"></div>
 
+      <!-- Ansichtsmodus -->
+      <div class="toolbar-group ansicht-group">
+        <button
+          class="tool-btn ansicht-btn"
+          class:active={ansicht === "breite"}
+          onclick={() => setAnsicht(ansicht === "breite" ? "scroll" : "breite")}
+          title="Seitenbreite"
+        >
+          <i class="fa-solid fa-arrows-left-right"></i>
+        </button>
+        <button
+          class="tool-btn ansicht-btn"
+          class:active={ansicht === "seite"}
+          onclick={() => setAnsicht(ansicht === "seite" ? "scroll" : "seite")}
+          title="Ganze Seite einpassen"
+        >
+          <i class="fa-solid fa-expand"></i>
+        </button>
+        <button
+          class="tool-btn ansicht-btn"
+          class:active={ansicht === "doppel"}
+          onclick={() => setAnsicht(ansicht === "doppel" ? "scroll" : "doppel")}
+          title="Doppelseite"
+        >
+          <i class="fa-solid fa-book-open"></i>
+        </button>
+        <button
+          class="tool-btn ansicht-btn"
+          class:active={ansicht === "einzeln"}
+          onclick={() => setAnsicht(ansicht === "einzeln" ? "scroll" : "einzeln")}
+          title="Einzelseite blättern"
+        >
+          <i class="fa-solid fa-file"></i>
+        </button>
+      </div>
+
+      <div class="toolbar-sep"></div>
+
+      <!-- Papier-Modus -->
       <div class="toolbar-group">
         <button
           class="tool-btn papier-btn"
           class:active={papierModus !== "normal"}
           onclick={togglePapierModus}
-          title="Papier: {papierModus === 'normal' ? 'Normal' : papierModus === 'sepia' ? 'Sepia' : papierModus === 'dunkel' ? 'Dunkel (Bilder erhalten)' : 'Hoher Kontrast'}"
+          title="Papier: {papierModus === 'normal' ? 'Normal' : papierModus === 'sepia' ? 'Sepia' : papierModus === 'dunkel' ? 'Dunkel' : 'Hoher Kontrast'}"
         >
           {#if papierModus === "normal"}
             <i class="fa-solid fa-sun"></i>
@@ -349,24 +536,37 @@
       </div>
     </div>
 
-    <!-- Scroll-Container mit allen Seiten -->
+    <!-- Scroll-Container -->
     <div
       class="scroll-container"
       class:papier-sepia={papierModus === "sepia"}
       class:papier-dunkel={papierModus === "dunkel"}
       class:papier-kontrast={papierModus === "kontrast"}
+      class:modus-einzeln={ansicht === "einzeln"}
+      class:modus-doppel={ansicht === "doppel"}
       bind:this={scrollContainer}
     >
-      {#each Array(totalPages) as _, i}
-        <div
-          class="page-wrapper"
-          data-page={i + 1}
-        >
-          <div class="page-loading">
-            <span class="page-number">{i + 1}</span>
-          </div>
+      {#if ansicht === "einzeln" || ansicht === "doppel"}
+        <!-- Nur sichtbare Seiten anzeigen -->
+        <div class="page-spread" class:doppel={ansicht === "doppel"}>
+          {#each sichtbareSeiten as pageNum (pageNum)}
+            <div class="page-wrapper" data-page={pageNum}>
+              <div class="page-loading">
+                <span class="page-number">{pageNum}</span>
+              </div>
+            </div>
+          {/each}
         </div>
-      {/each}
+      {:else}
+        <!-- Alle Seiten (Scroll-Modus) -->
+        {#each Array(totalPages) as _, i}
+          <div class="page-wrapper" data-page={i + 1}>
+            <div class="page-loading">
+              <span class="page-number">{i + 1}</span>
+            </div>
+          </div>
+        {/each}
+      {/if}
     </div>
   {/if}
 </div>
@@ -403,6 +603,7 @@
     background-color: var(--color-bg-secondary);
     flex-shrink: 0;
     height: 36px;
+    flex-wrap: wrap;
   }
 
   .toolbar-group {
@@ -415,7 +616,7 @@
     width: 1px;
     height: 20px;
     background-color: var(--color-border);
-    margin: 0 0.375rem;
+    margin: 0 0.25rem;
   }
 
   .tool-btn {
@@ -513,6 +714,25 @@
     background-color: #2a2a2e;
   }
 
+  /* Einzelseiten/Doppelseiten: zentriert, kein Scroll noetig */
+  .scroll-container.modus-einzeln,
+  .scroll-container.modus-doppel {
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* Seiten-Spread fuer Einzel/Doppel */
+  .page-spread {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .page-spread.doppel {
+    gap: 2px;
+  }
+
   /* Seiten-Wrapper */
   .page-wrapper {
     position: relative;
@@ -536,7 +756,6 @@
     filter: sepia(0.3) brightness(0.95);
   }
 
-  /* Dunkel: Hintergrund invertieren, Bilder erhalten (brightness+contrast statt invert) */
   .papier-dunkel .page-wrapper {
     background-color: #1e1e1e;
   }
@@ -545,7 +764,6 @@
     filter: invert(0.88) hue-rotate(180deg) brightness(1.1);
   }
 
-  /* Hoher Kontrast: Volle Invertierung */
   .papier-kontrast .page-wrapper {
     background-color: #111;
   }
