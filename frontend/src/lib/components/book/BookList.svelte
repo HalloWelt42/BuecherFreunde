@@ -1,11 +1,46 @@
 <script>
   import RatingStars from "../ui/RatingStars.svelte";
   import { coverUrl } from "../../api/books.js";
+  import { selectionStore } from "../../stores/selection.svelte.js";
 
   let { books = [], onSort = null, detailed = false } = $props();
 
   let sortColumn = $state("title");
   let sortDir = $state("asc");
+
+  // Drag-Select State
+  let isDragging = $state(false);
+  let dragMode = $state("add");
+
+  function handlePointerDown(e, bookId) {
+    if (e.button !== 0) return;
+    const tag = e.target.tagName.toLowerCase();
+    if (tag === "a" || tag === "button" || tag === "i" || e.target.closest("a") || e.target.closest("button")) return;
+
+    e.preventDefault();
+    isDragging = true;
+
+    if (selectionStore.has(bookId)) {
+      dragMode = "remove";
+      selectionStore.remove(bookId);
+    } else {
+      dragMode = "add";
+      selectionStore.add(bookId);
+    }
+  }
+
+  function handlePointerEnter(bookId) {
+    if (!isDragging) return;
+    if (dragMode === "add") {
+      selectionStore.add(bookId);
+    } else {
+      selectionStore.remove(bookId);
+    }
+  }
+
+  function handlePointerUp() {
+    isDragging = false;
+  }
 
   function handleSort(column) {
     if (sortColumn === column) {
@@ -40,34 +75,61 @@
   };
 </script>
 
+<svelte:window onpointerup={handlePointerUp} />
+
 {#if books.length === 0}
   <div class="empty">
     <i class="fa-solid fa-book-open empty-icon"></i>
     <p>Keine Bücher gefunden.</p>
   </div>
 {:else if detailed}
-  <!-- Detailliste -->
-  <div class="detail-list">
+  <!-- Detailliste mit Selection + erweiterten Details -->
+  <div class="detail-list" class:drag-active={isDragging}>
     {#each books as book (book.id)}
-      <a href="/book/{book.id}" class="detail-row">
-        <div class="detail-cover">
-          <img
-            src={coverUrl(book.id, book.updated_at)}
-            alt=""
-            class="detail-cover-img"
-            loading="lazy"
-            onerror={(e) => { e.target.style.display = "none"; e.target.nextElementSibling.style.display = "flex"; }}
-          />
-          <div class="detail-cover-placeholder" style="display: none;">
-            <i class="fa-solid fa-book"></i>
+      {@const isSelected = selectionStore.has(book.id)}
+      <div
+        class="detail-row"
+        class:selected={isSelected}
+        data-book-id={book.id}
+        onpointerdown={(e) => handlePointerDown(e, book.id)}
+        onpointerenter={() => handlePointerEnter(book.id)}
+      >
+        <!-- Checkbox -->
+        <button
+          class="detail-checkbox"
+          class:visible={isSelected || selectionStore.active}
+          onclick={(e) => { e.preventDefault(); e.stopPropagation(); selectionStore.toggle(book.id); }}
+        >
+          {#if isSelected}
+            <i class="fa-solid fa-square-check"></i>
+          {:else}
+            <i class="fa-regular fa-square"></i>
+          {/if}
+        </button>
+
+        <a href="/book/{book.id}" class="detail-link" onclick={(e) => { if (selectionStore.active) { e.preventDefault(); selectionStore.toggle(book.id); } }}>
+          <div class="detail-cover">
+            <img
+              src={coverUrl(book.id, book.updated_at)}
+              alt=""
+              class="detail-cover-img"
+              loading="lazy"
+              onerror={(e) => { e.target.style.display = "none"; e.target.nextElementSibling.style.display = "flex"; }}
+            />
+            <div class="detail-cover-placeholder" style="display: none;">
+              <i class="fa-solid fa-book"></i>
+            </div>
           </div>
-        </div>
-        <div class="detail-info">
+        </a>
+
+        <a href="/book/{book.id}" class="detail-info" onclick={(e) => { if (selectionStore.active) { e.preventDefault(); selectionStore.toggle(book.id); } }}>
           <div class="detail-header">
             <h3 class="detail-title">{book.title}</h3>
             <span class="detail-format">{formatLabel[book.file_format] || book.file_format}</span>
           </div>
           <p class="detail-author">{book.author || "Unbekannter Autor"}</p>
+
+          <!-- Erweiterte Metadaten -->
           <div class="detail-meta">
             <RatingStars rating={book.rating} size="small" />
             {#if book.page_count}
@@ -83,18 +145,27 @@
                 <i class="fa-solid fa-calendar"></i> {book.year}
               </span>
             {/if}
+            {#if book.publisher}
+              <span class="detail-meta-item">
+                <i class="fa-solid fa-building"></i> {book.publisher}
+              </span>
+            {/if}
+            {#if book.isbn}
+              <span class="detail-meta-item isbn">
+                <i class="fa-solid fa-barcode"></i> {book.isbn}
+              </span>
+            {/if}
           </div>
+
           {#if book.categories && book.categories.length > 0}
             <div class="detail-categories">
-              {#each book.categories.slice(0, 4) as cat (cat.id)}
+              {#each book.categories as cat (cat.id)}
                 <span class="detail-chip">{cat.name}</span>
               {/each}
-              {#if book.categories.length > 4}
-                <span class="detail-chip more">+{book.categories.length - 4}</span>
-              {/if}
             </div>
           {/if}
-        </div>
+        </a>
+
         <div class="detail-actions">
           {#if book.is_favorite}
             <i class="fa-solid fa-heart detail-fav"></i>
@@ -103,11 +174,11 @@
             <i class="fa-solid fa-bookmark detail-bookmark"></i>
           {/if}
         </div>
-      </a>
+      </div>
     {/each}
   </div>
 {:else}
-  <!-- Kompakte Tabelle -->
+  <!-- Kompakte Tabelle (keine Selection) -->
   <div class="table-wrapper">
     <table class="book-table">
       <thead>
@@ -169,6 +240,12 @@
 {/if}
 
 <style>
+  /* Drag-Modus */
+  .drag-active {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
   /* Kompakte Tabelle */
   .table-wrapper {
     overflow-x: auto;
@@ -275,17 +352,56 @@
 
   .detail-row {
     display: flex;
-    gap: 1rem;
+    gap: 0.75rem;
     padding: 0.75rem 0.5rem;
     border-bottom: 1px solid var(--color-border);
-    text-decoration: none;
     color: inherit;
     transition: background-color 0.08s;
     align-items: flex-start;
+    position: relative;
   }
 
   .detail-row:hover {
     background-color: var(--color-bg-tertiary);
+  }
+
+  .detail-row.selected {
+    background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  }
+
+  /* Detail Checkbox */
+  .detail-checkbox {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: var(--color-text-muted);
+    font-size: 1rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s;
+    margin-top: 0.75rem;
+  }
+
+  .detail-checkbox.visible,
+  .detail-row:hover .detail-checkbox {
+    opacity: 1;
+  }
+
+  .detail-row.selected .detail-checkbox {
+    opacity: 1;
+    color: var(--color-accent);
+  }
+
+  .detail-link {
+    flex-shrink: 0;
+    text-decoration: none;
   }
 
   .detail-cover {
@@ -320,6 +436,8 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    text-decoration: none;
+    color: inherit;
   }
 
   .detail-header {
@@ -358,6 +476,7 @@
     align-items: center;
     gap: 0.75rem;
     margin-top: 0.125rem;
+    flex-wrap: wrap;
   }
 
   .detail-meta-item {
@@ -370,6 +489,11 @@
 
   .detail-meta-item i {
     font-size: 0.5625rem;
+  }
+
+  .detail-meta-item.isbn {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
   }
 
   .detail-categories {
@@ -398,6 +522,7 @@
     align-items: center;
     gap: 0.375rem;
     padding-top: 0.25rem;
+    flex-shrink: 0;
   }
 
   .detail-fav {

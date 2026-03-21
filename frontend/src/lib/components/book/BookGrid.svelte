@@ -1,9 +1,58 @@
 <script>
   import BookCard from "./BookCard.svelte";
   import { coverUrl } from "../../api/books.js";
+  import { selectionStore } from "../../stores/selection.svelte.js";
 
   let { books = [], large = false, coversOnly = false } = $props();
+
+  // Drag-Select State
+  let isDragging = $state(false);
+  let dragMode = $state("add"); // "add" oder "remove"
+
+  function handlePointerDown(e, bookId) {
+    // Nur linke Maustaste, nicht auf Links/Buttons
+    if (e.button !== 0) return;
+    const tag = e.target.tagName.toLowerCase();
+    if (tag === "button" || tag === "i" || e.target.closest("button")) return;
+
+    e.preventDefault();
+    isDragging = true;
+
+    // Modus bestimmen: wenn bereits selektiert -> abwählen, sonst anwählen
+    if (selectionStore.has(bookId)) {
+      dragMode = "remove";
+      selectionStore.remove(bookId);
+    } else {
+      dragMode = "add";
+      selectionStore.add(bookId);
+    }
+
+    // Pointer Capture für zuverlässiges Tracking
+    e.target.closest("[data-book-id]")?.setPointerCapture?.(e.pointerId);
+  }
+
+  function handlePointerEnter(bookId) {
+    if (!isDragging) return;
+    if (dragMode === "add") {
+      selectionStore.add(bookId);
+    } else {
+      selectionStore.remove(bookId);
+    }
+  }
+
+  function handlePointerUp() {
+    isDragging = false;
+  }
+
+  // Cover-Only: Selection
+  let coverErrors = $state(new Set());
+
+  function setCoverError(bookId) {
+    coverErrors = new Set([...coverErrors, bookId]);
+  }
 </script>
+
+<svelte:window onpointerup={handlePointerUp} />
 
 {#if books.length === 0}
   <div class="empty-state">
@@ -12,23 +61,53 @@
     <p class="empty-text">Passe die Filter an oder importiere neue Bücher.</p>
   </div>
 {:else if coversOnly}
-  <div class="cover-grid">
+  <div class="cover-grid" class:drag-active={isDragging}>
     {#each books as book (book.id)}
-      <a href="/book/{book.id}" class="cover-item">
-        <img
-          src={coverUrl(book.id, book.updated_at)}
-          alt={book.title}
-          class="cover-img"
-          loading="lazy"
-          onerror={(e) => { e.target.style.display = "none"; e.target.nextElementSibling.style.display = "flex"; }}
-        />
-        <div class="cover-placeholder" style="display: none;">
-          <i class="fa-solid fa-book"></i>
-          <span class="cover-placeholder-title">{book.title}</span>
-        </div>
+      {@const isSelected = selectionStore.has(book.id)}
+      <div
+        class="cover-item"
+        class:selected={isSelected}
+        data-book-id={book.id}
+        onpointerdown={(e) => handlePointerDown(e, book.id)}
+        onpointerenter={() => handlePointerEnter(book.id)}
+        role="button"
+        tabindex="-1"
+      >
+        <!-- Checkbox -->
+        <button
+          class="cover-checkbox"
+          class:visible={isSelected || selectionStore.active}
+          onclick={(e) => { e.preventDefault(); e.stopPropagation(); selectionStore.toggle(book.id); }}
+        >
+          {#if isSelected}
+            <i class="fa-solid fa-square-check"></i>
+          {:else}
+            <i class="fa-regular fa-square"></i>
+          {/if}
+        </button>
+
+        <a href="/book/{book.id}" class="cover-link" onclick={(e) => { if (selectionStore.active) { e.preventDefault(); selectionStore.toggle(book.id); } }}>
+          {#if !coverErrors.has(book.id)}
+            <img
+              src={coverUrl(book.id, book.updated_at)}
+              alt={book.title}
+              class="cover-img"
+              loading="lazy"
+              onerror={() => setCoverError(book.id)}
+            />
+          {:else}
+            <div class="cover-placeholder">
+              <i class="fa-solid fa-book"></i>
+              <span class="cover-placeholder-title">{book.title}</span>
+            </div>
+          {/if}
+        </a>
+
         <!-- Hover-Popup -->
         <div class="cover-popup">
-          <img src={coverUrl(book.id, book.updated_at)} alt="" class="popup-img" />
+          {#if !coverErrors.has(book.id)}
+            <img src={coverUrl(book.id, book.updated_at)} alt="" class="popup-img" />
+          {/if}
           <div class="popup-info">
             <strong class="popup-title">{book.title}</strong>
             {#if book.author}
@@ -36,13 +115,19 @@
             {/if}
           </div>
         </div>
-      </a>
+      </div>
     {/each}
   </div>
 {:else}
-  <div class="book-grid" class:large>
+  <div class="book-grid" class:large class:drag-active={isDragging}>
     {#each books as book (book.id)}
-      <BookCard {book} />
+      <div
+        data-book-id={book.id}
+        onpointerdown={(e) => handlePointerDown(e, book.id)}
+        onpointerenter={() => handlePointerEnter(book.id)}
+      >
+        <BookCard {book} />
+      </div>
     {/each}
   </div>
 {/if}
@@ -59,6 +144,12 @@
     gap: 1.5rem;
   }
 
+  /* Drag-Modus: Textauswahl verhindern */
+  .drag-active {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
   /* Cover-Only Grid */
   .cover-grid {
     display: grid;
@@ -73,12 +164,24 @@
     background-color: var(--color-bg-tertiary);
     transition: transform 0.12s, box-shadow 0.12s;
     position: relative;
+    cursor: pointer;
   }
 
   .cover-item:hover {
     transform: scale(1.04);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
     z-index: 10;
+  }
+
+  .cover-item.selected {
+    box-shadow: 0 0 0 3px var(--color-accent);
+    transform: scale(1.02);
+  }
+
+  .cover-link {
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 
   .cover-img {
@@ -114,6 +217,39 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     line-height: 1.3;
+  }
+
+  /* Cover Checkbox */
+  .cover-checkbox {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: none;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    color: #fff;
+    font-size: 0.875rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s;
+  }
+
+  .cover-checkbox.visible,
+  .cover-item:hover .cover-checkbox {
+    opacity: 1;
+  }
+
+  .cover-item.selected .cover-checkbox {
+    opacity: 1;
+    color: var(--color-accent);
+    background: rgba(255, 255, 255, 0.9);
   }
 
   /* Hover-Popup fuer Cover-Only */
