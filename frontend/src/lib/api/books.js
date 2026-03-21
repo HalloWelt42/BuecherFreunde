@@ -1,7 +1,7 @@
 /**
  * API-Modul: Bücher
  */
-import { get, post, patch, del, upload, download } from "./client.js";
+import { get, post, patch, del, upload, download, getToken } from "./client.js";
 
 /**
  * Bücher mit Filtern und Pagination laden.
@@ -52,9 +52,9 @@ export function loescheBuch(id) {
 }
 
 /**
- * Massenbearbeitung fuer mehrere Buecher.
+ * Massenbearbeitung für mehrere Bücher.
  * @param {number[]} bookIds
- * @param {string} aktion - "loeschen", "kategorie_zuweisen", "tag_zuweisen", "favorit", "zu_lesen"
+ * @param {string} aktion - "löschen", "kategorie_zuweisen", "tag_zuweisen", "favorit", "zu_lesen"
  * @param {*} [wert]
  * @returns {Promise<{betroffen: number, aktion: string}>}
  */
@@ -68,7 +68,7 @@ export function bulkAction(bookIds, aktion, wert) {
  * @returns {string}
  */
 export function coverUrl(id) {
-  const token = localStorage.getItem("api_token") || "bitte-aendern-sicherer-token-hier";
+  const token = getToken();
   return `/api/books/${id}/cover?token=${encodeURIComponent(token)}`;
 }
 
@@ -78,7 +78,7 @@ export function coverUrl(id) {
  * @returns {string}
  */
 export function dateiUrl(id) {
-  const token = localStorage.getItem("api_token") || "bitte-aendern-sicherer-token-hier";
+  const token = getToken();
   return `/api/books/${id}/file?token=${encodeURIComponent(token)}`;
 }
 
