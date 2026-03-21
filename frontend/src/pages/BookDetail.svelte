@@ -137,12 +137,11 @@
     { key: "beschreibung", label: "Beschreibung" },
   ];
 
-  function metaInitAuswahl(vorschlag, aktuell) {
+  function metaInitAuswahl(vorschlag) {
     const auswahl = {};
     for (const feld of vergleichsFelder) {
       const neu = vorschlag[feld.key] ?? "";
-      const alt = aktuell[feld.key] ?? "";
-      if (neu && String(neu) !== String(alt)) {
+      if (neu) {
         auswahl[feld.key] = false;
       }
     }
@@ -177,7 +176,7 @@
       metaVorschlag = result.vorschlag;
       metaAktuell = result.aktuell;
       metaQuelle = result.quelle || "";
-      metaAuswahl = metaInitAuswahl(result.vorschlag, result.aktuell);
+      metaAuswahl = metaInitAuswahl(result.vorschlag);
       metaSchritt = "";
     } catch (e) {
       metaFehler = e.message || "Fehler bei der Suche";
@@ -620,15 +619,16 @@
                 {@const neu = metaVorschlag[feld.key] ?? ""}
                 {#if neu || alt}
                   {@const geaendert = String(neu) !== String(alt) && !!neu}
-                  <label class="vergleich-zeile" class:geaendert={geaendert && metaAuswahl[feld.key]}>
+                  {@const hatVorschlag = !!neu}
+                  <label class="vergleich-zeile" class:geaendert={geaendert && metaAuswahl[feld.key]} class:ausgewaehlt={metaAuswahl[feld.key]}>
                     <span class="vergleich-check">
-                      {#if geaendert}
+                      {#if hatVorschlag}
                         <input type="checkbox" bind:checked={metaAuswahl[feld.key]} />
                       {/if}
                     </span>
                     <span class="vergleich-label">{feld.label}</span>
                     <span class="vergleich-alt" class:leer={!alt}>{alt || "-"}</span>
-                    <span class="vergleich-neu" class:leer={!neu} class:abgewaehlt={geaendert && !metaAuswahl[feld.key]}>{neu || "-"}</span>
+                    <span class="vergleich-neu" class:leer={!neu} class:identisch={!geaendert && !!neu} class:abgewaehlt={hatVorschlag && !metaAuswahl[feld.key]}>{neu || "-"}</span>
                   </label>
                 {/if}
               {/each}
@@ -730,6 +730,13 @@
           <h2 class="section-title">Details</h2>
           <BookMeta {book} />
         </div>
+
+        {#if book.description}
+          <div class="meta-section">
+            <h2 class="section-title">Beschreibung</h2>
+            <p class="buch-beschreibung">{book.description}</p>
+          </div>
+        {/if}
 
         {#if book.categories && book.categories.length > 0}
           <div class="tags-section">
@@ -1034,6 +1041,13 @@
     padding-top: 0.5rem;
   }
 
+  .buch-beschreibung {
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    white-space: pre-line;
+    margin: 0;
+  }
+
   .tags-section {
     padding-top: 0.25rem;
   }
@@ -1302,6 +1316,15 @@
     font-style: italic;
     font-weight: 400;
     opacity: 0.6;
+  }
+
+  .vergleich-neu.identisch {
+    color: var(--color-text-muted);
+    font-weight: 400;
+  }
+
+  .vergleich-zeile.ausgewaehlt {
+    background: rgba(59, 130, 246, 0.08);
   }
 
   /* Cover-Vorschau */
