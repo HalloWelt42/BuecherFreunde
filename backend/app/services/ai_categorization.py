@@ -9,17 +9,69 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.ai")
 
-SYSTEM_PROMPT = """Du bist ein Bibliothekar der Buecher kategorisiert.
+# Fallback-Prompt falls DB noch leer
+FALLBACK_PROMPT = """Du bist ein Bibliothekar der Buecher kategorisiert.
 Analysiere den gegebenen Buchtitel, Autor und Textauszug.
 Schlage 3-5 passende Kategorien vor.
 
 Antworte ausschliesslich als JSON-Array mit Objekten:
 [{"kategorie": "Name", "konfidenz": 0.0-1.0}]
 
-Verwende deutsche Kategorienamen. Beispiele:
-Informatik, Belletristik, Geschichte, Philosophie, Naturwissenschaft,
-Wirtschaft, Psychologie, Mathematik, Kunst, Musik, Religion, Politik,
-Science-Fiction, Fantasy, Krimi, Biografie, Ratgeber, Sachbuch"""
+Verwende deutsche Kategorienamen."""
+
+
+async def _load_prompt(schluessel: str) -> dict | None:
+    """Laedt einen Prompt aus der Datenbank."""
+    from backend.app.core.database import db
+    return await db.fetch_one(
+        "SELECT * FROM ai_prompts WHERE schluessel = ? AND aktiv = 1",
+        (schluessel,),
+    )
+
+
+async def send_prompt(
+    schluessel: str,
+    user_message: str,
+) -> str | None:
+    """Sendet einen Prompt an LM Studio und gibt die Antwort zurueck.
+
+    Nutzt die Prompt-Konfiguration aus der Datenbank.
+    """
+    if not settings.lm_studio_enabled:
+        return None
+
+    prompt = await _load_prompt(schluessel)
+    system_prompt = prompt["system_prompt"] if prompt else FALLBACK_PROMPT
+    temperatur = prompt["temperatur"] if prompt else 0.3
+    max_tokens = prompt["max_tokens"] if prompt else 500
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                f"{settings.lm_studio_url}/chat/completions",
+                json={
+                    "model": settings.lm_studio_model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_message},
+                    ],
+                    "temperature": temperatur,
+                    "max_tokens": max_tokens,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+
+    except httpx.ConnectError:
+        logger.warning("LM Studio nicht erreichbar unter %s", settings.lm_studio_url)
+        return None
+    except httpx.HTTPError as e:
+        logger.warning("LM Studio Fehler: %s", e)
+        return None
+    except Exception as e:
+        logger.error("LM Studio Anfrage fehlgeschlagen: %s", e)
+        return None
 
 
 async def categorize_book(
@@ -37,51 +89,22 @@ async def categorize_book(
     Returns:
         Liste von Kategorie-Vorschlaegen mit Konfidenz.
     """
-    if not settings.lm_studio_enabled:
-        return []
-
     excerpt = text_excerpt[:2000] if text_excerpt else ""
     user_msg = f"Titel: {title}\nAutor: {author}"
     if excerpt:
         user_msg += f"\n\nTextauszug:\n{excerpt}"
 
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                f"{settings.lm_studio_url}/chat/completions",
-                json={
-                    "model": settings.lm_studio_model,
-                    "messages": [
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": user_msg},
-                    ],
-                    "temperature": 0.3,
-                    "max_tokens": 500,
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            content = data["choices"][0]["message"]["content"]
-
-            # JSON aus der Antwort extrahieren
-            categories = _parse_categories(content)
-            logger.info(
-                "KI-Kategorisierung fuer '%s': %d Vorschlaege",
-                title,
-                len(categories),
-            )
-            return categories
-
-    except httpx.ConnectError:
-        logger.warning("LM Studio nicht erreichbar unter %s", settings.lm_studio_url)
+    content = await send_prompt("kategorisierung", user_msg)
+    if not content:
         return []
-    except httpx.HTTPError as e:
-        logger.warning("LM Studio Fehler: %s", e)
-        return []
-    except Exception as e:
-        logger.error("KI-Kategorisierung fehlgeschlagen: %s", e)
-        return []
+
+    categories = _parse_categories(content)
+    logger.info(
+        "KI-Kategorisierung fuer '%s': %d Vorschlaege",
+        title,
+        len(categories),
+    )
+    return categories
 
 
 def _parse_categories(content: str) -> list[dict]:

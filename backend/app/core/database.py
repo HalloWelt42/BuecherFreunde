@@ -10,7 +10,7 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.db")
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SCHEMA_SQL = """
 -- Buecher
@@ -149,6 +149,27 @@ CREATE TABLE IF NOT EXISTS import_tasks (
 
 CREATE INDEX IF NOT EXISTS idx_import_status ON import_tasks(status);
 
+-- Anwendungseinstellungen (Key-Value)
+CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- KI-Prompts
+CREATE TABLE IF NOT EXISTS ai_prompts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    schluessel TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    beschreibung TEXT DEFAULT '',
+    system_prompt TEXT NOT NULL DEFAULT '',
+    temperatur REAL DEFAULT 0.3,
+    max_tokens INTEGER DEFAULT 500,
+    aktiv INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Schema-Version
 CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER PRIMARY KEY
@@ -268,6 +289,81 @@ class Database:
                         logger.warning("Migration-Warnung: %s", e)
             await self._connection.commit()
             logger.info("Schema-Migration v2 abgeschlossen: color/icon/description Felder")
+
+        if from_version < 3:
+            # v3: app_settings + ai_prompts Tabellen
+            await self._connection.execute("""
+                CREATE TABLE IF NOT EXISTS app_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL DEFAULT '',
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )
+            """)
+            await self._connection.execute("""
+                CREATE TABLE IF NOT EXISTS ai_prompts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    schluessel TEXT UNIQUE NOT NULL,
+                    name TEXT NOT NULL,
+                    beschreibung TEXT DEFAULT '',
+                    system_prompt TEXT NOT NULL DEFAULT '',
+                    temperatur REAL DEFAULT 0.3,
+                    max_tokens INTEGER DEFAULT 500,
+                    aktiv INTEGER DEFAULT 1,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )
+            """)
+            # Standard-Prompts einfuegen
+            await self._connection.execute("""
+                INSERT OR IGNORE INTO ai_prompts (schluessel, name, beschreibung, system_prompt, temperatur, max_tokens)
+                VALUES (
+                    'kategorisierung',
+                    'Buch-Kategorisierung',
+                    'Analysiert Titel, Autor und Textauszug und schlaegt passende Kategorien vor.',
+                    'Du bist ein Bibliothekar der Buecher kategorisiert.
+Analysiere den gegebenen Buchtitel, Autor und Textauszug.
+Schlage 3-5 passende Kategorien vor.
+
+Antworte ausschliesslich als JSON-Array mit Objekten:
+[{"kategorie": "Name", "konfidenz": 0.0-1.0}]
+
+Verwende deutsche Kategorienamen. Beispiele:
+Informatik, Belletristik, Geschichte, Philosophie, Naturwissenschaft,
+Wirtschaft, Psychologie, Mathematik, Kunst, Musik, Religion, Politik,
+Science-Fiction, Fantasy, Krimi, Biografie, Ratgeber, Sachbuch',
+                    0.3,
+                    500
+                )
+            """)
+            await self._connection.execute("""
+                INSERT OR IGNORE INTO ai_prompts (schluessel, name, beschreibung, system_prompt, temperatur, max_tokens)
+                VALUES (
+                    'zusammenfassung',
+                    'Buch-Zusammenfassung',
+                    'Erstellt eine kurze Zusammenfassung basierend auf dem Textauszug.',
+                    'Du bist ein Bibliothekar. Erstelle eine praegnante Zusammenfassung des Buches in 2-3 Saetzen auf Deutsch. Basiere dich auf den gegebenen Informationen. Antworte nur mit der Zusammenfassung, ohne Einleitung.',
+                    0.4,
+                    300
+                )
+            """)
+            await self._connection.execute("""
+                INSERT OR IGNORE INTO ai_prompts (schluessel, name, beschreibung, system_prompt, temperatur, max_tokens)
+                VALUES (
+                    'schlagworte',
+                    'Schlagwort-Extraktion',
+                    'Extrahiert relevante Schlagworte/Tags aus dem Buchinhalt.',
+                    'Du bist ein Bibliothekar. Extrahiere 5-10 relevante Schlagworte aus dem gegebenen Buch.
+
+Antworte ausschliesslich als JSON-Array mit Strings:
+["Schlagwort1", "Schlagwort2", ...]
+
+Verwende deutsche Begriffe. Sei spezifisch, nicht zu allgemein.',
+                    0.3,
+                    200
+                )
+            """)
+            await self._connection.commit()
+            logger.info("Schema-Migration v3 abgeschlossen: ai_prompts Tabelle")
 
     @property
     def connection(self) -> aiosqlite.Connection:

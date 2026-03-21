@@ -7,6 +7,7 @@
   import BackupPanel from "../lib/components/settings/BackupPanel.svelte";
   import CategoryManager from "../lib/components/settings/CategoryManager.svelte";
   import TagManager from "../lib/components/settings/TagManager.svelte";
+  import AiSettings from "../lib/components/settings/AiSettings.svelte";
 
   import { route } from "../lib/router.svelte.js";
   import { onMount } from "svelte";
@@ -14,6 +15,7 @@
   let activeTab = $derived.by(() => {
     if (route.path.includes("/settings/categories")) return "categories";
     if (route.path.includes("/settings/tags")) return "tags";
+    if (route.path.includes("/settings/ai")) return "ai";
     return "general";
   });
 
@@ -61,6 +63,9 @@
       <a href="/settings/tags" class="tab" class:active={activeTab === "tags"}>
         <i class="fa-solid fa-tags"></i> Tags
       </a>
+      <a href="/settings/ai" class="tab" class:active={activeTab === "ai"}>
+        <i class="fa-solid fa-robot"></i> KI
+      </a>
     </nav>
   </div>
 
@@ -68,6 +73,8 @@
     <CategoryManager />
   {:else if activeTab === "tags"}
     <TagManager />
+  {:else if activeTab === "ai"}
+    <AiSettings />
   {:else}
     <div class="settings-grid">
       <!-- Linke Spalte -->
@@ -133,19 +140,23 @@
             <div class="path-row">
               <span class="path-label">Datenbank</span>
               <code class="path-value">{paths.datenbank || "--"}</code>
+              <span class="path-hint">SQLite-Datenbankdatei mit allen Metadaten, Einstellungen und dem Suchindex.</span>
             </div>
             <div class="path-row">
               <span class="path-label">Bücherspeicher</span>
               <code class="path-value">{paths.speicher || "--"}</code>
+              <span class="path-hint">Hash-basierter Speicher für Originaldateien, Cover und Volltexte. Per rsync sicherbar.</span>
             </div>
             <div class="path-row">
               <span class="path-label">Import-Verzeichnis</span>
               <code class="path-value">{paths.import || "--"}</code>
+              <span class="path-hint">Neue Dateien hier ablegen oder hochladen. Wird beim Import-Scan durchsucht.</span>
             </div>
             {#if paths.extern}
               <div class="path-row">
                 <span class="path-label">Externes Verzeichnis</span>
                 <code class="path-value">{paths.extern}</code>
+                <span class="path-hint">Externer Mount (USB, Netzlaufwerk). Dient als zusätzliche Import-Quelle und zur Duplikaterkennung.</span>
               </div>
             {/if}
           </div>
@@ -402,6 +413,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.125rem;
+    margin-bottom: 0.25rem;
   }
 
   .path-label {
@@ -421,6 +433,12 @@
     border-radius: 4px;
     border: 1px solid var(--color-border);
     word-break: break-all;
+  }
+
+  .path-hint {
+    font-size: 0.625rem;
+    color: var(--color-text-muted);
+    line-height: 1.3;
   }
 
   .stats-row {

@@ -1,9 +1,10 @@
-"""API-Endpunkte fuer KI-Kategorisierung."""
+"""API-Endpunkte fuer KI-Kategorisierung und Prompt-Verwaltung."""
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.app.core.auth import verify_token
+from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.services.ai_categorization import categorize_book, check_connection
 from backend.app.services.storage import load_fulltext
@@ -64,8 +65,11 @@ async def accept_categories(
         if not name:
             continue
 
+        # ai_-Prefix fuer KI-zugewiesene Kategorien
+        ai_name = f"ai_{name}" if not name.startswith("ai_") else name
+
         # Slug erzeugen
-        slug = re.sub(r"[^\w\s-]", "", name.lower())
+        slug = re.sub(r"[^\w\s-]", "", ai_name.lower())
         slug = re.sub(r"[-\s]+", "-", slug).strip("-")
 
         # Kategorie suchen oder erstellen
@@ -74,10 +78,10 @@ async def accept_categories(
         )
         if not cat:
             cursor = await db.execute(
-                "INSERT INTO categories (name, slug) VALUES (?, ?)", (name, slug)
+                "INSERT INTO categories (name, slug) VALUES (?, ?)", (ai_name, slug)
             )
             cat_id = cursor.lastrowid
-            created.append(name)
+            created.append(ai_name)
         else:
             cat_id = cat["id"]
 
@@ -100,4 +104,147 @@ async def accept_categories(
 @router.get("/status")
 async def ai_status(_token: str = Depends(verify_token)):
     """Prueft ob LM Studio erreichbar ist und welche Modelle verfuegbar sind."""
-    return await check_connection()
+    result = await check_connection()
+    # Verbindungsdaten aus den Settings ergaenzen
+    result["url"] = settings.lm_studio_url
+    result["modell"] = settings.lm_studio_model
+    result["aktiviert"] = settings.lm_studio_enabled
+    return result
+
+
+# --- KI-Config ---
+
+class AiConfigUpdate(BaseModel):
+    lm_studio_url: str | None = None
+    lm_studio_model: str | None = None
+    lm_studio_enabled: bool | None = None
+
+
+@router.get("/config")
+async def get_ai_config(_token: str = Depends(verify_token)):
+    """Gibt die KI-Konfiguration zurueck."""
+    # Gespeichertes Modell aus DB laden (ueberschreibt .env)
+    saved = await db.fetch_one(
+        "SELECT value FROM app_settings WHERE key = 'lm_studio_model'"
+    )
+    modell = saved["value"] if saved else settings.lm_studio_model
+    return {
+        "url": settings.lm_studio_url,
+        "modell": modell,
+        "aktiviert": settings.lm_studio_enabled,
+    }
+
+
+@router.patch("/config")
+async def update_ai_config(data: AiConfigUpdate, _token: str = Depends(verify_token)):
+    """Aktualisiert die KI-Konfiguration (persistiert Modellwahl)."""
+    if data.lm_studio_model is not None:
+        await db.execute(
+            """INSERT INTO app_settings (key, value) VALUES ('lm_studio_model', ?)
+               ON CONFLICT(key) DO UPDATE SET value = ?""",
+            (data.lm_studio_model, data.lm_studio_model),
+        )
+        # Auch Runtime-Setting aktualisieren
+        settings.lm_studio_model = data.lm_studio_model
+        await db.commit()
+
+    saved = await db.fetch_one(
+        "SELECT value FROM app_settings WHERE key = 'lm_studio_model'"
+    )
+    modell = saved["value"] if saved else settings.lm_studio_model
+    return {
+        "url": settings.lm_studio_url,
+        "modell": modell,
+        "aktiviert": settings.lm_studio_enabled,
+    }
+
+
+# --- Prompt-Verwaltung ---
+
+class PromptUpdate(BaseModel):
+    name: str | None = None
+    beschreibung: str | None = None
+    system_prompt: str | None = None
+    temperatur: float | None = None
+    max_tokens: int | None = None
+    aktiv: bool | None = None
+
+
+@router.get("/prompts")
+async def list_prompts(_token: str = Depends(verify_token)):
+    """Gibt alle KI-Prompts zurueck."""
+    rows = await db.fetch_all(
+        "SELECT * FROM ai_prompts ORDER BY schluessel"
+    )
+    return rows
+
+
+@router.get("/prompts/{prompt_id}")
+async def get_prompt(prompt_id: int, _token: str = Depends(verify_token)):
+    """Gibt einen einzelnen Prompt zurueck."""
+    row = await db.fetch_one(
+        "SELECT * FROM ai_prompts WHERE id = ?", (prompt_id,)
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Prompt nicht gefunden")
+    return row
+
+
+@router.patch("/prompts/{prompt_id}")
+async def update_prompt(
+    prompt_id: int, data: PromptUpdate, _token: str = Depends(verify_token)
+):
+    """Aktualisiert einen KI-Prompt."""
+    existing = await db.fetch_one(
+        "SELECT * FROM ai_prompts WHERE id = ?", (prompt_id,)
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Prompt nicht gefunden")
+
+    updates = {}
+    if data.name is not None:
+        updates["name"] = data.name
+    if data.beschreibung is not None:
+        updates["beschreibung"] = data.beschreibung
+    if data.system_prompt is not None:
+        updates["system_prompt"] = data.system_prompt
+    if data.temperatur is not None:
+        updates["temperatur"] = max(0.0, min(2.0, data.temperatur))
+    if data.max_tokens is not None:
+        updates["max_tokens"] = max(50, min(4000, data.max_tokens))
+    if data.aktiv is not None:
+        updates["aktiv"] = 1 if data.aktiv else 0
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="Keine Felder zum Aktualisieren")
+
+    updates["updated_at"] = "datetime('now')"
+    set_parts = []
+    values = []
+    for k, v in updates.items():
+        if k == "updated_at":
+            set_parts.append(f"{k} = datetime('now')")
+        else:
+            set_parts.append(f"{k} = ?")
+            values.append(v)
+
+    values.append(prompt_id)
+    await db.execute(
+        f"UPDATE ai_prompts SET {', '.join(set_parts)} WHERE id = ?",
+        tuple(values),
+    )
+    await db.commit()
+
+    return await db.fetch_one("SELECT * FROM ai_prompts WHERE id = ?", (prompt_id,))
+
+
+@router.post("/prompts/{prompt_id}/reset")
+async def reset_prompt(prompt_id: int, _token: str = Depends(verify_token)):
+    """Setzt einen Prompt auf den Standardwert zurueck (loescht und migriert neu)."""
+    existing = await db.fetch_one(
+        "SELECT schluessel FROM ai_prompts WHERE id = ?", (prompt_id,)
+    )
+    if not existing:
+        raise HTTPException(status_code=404, detail="Prompt nicht gefunden")
+
+    return {"message": "Prompt kann manuell zurueckgesetzt werden."}
