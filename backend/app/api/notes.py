@@ -1,4 +1,4 @@
-"""API-Endpunkte fuer Notizen."""
+"""API-Endpunkte für Notizen."""
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -38,7 +38,7 @@ async def notizen_fuer_buch(
 async def erstelle_notiz(
     book_id: int, data: NoteCreate, _: str = Depends(verify_token)
 ):
-    """Neue Notiz fuer ein Buch."""
+    """Neue Notiz für ein Buch."""
     result = await db.execute(
         """INSERT INTO book_notes (book_id, content, page_reference, cfi_reference)
         VALUES (?, ?, ?, ?)""",
@@ -54,7 +54,7 @@ async def aktualisiere_notiz(
     """Notiz aktualisieren."""
     updates = {k: v for k, v in data.model_dump().items() if v is not None}
     if not updates:
-        raise HTTPException(status_code=400, detail="Keine Aenderungen")
+        raise HTTPException(status_code=400, detail="Keine Änderungen")
 
     sets = ", ".join(f"{k} = ?" for k in updates)
     values = list(updates.values()) + [note_id]
@@ -67,16 +67,16 @@ async def aktualisiere_notiz(
 
 @router.delete("/notes/{note_id}")
 async def loesche_notiz(note_id: int, _: str = Depends(verify_token)):
-    """Notiz loeschen."""
+    """Notiz löschen."""
     await db.execute("DELETE FROM book_notes WHERE id = ?", (note_id,))
-    return {"message": "Notiz geloescht"}
+    return {"message": "Notiz gelöscht"}
 
 
 @router.get("/notes/recent")
 async def letzte_notizen(
     limit: int = 10, _: str = Depends(verify_token)
 ):
-    """Letzte Notizen buecheruebergreifend."""
+    """Letzte Notizen bücherübergreifend."""
     rows = await db.fetch_all(
         """SELECT n.*, b.title AS book_title
         FROM book_notes n

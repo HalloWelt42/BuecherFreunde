@@ -1,4 +1,4 @@
-"""API-Endpunkte fuer Konfiguration und Systemstatus."""
+"""API-Endpunkte für Konfiguration und Systemstatus."""
 
 from fastapi import APIRouter, Depends
 
@@ -11,19 +11,19 @@ router = APIRouter(prefix="/api/config", tags=["Konfiguration"])
 
 @router.get("")
 async def get_config(_token: str = Depends(verify_token)) -> dict:
-    """Gibt die oeffentliche Konfiguration zurueck (ohne sensible Daten)."""
+    """Gibt die öffentliche Konfiguration zurück (ohne sensible Daten)."""
     return settings.public_config()
 
 
 @router.get("/version")
 async def get_version() -> dict:
-    """Gibt die aktuelle Version zurueck (ohne Authentifizierung)."""
+    """Gibt die aktuelle Version zurück (ohne Authentifizierung)."""
     return {"version": settings.version}
 
 
 @router.get("/paths")
 async def get_paths(_token: str = Depends(verify_token)) -> dict:
-    """Gibt die konfigurierten Verzeichnispfade zurueck."""
+    """Gibt die konfigurierten Verzeichnispfade zurück."""
     return {
         "datenbank": str(settings.database_path.resolve()),
         "speicher": str(settings.storage_dir.resolve()),
@@ -34,7 +34,7 @@ async def get_paths(_token: str = Depends(verify_token)) -> dict:
 
 @router.get("/stats")
 async def get_stats(_token: str = Depends(verify_token)) -> dict:
-    """Gibt Zaehler fuer Sidebar und Dashboard zurueck."""
+    """Gibt Zähler für Sidebar und Dashboard zurück."""
     total = await db.fetch_one("SELECT COUNT(*) as n FROM books")
     favs = await db.fetch_one(
         "SELECT COUNT(*) as n FROM user_book_data WHERE is_favorite = 1"
@@ -56,6 +56,7 @@ async def get_stats(_token: str = Depends(verify_token)) -> dict:
            WHERE reading_position IS NOT NULL AND reading_position != ''
            AND last_read_at IS NOT NULL"""
     )
+    autoren = await db.fetch_one("SELECT COUNT(*) as n FROM authors")
     total_n = total["n"] if total else 0
     gelesen_n = gelesen["n"] if gelesen else 0
     return {
@@ -67,4 +68,5 @@ async def get_stats(_token: str = Depends(verify_token)) -> dict:
         "buecher_mit_isbn": mit_isbn["n"] if mit_isbn else 0,
         "dokumente": ohne_isbn["n"] if ohne_isbn else 0,
         "weiterlesen": weiterlesen["n"] if weiterlesen else 0,
+        "autoren": autoren["n"] if autoren else 0,
     }

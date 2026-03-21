@@ -1,4 +1,4 @@
-"""API-Endpunkte fuer Kategorien."""
+"""API-Endpunkte für Kategorien."""
 
 import re
 
@@ -25,6 +25,7 @@ class CategoryCreate(BaseModel):
     color: str = "#6b7280"
     icon: str = ""
     sort_order: int = 0
+    spezial: bool = False
 
 
 class CategoryUpdate(BaseModel):
@@ -33,14 +34,15 @@ class CategoryUpdate(BaseModel):
     color: str | None = None
     icon: str | None = None
     sort_order: int | None = None
+    spezial: bool | None = None
 
 
 @router.get("")
 async def list_categories(_token: str = Depends(verify_token)):
-    """Gibt alle Kategorien als flache Liste mit Buchanzahl zurueck."""
+    """Gibt alle Kategorien als flache Liste mit Buchanzahl zurück."""
     rows = await db.fetch_all(
         """SELECT c.id, c.name, c.slug, c.description, c.color, c.icon,
-                  c.sort_order,
+                  c.sort_order, c.spezial,
                   COUNT(bc.book_id) as buch_anzahl
            FROM categories c
            LEFT JOIN book_categories bc ON bc.category_id = c.id
@@ -71,9 +73,9 @@ async def create_category(data: CategoryCreate, _token: str = Depends(verify_tok
             counter += 1
 
     cursor = await db.execute(
-        """INSERT INTO categories (name, slug, description, color, icon, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (data.name, slug, data.description, data.color, data.icon, data.sort_order),
+        """INSERT INTO categories (name, slug, description, color, icon, sort_order, spezial)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (data.name, slug, data.description, data.color, data.icon, data.sort_order, int(data.spezial)),
     )
     await db.commit()
 
@@ -94,6 +96,8 @@ async def update_category(
     updates = data.model_dump(exclude_none=True)
     if "name" in updates:
         updates["slug"] = _slugify(updates["name"])
+    if "spezial" in updates:
+        updates["spezial"] = int(updates["spezial"])
 
     if not updates:
         raise HTTPException(status_code=400, detail="Keine Felder zum Aktualisieren")
@@ -108,7 +112,7 @@ async def update_category(
 
 @router.delete("/{category_id}")
 async def delete_category(category_id: int, _token: str = Depends(verify_token)):
-    """Loescht eine Kategorie (Buecher bleiben erhalten)."""
+    """Löscht eine Kategorie (Bücher bleiben erhalten)."""
     existing = await db.fetch_one(
         "SELECT id FROM categories WHERE id = ?", (category_id,)
     )

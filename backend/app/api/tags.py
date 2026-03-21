@@ -1,4 +1,4 @@
-"""API-Endpunkte fuer Tags."""
+"""API-Endpunkte für Tags."""
 
 import re
 
@@ -33,7 +33,7 @@ class TagUpdate(BaseModel):
 
 @router.get("")
 async def list_tags(_token: str = Depends(verify_token)):
-    """Gibt alle Tags mit Buchanzahl zurueck."""
+    """Gibt alle Tags mit Buchanzahl zurück."""
     return await db.fetch_all(
         """SELECT t.id, t.name, t.slug, t.color, t.icon,
                   COUNT(bt.book_id) as buch_anzahl
@@ -86,7 +86,7 @@ async def update_tag(tag_id: int, data: TagUpdate, _token: str = Depends(verify_
 
 @router.delete("/{tag_id}")
 async def delete_tag(tag_id: int, _token: str = Depends(verify_token)):
-    """Loescht einen Tag."""
+    """Löscht einen Tag."""
     existing = await db.fetch_one("SELECT id FROM tags WHERE id = ?", (tag_id,))
     if not existing:
         raise HTTPException(status_code=404, detail="Tag nicht gefunden")

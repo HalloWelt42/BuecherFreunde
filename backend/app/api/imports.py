@@ -1,4 +1,4 @@
-"""API-Endpunkte fuer den Buch-Import."""
+"""API-Endpunkte für den Buch-Import."""
 
 import asyncio
 import json
@@ -32,7 +32,7 @@ async def upload_file(
     background_tasks: BackgroundTasks,
     _token: str = Depends(verify_token),
 ):
-    """Laedt eine einzelne Datei hoch und importiert sie."""
+    """Lädt eine einzelne Datei hoch und importiert sie."""
     if not file.filename:
         raise HTTPException(status_code=400, detail="Kein Dateiname")
 
@@ -40,13 +40,13 @@ async def upload_file(
     if suffix not in SUPPORTED_FORMATS:
         raise HTTPException(
             status_code=400,
-            detail=f"Format '{suffix}' nicht unterstuetzt. Erlaubt: {', '.join(sorted(SUPPORTED_FORMATS))}",
+            detail=f"Format '{suffix}' nicht unterstützt. Erlaubt: {', '.join(sorted(SUPPORTED_FORMATS))}",
         )
 
     # Import-Aufgabe erstellen
     task_id = await create_import_task(file.filename)
 
-    # Datei temporaer speichern
+    # Datei temporär speichern
     import_dir = settings.import_dir
     import_dir.mkdir(parents=True, exist_ok=True)
     temp_path = import_dir / f"upload_{task_id}_{file.filename}"
@@ -77,7 +77,7 @@ async def upload_multiple(
     background_tasks: BackgroundTasks,
     _token: str = Depends(verify_token),
 ):
-    """Laedt mehrere Dateien hoch und importiert sie."""
+    """Lädt mehrere Dateien hoch und importiert sie."""
     tasks = []
 
     for file in files:
@@ -168,14 +168,14 @@ async def scan_external_dir(
 
 @router.get("/status")
 async def import_status(_token: str = Depends(verify_token)):
-    """Gibt den Status aller Import-Aufgaben zurueck."""
+    """Gibt den Status aller Import-Aufgaben zurück."""
     tasks = await get_import_status()
     return {"aufgaben": tasks}
 
 
 @router.get("/events")
 async def import_events(_token: str = Depends(verify_token_query)):
-    """SSE-Endpunkt fuer Echtzeit-Fortschritt der Import-Aufgaben."""
+    """SSE-Endpunkt für Echtzeit-Fortschritt der Import-Aufgaben."""
 
     async def event_generator():
         last_data = None

@@ -1,4 +1,4 @@
-"""API-Endpunkte fuer Backup und Wiederherstellung."""
+"""API-Endpunkte für Backup und Wiederherstellung."""
 
 import logging
 import shutil
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/backup", tags=["Backup"])
 
 
 def _backup_dir() -> Path:
-    """Gibt das Backup-Verzeichnis zurueck."""
+    """Gibt das Backup-Verzeichnis zurück."""
     d = settings.backup_dir
     d.mkdir(parents=True, exist_ok=True)
     return d
@@ -26,7 +26,7 @@ def _backup_dir() -> Path:
 
 @router.post("/create")
 async def erstelle_backup(_: str = Depends(verify_token)):
-    """Erstellt ein vollstaendiges Backup als ZIP."""
+    """Erstellt ein vollständiges Backup als ZIP."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     zip_name = f"buecherfreunde_backup_{timestamp}.zip"
     zip_path = _backup_dir() / zip_name
@@ -133,7 +133,7 @@ async def restore_backup(
 
 @router.get("/storage-info")
 async def storage_info(_: str = Depends(verify_token)):
-    """Informationen ueber das Buchmaterial-Verzeichnis."""
+    """Informationen über das Buchmaterial-Verzeichnis."""
     storage = settings.storage_dir
     total_size = 0
     file_count = 0

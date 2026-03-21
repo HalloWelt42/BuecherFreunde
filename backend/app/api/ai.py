@@ -1,4 +1,4 @@
-"""API-Endpunkte fuer KI-Kategorisierung und Prompt-Verwaltung."""
+"""API-Endpunkte für KI-Kategorisierung und Prompt-Verwaltung."""
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -18,7 +18,7 @@ class AcceptCategories(BaseModel):
 
 @router.post("/buch/{book_id}/kategorisieren")
 async def categorize(book_id: int, _token: str = Depends(verify_token)):
-    """Holt KI-Kategorie-Vorschlaege fuer ein Buch."""
+    """Holt KI-Kategorie-Vorschläge für ein Buch."""
     book = await db.fetch_one(
         "SELECT id, hash, title, author FROM books WHERE id = ?", (book_id,)
     )
@@ -37,7 +37,7 @@ async def categorize(book_id: int, _token: str = Depends(verify_token)):
     if not vorschlaege:
         raise HTTPException(
             status_code=503,
-            detail="KI-Kategorisierung nicht verfuegbar. Ist LM Studio gestartet?",
+            detail="KI-Kategorisierung nicht verfügbar. Ist LM Studio gestartet?",
         )
 
     return {"book_id": book_id, "vorschlaege": vorschlaege}
@@ -47,7 +47,7 @@ async def categorize(book_id: int, _token: str = Depends(verify_token)):
 async def accept_categories(
     book_id: int, data: AcceptCategories, _token: str = Depends(verify_token)
 ):
-    """Uebernimmt KI-Kategorie-Vorschlaege fuer ein Buch.
+    """Übernimmt KI-Kategorie-Vorschläge für ein Buch.
 
     Erstellt fehlende Kategorien automatisch und ordnet sie dem Buch zu.
     """
@@ -65,7 +65,7 @@ async def accept_categories(
         if not name:
             continue
 
-        # ai_-Prefix fuer KI-zugewiesene Kategorien
+        # ai_-Prefix für KI-zugewiesene Kategorien
         ai_name = f"ai_{name}" if not name.startswith("ai_") else name
 
         # Slug erzeugen
@@ -103,9 +103,9 @@ async def accept_categories(
 
 @router.get("/status")
 async def ai_status(_token: str = Depends(verify_token)):
-    """Prueft ob LM Studio erreichbar ist und welche Modelle verfuegbar sind."""
+    """Prüft ob LM Studio erreichbar ist und welche Modelle verfügbar sind."""
     result = await check_connection()
-    # Gespeichertes Modell aus DB laden (ueberschreibt .env)
+    # Gespeichertes Modell aus DB laden (überschreibt .env)
     saved = await db.fetch_one(
         "SELECT value FROM app_settings WHERE key = 'lm_studio_model'"
     )
@@ -126,8 +126,8 @@ class AiConfigUpdate(BaseModel):
 
 @router.get("/config")
 async def get_ai_config(_token: str = Depends(verify_token)):
-    """Gibt die KI-Konfiguration zurueck."""
-    # Gespeichertes Modell aus DB laden (ueberschreibt .env)
+    """Gibt die KI-Konfiguration zurück."""
+    # Gespeichertes Modell aus DB laden (überschreibt .env)
     saved = await db.fetch_one(
         "SELECT value FROM app_settings WHERE key = 'lm_studio_model'"
     )
@@ -176,7 +176,7 @@ class PromptUpdate(BaseModel):
 
 @router.get("/prompts")
 async def list_prompts(_token: str = Depends(verify_token)):
-    """Gibt alle KI-Prompts zurueck."""
+    """Gibt alle KI-Prompts zurück."""
     rows = await db.fetch_all(
         "SELECT * FROM ai_prompts ORDER BY schluessel"
     )
@@ -185,7 +185,7 @@ async def list_prompts(_token: str = Depends(verify_token)):
 
 @router.get("/prompts/{prompt_id}")
 async def get_prompt(prompt_id: int, _token: str = Depends(verify_token)):
-    """Gibt einen einzelnen Prompt zurueck."""
+    """Gibt einen einzelnen Prompt zurück."""
     row = await db.fetch_one(
         "SELECT * FROM ai_prompts WHERE id = ?", (prompt_id,)
     )
@@ -244,11 +244,11 @@ async def update_prompt(
 
 @router.post("/prompts/{prompt_id}/reset")
 async def reset_prompt(prompt_id: int, _token: str = Depends(verify_token)):
-    """Setzt einen Prompt auf den Standardwert zurueck (loescht und migriert neu)."""
+    """Setzt einen Prompt auf den Standardwert zurück (löscht und migriert neu)."""
     existing = await db.fetch_one(
         "SELECT schluessel FROM ai_prompts WHERE id = ?", (prompt_id,)
     )
     if not existing:
         raise HTTPException(status_code=404, detail="Prompt nicht gefunden")
 
-    return {"message": "Prompt kann manuell zurueckgesetzt werden."}
+    return {"message": "Prompt kann manuell zurückgesetzt werden."}

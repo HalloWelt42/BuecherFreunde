@@ -1,4 +1,4 @@
-"""API-Endpunkte fuer Nutzerdaten (Favoriten, Lesestand, Bewertung)."""
+"""API-Endpunkte für Nutzerdaten (Favoriten, Lesestand, Bewertung)."""
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -29,7 +29,7 @@ async def _ensure_user_data(book_id: int) -> None:
 
 
 async def _check_book_exists(book_id: int) -> None:
-    """Prueft ob das Buch existiert."""
+    """Prüft ob das Buch existiert."""
     book = await db.fetch_one("SELECT id FROM books WHERE id = ?", (book_id,))
     if not book:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")

@@ -1,4 +1,4 @@
-"""API-Endpunkte fuer die Volltextsuche."""
+"""API-Endpunkte für die Volltextsuche."""
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -27,7 +27,7 @@ class SearchResponse(BaseModel):
 
 
 class SuggestResponse(BaseModel):
-    """Vorschlaege fuer Autovervollstaendigung."""
+    """Vorschläge für Autovervollständigung."""
 
     vorschlaege: list[dict]
     anfrage: str
@@ -40,7 +40,7 @@ async def search(
     offset: int = Query(0, ge=0),
     _token: str = Depends(verify_token),
 ):
-    """Volltextsuche in allen Buechern mit Kontext-Snippets."""
+    """Volltextsuche in allen Büchern mit Kontext-Snippets."""
     results = await search_books(q, limit, offset)
     total = await search_count(q)
 
@@ -70,7 +70,7 @@ async def search_suggest(
     limit: int = Query(5, ge=1, le=20),
     _token: str = Depends(verify_token),
 ):
-    """Autovervollstaendigung fuer die Suchleiste."""
+    """Autovervollständigung für die Suchleiste."""
     suggestions = await suggest(q, limit)
     return SuggestResponse(vorschlaege=suggestions, anfrage=q)
 
