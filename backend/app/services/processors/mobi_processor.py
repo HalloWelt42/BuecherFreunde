@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 
 from backend.app.services.processors.base import BaseProcessor, BookProcessingResult
+from backend.app.services.isbn_extractor import extract_isbn_from_fulltext
 
 logger = logging.getLogger("buecherfreunde.processor.mobi")
 
@@ -42,6 +43,13 @@ class MobiProcessor(BaseProcessor):
                         result.fulltext = soup.get_text(separator="\n", strip=True)
                     except Exception as e:
                         logger.warning("HTML-Verarbeitung fehlgeschlagen: %s", e)
+
+                # ISBN aus Volltext extrahieren
+                if result.fulltext:
+                    isbn = extract_isbn_from_fulltext(result.fulltext)
+                    if isbn:
+                        result.isbn = isbn
+                        logger.info("ISBN aus MOBI-Text extrahiert: %s", isbn)
 
                 # Metadaten aus dem Pfadnamen ableiten falls noetig
                 if not result.title:

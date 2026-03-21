@@ -15,6 +15,7 @@ class BookListItem(BaseModel):
     cover_path: str = ""
     page_count: int = 0
     year: int | None = None
+    isbn: str = ""
     is_favorite: bool = False
     is_to_read: bool = False
     rating: int = 0

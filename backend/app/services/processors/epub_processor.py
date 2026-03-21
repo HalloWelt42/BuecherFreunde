@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from ebooklib import epub
 
 from backend.app.services.processors.base import BaseProcessor, BookProcessingResult
+from backend.app.services.isbn_extractor import extract_isbn_from_fulltext
 
 logger = logging.getLogger("buecherfreunde.processor.epub")
 
@@ -36,6 +37,7 @@ class EpubProcessor(BaseProcessor):
             isbn = self._get_isbn(book)
             if isbn:
                 result.isbn = isbn
+            # Fallback: ISBN aus Text extrahieren wenn Metadaten leer
 
             # Text extrahieren
             text_parts = []
@@ -48,6 +50,13 @@ class EpubProcessor(BaseProcessor):
 
             result.fulltext = "\n\n".join(text_parts)
             result.page_count = len(text_parts)
+
+            # Fallback-ISBN aus Volltext wenn Metadaten-ISBN leer
+            if not result.isbn and result.fulltext:
+                isbn_from_text = extract_isbn_from_fulltext(result.fulltext)
+                if isbn_from_text:
+                    result.isbn = isbn_from_text
+                    logger.info("ISBN aus EPUB-Text extrahiert: %s", isbn_from_text)
 
             # Cover extrahieren
             result.cover_data = self._extract_cover(book)

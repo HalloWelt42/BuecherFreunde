@@ -10,7 +10,7 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.db")
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SCHEMA_SQL = """
 -- Buecher
@@ -45,6 +45,9 @@ CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
+    description TEXT DEFAULT '',
+    color TEXT DEFAULT '#6b7280',
+    icon TEXT DEFAULT '',
     parent_id INTEGER DEFAULT NULL,
     sort_order INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -69,6 +72,7 @@ CREATE TABLE IF NOT EXISTS tags (
     name TEXT UNIQUE NOT NULL,
     slug TEXT UNIQUE NOT NULL,
     color TEXT DEFAULT '#6b7280',
+    icon TEXT DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -236,12 +240,34 @@ class Database:
                 logger.info(
                     "Schema-Migration von v%d auf v%d", current, SCHEMA_VERSION
                 )
-                # Hier koennen spaeter Migrationen eingefuegt werden
+                await self._migrate(current)
                 await self._connection.execute(
                     "INSERT OR REPLACE INTO schema_version (version) VALUES (?)",
                     (SCHEMA_VERSION,),
                 )
                 await self._connection.commit()
+
+    async def _migrate(self, from_version: int) -> None:
+        """Fuehrt Schema-Migrationen durch."""
+        assert self._connection is not None
+
+        if from_version < 2:
+            # v2: color, icon, description fuer Kategorien; icon fuer Tags
+            migrations = [
+                "ALTER TABLE categories ADD COLUMN description TEXT DEFAULT ''",
+                "ALTER TABLE categories ADD COLUMN color TEXT DEFAULT '#6b7280'",
+                "ALTER TABLE categories ADD COLUMN icon TEXT DEFAULT ''",
+                "ALTER TABLE tags ADD COLUMN icon TEXT DEFAULT ''",
+            ]
+            for sql in migrations:
+                try:
+                    await self._connection.execute(sql)
+                except Exception as e:
+                    # Spalte existiert bereits
+                    if "duplicate column" not in str(e).lower():
+                        logger.warning("Migration-Warnung: %s", e)
+            await self._connection.commit()
+            logger.info("Schema-Migration v2 abgeschlossen: color/icon/description Felder")
 
     @property
     def connection(self) -> aiosqlite.Connection:

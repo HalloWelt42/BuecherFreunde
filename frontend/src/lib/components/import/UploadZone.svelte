@@ -54,7 +54,7 @@
     class="file-input"
     onchange={handleFileSelect}
   />
-  <p class="upload-icon">{"\u{1F4E4}"}</p>
+  <p class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></p>
   <p class="upload-text">
     {dragging ? "Hier ablegen..." : "Bücher hierher ziehen oder klicken"}
   </p>

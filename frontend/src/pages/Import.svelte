@@ -15,17 +15,21 @@
   let fehler = $state(null);
   let sseConnection = $state(null);
 
-  $effect(() => {
+  import { onMount, onDestroy } from "svelte";
+
+  onMount(() => {
     aktualisiereStatus();
     starteSSE();
-    return () => {
-      sseConnection?.close();
-    };
+  });
+
+  onDestroy(() => {
+    sseConnection?.close();
   });
 
   async function aktualisiereStatus() {
     try {
-      tasks = await holeImportStatus();
+      const result = await holeImportStatus();
+      tasks = result.aufgaben || result.tasks || (Array.isArray(result) ? result : []);
     } catch {
       // Beim ersten Laden noch keine Tasks
     }
@@ -35,13 +39,18 @@
     sseConnection?.close();
     sseConnection = importEvents(
       (event) => {
-        if (event.data && event.data.id) {
-          const idx = tasks.findIndex((t) => t.id === event.data.id);
+        const d = event.data;
+        if (d && d.aufgaben) {
+          // Backend sendet komplettes Aufgaben-Array
+          tasks = d.aufgaben;
+        } else if (d && d.id) {
+          // Einzelnes Task-Update
+          const idx = tasks.findIndex((t) => t.id === d.id);
           if (idx >= 0) {
-            tasks[idx] = event.data;
+            tasks[idx] = d;
             tasks = [...tasks];
           } else {
-            tasks = [...tasks, event.data];
+            tasks = [...tasks, d];
           }
         }
       },
@@ -70,8 +79,9 @@
     fehler = null;
     try {
       const result = await scanneImportVerzeichnis();
-      if (result.tasks) {
-        tasks = [...result.tasks, ...tasks];
+      const neueTasks = result.aufgaben || result.tasks || [];
+      if (neueTasks.length > 0) {
+        tasks = [...neueTasks, ...tasks];
       }
     } catch (e) {
       fehler = e.message;
@@ -85,8 +95,9 @@
     fehler = null;
     try {
       const result = await scanneExternesVerzeichnis();
-      if (result.tasks) {
-        tasks = [...result.tasks, ...tasks];
+      const neueTasks = result.aufgaben || result.tasks || [];
+      if (neueTasks.length > 0) {
+        tasks = [...neueTasks, ...tasks];
       }
     } catch (e) {
       fehler = e.message;
@@ -111,10 +122,10 @@
 
   <div class="scan-actions">
     <button class="action-btn" onclick={scanImport} disabled={laden}>
-      Import-Verzeichnis scannen
+      <i class="fa-solid fa-folder-open"></i> Import-Verzeichnis scannen
     </button>
     <button class="action-btn" onclick={scanExtern} disabled={laden}>
-      Externes Verzeichnis scannen
+      <i class="fa-solid fa-hard-drive"></i> Externes Verzeichnis scannen
     </button>
   </div>
 

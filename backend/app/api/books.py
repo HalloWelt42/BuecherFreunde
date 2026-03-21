@@ -5,8 +5,9 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, Response
+from pydantic import BaseModel
 
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import verify_token, verify_token_query
 from backend.app.core.database import db
 from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate
 from backend.app.services.storage import get_original_file, get_sidecar_path
@@ -85,13 +86,16 @@ async def list_books(
     _token: str = Depends(verify_token),
     seite: int = Query(1, ge=1, description="Seitennummer"),
     pro_seite: int = Query(24, ge=1, le=100, description="Eintraege pro Seite"),
-    kategorie: int | None = Query(None, description="Kategorie-ID Filter"),
-    tag: int | None = Query(None, description="Tag-ID Filter"),
+    kategorie: str | None = Query(None, description="Kategorie-ID(s), kommagetrennt"),
+    tag: str | None = Query(None, description="Tag-ID(s), kommagetrennt"),
     sammlung: int | None = Query(None, description="Sammlungs-ID Filter"),
     favorit: bool | None = Query(None, description="Nur Favoriten"),
     zu_lesen: bool | None = Query(None, description="Nur Zum-Lesen"),
     bewertung_min: int | None = Query(None, ge=0, le=5, description="Mindestbewertung"),
     format: str | None = Query(None, description="Dateiformat (.pdf, .epub, ...)"),
+    gelesen: bool | None = Query(None, description="Nur gelesene Buecher"),
+    hat_isbn: bool | None = Query(None, description="True=mit ISBN, False=ohne ISBN"),
+    weiterlesen: bool | None = Query(None, description="Buecher mit Leseposition"),
     sortierung: str = Query("titel", description="Sortierung: titel, autor, datum, bewertung, groesse"),
     richtung: str = Query("asc", description="Sortierrichtung: asc, desc"),
 ):
@@ -101,12 +105,24 @@ async def list_books(
     params: list = []
 
     if kategorie is not None:
-        conditions.append("b.id IN (SELECT book_id FROM book_categories WHERE category_id = ?)")
-        params.append(kategorie)
+        kat_ids = [int(k) for k in kategorie.split(",") if k.strip().isdigit()]
+        if len(kat_ids) == 1:
+            conditions.append("b.id IN (SELECT book_id FROM book_categories WHERE category_id = ?)")
+            params.append(kat_ids[0])
+        elif len(kat_ids) > 1:
+            ph = ",".join("?" * len(kat_ids))
+            conditions.append(f"b.id IN (SELECT book_id FROM book_categories WHERE category_id IN ({ph}))")
+            params.extend(kat_ids)
 
     if tag is not None:
-        conditions.append("b.id IN (SELECT book_id FROM book_tags WHERE tag_id = ?)")
-        params.append(tag)
+        tag_ids = [int(t) for t in tag.split(",") if t.strip().isdigit()]
+        if len(tag_ids) == 1:
+            conditions.append("b.id IN (SELECT book_id FROM book_tags WHERE tag_id = ?)")
+            params.append(tag_ids[0])
+        elif len(tag_ids) > 1:
+            ph = ",".join("?" * len(tag_ids))
+            conditions.append(f"b.id IN (SELECT book_id FROM book_tags WHERE tag_id IN ({ph}))")
+            params.extend(tag_ids)
 
     if sammlung is not None:
         conditions.append("b.id IN (SELECT book_id FROM book_collections WHERE collection_id = ?)")
@@ -122,9 +138,34 @@ async def list_books(
         conditions.append("b.id IN (SELECT book_id FROM user_book_data WHERE rating >= ?)")
         params.append(bewertung_min)
 
+    if gelesen is not None:
+        if gelesen:
+            conditions.append("b.id IN (SELECT book_id FROM user_book_data WHERE last_read_at IS NOT NULL)")
+        else:
+            conditions.append("b.id NOT IN (SELECT book_id FROM user_book_data WHERE last_read_at IS NOT NULL)")
+
+    if weiterlesen is not None:
+        conditions.append(
+            """b.id IN (SELECT book_id FROM user_book_data
+               WHERE reading_position IS NOT NULL AND reading_position != ''
+               AND last_read_at IS NOT NULL)"""
+        )
+
+    if hat_isbn is not None:
+        if hat_isbn:
+            conditions.append("b.isbn IS NOT NULL AND b.isbn != ''")
+        else:
+            conditions.append("(b.isbn IS NULL OR b.isbn = '')")
+
     if format is not None:
-        conditions.append("b.file_format = ?")
-        params.append(format.lower().lstrip("."))
+        formats = [f.lower().lstrip(".") for f in format.split(",") if f.strip()]
+        if len(formats) == 1:
+            conditions.append("b.file_format = ?")
+            params.append(formats[0])
+        elif len(formats) > 1:
+            placeholders = ",".join("?" * len(formats))
+            conditions.append(f"b.file_format IN ({placeholders})")
+            params.extend(formats)
 
     where = " AND ".join(conditions) if conditions else "1=1"
 
@@ -147,7 +188,7 @@ async def list_books(
     offset = (seite - 1) * pro_seite
     select_sql = f"""
         SELECT b.id, b.hash, b.title, b.author, b.file_format,
-               b.file_size, b.cover_path, b.page_count, b.year, b.created_at
+               b.file_size, b.cover_path, b.page_count, b.year, b.isbn, b.created_at
         FROM books b
         WHERE {where}
         ORDER BY {sort_col} {sort_dir}
@@ -177,7 +218,7 @@ async def recently_read(
     """Gibt die zuletzt gelesenen Buecher zurueck."""
     sql = """
         SELECT b.id, b.hash, b.title, b.author, b.file_format,
-               b.file_size, b.cover_path, b.page_count, b.year, b.created_at
+               b.file_size, b.cover_path, b.page_count, b.year, b.isbn, b.created_at
         FROM books b
         JOIN user_book_data ud ON ud.book_id = b.id
         WHERE ud.last_read_at IS NOT NULL
@@ -274,8 +315,86 @@ async def delete_book(
     return {"geloescht": True, "id": book_id}
 
 
+class BulkAction(BaseModel):
+    """Massenbearbeitung fuer mehrere Buecher."""
+    book_ids: list[int]
+    aktion: str  # "loeschen", "kategorie_zuweisen", "tag_zuweisen", "favorit", "zu_lesen"
+    wert: str | int | None = None  # z.B. Kategorie-ID, Tag-ID, true/false
+
+
+@router.post("/bulk")
+async def bulk_action(
+    action: BulkAction,
+    _token: str = Depends(verify_token),
+):
+    """Fuehrt eine Massenbearbeitung fuer mehrere Buecher durch."""
+    if not action.book_ids:
+        raise HTTPException(status_code=400, detail="Keine Buecher ausgewaehlt")
+
+    betroffen = 0
+
+    if action.aktion == "loeschen":
+        for bid in action.book_ids:
+            await db.execute("DELETE FROM books WHERE id = ?", (bid,))
+            betroffen += 1
+        await db.commit()
+
+    elif action.aktion == "kategorie_zuweisen":
+        if action.wert is None:
+            raise HTTPException(status_code=400, detail="Kategorie-ID fehlt")
+        kat_id = int(action.wert)
+        for bid in action.book_ids:
+            await db.execute(
+                "INSERT OR IGNORE INTO book_categories (book_id, category_id) VALUES (?, ?)",
+                (bid, kat_id),
+            )
+            betroffen += 1
+        await db.commit()
+
+    elif action.aktion == "tag_zuweisen":
+        if action.wert is None:
+            raise HTTPException(status_code=400, detail="Tag-ID fehlt")
+        tag_id = int(action.wert)
+        for bid in action.book_ids:
+            await db.execute(
+                "INSERT OR IGNORE INTO book_tags (book_id, tag_id) VALUES (?, ?)",
+                (bid, tag_id),
+            )
+            betroffen += 1
+        await db.commit()
+
+    elif action.aktion == "favorit":
+        fav = 1 if action.wert in (True, "true", 1) else 0
+        for bid in action.book_ids:
+            await db.execute(
+                """INSERT INTO user_book_data (book_id, is_favorite)
+                   VALUES (?, ?)
+                   ON CONFLICT(book_id) DO UPDATE SET is_favorite = ?""",
+                (bid, fav, fav),
+            )
+            betroffen += 1
+        await db.commit()
+
+    elif action.aktion == "zu_lesen":
+        val = 1 if action.wert in (True, "true", 1) else 0
+        for bid in action.book_ids:
+            await db.execute(
+                """INSERT INTO user_book_data (book_id, is_to_read)
+                   VALUES (?, ?)
+                   ON CONFLICT(book_id) DO UPDATE SET is_to_read = ?""",
+                (bid, val, val),
+            )
+            betroffen += 1
+        await db.commit()
+
+    else:
+        raise HTTPException(status_code=400, detail=f"Unbekannte Aktion: {action.aktion}")
+
+    return {"betroffen": betroffen, "aktion": action.aktion}
+
+
 @router.get("/{book_id}/cover")
-async def get_cover(book_id: int, _token: str = Depends(verify_token)):
+async def get_cover(book_id: int, _token: str = Depends(verify_token_query)):
     """Gibt das Cover-Bild eines Buches zurueck."""
     book = await db.fetch_one(
         "SELECT hash, cover_path FROM books WHERE id = ?", (book_id,)
@@ -291,7 +410,7 @@ async def get_cover(book_id: int, _token: str = Depends(verify_token)):
 
 
 @router.get("/{book_id}/file")
-async def get_file(book_id: int, _token: str = Depends(verify_token)):
+async def get_file(book_id: int, _token: str = Depends(verify_token_query)):
     """Streamt die Buchdatei (mit Range-Request-Unterstuetzung)."""
     book = await db.fetch_one(
         "SELECT hash, file_name, file_format FROM books WHERE id = ?", (book_id,)

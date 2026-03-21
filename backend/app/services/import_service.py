@@ -117,9 +117,56 @@ async def import_single_file(file_path: Path, task_id: int | None = None) -> dic
 
     proc_result = process_book(original)
 
-    # 5. Sidecar-Dateien speichern
+    # 5. Open Library Anreicherung (wenn ISBN vorhanden)
     if task_id:
-        await update_task_status(task_id, "verarbeite", 70, "Metadaten werden gespeichert")
+        await update_task_status(task_id, "verarbeite", 60, "ISBN wird gesucht")
+
+    if proc_result.isbn and settings.openlibrary_enabled:
+        if task_id:
+            await update_task_status(task_id, "verarbeite", 65, "Metadaten werden angereichert (Open Library)")
+        try:
+            from backend.app.services.openlibrary import lookup_isbn
+            ol_data = await lookup_isbn(proc_result.isbn)
+            if ol_data:
+                if not proc_result.author and ol_data.get("autor"):
+                    proc_result.author = ol_data["autor"]
+                if not proc_result.publisher and ol_data.get("verlag"):
+                    proc_result.publisher = ol_data["verlag"]
+                if not proc_result.year and ol_data.get("jahr"):
+                    proc_result.year = ol_data["jahr"]
+                if not proc_result.language and ol_data.get("sprache"):
+                    proc_result.language = ol_data["sprache"]
+                if not proc_result.description and ol_data.get("beschreibung"):
+                    proc_result.description = ol_data["beschreibung"]
+                # Titel nur uebernehmen wenn bisher nur Dateiname
+                if ol_data.get("titel") and proc_result.title == file_path.stem.replace("_", " ").replace("-", " "):
+                    proc_result.title = ol_data["titel"]
+                logger.info("Metadaten angereichert via Open Library fuer ISBN %s", proc_result.isbn)
+        except Exception as e:
+            logger.warning("Open Library Anreicherung fehlgeschlagen: %s", e)
+    elif not proc_result.isbn and proc_result.title and settings.openlibrary_enabled:
+        # Fallback: Titel/Autor-Suche wenn keine ISBN
+        if task_id:
+            await update_task_status(task_id, "verarbeite", 65, "Suche nach Metadaten (Titel/Autor)")
+        try:
+            from backend.app.services.openlibrary import search_books
+            query = f"{proc_result.title} {proc_result.author}".strip()
+            results = await search_books(query, limit=1)
+            if results:
+                ol_data = results[0]
+                if ol_data.get("isbn"):
+                    proc_result.isbn = ol_data["isbn"]
+                if not proc_result.author and ol_data.get("autor"):
+                    proc_result.author = ol_data["autor"]
+                if not proc_result.year and ol_data.get("jahr"):
+                    proc_result.year = ol_data["jahr"]
+                logger.info("Metadaten via Titelsuche gefunden: %s", proc_result.title)
+        except Exception as e:
+            logger.warning("Open Library Titelsuche fehlgeschlagen: %s", e)
+
+    # 6. Sidecar-Dateien speichern
+    if task_id:
+        await update_task_status(task_id, "verarbeite", 75, "Metadaten werden gespeichert")
 
     metadata = {
         "titel": proc_result.title,
@@ -139,7 +186,7 @@ async def import_single_file(file_path: Path, task_id: int | None = None) -> dic
     if proc_result.cover_data:
         save_cover(file_hash, proc_result.cover_data)
 
-    # 6. In Datenbank eintragen
+    # 7. In Datenbank eintragen
     if task_id:
         await update_task_status(task_id, "verarbeite", 85, "Datenbankeintrag wird erstellt")
 
@@ -173,7 +220,27 @@ async def import_single_file(file_path: Path, task_id: int | None = None) -> dic
     await db.commit()
     book_id = cursor.lastrowid
 
-    # 7. Fertig
+    # Buecher ohne ISBN -> Kategorie "Ungeordnet"
+    if not proc_result.isbn:
+        ungeordnet = await db.fetch_one(
+            "SELECT id FROM categories WHERE name = ?", ("Ungeordnet",)
+        )
+        if not ungeordnet:
+            cur = await db.execute(
+                "INSERT INTO categories (name, description) VALUES (?, ?)",
+                ("Ungeordnet", "Bücher ohne ISBN oder Zuordnung"),
+            )
+            await db.commit()
+            kat_id = cur.lastrowid
+        else:
+            kat_id = ungeordnet["id"]
+        await db.execute(
+            "INSERT OR IGNORE INTO book_categories (book_id, category_id) VALUES (?, ?)",
+            (book_id, kat_id),
+        )
+        await db.commit()
+
+    # 8. Fertig
     if task_id:
         await update_task_status(task_id, "fertig", 100, "Import abgeschlossen", "", book_id)
 

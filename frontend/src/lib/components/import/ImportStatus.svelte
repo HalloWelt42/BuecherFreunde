@@ -35,7 +35,7 @@
   {/if}
 
   {#if task.status === "fertig" && task.book_id}
-    <a href="#/book/{task.book_id}" class="book-link">Buch anzeigen</a>
+    <a href="/book/{task.book_id}" class="book-link">Buch anzeigen</a>
   {/if}
 </div>
 

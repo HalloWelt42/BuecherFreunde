@@ -24,7 +24,7 @@ export function ladeDateienHoch(files) {
   for (const file of files) {
     formData.append("files", file);
   }
-  return upload("/api/import/upload/batch", formData);
+  return upload("/api/import/upload-mehrere", formData);
 }
 
 /**
@@ -32,7 +32,7 @@ export function ladeDateienHoch(files) {
  * @returns {Promise<{tasks: import("../types/index.js").ImportTask[], count: number}>}
  */
 export function scanneImportVerzeichnis() {
-  return post("/api/import/scan/import");
+  return post("/api/import/scan");
 }
 
 /**
@@ -40,7 +40,7 @@ export function scanneImportVerzeichnis() {
  * @returns {Promise<{tasks: import("../types/index.js").ImportTask[], count: number}>}
  */
 export function scanneExternesVerzeichnis() {
-  return post("/api/import/scan/external");
+  return post("/api/import/externes-verzeichnis");
 }
 
 /**
@@ -57,7 +57,7 @@ export function holeImportStatus() {
  * @returns {Promise<{files: string[], count: number}>}
  */
 export function importVorschau(source) {
-  return get(`/api/import/preview/${source}`);
+  return get("/api/import/vorschau", { verzeichnis: source === "external" ? "extern" : "import" });
 }
 
 /**

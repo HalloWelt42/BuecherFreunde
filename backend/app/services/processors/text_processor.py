@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 
 from backend.app.services.processors.base import BaseProcessor, BookProcessingResult
+from backend.app.services.isbn_extractor import extract_isbn_from_fulltext
 
 logger = logging.getLogger("buecherfreunde.processor.text")
 
@@ -26,6 +27,12 @@ class TextProcessor(BaseProcessor):
             text = file_path.read_text(encoding="utf-8", errors="replace")
             result.fulltext = text
             result.title = file_path.stem.replace("_", " ").replace("-", " ")
+
+            # ISBN aus Text extrahieren
+            isbn = extract_isbn_from_fulltext(text)
+            if isbn:
+                result.isbn = isbn
+                logger.info("ISBN aus Text extrahiert: %s", isbn)
 
             # Zeilenanzahl als Seitennaherung (ca. 40 Zeilen pro Seite)
             lines = text.count("\n") + 1

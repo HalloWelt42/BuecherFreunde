@@ -8,6 +8,7 @@ import fitz
 from PIL import Image
 
 from backend.app.services.processors.base import BaseProcessor, BookProcessingResult
+from backend.app.services.isbn_extractor import extract_isbn_from_pages
 
 logger = logging.getLogger("buecherfreunde.processor.pdf")
 
@@ -37,13 +38,18 @@ class PdfProcessor(BaseProcessor):
             result.page_count = len(doc)
             result.metadata_raw = meta
 
-            # Text extrahieren
-            text_parts = []
+            # Text extrahieren (seitenweise fuer ISBN-Suche)
+            page_texts = []
             for page in doc:
                 text = page.get_text("text")
-                if text:
-                    text_parts.append(text)
-            result.fulltext = "\n".join(text_parts)
+                page_texts.append(text or "")
+            result.fulltext = "\n".join(page_texts)
+
+            # ISBN aus den ersten/letzten Seiten extrahieren
+            isbn = extract_isbn_from_pages(page_texts)
+            if isbn:
+                result.isbn = isbn
+                logger.info("ISBN aus PDF extrahiert: %s", isbn)
 
             # Cover (erste Seite als Bild)
             result.cover_data = self._extract_cover(doc)
