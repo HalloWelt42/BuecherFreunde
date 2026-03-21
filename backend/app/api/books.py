@@ -549,12 +549,8 @@ async def isbn_scan(book_id: int, _token: str = Depends(verify_token)):
         return {"gefunden": [], "aktuell": book["isbn"] or ""}
 
     text = fulltext_path.read_text(encoding="utf-8", errors="ignore")
-    # Erste und letzte 30.000 Zeichen durchsuchen
-    scan_text = text[:30000]
-    if len(text) > 30000:
-        scan_text += "\n" + text[-30000:]
-
-    raw_isbns = extract_isbns_from_text(scan_text)
+    # Gesamten Text durchsuchen - ISBN kann an beliebiger Stelle stehen
+    raw_isbns = extract_isbns_from_text(text)
 
     # Alle Varianten mit isbnlib berechnen
     ergebnisse = []

@@ -138,7 +138,7 @@ def extract_isbn_from_pages(page_texts: list[str], scan_pages: int = 10) -> str:
     return ""
 
 
-def extract_isbn_from_fulltext(fulltext: str, char_limit: int = 20000) -> str:
+def extract_isbn_from_fulltext(fulltext: str, char_limit: int = 80000) -> str:
     """Durchsucht die ersten und letzten Zeichen des Volltexts nach ISBNs.
 
     Fallback wenn keine seitenweise Aufteilung verfügbar ist.
