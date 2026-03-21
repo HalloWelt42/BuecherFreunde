@@ -55,7 +55,7 @@ if (typeof window !== "undefined") {
 // --- Link-Click Handler ---
 
 /**
- * Link-Klick abfangen fuer SPA-Navigation.
+ * Link-Klick abfangen für SPA-Navigation.
  * @param {MouseEvent} event
  */
 export function handleLinkClick(event) {

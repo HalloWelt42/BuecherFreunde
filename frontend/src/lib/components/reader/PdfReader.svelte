@@ -41,7 +41,7 @@
   let renderedPages = new Set();
   let renderQueue = new Set();
   let observer = null;
-  let _baseViewport = null; // Viewport bei scale=1 fuer Seite 1
+  let _baseViewport = null; // Viewport bei scale=1 für Seite 1
 
   // Worker lokal buendeln
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -63,7 +63,7 @@
     }
   }
 
-  // Scale berechnen fuer Breite/Seite einpassen
+  // Scale berechnen für Breite/Seite einpassen
   function berechneAutoScale(modus) {
     if (!_baseViewport || !scrollContainer) return 1.0;
     const containerW = scrollContainer.clientWidth - 24; // padding abziehen
@@ -109,7 +109,7 @@
       const page1 = await pdfDoc.getPage(1);
       _baseViewport = page1.getViewport({ scale: 1.0 });
 
-      // Platzhalter fuer alle Seiten erstellen
+      // Platzhalter für alle Seiten erstellen
       pageElements = new Array(totalPages).fill(null);
     } catch (e) {
       fehler = e.message || "PDF konnte nicht geladen werden";
@@ -118,7 +118,7 @@
     }
   }
 
-  // IntersectionObserver fuer Lazy-Rendering (nur im Scroll-Modus)
+  // IntersectionObserver für Lazy-Rendering (nur im Scroll-Modus)
   function setupObserver() {
     if (observer) observer.disconnect();
     if (!scrollContainer) return;
@@ -201,7 +201,7 @@
       return;
     }
 
-    // Scroll-Modus: Wrapper-Groessen aktualisieren
+    // Scroll-Modus: Wrapper-Größen aktualisieren
     for (let i = 1; i <= totalPages; i++) {
       const wrapper = scrollContainer.querySelector(`[data-page="${i}"]`);
       if (wrapper) {
@@ -782,7 +782,7 @@
     overflow: hidden;
   }
 
-  /* Seiten-Spread fuer Einzel/Doppel */
+  /* Seiten-Spread für Einzel/Doppel */
   .page-spread {
     display: flex;
     align-items: center;

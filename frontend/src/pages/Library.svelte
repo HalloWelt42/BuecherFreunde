@@ -2,7 +2,7 @@
   import { ui } from "../lib/stores/ui.svelte.js";
   import { booksStore } from "../lib/stores/books.svelte.js";
   import { categoriesStore } from "../lib/stores/categories.svelte.js";
-  import { tagsStore } from "../lib/stores/tags.svelte.js";
+  import { sammlungenStore } from "../lib/stores/tags.svelte.js";
   import BookGrid from "../lib/components/book/BookGrid.svelte";
   import BookList from "../lib/components/book/BookList.svelte";
   import FilterDropdown from "../lib/components/ui/FilterDropdown.svelte";
@@ -43,14 +43,14 @@
   let sortBy = $state("titel");
   let sortDir = $state("asc");
 
-  // Ausgewaehlte Filter aus URL lesen
+  // Ausgewählte Filter aus URL lesen
   let selectedCategories = $derived.by(() => {
     const v = new URLSearchParams(route.qs || "").get("category");
     return v ? v.split(",") : [];
   });
-  let selectedTags = $derived.by(() => {
-    const v = new URLSearchParams(route.qs || "").get("tag");
-    return v ? v.split(",") : [];
+  let selectedSammlungen = $derived.by(() => {
+    const v = new URLSearchParams(route.qs || "").get("sammlung");
+    return v ? [v] : [];
   });
   let selectedFormats = $derived.by(() => {
     const v = new URLSearchParams(route.qs || "").get("file_format");
@@ -65,7 +65,7 @@
 
   let hasActiveFilters = $derived(
     selectedCategories.length > 0 ||
-    selectedTags.length > 0 ||
+    selectedSammlungen.length > 0 ||
     selectedFormats.length > 0 ||
     selectedRating.length > 0 ||
     isFavorite || isToRead
@@ -97,12 +97,12 @@
     navigate("/");
   }
 
-  // URL-Parameter als Filter uebernehmen - immer vollstaendig setzen
+  // URL-Parameter als Filter übernehmen - immer vollständig setzen
   $effect(() => {
     const params = new URLSearchParams(route.qs || "");
     const newFilter = {
       kategorie: params.get("category") || null,
-      tag: params.get("tag") || null,
+      // tag entfernt - ersetzt durch sammlung
       sammlung: params.get("sammlung") ? Number(params.get("sammlung")) : null,
       favorit: params.get("is_favorite") === "true" ? true : null,
       zu_lesen: params.get("is_to_read") === "true" ? true : null,
@@ -140,7 +140,7 @@
 
   onMount(() => {
     categoriesStore.aktualisieren();
-    tagsStore.aktualisieren();
+    sammlungenStore.aktualisieren();
 
     // Bei neuen Import-Ergebnissen Bibliothek automatisch aktualisieren
     _unsubProcesses = onBooksChanged(() => {
@@ -149,7 +149,7 @@
     });
   });
 
-  // Scroll-Container finden (grid-main ist der uebergeordnete Scroll-Container)
+  // Scroll-Container finden (grid-main ist der übergeordnete Scroll-Container)
   onMount(() => {
     scrollContainer = document.querySelector(".grid-main");
   });
@@ -207,12 +207,12 @@
           onchange={(vals) => updateUrlParam("category", vals)}
         />
         <FilterDropdown
-          label="Tags"
-          icon="fa-tags"
-          items={tagsStore.tags}
-          selected={selectedTags}
-          searchPlaceholder="Tag suchen..."
-          onchange={(vals) => updateUrlParam("tag", vals)}
+          label="Sammlungen"
+          icon="fa-layer-group"
+          items={sammlungenStore.sammlungen}
+          selected={selectedSammlungen}
+          searchPlaceholder="Sammlung suchen..."
+          onchange={(vals) => updateUrlParam("sammlung", vals)}
         />
         <FilterDropdown
           label="Format"

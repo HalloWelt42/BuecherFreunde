@@ -5,7 +5,7 @@
   import ServiceStatus from "../lib/components/settings/ServiceStatus.svelte";
   import BackupPanel from "../lib/components/settings/BackupPanel.svelte";
   import CategoryManager from "../lib/components/settings/CategoryManager.svelte";
-  import TagManager from "../lib/components/settings/TagManager.svelte";
+  import SammlungManager from "../lib/components/settings/SammlungManager.svelte";
   import AiSettings from "../lib/components/settings/AiSettings.svelte";
 
   import { route } from "../lib/router.svelte.js";
@@ -13,8 +13,9 @@
 
   let activeTab = $derived.by(() => {
     if (route.path.includes("/settings/categories")) return "categories";
-    if (route.path.includes("/settings/tags")) return "tags";
+    if (route.path.includes("/settings/sammlungen")) return "sammlungen";
     if (route.path.includes("/settings/ai")) return "ai";
+    if (route.path.includes("/settings/system")) return "system";
     return "general";
   });
 
@@ -59,96 +60,95 @@
       <a href="/settings/categories" class="tab" class:active={activeTab === "categories"}>
         <i class="fa-solid fa-folder"></i> Kategorien
       </a>
-      <a href="/settings/tags" class="tab" class:active={activeTab === "tags"}>
-        <i class="fa-solid fa-tags"></i> Tags
+      <a href="/settings/sammlungen" class="tab" class:active={activeTab === "sammlungen"}>
+        <i class="fa-solid fa-layer-group"></i> Sammlungen
       </a>
       <a href="/settings/ai" class="tab" class:active={activeTab === "ai"}>
         <i class="fa-solid fa-robot"></i> KI
+      </a>
+      <a href="/settings/system" class="tab" class:active={activeTab === "system"}>
+        <i class="fa-solid fa-hard-drive"></i> System
       </a>
     </nav>
   </div>
 
   {#if activeTab === "categories"}
     <CategoryManager />
-  {:else if activeTab === "tags"}
-    <TagManager />
+  {:else if activeTab === "sammlungen"}
+    <SammlungManager />
   {:else if activeTab === "ai"}
     <AiSettings />
+  {:else if activeTab === "system"}
+    <div class="settings-single">
+      <section class="settings-section">
+        <h2><i class="fa-solid fa-folder-open"></i> Verzeichnisse</h2>
+        <div class="path-list">
+          <div class="path-row">
+            <span class="path-label">Datenbank</span>
+            <code class="path-value">{paths.datenbank || "--"}</code>
+            <span class="path-hint">SQLite-Datenbankdatei mit allen Metadaten, Einstellungen und dem Suchindex.</span>
+          </div>
+          <div class="path-row">
+            <span class="path-label">Bücherspeicher</span>
+            <code class="path-value">{paths.speicher || "--"}</code>
+            <span class="path-hint">Hash-basierter Speicher für Originaldateien, Cover und Volltexte. Per rsync sicherbar.</span>
+          </div>
+          <div class="path-row">
+            <span class="path-label">Import-Verzeichnis</span>
+            <code class="path-value">{paths.import || "--"}</code>
+            <span class="path-hint">Neue Dateien hier ablegen oder hochladen. Wird beim Import-Scan durchsucht.</span>
+          </div>
+          {#if paths.extern}
+            <div class="path-row">
+              <span class="path-label">Externes Verzeichnis</span>
+              <code class="path-value">{paths.extern}</code>
+              <span class="path-hint">Externer Mount (USB, Netzlaufwerk). Dient als zusätzliche Import-Quelle und zur Duplikaterkennung.</span>
+            </div>
+          {/if}
+        </div>
+        <div class="stats-row">
+          <span class="stat"><strong>{stats.buecher_gesamt}</strong> Bücher</span>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h2><i class="fa-solid fa-database"></i> Datenbank</h2>
+        <div class="setting-row">
+          <button class="btn-secondary" onclick={reindex}>
+            <i class="fa-solid fa-rotate"></i> FTS-Index neu aufbauen
+          </button>
+          {#if reindexMsg}
+            <span class="msg">{reindexMsg}</span>
+          {/if}
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h2><i class="fa-solid fa-box-archive"></i> Backup</h2>
+        <BackupPanel />
+      </section>
+    </div>
   {:else}
-    <div class="settings-grid">
-      <!-- Linke Spalte -->
-      <div class="settings-col">
-        <section class="settings-section">
-          <h2><i class="fa-solid fa-key"></i> API-Token</h2>
-          <div class="token-row">
-            <input
-              type="text"
-              class="form-input mono"
-              bind:value={token}
-              placeholder="API-Token eingeben"
-            />
-            <button class="btn-primary" onclick={saveToken}>
-              <i class="fa-solid fa-check"></i> Speichern
-            </button>
-          </div>
-        </section>
+    <div class="settings-single">
+      <section class="settings-section">
+        <h2><i class="fa-solid fa-key"></i> API-Token</h2>
+        <div class="token-row">
+          <input
+            type="text"
+            class="form-input mono"
+            bind:value={token}
+            placeholder="API-Token eingeben"
+          />
+          <button class="btn-primary" onclick={saveToken}>
+            <i class="fa-solid fa-check"></i> Speichern
+          </button>
+        </div>
+      </section>
 
-        <section class="settings-section">
-          <h2><i class="fa-solid fa-plug"></i> Externe Dienste</h2>
-          <ServiceStatus />
-        </section>
-      </div>
-
-      <!-- Rechte Spalte -->
-      <div class="settings-col">
-        <section class="settings-section">
-          <h2><i class="fa-solid fa-hard-drive"></i> Verzeichnisse</h2>
-          <div class="path-list">
-            <div class="path-row">
-              <span class="path-label">Datenbank</span>
-              <code class="path-value">{paths.datenbank || "--"}</code>
-              <span class="path-hint">SQLite-Datenbankdatei mit allen Metadaten, Einstellungen und dem Suchindex.</span>
-            </div>
-            <div class="path-row">
-              <span class="path-label">Bücherspeicher</span>
-              <code class="path-value">{paths.speicher || "--"}</code>
-              <span class="path-hint">Hash-basierter Speicher für Originaldateien, Cover und Volltexte. Per rsync sicherbar.</span>
-            </div>
-            <div class="path-row">
-              <span class="path-label">Import-Verzeichnis</span>
-              <code class="path-value">{paths.import || "--"}</code>
-              <span class="path-hint">Neue Dateien hier ablegen oder hochladen. Wird beim Import-Scan durchsucht.</span>
-            </div>
-            {#if paths.extern}
-              <div class="path-row">
-                <span class="path-label">Externes Verzeichnis</span>
-                <code class="path-value">{paths.extern}</code>
-                <span class="path-hint">Externer Mount (USB, Netzlaufwerk). Dient als zusätzliche Import-Quelle und zur Duplikaterkennung.</span>
-              </div>
-            {/if}
-          </div>
-          <div class="stats-row">
-            <span class="stat"><strong>{stats.buecher_gesamt}</strong> Bücher</span>
-          </div>
-        </section>
-
-        <section class="settings-section">
-          <h2><i class="fa-solid fa-database"></i> Datenbank</h2>
-          <div class="setting-row">
-            <button class="btn-secondary" onclick={reindex}>
-              <i class="fa-solid fa-rotate"></i> FTS-Index neu aufbauen
-            </button>
-            {#if reindexMsg}
-              <span class="msg">{reindexMsg}</span>
-            {/if}
-          </div>
-        </section>
-
-        <section class="settings-section">
-          <h2><i class="fa-solid fa-box-archive"></i> Backup</h2>
-          <BackupPanel />
-        </section>
-      </div>
+      <section class="settings-section">
+        <h2><i class="fa-solid fa-plug"></i> Externe Dienste</h2>
+        <ServiceStatus />
+      </section>
     </div>
   {/if}
 </div>
@@ -219,6 +219,12 @@
     .settings-grid {
       grid-template-columns: 1fr;
     }
+  }
+
+  .settings-single {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .settings-col {

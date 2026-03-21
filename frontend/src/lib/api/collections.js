@@ -23,10 +23,14 @@ export function loescheSammlung(id) {
   return del(`/api/collections/${id}`);
 }
 
-export function buchHinzufuegen(collectionId, bookId) {
-  return post(`/api/collections/${collectionId}/books/${bookId}`);
+export function buchZuordnen(collectionId, bookId, bandNummer = "") {
+  return post(`/api/collections/${collectionId}/buch/${bookId}`, { band_nummer: bandNummer });
 }
 
-export function buchEntfernen(collectionId, bookId) {
-  return del(`/api/collections/${collectionId}/books/${bookId}`);
+export function buchAusSammlung(collectionId, bookId) {
+  return del(`/api/collections/${collectionId}/buch/${bookId}`);
+}
+
+export function ladeTypen() {
+  return get("/api/collections/typen");
 }

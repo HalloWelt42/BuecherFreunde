@@ -1,6 +1,7 @@
 <script>
   import { holeBuch, coverUrl, aktualisiereBuch } from "../lib/api/books.js";
-  import { post } from "../lib/api/client.js";
+  import { post, get as apiGet } from "../lib/api/client.js";
+  import { ladeSammlungen, buchZuordnen, buchAusSammlung } from "../lib/api/collections.js";
   import { toggleFavorit, toggleZumLesen, setzeBewertung } from "../lib/api/user-data.js";
   import { sucheMetadaten, uebernehmMetadaten } from "../lib/api/metadata.js";
   import RatingStars from "../lib/components/ui/RatingStars.svelte";
@@ -21,12 +22,13 @@
   let editMode = $state(false);
   let editData = $state({});
   let editSpeichern = $state(false);
+  let sammlungen = $state([]);
 
   // ISBN-Scan
   let isbnScanLaden = $state(false);
   let isbnScanErgebnis = $state(null);
 
-  function startEdit() {
+  async function startEdit() {
     editData = {
       title: book.title || "",
       author: book.author || "",
@@ -36,7 +38,11 @@
       language: book.language || "",
       description: book.description || "",
       page_count: book.page_count || "",
+      typ: book.typ || "",
+      sammlung_id: book.sammlung_id || null,
+      band_nummer: book.band_nummer || "",
     };
+    try { sammlungen = await ladeSammlungen(); } catch { sammlungen = []; }
     editMode = true;
   }
 
@@ -51,6 +57,8 @@
     try {
       const daten = {};
       for (const [key, val] of Object.entries(editData)) {
+        if (key === "sammlung_id") continue; // separat behandeln
+        if (key === "band_nummer") continue; // separat behandeln
         if (key === "year" || key === "page_count") {
           const num = parseInt(val) || null;
           if (num !== (book[key] || null)) daten[key] = num;
@@ -58,10 +66,22 @@
           if (val !== (book[key] || "")) daten[key] = val;
         }
       }
+
+      // Sammlung separat via Collections-API
+      const neueSammlung = editData.sammlung_id ? Number(editData.sammlung_id) : null;
+      const alteSammlung = book.sammlung_id || null;
+      if (neueSammlung !== alteSammlung || editData.band_nummer !== (book.band_nummer || "")) {
+        if (neueSammlung) {
+          await buchZuordnen(neueSammlung, book.id, editData.band_nummer || "");
+        } else if (alteSammlung) {
+          await buchAusSammlung(alteSammlung, book.id);
+        }
+      }
+
       if (Object.keys(daten).length > 0) {
         await aktualisiereBuch(book.id, daten);
-        await ladeBuch(book.id);
       }
+      await ladeBuch(book.id);
       editMode = false;
       editData = {};
     } catch (e) {
@@ -100,6 +120,12 @@
   let metaFehler = $state("");
   let metaAuswahl = $state({});
 
+  // Alle Rohdaten anzeigen
+  let rawOffen = $state(false);
+
+  // Einzelne Raw-Listen als Kategorien uebernehmen
+  let rawKatAuswahl = $state({});
+
   const vergleichsFelder = [
     { key: "titel", label: "Titel" },
     { key: "autor", label: "Autor" },
@@ -125,17 +151,22 @@
     return auswahl;
   }
 
-  let metaHatAuswahl = $derived(Object.values(metaAuswahl).some(v => v));
+  let metaHatAuswahl = $derived(
+    Object.values(metaAuswahl).some(v => v) || Object.values(rawKatAuswahl).some(v => v)
+  );
 
   async function metadatenSuchen(quelle) {
     if (metaLaden || !book) return;
     metaLaden = true;
-    const quelleLabel = quelle === "google_books" ? "Google Books" : quelle === "open_library" ? "Open Library" : "allen Quellen";
+    const quelleLabels = { google_books: "Google Books", open_library: "Open Library", wikipedia: "Wikipedia/Wikidata" };
+    const quelleLabel = quelleLabels[quelle] || "allen Quellen";
     metaSchritt = `Suche in ${quelleLabel}...`;
     metaFehler = "";
     metaVorschlag = null;
     metaAktuell = null;
     metaAuswahl = {};
+    rawOffen = false;
+    rawKatAuswahl = {};
 
     try {
       const result = await sucheMetadaten(book.id, quelle);
@@ -174,7 +205,23 @@
         metaSchritt = "Cover wird heruntergeladen...";
       }
       if (metaAuswahl.kategorien && metaVorschlag.kategorien?.length) {
-        payload.kategorien = metaVorschlag.kategorien;
+        payload.kategorien = [...metaVorschlag.kategorien];
+      }
+      // Einzelne Raw-Listen als Kategorien dazu
+      if (metaVorschlag.raw) {
+        for (const [key, checked] of Object.entries(rawKatAuswahl)) {
+          if (checked) {
+            const werte = metaVorschlag.raw[key];
+            if (Array.isArray(werte)) {
+              if (!payload.kategorien) payload.kategorien = [];
+              for (const w of werte) {
+                if (typeof w === "string" && w && !payload.kategorien.includes(w)) {
+                  payload.kategorien.push(w);
+                }
+              }
+            }
+          }
+        }
       }
       await uebernehmMetadaten(book.id, payload);
       metaSchritt = "Buch wird neu geladen...";
@@ -197,6 +244,8 @@
     metaAuswahl = {};
     metaSchritt = "";
     metaFehler = "";
+    rawOffen = false;
+    rawKatAuswahl = {};
   }
 
   $effect(() => {
@@ -403,6 +452,32 @@
                 <label class="edit-label">Seiten</label>
                 <input type="number" class="edit-input" bind:value={editData.page_count} />
               </div>
+              <div class="edit-field">
+                <label class="edit-label">Typ</label>
+                <select class="edit-input" bind:value={editData.typ}>
+                  <option value="">-- Buch (Standard) --</option>
+                  <option value="heft">Heft</option>
+                  <option value="katalog">Katalog</option>
+                  <option value="broschuere">Broschüre</option>
+                </select>
+              </div>
+            </div>
+            <div class="edit-row">
+              <div class="edit-field">
+                <label class="edit-label">Sammlung</label>
+                <select class="edit-input" bind:value={editData.sammlung_id}>
+                  <option value="">-- Keine --</option>
+                  {#each sammlungen as s (s.id)}
+                    <option value={s.id}>{s.name}</option>
+                  {/each}
+                </select>
+              </div>
+              {#if editData.sammlung_id}
+                <div class="edit-field">
+                  <label class="edit-label">Bandnummer</label>
+                  <input type="text" class="edit-input" bind:value={editData.band_nummer} placeholder="z.B. 42, VII, S1" />
+                </div>
+              {/if}
             </div>
             <div class="edit-field">
               <label class="edit-label">Beschreibung</label>
@@ -420,7 +495,18 @@
           </div>
         {:else}
           <h1 class="book-title">{book.title}</h1>
-          <p class="book-author">{book.author || "Unbekannter Autor"}</p>
+          {#if book.authors && book.authors.length > 0}
+            <div class="book-authors">
+              {#each book.authors as a, i (a.id)}
+                <a href="/author/{a.id}" class="author-link">{a.name}</a>{#if i < book.authors.length - 1}<span class="author-sep">,</span>{/if}
+              {/each}
+            </div>
+          {:else}
+            <p class="book-author">{book.author || "Unbekannter Autor"}</p>
+          {/if}
+          {#if book.publisher}
+            <p class="book-publisher">{book.publisher}</p>
+          {/if}
         {/if}
 
         <div class="rating-row">
@@ -485,6 +571,20 @@
             {/if}
             Open Library
           </button>
+          <button
+            class="action-btn meta-btn"
+            class:loading={metaLaden}
+            onclick={() => metadatenSuchen("wikipedia")}
+            disabled={metaLaden}
+            title="Metadaten bei Wikipedia/Wikidata suchen"
+          >
+            {#if metaLaden && metaSchritt.includes("Wikipedia")}
+              <i class="fa-solid fa-spinner fa-spin"></i>
+            {:else}
+              <i class="fa-brands fa-wikipedia-w"></i>
+            {/if}
+            Wikipedia
+          </button>
         </div>
 
         {#if metaLaden && metaSchritt}
@@ -505,7 +605,7 @@
           <div class="meta-vergleich">
             <div class="meta-header">
               <h2 class="section-title">Metadaten-Vergleich</h2>
-              <span class="meta-quelle">{metaQuelle === "google_books" ? "Google Books" : "Open Library"}</span>
+              <span class="meta-quelle">{{ google_books: "Google Books", open_library: "Open Library", wikipedia: "Wikipedia/Wikidata" }[metaQuelle] || metaQuelle}</span>
             </div>
 
             <div class="vergleich-tabelle">
@@ -539,8 +639,19 @@
                     <input type="checkbox" bind:checked={metaAuswahl.cover} />
                   </span>
                   <span class="vergleich-label">Cover</span>
-                  <span class="vergleich-alt">{metaAktuell.hat_cover ? "Vorhanden" : "-"}</span>
-                  <span class="vergleich-neu" class:abgewaehlt={!metaAuswahl.cover}><i class="fa-solid fa-image"></i> Verfügbar</span>
+                  <span class="vergleich-alt">
+                    {#if metaAktuell.hat_cover}
+                      <img src={coverUrl(book.id)} alt="Aktuelles Cover" class="cover-vorschau" />
+                    {:else}
+                      -
+                    {/if}
+                  </span>
+                  <span class="vergleich-neu" class:abgewaehlt={!metaAuswahl.cover}>
+                    <div class="cover-vorschau-wrap">
+                      <img src={metaVorschlag.cover_url} alt="Vorgeschlagenes Cover" class="cover-vorschau" />
+                      <img src={metaVorschlag.cover_url} alt="Vorgeschlagenes Cover" class="cover-gross" />
+                    </div>
+                  </span>
                 </label>
               {/if}
 
@@ -565,6 +676,41 @@
                 {/if}
               {/if}
             </div>
+
+            {#if metaVorschlag.raw && Object.keys(metaVorschlag.raw).length > 0}
+              <div class="raw-section">
+                <button class="raw-toggle" onclick={() => rawOffen = !rawOffen}>
+                  <i class="fa-solid {rawOffen ? 'fa-chevron-down' : 'fa-chevron-right'}"></i>
+                  Alle Daten ({Object.keys(metaVorschlag.raw).length} Felder)
+                </button>
+                {#if rawOffen}
+                  <div class="raw-liste">
+                    {#each Object.entries(metaVorschlag.raw) as [key, value]}
+                      <div class="raw-eintrag">
+                        <span class="raw-key">{key}</span>
+                        <div class="raw-value-wrap">
+                          {#if Array.isArray(value) && value.length > 0 && value.every(v => typeof v === "string")}
+                            <div class="raw-chips">
+                              {#each value as v}
+                                <span class="raw-chip">{v}</span>
+                              {/each}
+                            </div>
+                            <label class="raw-kat-check" title="Als Kategorien übernehmen">
+                              <input type="checkbox" bind:checked={rawKatAuswahl[key]} />
+                              <span class="raw-kat-label">als Kategorien</span>
+                            </label>
+                          {:else if typeof value === "object" && value !== null}
+                            <code class="raw-json">{JSON.stringify(value, null, 2)}</code>
+                          {:else}
+                            <span class="raw-text">{String(value)}</span>
+                          {/if}
+                        </div>
+                      </div>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            {/if}
 
             <div class="meta-aktionen">
               <button class="btn btn-primary btn-sm" onclick={metadatenUebernehmen} disabled={metaLaden || !metaHatAuswahl}>
@@ -601,19 +747,32 @@
           </div>
         {/if}
 
-        {#if book.tags && book.tags.length > 0}
+        {#if book.sammlung}
           <div class="tags-section">
-            <h2 class="section-title">Tags</h2>
+            <h2 class="section-title">Sammlung</h2>
             <div class="chip-list">
-              {#each book.tags as tag (tag.id)}
-                <a
-                  href="/?tag={tag.id}"
-                  class="chip tag-chip"
-                  style="--tag-color: {tag.color || 'var(--color-accent)'}"
-                >
-                  {tag.name}
-                </a>
-              {/each}
+              <a
+                href="/?sammlung={book.sammlung.id}"
+                class="chip sammlung-chip"
+                style="--sammlung-color: {book.sammlung.color || 'var(--color-accent)'}"
+              >
+                <span class="sammlung-dot" style="background: {book.sammlung.color || 'var(--color-accent)'}"></span>
+                {book.sammlung.name}
+                {#if book.band_nummer}
+                  <span class="band-nr">#{book.band_nummer}</span>
+                {/if}
+              </a>
+            </div>
+          </div>
+        {/if}
+
+        {#if book.typ}
+          <div class="tags-section">
+            <h2 class="section-title">Typ</h2>
+            <div class="chip-list">
+              <span class="chip typ-chip">
+                {{ heft: "Heft", katalog: "Katalog", broschuere: "Broschüre" }[book.typ] || book.typ}
+              </span>
             </div>
           </div>
         {/if}
@@ -800,9 +959,36 @@
     line-height: 1.2;
   }
 
+  .book-authors {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.125rem;
+    font-size: 1.125rem;
+  }
+
+  .author-link {
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .author-link:hover {
+    text-decoration: underline;
+  }
+
+  .author-sep {
+    color: var(--color-text-muted);
+    margin-right: 0.25rem;
+  }
+
   .book-author {
     font-size: 1.125rem;
     color: var(--color-text-secondary);
+  }
+
+  .book-publisher {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
   }
 
   .rating-row {
@@ -871,10 +1057,33 @@
     background-color: var(--color-bg-tertiary);
   }
 
-  .tag-chip {
-    background-color: color-mix(in srgb, var(--tag-color) 15%, transparent);
-    color: var(--tag-color);
-    border-color: color-mix(in srgb, var(--tag-color) 30%, transparent);
+  .sammlung-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    background-color: color-mix(in srgb, var(--sammlung-color) 15%, transparent);
+    color: var(--sammlung-color);
+    border-color: color-mix(in srgb, var(--sammlung-color) 30%, transparent);
+  }
+
+  .sammlung-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .band-nr {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    font-weight: 600;
+    opacity: 0.8;
+  }
+
+  .typ-chip {
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+    font-weight: 500;
   }
 
   .position-section {
@@ -1095,6 +1304,35 @@
     opacity: 0.6;
   }
 
+  /* Cover-Vorschau */
+  .cover-vorschau {
+    height: 48px;
+    border-radius: 3px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    object-fit: cover;
+  }
+
+  .cover-vorschau-wrap {
+    position: relative;
+    display: inline-block;
+  }
+
+  .cover-gross {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    height: 240px;
+    border-radius: 6px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 20;
+    pointer-events: none;
+  }
+
+  .cover-vorschau-wrap:hover .cover-gross {
+    display: block;
+  }
+
   .meta-kategorien {
     display: flex;
     flex-wrap: wrap;
@@ -1115,6 +1353,107 @@
     padding: 0.125rem 0.5rem;
     font-size: 0.6875rem;
     color: var(--color-text-muted);
+  }
+
+  /* Alle Daten (Rohdaten) */
+  .raw-section {
+    border-top: 1px solid var(--color-border);
+    padding-top: 0.5rem;
+  }
+
+  .raw-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    padding: 0.25rem 0;
+  }
+
+  .raw-toggle:hover {
+    color: var(--color-accent);
+  }
+
+  .raw-liste {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .raw-eintrag {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .raw-key {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+  }
+
+  .raw-value-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .raw-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .raw-chip {
+    padding: 0.125rem 0.5rem;
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    color: var(--color-text-secondary);
+  }
+
+  .raw-kat-check {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    cursor: pointer;
+  }
+
+  .raw-kat-check input[type="checkbox"] {
+    accent-color: var(--color-accent);
+    cursor: pointer;
+  }
+
+  .raw-kat-label {
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+  }
+
+  .raw-json {
+    font-size: 0.6875rem;
+    font-family: var(--font-mono);
+    color: var(--color-text-secondary);
+    background-color: var(--color-bg-primary);
+    padding: 0.375rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--color-border);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .raw-text {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    word-break: break-word;
   }
 
   .meta-aktionen {

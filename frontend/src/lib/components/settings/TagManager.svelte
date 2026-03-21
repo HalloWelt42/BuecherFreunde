@@ -62,7 +62,7 @@
       await tagsStore.aktualisieren();
       confirmDeleteId = null;
     } catch (e) {
-      console.error("Tag loeschen fehlgeschlagen:", e);
+      console.error("Tag löschen fehlgeschlagen:", e);
     }
   }
 
@@ -125,14 +125,14 @@
             <i class="fa-solid fa-pen"></i>
           </button>
           {#if confirmDeleteId === tag.id}
-            <button class="act danger" onclick={() => deleteTag(tag.id)} title="Wirklich loeschen">
+            <button class="act danger" onclick={() => deleteTag(tag.id)} title="Wirklich löschen">
               <i class="fa-solid fa-check"></i>
             </button>
             <button class="act" onclick={() => (confirmDeleteId = null)}>
               <i class="fa-solid fa-xmark"></i>
             </button>
           {:else}
-            <button class="act danger" onclick={() => (confirmDeleteId = tag.id)} title="Loeschen">
+            <button class="act danger" onclick={() => (confirmDeleteId = tag.id)} title="Löschen">
               <i class="fa-solid fa-trash"></i>
             </button>
           {/if}

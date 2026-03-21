@@ -1,5 +1,5 @@
 /**
- * Store: Buchauswahl fuer Massenbearbeitung.
+ * Store: Buchauswahl für Massenbearbeitung.
  */
 
 function createSelectionStore() {

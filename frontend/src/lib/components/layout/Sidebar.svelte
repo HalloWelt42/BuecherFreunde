@@ -1,7 +1,7 @@
 <script>
   import { ui } from "../../stores/ui.svelte.js";
   import { categoriesStore } from "../../stores/categories.svelte.js";
-  import { tagsStore } from "../../stores/tags.svelte.js";
+  import { sammlungenStore } from "../../stores/tags.svelte.js";
   import { route, navigate } from "../../router.svelte.js";
   import { get } from "../../api/client.js";
   import { onMount, onDestroy } from "svelte";
@@ -10,7 +10,7 @@
   let stats = $state({
     buecher_gesamt: 0, favoriten: 0, leseliste: 0,
     gelesen: 0, ungelesen: 0, buecher_mit_isbn: 0, dokumente: 0,
-    weiterlesen: 0,
+    weiterlesen: 0, autoren: 0,
   });
 
   let version = $state("...");
@@ -107,30 +107,18 @@
     }
   }
 
-  // Kategorien (flach)
-  let cats = $derived(categoriesStore.kategorien);
+  // Nur Spezialkategorien in der Sidebar
+  let cats = $derived(categoriesStore.kategorien.filter(c => c.spezial));
 
-  // Aktive Tag-IDs aus URL lesen
-  let activeTags = $derived.by(() => {
-    const v = new URLSearchParams(route.qs || "").get("tag");
-    return v ? v.split(",") : [];
-  });
+  // Aktive Sammlung aus URL lesen
+  let activeSammlung = $derived(new URLSearchParams(route.qs || "").get("sammlung"));
 
-  function toggleTag(tagId) {
-    const strId = String(tagId);
+  function toggleSammlung(sammlungId) {
     const params = new URLSearchParams(route.qs || "");
-    let current = params.get("tag") ? params.get("tag").split(",") : [];
-
-    if (current.includes(strId)) {
-      current = current.filter((t) => t !== strId);
+    if (params.get("sammlung") === String(sammlungId)) {
+      params.delete("sammlung");
     } else {
-      current.push(strId);
-    }
-
-    if (current.length > 0) {
-      params.set("tag", current.join(","));
-    } else {
-      params.delete("tag");
+      params.set("sammlung", String(sammlungId));
     }
     const qs = params.toString();
     navigate(qs ? `/?${qs}` : "/");
@@ -142,7 +130,7 @@
     ladeStats();
     ladeVersion();
     categoriesStore.aktualisieren();
-    tagsStore.aktualisieren();
+    sammlungenStore.aktualisieren();
 
     // Bei neuen Importen Sidebar-Zaehler aktualisieren
     _unsubProcesses = onBooksChanged(() => {
@@ -260,22 +248,22 @@
     {/if}
   </div>
 
-  <!-- Tags -->
-  {#if tagsStore.tags.length > 0}
+  <!-- Sammlungen -->
+  {#if sammlungenStore.sammlungen.length > 0}
     <div class="sidebar-divider"></div>
-    <div class="section-label">Tags</div>
-    <div class="tags-list">
-      {#each tagsStore.tags as tag (tag.id)}
+    <div class="section-label">Sammlungen</div>
+    <div class="sammlungen-list">
+      {#each sammlungenStore.sammlungen as s (s.id)}
         <button
-          class="tag-btn"
-          class:active={activeTags.includes(String(tag.id))}
-          onclick={() => toggleTag(tag.id)}
-          title={tag.name}
+          class="sammlung-btn"
+          class:active={activeSammlung === String(s.id)}
+          onclick={() => toggleSammlung(s.id)}
+          title={s.name}
         >
-          <span class="tag-dot" style="background-color: {tag.color}"></span>
-          <span class="tag-name">{tag.name}</span>
-          {#if tag.buch_anzahl > 0}
-            <span class="tag-count">{tag.buch_anzahl}</span>
+          <span class="sammlung-dot" style="background-color: {s.color}"></span>
+          <span class="sammlung-name">{s.name}</span>
+          {#if s.buch_anzahl > 0}
+            <span class="sammlung-count">{s.buch_anzahl}</span>
           {/if}
         </button>
       {/each}
@@ -287,6 +275,17 @@
   <!-- Verwalten -->
   <div class="section-label">Verwalten</div>
   <nav class="sidebar-nav">
+    <a
+      href="/authors"
+      class="nav-item"
+      class:active={route.path === "/authors" || route.path.startsWith("/author/")}
+    >
+      <span class="nav-icon"><i class="fa-solid fa-users"></i></span>
+      <span class="nav-label">Autoren</span>
+      {#if stats.autoren > 0}
+        <span class="nav-count">{stats.autoren}</span>
+      {/if}
+    </a>
     <a
       href="/import"
       class="nav-item"
@@ -496,65 +495,71 @@
     color: var(--color-text-muted);
   }
 
-  /* Tags */
-  .tags-list {
+  /* Sammlungen */
+  .sammlungen-list {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    padding: 0 0.375rem;
+    flex-direction: column;
+    gap: 1px;
+    max-height: 200px;
+    overflow-y: auto;
   }
 
-  .tag-btn {
-    display: inline-flex;
+  .sammlung-btn {
+    display: flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.1875rem 0.5rem;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
+    gap: 0.5rem;
+    padding: 0.3125rem 0.5rem;
+    border: none;
+    border-radius: 6px;
     background: none;
     color: var(--color-text-secondary);
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.1s;
-    white-space: nowrap;
+    text-align: left;
+    transition: background-color 0.1s, color 0.1s;
+    width: 100%;
   }
 
-  .tag-btn:hover {
-    border-color: var(--color-text-muted);
+  .sammlung-btn:hover {
+    background-color: var(--color-bg-tertiary);
     color: var(--color-text-primary);
   }
 
-  .tag-btn.active {
-    border-color: var(--color-accent);
+  .sammlung-btn.active {
     background-color: var(--color-accent-light);
     color: var(--color-accent);
     font-weight: 600;
   }
 
-  .tag-dot {
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 50%;
+  .sammlung-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 3px;
     flex-shrink: 0;
   }
 
-  .tag-name {
+  .sammlung-name {
+    flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 8rem;
+    white-space: nowrap;
   }
 
-  .tag-count {
+  .sammlung-count {
     font-size: 0.5625rem;
     font-weight: 600;
     font-family: var(--font-mono);
+    padding: 0.0625rem 0.3125rem;
+    border-radius: 999px;
+    background-color: var(--color-bg-tertiary);
     color: var(--color-text-muted);
     flex-shrink: 0;
   }
 
-  .tag-btn.active .tag-count {
-    color: var(--color-accent);
+  .sammlung-btn.active .sammlung-count {
+    background-color: var(--color-accent);
+    color: #fff;
   }
 
   /* Spacer + Version */

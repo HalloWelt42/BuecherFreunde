@@ -10,12 +10,16 @@
   import Reader from "./pages/Reader.svelte";
   import SearchResults from "./pages/SearchResults.svelte";
   import CollectionView from "./pages/CollectionView.svelte";
+  import Authors from "./pages/Authors.svelte";
+  import AuthorDetail from "./pages/AuthorDetail.svelte";
   import Import from "./pages/Import.svelte";
   import Settings from "./pages/Settings.svelte";
 
   const routeDefs = [
     { pattern: "/book/:id/read", component: Reader },
     { pattern: "/book/:id", component: BookDetail },
+    { pattern: "/authors", component: Authors },
+    { pattern: "/author/:id", component: AuthorDetail },
     { pattern: "/search", component: SearchResults },
     { pattern: "/collection/:id", component: CollectionView },
     { pattern: "/import", component: Import },

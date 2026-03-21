@@ -1,6 +1,6 @@
 /**
- * Store fuer Hintergrundprozesse - Import, AI-Scan, Indizierung.
- * Pollt regelmaessig den Import-Status und stellt ihn global bereit.
+ * Store für Hintergrundprozesse - Import, AI-Scan, Indizierung.
+ * Pollt regelmäßig den Import-Status und stellt ihn global bereit.
  * Benachrichtigt registrierte Listener bei neuen fertigen Imports.
  */
 
@@ -44,7 +44,7 @@ export function getProcessStats() {
 }
 
 /**
- * Callback registrieren der aufgerufen wird wenn neue Buecher importiert wurden.
+ * Callback registrieren der aufgerufen wird wenn neue Bücher importiert wurden.
  * @param {() => void} cb
  * @returns {() => void} Unsubscribe-Funktion
  */
@@ -62,7 +62,7 @@ export async function fetchImportStatus() {
     processes.importTasks = data.aufgaben || [];
     processes.lastUpdate = new Date();
 
-    // Pruefen ob neue Buecher fertig wurden
+    // Prüfen ob neue Bücher fertig wurden
     const stats = getProcessStats();
     if (stats.fertig > _lastFertigCount && _lastFertigCount > 0) {
       // Listener benachrichtigen

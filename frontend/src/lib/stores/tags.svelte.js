@@ -1,16 +1,20 @@
 /**
- * Store: Tags.
+ * Store: Sammlungen (ersetzt Tags).
  */
-import { ladeTags } from "../api/tags.js";
+import { ladeSammlungen } from "../api/collections.js";
 
-function createTagsStore() {
-  let tags = $state([]);
+function createSammlungenStore() {
+  let sammlungen = $state([]);
   let laden = $state(false);
   let fehler = $state(null);
 
   return {
+    get sammlungen() {
+      return sammlungen;
+    },
+    // Abwärtskompatibel: tags -> sammlungen
     get tags() {
-      return tags;
+      return sammlungen;
     },
     get laden() {
       return laden;
@@ -23,10 +27,10 @@ function createTagsStore() {
       laden = true;
       fehler = null;
       try {
-        tags = await ladeTags();
+        sammlungen = await ladeSammlungen();
       } catch (e) {
         fehler = e.message;
-        tags = [];
+        sammlungen = [];
       } finally {
         laden = false;
       }
@@ -34,4 +38,6 @@ function createTagsStore() {
   };
 }
 
-export const tagsStore = createTagsStore();
+export const sammlungenStore = createSammlungenStore();
+// Abwärtskompatibel
+export const tagsStore = sammlungenStore;
