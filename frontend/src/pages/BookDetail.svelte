@@ -30,6 +30,7 @@
 
   // Cover neu extrahieren
   let coverNeuLaden = $state(false);
+  let coverVersion = $state(0);
 
   async function coverNeuExtrahieren() {
     if (coverNeuLaden || !book) return;
@@ -37,6 +38,7 @@
     try {
       await post(`/api/books/${book.id}/cover/neu-extrahieren`);
       coverError = false;
+      coverVersion++;
       await ladeBuch(book.id);
     } catch (e) {
       metaFehler = e.message || "Cover-Extraktion fehlgeschlagen";
@@ -423,7 +425,7 @@
       <div class="cover-section">
         {#if !coverError}
           <img
-            src={coverUrl(book.id)}
+            src={coverUrl(book.id) + (coverVersion ? `&_v=${coverVersion}` : '')}
             alt="Cover: {book.title}"
             class="cover-image"
             onerror={() => (coverError = true)}
