@@ -22,6 +22,15 @@ export function toggleZumLesen(bookId) {
 }
 
 /**
+ * Gelesen/Ungelesen umschalten.
+ * @param {number} bookId
+ * @returns {Promise<{book_id: number, gelesen: boolean}>}
+ */
+export function toggleGelesen(bookId) {
+  return patch(`/api/books/${bookId}/gelesen`);
+}
+
+/**
  * Bewertung setzen (0-5).
  * @param {number} bookId
  * @param {number} bewertung

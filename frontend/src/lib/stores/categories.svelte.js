@@ -23,7 +23,13 @@ function createCategoriesStore() {
       laden = true;
       fehler = null;
       try {
-        kategorien = await ladeKategorien();
+        const alle = await ladeKategorien();
+        // Spezial-Kategorien oben, dann alphabetisch
+        kategorien = alle.sort((a, b) => {
+          if (a.spezial && !b.spezial) return -1;
+          if (!a.spezial && b.spezial) return 1;
+          return (a.name || "").localeCompare(b.name || "", "de");
+        });
       } catch (e) {
         fehler = e.message;
         kategorien = [];

@@ -211,7 +211,7 @@
     </button>
     <button class="nav-item" class:active={isToRead} onclick={goLeseliste}>
       <span class="nav-icon">
-        <i class="fa-solid fa-bookmark" style="color: var(--color-accent)"></i>
+        <i class="fa-solid fa-couch" style="color: var(--color-accent)"></i>
       </span>
       <span class="nav-label">Leseliste</span>
       {#if stats.leseliste > 0}
@@ -294,6 +294,10 @@
       <span class="nav-icon"><i class="fa-solid fa-file-import"></i></span>
       <span class="nav-label">Import</span>
     </a>
+    <button class="nav-item" class:active={ui.scratchPadOpen} onclick={() => ui.toggleScratchPad()}>
+      <span class="nav-icon"><i class="fa-solid fa-note-sticky" style="color: var(--color-warning)"></i></span>
+      <span class="nav-label">Schnellnotiz</span>
+    </button>
     <a
       href="/settings"
       class="nav-item"
@@ -311,8 +315,9 @@
 
 <style>
   .sidebar {
-    background-color: var(--color-bg-secondary);
-    border-right: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border-right: 1px solid var(--glass-border);
     padding: 0.75rem;
     overflow-y: auto;
     overflow-x: hidden;
@@ -330,7 +335,7 @@
 
   .sidebar-divider {
     height: 1px;
-    background: var(--color-border);
+    background: var(--glass-border);
     margin: 0.375rem 0;
   }
 
@@ -368,12 +373,15 @@
   }
 
   .nav-item:hover {
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn);
+    backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
   }
 
   .nav-item.active {
-    background-color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 50%, transparent);
+    backdrop-filter: blur(var(--glass-blur-btn));
+    border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
     color: #fff;
   }
 
@@ -382,8 +390,8 @@
   }
 
   .nav-item.active .nav-count {
-    background-color: rgba(255, 255, 255, 0.2);
     color: #fff;
+    opacity: 0.8;
   }
 
   .nav-icon {
@@ -404,9 +412,6 @@
     font-size: 0.625rem;
     font-weight: 600;
     font-family: var(--font-mono);
-    padding: 0.0625rem 0.375rem;
-    border-radius: 999px;
-    background-color: var(--color-bg-tertiary);
     color: var(--color-text-muted);
     flex-shrink: 0;
   }
@@ -438,12 +443,14 @@
   }
 
   .cat-btn:hover {
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn);
+    backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
   }
 
   .cat-btn.active {
-    background-color: var(--color-accent-light);
+    background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+    backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-accent);
     font-weight: 600;
   }
@@ -477,16 +484,12 @@
     font-size: 0.5625rem;
     font-weight: 600;
     font-family: var(--font-mono);
-    padding: 0.0625rem 0.3125rem;
-    border-radius: 999px;
-    background-color: var(--color-bg-tertiary);
     color: var(--color-text-muted);
     flex-shrink: 0;
   }
 
   .cat-btn.active .cat-count {
-    background-color: var(--color-accent);
-    color: #fff;
+    color: var(--color-accent);
   }
 
   .empty-hint {
@@ -522,12 +525,14 @@
   }
 
   .sammlung-btn:hover {
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn);
+    backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
   }
 
   .sammlung-btn.active {
-    background-color: var(--color-accent-light);
+    background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+    backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-accent);
     font-weight: 600;
   }
@@ -550,16 +555,12 @@
     font-size: 0.5625rem;
     font-weight: 600;
     font-family: var(--font-mono);
-    padding: 0.0625rem 0.3125rem;
-    border-radius: 999px;
-    background-color: var(--color-bg-tertiary);
     color: var(--color-text-muted);
     flex-shrink: 0;
   }
 
   .sammlung-btn.active .sammlung-count {
-    background-color: var(--color-accent);
-    color: #fff;
+    color: var(--color-accent);
   }
 
   /* Spacer + Version */

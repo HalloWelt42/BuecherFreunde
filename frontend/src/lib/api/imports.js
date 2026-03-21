@@ -1,7 +1,7 @@
 /**
  * API-Modul: Import
  */
-import { get, post, upload, sse } from "./client.js";
+import { get, post, del, upload, sse } from "./client.js";
 
 /**
  * Einzelne Datei hochladen.
@@ -68,4 +68,12 @@ export function importVorschau(source) {
  */
 export function importEvents(onEvent, onError) {
   return sse("/api/import/events", onEvent, onError);
+}
+
+/**
+ * Abgeschlossene Import-Tasks aus der DB löschen.
+ * @returns {Promise<{aufgaben: Array}>}
+ */
+export function bereinigeImportTasks() {
+  return del("/api/import/bereinigen");
 }

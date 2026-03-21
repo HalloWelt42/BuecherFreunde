@@ -1,9 +1,20 @@
 <script>
   import { ui } from "../../stores/ui.svelte.js";
+  import { get as apiGet } from "../../api/client.js";
+  import { onMount } from "svelte";
   import SearchBar from "../search/SearchBar.svelte";
 
   const themeIcons = { light: "fa-sun", dark: "fa-moon", system: "fa-circle-half-stroke" };
   const themeLabels = { light: "Hell", dark: "Dunkel", system: "System" };
+
+  onMount(async () => {
+    try {
+      const res = await apiGet("/api/config/design/hintergruende");
+      ui.bgBilder = res.bilder || [];
+    } catch {
+      // still
+    }
+  });
 </script>
 
 <header class="app-header">
@@ -13,7 +24,7 @@
       onclick={() => ui.toggleSidebar()}
       title="Seitenleiste {ui.sidebarOpen ? 'einklappen' : 'ausklappen'}"
     >
-      <i class="fa-solid {ui.sidebarOpen ? 'fa-bars-staggered' : 'fa-bars'}"></i>
+      <i class="fa-solid {ui.sidebarOpen ? 'fa-angles-left' : 'fa-angles-right'}"></i>
     </button>
     <a href="/" class="app-brand">
       <i class="fa-solid fa-book-open brand-icon"></i>
@@ -26,6 +37,25 @@
   </div>
 
   <div class="header-right">
+    {#if ui.bgBilder.length > 1}
+      <div class="bg-switcher">
+        <button
+          class="header-btn"
+          onclick={() => ui.bgZurueck()}
+          title="Vorheriges Hintergrundbild"
+        >
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <span class="bg-counter">{ui.bgIndex + 1}/{ui.bgBilder.length}</span>
+        <button
+          class="header-btn"
+          onclick={() => ui.bgWeiter()}
+          title="Nächstes Hintergrundbild"
+        >
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+    {/if}
     <button
       class="header-btn"
       onclick={() => ui.cycleTheme()}
@@ -46,8 +76,9 @@
     justify-content: space-between;
     padding: 0 1rem;
     height: var(--header-height);
-    background-color: var(--color-bg-secondary);
-    border-bottom: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border-bottom: 1px solid var(--glass-border);
     gap: 1rem;
   }
 
@@ -75,9 +106,10 @@
   }
 
   .header-btn:hover {
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn);
+    backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
-    border-color: var(--color-border);
+    border-color: var(--glass-border);
   }
 
   .app-brand {
@@ -110,5 +142,22 @@
     align-items: center;
     gap: 0.25rem;
     flex-shrink: 0;
+  }
+
+  .bg-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+    margin-right: 0.25rem;
+    padding-right: 0.5rem;
+    border-right: 1px solid var(--glass-border);
+  }
+
+  .bg-counter {
+    font-size: 0.6875rem;
+    font-family: var(--font-mono);
+    color: var(--color-text-muted);
+    min-width: 2rem;
+    text-align: center;
   }
 </style>

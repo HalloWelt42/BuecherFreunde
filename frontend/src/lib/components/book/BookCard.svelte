@@ -13,6 +13,31 @@
   let isFavorite = $state(book.is_favorite);
   let coverError = $state(false);
 
+  function parseProgress(position, pageCount) {
+    if (!position) return 0;
+    try {
+      if (position.startsWith("pdf:")) {
+        const data = JSON.parse(position.slice(4));
+        if (data.page && pageCount > 0) {
+          return Math.round((data.page / pageCount) * 100);
+        }
+      }
+      if (position.startsWith("epub:")) {
+        const data = JSON.parse(position.slice(5));
+        if (data.percent > 0) return data.percent;
+      }
+      if (position.startsWith("page:")) {
+        return Math.min(Number(position.slice(5)) || 0, 100);
+      }
+      if (position.startsWith("percent:")) {
+        return Number(position.slice(8)) || 0;
+      }
+    } catch { /* */ }
+    return 0;
+  }
+
+  let progress = $derived(parseProgress(book.reading_position, book.page_count));
+
   const formatIcons = {
     pdf: "fa-file-pdf",
     epub: "fa-book-open",
@@ -141,9 +166,9 @@
     {/if}
 
     <!-- Lesefortschritt -->
-    {#if book.reading_position}
+    {#if book.reading_position && progress > 0}
       <div class="progress-bar">
-        <div class="progress-fill"></div>
+        <div class="progress-fill" style="width: {progress}%"></div>
       </div>
     {/if}
   </div>
@@ -426,8 +451,8 @@
   .progress-fill {
     height: 100%;
     background: var(--color-accent);
-    width: 30%;
     border-radius: 0 2px 2px 0;
+    transition: width 0.3s ease;
   }
 
   /* Body */

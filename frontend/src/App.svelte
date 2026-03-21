@@ -4,6 +4,7 @@
   import Header from "./lib/components/layout/Header.svelte";
   import Sidebar from "./lib/components/layout/Sidebar.svelte";
   import Footer from "./lib/components/layout/Footer.svelte";
+  import ScratchPad from "./lib/components/shared/ScratchPad.svelte";
 
   import Library from "./pages/Library.svelte";
   import BookDetail from "./pages/BookDetail.svelte";
@@ -44,7 +45,7 @@
 
 <svelte:document onclick={handleLinkClick} />
 
-<div class="app-layout" class:sidebar-collapsed={!ui.sidebarOpen}>
+<div class="app-layout" class:sidebar-collapsed={!ui.sidebarOpen} class:reader-fullscreen={ui.readerFullscreen}>
   <div class="grid-header">
     <Header />
   </div>
@@ -69,6 +70,8 @@
     <Footer />
   </div>
 </div>
+
+<ScratchPad visible={ui.scratchPadOpen} onClose={() => ui.scratchPadOpen = false} />
 
 <style>
   .app-layout {
@@ -104,6 +107,8 @@
     overflow-x: hidden;
     transition: width 0.2s ease, padding 0.2s ease;
     width: var(--sidebar-width);
+    z-index: 10;
+    position: relative;
   }
 
   .grid-main {
@@ -111,10 +116,29 @@
     padding: 1.5rem;
     overflow-y: auto;
     overflow-x: hidden;
+    z-index: 1;
+    position: relative;
   }
 
   .grid-footer {
     grid-area: footer;
     z-index: 50;
+  }
+
+  /* Vollbild-Lesemodus: Header, Sidebar, Footer ausblenden */
+  .app-layout.reader-fullscreen {
+    grid-template-areas: "main";
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+  }
+
+  .app-layout.reader-fullscreen .grid-header,
+  .app-layout.reader-fullscreen .grid-sidebar,
+  .app-layout.reader-fullscreen .grid-footer {
+    display: none;
+  }
+
+  .app-layout.reader-fullscreen .grid-main {
+    padding: 0;
   }
 </style>

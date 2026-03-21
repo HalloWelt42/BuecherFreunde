@@ -5,12 +5,30 @@
 function createSelectionStore() {
   let selected = $state(new Set());
   let active = $state(false);
+  let editMode = $state(false);
 
   return {
     get selected() { return selected; },
     get count() { return selected.size; },
     get active() { return active; },
+    get editMode() { return editMode; },
     get ids() { return [...selected]; },
+
+    toggleEditMode() {
+      editMode = !editMode;
+      if (!editMode) {
+        selected = new Set();
+        active = false;
+      }
+    },
+
+    setEditMode(val) {
+      editMode = val;
+      if (!val) {
+        selected = new Set();
+        active = false;
+      }
+    },
 
     toggle(id) {
       const next = new Set(selected);
@@ -62,6 +80,7 @@ function createSelectionStore() {
     clear() {
       selected = new Set();
       active = false;
+      editMode = false;
     },
   };
 }

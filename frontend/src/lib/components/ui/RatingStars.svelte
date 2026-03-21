@@ -49,12 +49,13 @@
   }
 
   .star-outline {
-    color: rgba(0, 0, 0, 0.7);
+    color: var(--color-text-muted);
     font-size: 1.15em;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    opacity: 0.5;
   }
 
   .star-front {
@@ -67,7 +68,8 @@
   }
 
   .star:not(.filled) .star-front {
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--color-text-muted);
+    opacity: 0.4;
   }
 
   .interactive .star {

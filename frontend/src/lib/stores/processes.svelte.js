@@ -5,6 +5,7 @@
  */
 
 import { get } from "../api/client.js";
+import { bereinigeImportTasks } from "../api/imports.js";
 
 let _pollInterval = null;
 let _lastFertigCount = 0;
@@ -113,11 +114,18 @@ export function toggleExpanded() {
   processes.expanded = !processes.expanded;
 }
 
-/** Fertige und fehlerhafte Tasks aus der Liste entfernen */
-export function clearFinished() {
-  processes.importTasks = processes.importTasks.filter(
-    (t) => t.status === "wartend" || t.status === "verarbeite",
-  );
+/** Fertige und fehlerhafte Tasks aus der DB und Liste entfernen */
+export async function clearFinished() {
+  try {
+    const result = await bereinigeImportTasks();
+    processes.importTasks = result.aufgaben || [];
+    _lastFertigCount = 0;
+  } catch {
+    // Fallback: nur lokal bereinigen
+    processes.importTasks = processes.importTasks.filter(
+      (t) => t.status === "wartend" || t.status === "verarbeite",
+    );
+  }
   if (processes.importTasks.length === 0) {
     processes.expanded = false;
   }

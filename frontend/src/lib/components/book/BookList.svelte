@@ -12,12 +12,25 @@
   let isDragging = $state(false);
   let dragMode = $state("add");
 
+  function suppressNextClick() {
+    function handler(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.removeEventListener("click", handler, true);
+    }
+    window.addEventListener("click", handler, true);
+    // Sicherheits-Timeout: Listener entfernen falls kein Click kommt
+    setTimeout(() => window.removeEventListener("click", handler, true), 300);
+  }
+
   function handlePointerDown(e, bookId) {
+    if (!selectionStore.editMode) return;
     if (e.button !== 0) return;
     const tag = e.target.tagName.toLowerCase();
-    if (tag === "a" || tag === "button" || tag === "i" || e.target.closest("a") || e.target.closest("button")) return;
+    if (tag === "button" || e.target.closest("button")) return;
 
     e.preventDefault();
+    suppressNextClick();
     isDragging = true;
 
     if (selectionStore.has(bookId)) {

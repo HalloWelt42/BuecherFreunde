@@ -1,6 +1,8 @@
 <script>
   import { holeAutor, autorenFotoUrl, reichereAutorAn, uebernehmAutorenDaten, aktualisiereAutor } from "../lib/api/authors.js";
   import { coverUrl } from "../lib/api/books.js";
+  import { getToken } from "../lib/api/client.js";
+  import { ui } from "../lib/stores/ui.svelte.js";
   import SvelteMarkdown from "@humanspeak/svelte-markdown";
 
   let { params } = $props();
@@ -202,6 +204,15 @@
   }
 </script>
 
+{#if autor}
+  {#if !fotoError && autor.photo_path}
+    <div class="bg-cover-blur" style="background-image: url({autorenFotoUrl(autor.id, 'normal')})"></div>
+  {:else}
+    <div class="bg-cover-blur bg-cover-default" style="background-image: url(/api/config/design/hintergrund/{ui.bgAktuellerDateiname || ''}?token={encodeURIComponent(getToken())})"></div>
+  {/if}
+  <div class="bg-cover-overlay"></div>
+{/if}
+
 <div class="autor-detail">
   <div class="page-header">
     <a href="/authors" class="back-link"><i class="fa-solid fa-arrow-left"></i> Autoren</a>
@@ -271,7 +282,7 @@
 
         <div class="action-row">
           {#if !editMode}
-            <button class="action-btn" onclick={startEdit}>
+            <button class="action-btn" onclick={startEdit} title="Autor bearbeiten">
               <i class="fa-solid fa-pen"></i>
             </button>
           {/if}
@@ -376,11 +387,11 @@
               <textarea class="edit-input edit-textarea" bind:value={editData.biography} rows="20"></textarea>
             </div>
             <div class="edit-aktionen">
-              <button class="btn btn-primary btn-sm" onclick={saveEdit} disabled={editSpeichern}>
+              <button class="btn btn-primary btn-sm" onclick={saveEdit} disabled={editSpeichern} title="Änderungen speichern">
                 {#if editSpeichern}<i class="fa-solid fa-spinner fa-spin"></i>{/if}
                 Speichern
               </button>
-              <button class="btn btn-secondary btn-sm" onclick={cancelEdit}>Abbrechen</button>
+              <button class="btn btn-secondary btn-sm" onclick={cancelEdit} title="Bearbeitung abbrechen">Abbrechen</button>
             </div>
           </div>
         {:else if autor.biography}
@@ -491,11 +502,11 @@
         {/if}
 
         <div class="meta-aktionen">
-          <button class="btn btn-primary btn-sm" onclick={datenUebernehmen} disabled={enrichLaden || !hatAuswahl}>
+          <button class="btn btn-primary btn-sm" onclick={datenUebernehmen} disabled={enrichLaden || !hatAuswahl} title="Ausgewählte Daten übernehmen">
             {#if enrichLaden}<i class="fa-solid fa-spinner fa-spin"></i>{/if}
             Ausgewählte übernehmen
           </button>
-          <button class="btn btn-secondary btn-sm" onclick={verwerfen}>
+          <button class="btn btn-secondary btn-sm" onclick={verwerfen} title="Vorschläge verwerfen">
             Verwerfen
           </button>
         </div>
@@ -505,8 +516,42 @@
 </div>
 
 <style>
+  /* Blur-Hintergrund */
+  .bg-cover-blur {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background-size: cover;
+    background-position: center;
+    filter: blur(var(--cover-bg-blur)) saturate(var(--cover-bg-saturate));
+    transform: scale(var(--cover-bg-scale));
+    pointer-events: none;
+  }
+
+  .bg-cover-default {
+    background-image: var(--cover-bg-default, linear-gradient(135deg, #1a1a2e 0%, #16213e 30%, #0f3460 60%, #533483 100%));
+  }
+
+  :global(:root:not(.dark)) .bg-cover-default {
+    background-image: var(--cover-bg-default, linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%));
+  }
+
+  .bg-cover-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: var(--cover-bg-overlay);
+  }
+
+  :global(.grid-main:has(.autor-detail)) {
+    background: transparent !important;
+  }
+
   /* Layout */
   .autor-detail {
+    position: relative;
+    z-index: 1;
     width: 100%;
   }
 
@@ -542,6 +587,11 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 1rem;
   }
 
   .autor-foto {
@@ -555,7 +605,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn-alt);
+    backdrop-filter: blur(var(--glass-blur-btn));
+    border: 1px solid var(--glass-border);
     border-radius: 8px;
     font-size: 3rem;
     color: var(--color-text-muted);
@@ -630,9 +682,10 @@
 
   .action-btn {
     padding: 0.375rem 0.875rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border-btn);
     border-radius: 6px;
-    background: none;
+    background: var(--glass-bg-btn-alt);
+    backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-secondary);
     font-size: 0.8125rem;
     cursor: pointer;
@@ -640,7 +693,8 @@
   }
 
   .action-btn:hover {
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn);
+    color: var(--color-text-primary);
   }
 
   .action-btn.loading {
@@ -650,7 +704,7 @@
 
   /* Linke Spalte: Sektionen */
   .links-section {
-    border-top: 1px solid var(--color-border);
+    border-top: 1px solid var(--glass-border);
     padding-top: 0.75rem;
   }
 
@@ -731,7 +785,7 @@
   .buch-cover-wrap {
     width: 100%;
     aspect-ratio: 3 / 4;
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn-alt);
     border-radius: 4px;
     overflow: hidden;
   }
@@ -790,7 +844,11 @@
   .spalte-rechts {
     max-height: calc(100vh - 6rem);
     overflow-y: auto;
-    padding: 0 1rem 1rem 0;
+    padding: 1rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
   }
 
   .bio-content {
@@ -845,9 +903,10 @@
 
   .edit-input {
     padding: 0.375rem 0.5rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
     border-radius: 4px;
-    background-color: var(--color-bg-primary);
+    background: var(--glass-placeholder);
+    backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
     font-size: 0.875rem;
     font-family: inherit;
@@ -894,7 +953,7 @@
 
   .btn:hover { opacity: 0.9; }
   .btn-primary { background-color: var(--color-accent); color: #fff; }
-  .btn-secondary { background-color: var(--color-bg-tertiary); color: var(--color-text-primary); border: 1px solid var(--color-border); }
+  .btn-secondary { background: var(--glass-bg-btn); backdrop-filter: blur(var(--glass-blur-btn)); color: var(--color-text-primary); border: 1px solid var(--glass-border); }
   .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.8125rem; }
 
   /* Enrichment: Vergleichstabelle */
@@ -914,9 +973,10 @@
   .meta-vergleich {
     margin-top: 1rem;
     padding: 0.75rem;
-    background-color: var(--color-bg-tertiary);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;

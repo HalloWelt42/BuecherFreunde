@@ -109,9 +109,10 @@
   .search-input {
     width: 100%;
     padding: 0.5rem 1rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
     border-radius: 6px;
-    background-color: var(--color-bg-primary);
+    background: var(--glass-placeholder);
+    backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
     font-family: var(--font-sans);
     font-size: 0.875rem;
@@ -128,8 +129,9 @@
     left: 0;
     right: 0;
     margin-top: 4px;
-    background-color: var(--color-bg-primary);
-    border: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
     border-radius: 6px;
     list-style: none;
     padding: 0.25rem;
@@ -152,7 +154,8 @@
 
   .suggestion-item:hover,
   .suggestion-item.selected {
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn);
+    backdrop-filter: blur(var(--glass-blur-btn));
   }
 
   .suggestion-title {

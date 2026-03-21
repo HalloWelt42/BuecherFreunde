@@ -8,6 +8,21 @@
   let processing = $state(false);
   let showCatDropdown = $state(false);
 
+  function handleKeydown(e) {
+    if (!selectionStore.active) return;
+    if (e.key === "Delete" || e.key === "Backspace") {
+      e.preventDefault();
+      confirmDelete = true;
+    }
+    if (e.key === "Escape") {
+      if (confirmDelete) {
+        confirmDelete = false;
+      } else {
+        selectionStore.clear();
+      }
+    }
+  }
+
   async function handleAction(aktion, wert) {
     processing = true;
     try {
@@ -23,6 +38,8 @@
     }
   }
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 {#if selectionStore.active}
   <div class="bulk-bar">

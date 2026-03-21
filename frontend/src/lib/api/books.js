@@ -33,6 +33,15 @@ export function holeBuch(id) {
 }
 
 /**
+ * Aehnliche Buecher laden (gleicher Autor, gleiche Kategorie).
+ * @param {number} id
+ * @returns {Promise<{vom_autor: Array, in_kategorie: Array}>}
+ */
+export function aehnlicheBuecher(id) {
+  return get(`/api/books/${id}/aehnliche`);
+}
+
+/**
  * Buch aktualisieren.
  * @param {number} id
  * @param {Object} daten
@@ -102,4 +111,15 @@ export function ladeCover(id) {
  */
 export function ladeDatei(id) {
   return download(`/api/books/${id}/file`);
+}
+
+/**
+ * Volltext eines Buches durchsuchen.
+ * @param {number} id
+ * @param {string} suchbegriff
+ * @param {number} [limit]
+ * @returns {Promise<{treffer: Array, gesamt: number, seiten_gesamt: number, suchbegriff: string}>}
+ */
+export function volltextSuche(id, suchbegriff, limit = 50) {
+  return get(`/api/books/${id}/volltext-suche`, { q: suchbegriff, limit });
 }

@@ -1,11 +1,18 @@
 <script>
   import { navigate } from "../lib/router.svelte.js";
   import { holeBuch } from "../lib/api/books.js";
+  import { ui } from "../lib/stores/ui.svelte.js";
+  import { onDestroy } from "svelte";
   import PdfReader from "../lib/components/reader/PdfReader.svelte";
   import EpubReader from "../lib/components/reader/EpubReader.svelte";
   import MarkdownReader from "../lib/components/reader/MarkdownReader.svelte";
 
   let { params } = $props();
+
+  // Beim Verlassen des Readers Fullscreen deaktivieren
+  onDestroy(() => {
+    ui.readerFullscreen = false;
+  });
 
   let book = $state(null);
   let laden = $state(true);

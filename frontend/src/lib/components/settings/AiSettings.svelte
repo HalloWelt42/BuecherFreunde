@@ -10,6 +10,48 @@
   let saving = $state(false);
   let statusMsg = $state("");
   let modelSaving = $state(false);
+  let urlEdit = $state("");
+  let urlSaving = $state(false);
+  let scanLaden = $state(false);
+  let scanErgebnisse = $state([]);
+
+  async function urlSpeichern() {
+    if (!urlEdit.trim() || urlSaving) return;
+    urlSaving = true;
+    try {
+      config = await patch("/api/ai/config", { lm_studio_url: urlEdit.trim() });
+      statusMsg = "URL gespeichert";
+      await verbindungTesten();
+    } catch (e) {
+      statusMsg = "Fehler: " + e.message;
+    } finally {
+      urlSaving = false;
+      setTimeout(() => (statusMsg = ""), 3000);
+    }
+  }
+
+  async function netzwerkScannen() {
+    scanLaden = true;
+    scanErgebnisse = [];
+    statusMsg = "Scanne lokales Netzwerk...";
+    try {
+      const result = await get("/api/ai/scan");
+      scanErgebnisse = result.gefunden || [];
+      statusMsg = scanErgebnisse.length > 0
+        ? `${scanErgebnisse.length} LM Studio Instanz(en) gefunden`
+        : "Keine LM Studio Instanz gefunden";
+    } catch (e) {
+      statusMsg = "Scan fehlgeschlagen: " + e.message;
+    } finally {
+      scanLaden = false;
+      setTimeout(() => (statusMsg = ""), 5000);
+    }
+  }
+
+  function scanErgebnisUebernehmen(url) {
+    urlEdit = url;
+    scanErgebnisse = [];
+  }
 
   async function ladeAlles() {
     laden = true;
@@ -22,6 +64,7 @@
       config = cfg;
       status = st;
       prompts = pr;
+      urlEdit = cfg.url || "";
     } catch (e) {
       console.error("AI-Einstellungen laden fehlgeschlagen:", e);
     } finally {
@@ -136,7 +179,22 @@
         </div>
         <div class="conn-row">
           <span class="conn-label">URL</span>
-          <code class="conn-url">{maskToken(config.url)}</code>
+          <div class="url-edit-row">
+            <input
+              type="text"
+              class="url-input"
+              bind:value={urlEdit}
+              placeholder="http://192.168.1.100:1234"
+              onkeydown={(e) => { if (e.key === "Enter") urlSpeichern(); }}
+            />
+            <button class="btn-test" onclick={urlSpeichern} disabled={urlSaving} title="URL speichern und testen">
+              {#if urlSaving}
+                <i class="fa-solid fa-spinner fa-spin"></i>
+              {:else}
+                <i class="fa-solid fa-check"></i>
+              {/if}
+            </button>
+          </div>
         </div>
         <div class="conn-row">
           <span class="conn-label">Modell</span>
@@ -159,15 +217,39 @@
         </div>
       </div>
       <div class="conn-actions">
-        <button class="btn-test" onclick={verbindungTesten}>
-          <i class="fa-solid fa-rotate"></i> Verbindung testen
+        <button class="btn-test" onclick={verbindungTesten} title="Verbindung zur eingestellten URL testen">
+          <i class="fa-solid fa-rotate"></i> Testen
+        </button>
+        <button class="btn-test" onclick={netzwerkScannen} disabled={scanLaden} title="Lokales Netzwerk nach LM Studio durchsuchen">
+          {#if scanLaden}
+            <i class="fa-solid fa-spinner fa-spin"></i>
+          {:else}
+            <i class="fa-solid fa-magnifying-glass"></i>
+          {/if}
+          Netzwerk scannen
         </button>
         {#if statusMsg}
           <span class="status-msg">{statusMsg}</span>
         {/if}
       </div>
+
+      {#if scanErgebnisse.length > 0}
+        <div class="scan-results">
+          <span class="scan-label">Gefunden:</span>
+          {#each scanErgebnisse as treffer}
+            <button class="scan-hit" onclick={() => scanErgebnisUebernehmen(treffer.url)} title="Diese URL übernehmen">
+              <i class="fa-solid fa-server"></i>
+              {treffer.url}
+              {#if treffer.modelle}
+                <span class="scan-models">({treffer.modelle} Modelle)</span>
+              {/if}
+            </button>
+          {/each}
+        </div>
+      {/if}
+
       <p class="hint">
-        URL, Modell und Aktivierung werden in der <code>.env</code>-Datei konfiguriert.
+        LM Studio ist eine kostenlose Software für lokale KI-Modelle. Starte LM Studio auf einem Rechner in deinem Netzwerk, lade ein Modell und trage die URL hier ein. "Netzwerk scannen" findet LM Studio automatisch.
       </p>
     </section>
 
@@ -359,10 +441,71 @@
     font-size: 0.75rem;
     font-family: var(--font-mono);
     color: var(--color-text-secondary);
-    background-color: var(--color-bg-primary);
+    background: var(--glass-placeholder);
     padding: 0.1875rem 0.375rem;
     border-radius: 4px;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
+  }
+
+  .url-edit-row {
+    display: flex;
+    gap: 0.375rem;
+    align-items: center;
+    flex: 1;
+  }
+
+  .url-input {
+    flex: 1;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--color-text-primary);
+    background: var(--glass-placeholder);
+    backdrop-filter: blur(var(--glass-blur-btn));
+    padding: 0.375rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--glass-border);
+  }
+
+  .url-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .scan-results {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    margin-top: 0.5rem;
+  }
+
+  .scan-label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  .scan-hit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, #22c55e 40%, transparent);
+    background: color-mix(in srgb, #22c55e 10%, transparent);
+    color: #22c55e;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .scan-hit:hover {
+    background: color-mix(in srgb, #22c55e 20%, transparent);
+  }
+
+  .scan-models {
+    font-family: var(--font-sans);
+    opacity: 0.7;
   }
 
   .status-dot {

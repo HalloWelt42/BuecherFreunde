@@ -512,6 +512,13 @@
     align-items: center;
     margin-bottom: 1.25rem;
     flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background-color: var(--color-bg-primary);
+    margin-left: -1.5rem;
+    margin-right: -1.5rem;
+    padding: 0.5rem 1.5rem;
   }
 
   .such-feld {
@@ -534,7 +541,8 @@
     padding: 0.5rem 0.75rem 0.5rem 2rem;
     border: 1px solid var(--color-border);
     border-radius: 6px;
-    background-color: var(--color-bg-secondary);
+    background: var(--glass-placeholder);
+    backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
     font-size: 0.875rem;
   }
@@ -551,13 +559,18 @@
 
   .sort-btn {
     padding: 0.375rem 0.625rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
     border-radius: 4px;
     background: none;
     color: var(--color-text-muted);
     font-size: 0.75rem;
     cursor: pointer;
     white-space: nowrap;
+  }
+
+  .sort-btn:hover {
+    background: var(--glass-bg-btn);
+    backdrop-filter: blur(var(--glass-blur-btn));
   }
 
   .sort-btn.aktiv {
@@ -588,8 +601,9 @@
     border-radius: 8px;
     overflow: hidden;
     transition: transform 0.15s, box-shadow 0.15s;
-    background-color: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
   }
 
   .autor-karte:hover {
@@ -671,8 +685,9 @@
     flex-wrap: wrap;
     margin-bottom: 1rem;
     padding: 0.5rem 0.75rem;
-    background-color: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
     border-radius: 6px;
   }
 
@@ -735,7 +750,7 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.5rem 1rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
     border-radius: 6px;
     background: none;
     color: var(--color-text-secondary);
@@ -744,7 +759,7 @@
     transition: all 0.15s;
   }
 
-  .bereinigen-btn:hover { background-color: var(--color-bg-tertiary); }
+  .bereinigen-btn:hover { background: var(--glass-bg-btn); backdrop-filter: blur(var(--glass-blur-btn)); }
   .bereinigen-btn:disabled { opacity: 0.5; cursor: default; }
 
   .bereinigen-ergebnis {
@@ -758,8 +773,9 @@
 
   .scan-aktiv, .scan-ergebnis {
     padding: 0.75rem;
-    background-color: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
     border-radius: 8px;
     display: flex;
     flex-direction: column;
@@ -803,7 +819,7 @@
   .scan-btn-sm {
     margin-left: auto;
     padding: 0.25rem 0.5rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
     border-radius: 4px;
     background: none;
     color: var(--color-text-muted);
@@ -873,7 +889,8 @@
   }
 
   .scan-treffer:hover {
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn);
+    backdrop-filter: blur(var(--glass-blur-btn));
   }
 
   .scan-treffer-name {

@@ -81,6 +81,24 @@
 
   --sidebar-width: 280px;
   --header-height: 44px;
+
+  /* Design: Glasmorphism */
+  --glass-blur: 16px;
+  --glass-blur-sm: 10px;
+  --glass-blur-btn: 8px;
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-bg-btn: rgba(255, 255, 255, 0.5);
+  --glass-bg-btn-alt: rgba(255, 255, 255, 0.35);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-btn: rgba(0, 0, 0, 0.08);
+  --glass-placeholder: rgba(255, 255, 255, 0.4);
+
+  /* Design: Cover-Hintergrund */
+  --cover-bg-blur: 50px;
+  --cover-bg-saturate: 1.3;
+  --cover-bg-scale: 1.2;
+  --cover-bg-overlay: rgba(255, 255, 255, 0.75);
+  --cover-hover-overlay: rgba(0, 0, 0, 0.4);
 }
 
 :root.dark {
@@ -98,6 +116,17 @@
   --color-warning: #f59e0b;
   --color-error: #ef4444;
   --color-favorite: #f87171;
+
+  /* Design: Glasmorphism (Dark) */
+  --glass-bg: rgba(0, 0, 0, 0.35);
+  --glass-bg-btn: rgba(0, 0, 0, 0.35);
+  --glass-bg-btn-alt: rgba(0, 0, 0, 0.25);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-border-btn: rgba(255, 255, 255, 0.12);
+  --glass-placeholder: rgba(0, 0, 0, 0.25);
+
+  /* Design: Cover-Hintergrund (Dark) */
+  --cover-bg-overlay: rgba(0, 0, 0, 0.7);
 }
 
 /* Basis-Stile */

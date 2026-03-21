@@ -3,6 +3,7 @@
   import { dateiUrl } from "../../api/books.js";
   import { getToken } from "../../api/client.js";
   import { speichereLeseposition } from "../../api/user-data.js";
+  import { ui } from "../../stores/ui.svelte.js";
   import { onDestroy } from "svelte";
 
   let {
@@ -254,6 +255,7 @@
     saveTimeout = setTimeout(async () => {
       const settings = {
         cfi: currentLocation?.cfi || "",
+        percent: fortschritt,
         fontSize,
         fontFamily,
         lineHeight,
@@ -368,6 +370,9 @@
         </span>
       {/if}
 
+      <button class="tool-btn" class:active={ui.readerFullscreen} onclick={() => ui.toggleReaderFullscreen()} title="{ui.readerFullscreen ? 'Vollbild verlassen' : 'Vollbild'}">
+        <i class="fa-solid {ui.readerFullscreen ? 'fa-compress' : 'fa-expand'}"></i>
+      </button>
       <button class="tool-btn" onclick={downloadFile} title="Herunterladen">
         <i class="fa-solid fa-download"></i>
       </button>

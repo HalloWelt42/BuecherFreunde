@@ -5,17 +5,97 @@
 
   let { books = [], large = false, coversOnly = false } = $props();
 
-  // Drag-Select State
+  // Einzel-Drag-Select State (Klick auf ein Element und ziehen)
   let isDragging = $state(false);
-  let dragMode = $state("add"); // "add" oder "remove"
+  let dragMode = $state("add");
+
+  // Marquee-Rechteck-Auswahl
+  let marqueeActive = $state(false);
+  let marqueeStart = $state({ x: 0, y: 0 });
+  let marqueeEnd = $state({ x: 0, y: 0 });
+  let marqueeEl = $state(null);
+  let gridEl = $state(null);
+  let preMarqueeSelection = $state(new Set());
+
+  let marqueeRect = $derived({
+    left: Math.min(marqueeStart.x, marqueeEnd.x),
+    top: Math.min(marqueeStart.y, marqueeEnd.y),
+    width: Math.abs(marqueeEnd.x - marqueeStart.x),
+    height: Math.abs(marqueeEnd.y - marqueeStart.y),
+  });
+
+  function suppressNextClick() {
+    function handler(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.removeEventListener("click", handler, true);
+    }
+    window.addEventListener("click", handler, true);
+    setTimeout(() => window.removeEventListener("click", handler, true), 300);
+  }
+
+  function rectsOverlap(a, b) {
+    return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+  }
+
+  function updateMarqueeSelection() {
+    if (!gridEl) return;
+    const mRect = {
+      left: marqueeRect.left,
+      top: marqueeRect.top,
+      right: marqueeRect.left + marqueeRect.width,
+      bottom: marqueeRect.top + marqueeRect.height,
+    };
+    const items = gridEl.querySelectorAll("[data-book-id]");
+    const newIds = new Set(preMarqueeSelection);
+    for (const item of items) {
+      const r = item.getBoundingClientRect();
+      const id = parseInt(item.dataset.bookId, 10);
+      if (rectsOverlap(mRect, r)) {
+        newIds.add(id);
+      }
+    }
+    selectionStore.selectAll([...newIds]);
+  }
+
+  function handleGridPointerDown(e) {
+    if (!selectionStore.editMode) return;
+    if (e.button !== 0) return;
+    const target = e.target;
+    if (target.closest("[data-book-id]") || target.closest("button")) return;
+
+    e.preventDefault();
+    marqueeActive = true;
+    marqueeStart = { x: e.clientX, y: e.clientY };
+    marqueeEnd = { x: e.clientX, y: e.clientY };
+    preMarqueeSelection = new Set(selectionStore.ids);
+  }
+
+  function handleGridPointerMove(e) {
+    if (!marqueeActive) return;
+    marqueeEnd = { x: e.clientX, y: e.clientY };
+    updateMarqueeSelection();
+  }
+
+  function handleGridPointerUp() {
+    if (marqueeActive) {
+      marqueeActive = false;
+      if (marqueeRect.width > 5 || marqueeRect.height > 5) {
+        suppressNextClick();
+      }
+    }
+    isDragging = false;
+  }
 
   function handlePointerDown(e, bookId) {
-    // Nur linke Maustaste, nicht auf Links/Buttons
+    if (!selectionStore.editMode) return;
     if (e.button !== 0) return;
     const tag = e.target.tagName.toLowerCase();
     if (tag === "button" || tag === "i" || e.target.closest("button")) return;
 
     e.preventDefault();
+    e.stopPropagation();
+    suppressNextClick();
     isDragging = true;
 
     // Modus bestimmen: wenn bereits selektiert -> abwählen, sonst anwählen
@@ -26,9 +106,6 @@
       dragMode = "add";
       selectionStore.add(bookId);
     }
-
-    // Pointer Capture für zuverlässiges Tracking
-    e.target.closest("[data-book-id]")?.setPointerCapture?.(e.pointerId);
   }
 
   function handlePointerEnter(bookId) {
@@ -40,10 +117,6 @@
     }
   }
 
-  function handlePointerUp() {
-    isDragging = false;
-  }
-
   // Cover-Only: Selection
   let coverErrors = $state(new Set());
 
@@ -52,7 +125,7 @@
   }
 </script>
 
-<svelte:window onpointerup={handlePointerUp} />
+<svelte:window onpointermove={handleGridPointerMove} onpointerup={handleGridPointerUp} />
 
 {#if books.length === 0}
   <div class="empty-state">
@@ -61,7 +134,7 @@
     <p class="empty-text">Passe die Filter an oder importiere neue Bücher.</p>
   </div>
 {:else if coversOnly}
-  <div class="cover-grid" class:drag-active={isDragging}>
+  <div class="cover-grid" class:drag-active={isDragging || marqueeActive} bind:this={gridEl} onpointerdown={handleGridPointerDown}>
     {#each books as book (book.id)}
       {@const isSelected = selectionStore.has(book.id)}
       <div
@@ -119,7 +192,7 @@
     {/each}
   </div>
 {:else}
-  <div class="book-grid" class:large class:drag-active={isDragging}>
+  <div class="book-grid" class:large class:drag-active={isDragging || marqueeActive} bind:this={gridEl} onpointerdown={handleGridPointerDown}>
     {#each books as book (book.id)}
       <div
         data-book-id={book.id}
@@ -130,6 +203,13 @@
       </div>
     {/each}
   </div>
+{/if}
+
+{#if marqueeActive && (marqueeRect.width > 3 || marqueeRect.height > 3)}
+  <div
+    class="marquee-rect"
+    style="left:{marqueeRect.left}px;top:{marqueeRect.top}px;width:{marqueeRect.width}px;height:{marqueeRect.height}px"
+  ></div>
 {/if}
 
 <style>
@@ -332,5 +412,15 @@
   .empty-text {
     font-size: 0.875rem;
     max-width: 300px;
+  }
+
+  /* Marquee-Rechteck-Auswahl */
+  .marquee-rect {
+    position: fixed;
+    border: 2px solid var(--color-accent);
+    background-color: color-mix(in srgb, var(--color-accent) 15%, transparent);
+    pointer-events: none;
+    z-index: 100;
+    border-radius: 2px;
   }
 </style>

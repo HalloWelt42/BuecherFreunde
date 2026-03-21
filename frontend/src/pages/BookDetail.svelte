@@ -1,9 +1,10 @@
 <script>
-  import { holeBuch, coverUrl, aktualisiereBuch } from "../lib/api/books.js";
-  import { post, get as apiGet } from "../lib/api/client.js";
+  import { holeBuch, coverUrl, aktualisiereBuch, aehnlicheBuecher, volltextSuche } from "../lib/api/books.js";
+  import { post, get as apiGet, getToken } from "../lib/api/client.js";
   import { ladeSammlungen, buchZuordnen, buchAusSammlung } from "../lib/api/collections.js";
-  import { toggleFavorit, toggleZumLesen, setzeBewertung } from "../lib/api/user-data.js";
+  import { toggleFavorit, toggleZumLesen, toggleGelesen, setzeBewertung } from "../lib/api/user-data.js";
   import { sucheMetadaten, uebernehmMetadaten, ladeVolltext } from "../lib/api/metadata.js";
+  import { ui } from "../lib/stores/ui.svelte.js";
   import RatingStars from "../lib/components/ui/RatingStars.svelte";
   import BookMeta from "../lib/components/book/BookMeta.svelte";
   import AiCategorizeDialog from "../lib/components/book/AiCategorizeDialog.svelte";
@@ -31,6 +32,16 @@
   // Cover neu extrahieren
   let coverNeuLaden = $state(false);
 
+  // Buch-Volltextsuche
+  let buchSucheOffen = $state(false);
+  let buchSuchbegriff = $state("");
+  let buchSuchTreffer = $state([]);
+  let buchSuchLaden = $state(false);
+  let buchSuchTimer = $state(null);
+
+  // Aehnliche Buecher
+  let aehnliche = $state({ vom_autor: [], in_kategorie: [] });
+
   async function coverNeuExtrahieren() {
     if (coverNeuLaden || !book) return;
     coverNeuLaden = true;
@@ -43,6 +54,27 @@
     } finally {
       coverNeuLaden = false;
     }
+  }
+
+  function onBuchSuche(e) {
+    const val = e.target.value;
+    buchSuchbegriff = val;
+    if (buchSuchTimer) clearTimeout(buchSuchTimer);
+    if (!val || val.length < 2) {
+      buchSuchTreffer = [];
+      return;
+    }
+    buchSuchTimer = setTimeout(async () => {
+      buchSuchLaden = true;
+      try {
+        const res = await volltextSuche(book.id, val);
+        buchSuchTreffer = res.treffer || [];
+      } catch {
+        buchSuchTreffer = [];
+      } finally {
+        buchSuchLaden = false;
+      }
+    }, 400);
   }
 
   async function startEdit() {
@@ -321,6 +353,8 @@
     fehler = null;
     try {
       book = await holeBuch(id);
+      // Aehnliche Buecher im Hintergrund laden
+      aehnlicheBuecher(id).then(r => { aehnliche = r; }).catch(() => {});
     } catch (e) {
       fehler = e.message;
     } finally {
@@ -344,6 +378,16 @@
     } catch { /* still */ }
   }
 
+  let istGelesen = $derived(book?.last_read_at != null);
+
+  async function onGelesenToggle() {
+    if (!book) return;
+    try {
+      const result = await toggleGelesen(book.id);
+      book = { ...book, last_read_at: result.gelesen ? new Date().toISOString() : null };
+    } catch { /* still */ }
+  }
+
   async function onRate(rating) {
     if (!book) return;
     try {
@@ -356,14 +400,16 @@
   const ansichtLabel = { breite: "Seitenbreite", seite: "Ganze Seite" };
 
   function parseLeseposition(pos, format) {
-    if (!pos) return { items: [], fontPreview: null };
+    if (!pos) return { items: [], fontPreview: null, page: null, percent: null };
     const items = [];
     let fontPreview = null;
+    let page = null;
+    let percent = null;
 
     if (pos.startsWith("pdf:")) {
       try {
         const d = JSON.parse(pos.slice(4));
-        if (d.page) items.push({ label: "Seite", value: d.page });
+        if (d.page) { items.push({ label: "Seite", value: d.page }); page = d.page; }
         if (d.zoom) items.push({ label: "Zoom", value: `${d.zoom}%` });
         if (d.ansicht) items.push({ label: "Ansicht", value: d.ansicht, type: "pdf-ansicht" });
         if (d.papier) items.push({ label: "Papier", value: d.papier, type: "papier" });
@@ -371,6 +417,7 @@
     } else if (pos.startsWith("epub:")) {
       try {
         const d = JSON.parse(pos.slice(5));
+        if (d.percent > 0) percent = Math.round(d.percent);
         if (d.fontSize) items.push({ label: "Schrift", value: `${d.fontSize}%` });
         if (d.fontFamily) {
           fontPreview = {
@@ -390,7 +437,7 @@
       if (rest.startsWith("{")) {
         try {
           const d = JSON.parse(rest);
-          if (d.scrollPct != null) items.push({ label: "Fortschritt", value: `${d.scrollPct}%` });
+          if (d.scrollPct != null) { items.push({ label: "Fortschritt", value: `${d.scrollPct}%` }); percent = Math.round(d.scrollPct); }
           if (d.fontSize) items.push({ label: "Schrift", value: `${d.fontSize}%` });
           if (d.papier) items.push({ label: "Papier", value: d.papier, type: "papier" });
         } catch { items.push({ label: "Position", value: pos }); }
@@ -401,13 +448,22 @@
       items.push({ label: "EPUB-Position", value: "Gespeichert" });
     } else {
       const m = pos.match(/page:(\d+)/);
-      if (m) items.push({ label: "Seite", value: m[1] });
+      if (m) { items.push({ label: "Seite", value: m[1] }); page = parseInt(m[1]); }
       else items.push({ label: "Position", value: pos });
     }
 
-    return { items, fontPreview };
+    return { items, fontPreview, page, percent };
   }
 </script>
+
+{#if book}
+  {#if !coverError && book.cover_path}
+    <div class="bg-cover-blur" style="background-image: url({coverUrl(book.id, book.updated_at)})"></div>
+  {:else}
+    <div class="bg-cover-blur bg-cover-default" style="background-image: url(/api/config/design/hintergrund/{ui.bgAktuellerDateiname || ''}?token={encodeURIComponent(getToken())})"></div>
+  {/if}
+  <div class="bg-cover-overlay"></div>
+{/if}
 
 <div class="book-detail">
   <div class="page-header">
@@ -421,31 +477,87 @@
   {:else if book}
     <div class="detail-layout">
       <div class="cover-section">
-        {#if !coverError}
-          <img
-            src={coverUrl(book.id, book.updated_at)}
-            alt="Cover: {book.title}"
-            class="cover-image"
-            onerror={() => (coverError = true)}
-          />
-        {:else}
-          <div class="cover-placeholder">
-            <span>{(book.file_format || "?").toUpperCase()}</span>
+        <div class="cover-wrapper">
+          {#if !coverError}
+            <img
+              src={coverUrl(book.id, book.updated_at)}
+              alt="Cover: {book.title}"
+              class="cover-image"
+              onerror={() => (coverError = true)}
+            />
+          {:else}
+            <div class="cover-placeholder">
+              <span>{(book.file_format || "?").toUpperCase()}</span>
+            </div>
+          {/if}
+          <div class="cover-overlay">
+            {#if book.reading_position}
+              {@const pos = parseLeseposition(book.reading_position, book.file_format)}
+              <a href="/book/{book.id}/read" class="cover-btn cover-btn-tl" title={pos.page && book.page_count ? `Auf Seite ${pos.page} von ${book.page_count} weiterlesen` : pos.percent ? `Bei ${pos.percent}% weiterlesen` : 'Weiterlesen'}>
+                <i class="fa-solid fa-bookmark"></i>
+              </a>
+              <a href="/book/{book.id}/read?restart=1" class="cover-btn cover-btn-tr" title="Von vorne lesen">
+                <i class="fa-solid fa-rotate-left"></i>
+              </a>
+            {:else}
+              <a href="/book/{book.id}/read" class="cover-btn cover-btn-tl" title="Lesen">
+                <i class="fa-solid fa-book-open-reader"></i>
+              </a>
+            {/if}
+            <a href="/api/books/{book.id}/file?token={encodeURIComponent(getToken())}" download={book.file_name || true} class="cover-btn cover-btn-bl" title="Buchdatei herunterladen">
+              <i class="fa-solid fa-download"></i>
+            </a>
           </div>
-        {/if}
-
-        <div class="cover-actions">
-          <a href="/book/{book.id}/read" class="btn btn-primary">
-            Lesen
-          </a>
-          <a
-            href="/api/books/{book.id}/file"
-            download
-            class="btn btn-secondary"
-          >
-            Herunterladen
-          </a>
         </div>
+
+        {#if book.reading_position}
+          {@const pos = parseLeseposition(book.reading_position, book.file_format)}
+          {#if pos.items.length > 0}
+            <div class="position-details">
+              {#each pos.items as item}
+                <div class="pos-item">
+                  <span class="pos-label">{item.label}</span>
+                  {#if item.type === "layout"}
+                    <span class="pos-value pos-icon" title={item.value === "single" ? "Einzelseite" : "Doppelseite"}>
+                      {#if item.value === "single"}
+                        <svg width="16" height="14" viewBox="0 0 16 14"><rect x="3" y="0" width="10" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                      {:else}
+                        <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0.75" y="0" width="8" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="11.25" y="0" width="8" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                      {/if}
+                    </span>
+                  {:else if item.type === "pdf-ansicht"}
+                    <span class="pos-value pos-icon" title={ansichtLabel[item.value] || item.value}>
+                      {#if item.value === "scroll"}
+                        <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="0" width="12" height="5.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="1" y="8.5" width="12" height="5.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+                      {:else if item.value === "breite"}
+                        <svg width="18" height="14" viewBox="0 0 18 14"><rect x="0.75" y="1" width="16.5" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="4" y1="5" x2="14" y2="5" stroke="currentColor" stroke-width="1" opacity="0.4"/><line x1="4" y1="7.5" x2="12" y2="7.5" stroke="currentColor" stroke-width="1" opacity="0.4"/><line x1="4" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="1" opacity="0.4"/></svg>
+                      {:else if item.value === "seite"}
+                        <svg width="12" height="14" viewBox="0 0 12 14"><rect x="0.75" y="0" width="10.5" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+                      {:else if item.value === "einzeln"}
+                        <svg width="16" height="14" viewBox="0 0 16 14"><rect x="3" y="0" width="10" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                      {:else if item.value === "doppel"}
+                        <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0.75" y="0" width="8" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="11.25" y="0" width="8" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+                      {/if}
+                    </span>
+                  {:else if item.type === "papier"}
+                    <span class="pos-value pos-papier pos-papier-{item.value}" title={papierLabel[item.value] || item.value}></span>
+                  {:else}
+                    <span class="pos-value">{item.value}</span>
+                  {/if}
+                </div>
+              {/each}
+              {#if pos.fontPreview}
+                <div class="pos-item">
+                  <span class="pos-label">Schriftart</span>
+                  <span
+                    class="pos-font-preview"
+                    style="font-family: {pos.fontPreview.family}; {pos.fontPreview.fg ? `color: ${pos.fontPreview.fg};` : ''} {pos.fontPreview.bg ? `background-color: ${pos.fontPreview.bg};` : ''}"
+                  >{pos.fontPreview.name}</span>
+                </div>
+              {/if}
+            </div>
+          {/if}
+        {/if}
       </div>
 
       <div class="info-section">
@@ -577,106 +689,63 @@
           <RatingStars rating={book.rating} interactive onRate={onRate} />
         </div>
 
-        <div class="action-row">
-          {#if !editMode}
-            <button
-              class="action-btn"
-              onclick={startEdit}
-              title="Buchdetails bearbeiten"
-            >
-              <i class="fa-solid fa-pen"></i> Bearbeiten
+        <div class="action-groups">
+          <div class="action-grid">
+            {#if !editMode}
+              <button class="action-btn" onclick={startEdit} title="Buchdetails bearbeiten">
+                <i class="fa-solid fa-pen"></i> Bearbeiten
+              </button>
+            {/if}
+            <button class="action-btn" class:active={book.is_favorite} onclick={onFavoritToggle} title="{book.is_favorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}">
+              <i class="{book.is_favorite ? 'fa-solid' : 'fa-regular'} fa-heart"></i> Favorit
             </button>
-          {/if}
-          <button
-            class="action-btn"
-            class:active={book.is_favorite}
-            onclick={onFavoritToggle}
-          >
-            <i class="{book.is_favorite ? 'fa-solid' : 'fa-regular'} fa-heart"></i> Favorit
-          </button>
-          <button
-            class="action-btn"
-            class:active={book.is_to_read}
-            onclick={onZumLesenToggle}
-          >
-            <i class="fa-solid {book.is_to_read ? 'fa-check' : 'fa-plus'}"></i> Leseliste
-          </button>
-          <button
-            class="action-btn ai-btn"
-            onclick={() => (aiDialogOpen = true)}
-          >
-            <i class="fa-solid fa-wand-magic-sparkles"></i> KI-Kategorisierung
-          </button>
-          <button
-            class="action-btn meta-btn"
-            class:loading={metaLaden}
-            onclick={() => metadatenSuchen("google_books")}
-            disabled={metaLaden}
-            title="Metadaten bei Google Books suchen"
-          >
-            {#if metaLaden && metaSchritt.includes("Google")}
-              <i class="fa-solid fa-spinner fa-spin"></i>
-            {:else}
-              <i class="fa-solid fa-g"></i>
-            {/if}
-            Google Books
-          </button>
-          <button
-            class="action-btn meta-btn"
-            class:loading={metaLaden}
-            onclick={() => metadatenSuchen("open_library")}
-            disabled={metaLaden}
-            title="Metadaten bei Open Library suchen"
-          >
-            {#if metaLaden && metaSchritt.includes("Open")}
-              <i class="fa-solid fa-spinner fa-spin"></i>
-            {:else}
-              <i class="fa-solid fa-book-open"></i>
-            {/if}
-            Open Library
-          </button>
-          <button
-            class="action-btn meta-btn"
-            class:loading={metaLaden}
-            onclick={() => metadatenSuchen("wikipedia")}
-            disabled={metaLaden}
-            title="Metadaten bei Wikipedia/Wikidata suchen"
-          >
-            {#if metaLaden && metaSchritt.includes("Wikipedia")}
-              <i class="fa-solid fa-spinner fa-spin"></i>
-            {:else}
-              <i class="fa-brands fa-wikipedia-w"></i>
-            {/if}
-            Wikipedia
-          </button>
-          <button
-            class="action-btn meta-btn"
-            class:loading={volltextLaden}
-            onclick={() => { volltextOffen = !volltextOffen; if (volltextOffen && !volltextInhalt) volltextLadenAktion(); }}
-            disabled={volltextLaden}
-            title="Beschreibung aus dem Buchtext übernehmen"
-          >
-            {#if volltextLaden}
-              <i class="fa-solid fa-spinner fa-spin"></i>
-            {:else}
-              <i class="fa-solid fa-file-lines"></i>
-            {/if}
-            Aus Buch
-          </button>
-          <button
-            class="action-btn meta-btn"
-            class:loading={coverNeuLaden}
-            onclick={coverNeuExtrahieren}
-            disabled={coverNeuLaden}
-            title="Cover neu aus der Buchdatei extrahieren"
-          >
-            {#if coverNeuLaden}
-              <i class="fa-solid fa-spinner fa-spin"></i>
-            {:else}
-              <i class="fa-solid fa-image"></i>
-            {/if}
-            Cover neu
-          </button>
+            <button class="action-btn" class:active={book.is_to_read} onclick={onZumLesenToggle} title="{book.is_to_read ? 'Von Leseliste entfernen' : 'Auf Leseliste setzen'}">
+              <i class="fa-solid {book.is_to_read ? 'fa-check' : 'fa-plus'}"></i> Leseliste
+            </button>
+            <button class="action-btn" class:active={istGelesen} onclick={onGelesenToggle} title="{istGelesen ? 'Als ungelesen markieren' : 'Als gelesen markieren'}">
+              <i class="fa-solid {istGelesen ? 'fa-book-open' : 'fa-book'}"></i> {istGelesen ? "Gelesen" : "Ungelesen"}
+            </button>
+            <button class="action-btn" onclick={() => (aiDialogOpen = true)} title="KI-Kategorisierung starten">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Kategorisieren
+            </button>
+          </div>
+          <div class="action-grid">
+            <button class="action-btn meta-btn" class:loading={metaLaden} onclick={() => metadatenSuchen("google_books")} disabled={metaLaden} title="Metadaten bei Google Books suchen">
+              {#if metaLaden && metaSchritt.includes("Google")}
+                <i class="fa-solid fa-spinner fa-spin"></i>
+              {:else}
+                <i class="fa-solid fa-g"></i>
+              {/if} Google Books
+            </button>
+            <button class="action-btn meta-btn" class:loading={metaLaden} onclick={() => metadatenSuchen("open_library")} disabled={metaLaden} title="Metadaten bei Open Library suchen">
+              {#if metaLaden && metaSchritt.includes("Open")}
+                <i class="fa-solid fa-spinner fa-spin"></i>
+              {:else}
+                <i class="fa-solid fa-book-open"></i>
+              {/if} Open Library
+            </button>
+            <button class="action-btn meta-btn" class:loading={metaLaden} onclick={() => metadatenSuchen("wikipedia")} disabled={metaLaden} title="Metadaten bei Wikipedia/Wikidata suchen">
+              {#if metaLaden && metaSchritt.includes("Wikipedia")}
+                <i class="fa-solid fa-spinner fa-spin"></i>
+              {:else}
+                <i class="fa-brands fa-wikipedia-w"></i>
+              {/if} Wikipedia
+            </button>
+            <button class="action-btn meta-btn" class:loading={volltextLaden} onclick={() => { volltextOffen = !volltextOffen; if (volltextOffen && !volltextInhalt) volltextLadenAktion(); }} disabled={volltextLaden} title="Beschreibung aus dem Buchtext übernehmen">
+              {#if volltextLaden}
+                <i class="fa-solid fa-spinner fa-spin"></i>
+              {:else}
+                <i class="fa-solid fa-file-lines"></i>
+              {/if} Aus Buch
+            </button>
+            <button class="action-btn meta-btn" class:loading={coverNeuLaden} onclick={coverNeuExtrahieren} disabled={coverNeuLaden} title="Cover neu aus der Buchdatei extrahieren">
+              {#if coverNeuLaden}
+                <i class="fa-solid fa-spinner fa-spin"></i>
+              {:else}
+                <i class="fa-solid fa-image"></i>
+              {/if} Cover neu
+            </button>
+          </div>
         </div>
 
         {#if volltextOffen && !metaVorschlag}
@@ -881,9 +950,14 @@
                 {:else if volltextInhalt}
                   <div class="volltext-vorschau">
                     <textarea class="volltext-textarea" bind:value={volltextInhalt}></textarea>
-                    <button class="btn btn-secondary btn-sm" onclick={() => volltextUebernehmen(volltextInhalt)}>
-                      <i class="fa-solid fa-check"></i> Als Beschreibung übernehmen
-                    </button>
+                    <div class="meta-aktionen">
+                      <button class="btn btn-primary btn-sm" onclick={() => volltextUebernehmen(volltextInhalt)}>
+                        <i class="fa-solid fa-check"></i> Als Beschreibung übernehmen
+                      </button>
+                      <button class="btn btn-secondary btn-sm" onclick={() => { volltextOffen = false; volltextInhalt = ""; }}>
+                        <i class="fa-solid fa-xmark"></i> Verwerfen
+                      </button>
+                    </div>
                   </div>
                 {:else}
                   <p class="volltext-leer">Kein Volltext vorhanden.</p>
@@ -963,64 +1037,93 @@
           </div>
         {/if}
 
-        {#if book.reading_position}
-          {@const pos = parseLeseposition(book.reading_position, book.file_format)}
-          <div class="position-section">
-            <h2 class="section-title">Lesefortschritt</h2>
-            <div class="position-details">
-              {#each pos.items as item}
-                <div class="pos-item">
-                  <span class="pos-label">{item.label}</span>
-                  {#if item.type === "layout"}
-                    <span class="pos-value pos-icon" title={item.value === "single" ? "Einzelseite" : "Doppelseite"}>
-                      {#if item.value === "single"}
-                        <svg width="16" height="14" viewBox="0 0 16 14"><rect x="3" y="0" width="10" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
-                      {:else}
-                        <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0.75" y="0" width="8" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="11.25" y="0" width="8" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
-                      {/if}
-                    </span>
-                  {:else if item.type === "pdf-ansicht"}
-                    <span class="pos-value pos-icon" title={ansichtLabel[item.value] || item.value}>
-                      {#if item.value === "scroll"}
-                        <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="0" width="12" height="5.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="1" y="8.5" width="12" height="5.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
-                      {:else if item.value === "breite"}
-                        <svg width="18" height="14" viewBox="0 0 18 14"><rect x="0.75" y="1" width="16.5" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="4" y1="5" x2="14" y2="5" stroke="currentColor" stroke-width="1" opacity="0.4"/><line x1="4" y1="7.5" x2="12" y2="7.5" stroke="currentColor" stroke-width="1" opacity="0.4"/><line x1="4" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="1" opacity="0.4"/></svg>
-                      {:else if item.value === "seite"}
-                        <svg width="12" height="14" viewBox="0 0 12 14"><rect x="0.75" y="0" width="10.5" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
-                      {:else if item.value === "einzeln"}
-                        <svg width="16" height="14" viewBox="0 0 16 14"><rect x="3" y="0" width="10" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
-                      {:else if item.value === "doppel"}
-                        <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0.75" y="0" width="8" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="11.25" y="0" width="8" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
-                      {/if}
-                    </span>
-                  {:else if item.type === "papier"}
-                    <span class="pos-value pos-papier pos-papier-{item.value}" title={papierLabel[item.value] || item.value}></span>
-                  {:else}
-                    <span class="pos-value">{item.value}</span>
-                  {/if}
-                </div>
-              {/each}
-              {#if pos.fontPreview}
-                <div class="pos-item">
-                  <span class="pos-label">Schriftart</span>
-                  <span
-                    class="pos-font-preview"
-                    style="font-family: {pos.fontPreview.family}; {pos.fontPreview.fg ? `color: ${pos.fontPreview.fg};` : ''} {pos.fontPreview.bg ? `background-color: ${pos.fontPreview.bg};` : ''}"
-                  >{pos.fontPreview.name}</span>
-                </div>
-              {/if}
-            </div>
-            <a href="/book/{book.id}/read" class="btn btn-secondary btn-sm">
-              Weiterlesen
-            </a>
-          </div>
-        {/if}
       </div>
     </div>
 
     <div class="notes-section">
         <NoteList bookId={book.id} />
       </div>
+
+    <!-- Buch-Volltextsuche -->
+    <div class="book-search-section">
+      <button class="book-search-toggle" onclick={() => { buchSucheOffen = !buchSucheOffen; if (!buchSucheOffen) { buchSuchbegriff = ""; buchSuchTreffer = []; } }}>
+        <i class="fa-solid fa-magnifying-glass"></i>
+        Im Buch suchen
+        <i class="fa-solid fa-chevron-{buchSucheOffen ? 'up' : 'down'}" style="margin-left: auto; font-size: 0.75rem;"></i>
+      </button>
+      {#if buchSucheOffen}
+        <div class="book-search-body">
+          <input
+            type="text"
+            class="book-search-input"
+            placeholder="Suchbegriff eingeben..."
+            value={buchSuchbegriff}
+            oninput={onBuchSuche}
+          />
+          {#if buchSuchLaden}
+            <div class="book-search-status"><i class="fa-solid fa-spinner fa-spin"></i> Suche...</div>
+          {:else if buchSuchbegriff.length >= 2 && buchSuchTreffer.length === 0}
+            <div class="book-search-status">Keine Treffer</div>
+          {/if}
+          {#if buchSuchTreffer.length > 0}
+            <div class="book-search-count">{buchSuchTreffer.length} Treffer</div>
+            <div class="book-search-results">
+              {#each buchSuchTreffer as treffer, i (i)}
+                <a href="#/book/{book.id}/read?page={treffer.seite}" class="book-search-hit">
+                  <span class="hit-page">S. {treffer.seite}</span>
+                  <span class="hit-kontext">{@html treffer.kontext}</span>
+                </a>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </div>
+
+    {#if aehnliche.vom_autor.length > 0 || aehnliche.in_kategorie.length > 0}
+      <div class="similar-section">
+        {#if aehnliche.vom_autor.length > 0}
+          <h2 class="section-title">Vom selben Autor</h2>
+          <div class="similar-grid">
+            {#each aehnliche.vom_autor as b (b.id)}
+              <a href="#/book/{b.id}" class="similar-card">
+                {#if b.cover_path}
+                  <img src={coverUrl(b.id, b.updated_at)} alt="" class="similar-cover" onerror={(e) => e.target.style.display = 'none'} />
+                {:else}
+                  <div class="similar-cover-placeholder">
+                    <span>{(b.file_format || "?").toUpperCase()}</span>
+                  </div>
+                {/if}
+                <div class="similar-info">
+                  <span class="similar-title">{b.title}</span>
+                  {#if b.year}<span class="similar-year">{b.year}</span>{/if}
+                </div>
+              </a>
+            {/each}
+          </div>
+        {/if}
+        {#if aehnliche.in_kategorie.length > 0}
+          <h2 class="section-title">In derselben Kategorie</h2>
+          <div class="similar-grid">
+            {#each aehnliche.in_kategorie as b (b.id)}
+              <a href="#/book/{b.id}" class="similar-card">
+                {#if b.cover_path}
+                  <img src={coverUrl(b.id, b.updated_at)} alt="" class="similar-cover" onerror={(e) => e.target.style.display = 'none'} />
+                {:else}
+                  <div class="similar-cover-placeholder">
+                    <span>{(b.file_format || "?").toUpperCase()}</span>
+                  </div>
+                {/if}
+                <div class="similar-info">
+                  <span class="similar-title">{b.title}</span>
+                  {#if b.author}<span class="similar-author">{b.author}</span>{/if}
+                </div>
+              </a>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    {/if}
 
     <AiCategorizeDialog
       bookId={book.id}
@@ -1034,6 +1137,40 @@
 <style>
   .book-detail {
     max-width: 960px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .bg-cover-blur {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: blur(var(--cover-bg-blur)) saturate(var(--cover-bg-saturate));
+    transform: scale(var(--cover-bg-scale));
+    pointer-events: none;
+  }
+
+  .bg-cover-default {
+    background-image: var(--cover-bg-default, linear-gradient(135deg, #1a1a2e 0%, #16213e 30%, #0f3460 60%, #533483 100%));
+  }
+
+  :global(:root:not(.dark)) .bg-cover-default {
+    background-image: var(--cover-bg-default, linear-gradient(135deg, #667eea 0%, #764ba2 30%, #f093fb 60%, #4facfe 100%));
+  }
+
+  .bg-cover-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: var(--cover-bg-overlay);
+  }
+
+  :global(.grid-main:has(.book-detail)) {
+    background: transparent !important;
   }
 
   .page-header {
@@ -1070,11 +1207,74 @@
   .cover-section {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.5rem;
+  }
+
+  .cover-wrapper {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .cover-overlay {
+    position: absolute;
+    inset: 0;
+    background: var(--cover-hover-overlay);
+    opacity: 0;
+    transition: opacity 0.25s;
+    pointer-events: none;
+    border-radius: 8px;
+  }
+
+  .cover-wrapper:hover .cover-overlay {
+    opacity: 1;
+  }
+
+  .cover-btn {
+    position: absolute;
+    pointer-events: auto;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: background 0.15s, transform 0.15s;
+  }
+
+  .cover-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.1);
+  }
+
+  .cover-btn-tl { top: 0.5rem; left: 0.5rem; }
+  .cover-btn-tr { top: 0.5rem; right: 0.5rem; }
+  .cover-btn-bl { bottom: 0.5rem; left: 0.5rem; }
+
+  .weiterlesen-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-accent);
+    text-decoration: none;
+    padding: 0.25rem 0;
+  }
+
+  .weiterlesen-link:hover {
+    text-decoration: underline;
   }
 
   .cover-image {
     width: 100%;
+    display: block;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
@@ -1084,7 +1284,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--color-bg-tertiary);
+    background: var(--glass-placeholder);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
     border-radius: 8px;
     font-size: 2rem;
     font-weight: 700;
@@ -1092,11 +1294,6 @@
     color: var(--color-text-muted);
   }
 
-  .cover-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
 
   .btn {
     display: inline-flex;
@@ -1136,6 +1333,11 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1.25rem;
   }
 
   .book-title {
@@ -1181,30 +1383,53 @@
     font-size: 1.25rem;
   }
 
-  .action-row {
+  .action-groups {
     display: flex;
+    flex-direction: column;
     gap: 0.5rem;
   }
 
+  .action-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.375rem;
+  }
+
   .action-btn {
-    padding: 0.375rem 0.875rem;
+    padding: 0.5rem 0.25rem;
     border: 1px solid var(--color-border);
     border-radius: 6px;
     background: none;
     color: var(--color-text-secondary);
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     cursor: pointer;
     transition: all 0.15s;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .action-grid:first-child .action-btn {
+    background: var(--glass-bg-btn);
+    backdrop-filter: blur(var(--glass-blur-btn));
+    border-color: var(--glass-border-btn);
+  }
+
+  .action-grid:last-child .action-btn {
+    background: var(--glass-bg-btn-alt);
+    backdrop-filter: blur(var(--glass-blur-btn));
+    border-style: dashed;
+    border-color: var(--glass-border);
   }
 
   .action-btn:hover {
-    background-color: var(--color-bg-tertiary);
+    background: rgba(0, 0, 0, 0.35);
   }
 
   .action-btn.active {
     border-color: var(--color-accent);
     color: var(--color-accent);
     background-color: var(--color-accent-light);
+    border-style: solid;
   }
 
   .section-title {
@@ -1293,9 +1518,10 @@
     gap: 0.25rem 0.75rem;
     margin-bottom: 0.75rem;
     padding: 0.625rem 0.75rem;
-    background-color: var(--color-bg-tertiary);
-    border-radius: 6px;
-    border: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur-sm));
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
   }
 
   .pos-item {
@@ -1312,6 +1538,8 @@
     font-size: 0.75rem;
     color: var(--color-text-primary);
     font-family: var(--font-mono);
+    text-align: right;
+    justify-self: end;
   }
 
   .pos-icon {
@@ -1719,6 +1947,198 @@
 
   .notes-section {
     margin-top: 1.5rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1rem;
+  }
+
+  /* Buch-Volltextsuche */
+  .book-search-section {
+    margin-top: 1.5rem;
+  }
+
+  .book-search-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur-sm));
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  .book-search-toggle:hover {
+    background-color: var(--color-bg-secondary);
+  }
+
+  .book-search-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .book-search-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    background: var(--glass-placeholder);
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+    font-family: inherit;
+  }
+
+  .book-search-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .book-search-status {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    padding: 0.25rem 0;
+  }
+
+  .book-search-count {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    font-weight: 500;
+  }
+
+  .book-search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-height: 24rem;
+    overflow-y: auto;
+  }
+
+  .book-search-hit {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.5rem 0.625rem;
+    background: var(--glass-placeholder);
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--color-text-primary);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    transition: background 0.15s;
+  }
+
+  .book-search-hit:hover {
+    background: var(--glass-bg-btn-alt);
+  }
+
+  .hit-page {
+    flex-shrink: 0;
+    font-weight: 600;
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    min-width: 3rem;
+  }
+
+  .hit-kontext {
+    color: var(--color-text-secondary);
+    word-break: break-word;
+  }
+
+  .hit-kontext :global(mark) {
+    background-color: var(--color-warning);
+    color: #000;
+    border-radius: 2px;
+    padding: 0 0.125rem;
+  }
+
+  .similar-section {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1rem;
+  }
+
+  .similar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .similar-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    text-decoration: none;
+    color: var(--color-text-primary);
+    border-radius: 6px;
+    transition: transform 0.15s;
+  }
+
+  .similar-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .similar-cover {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  }
+
+  .similar-cover-placeholder {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--glass-placeholder);
+    backdrop-filter: blur(var(--glass-blur-btn));
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--color-text-muted);
+  }
+
+  .similar-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .similar-title {
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .similar-author,
+  .similar-year {
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
   }
 
   /* Editiermodus */

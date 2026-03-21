@@ -3,6 +3,7 @@
   import { dateiUrl } from "../../api/books.js";
   import { speichereLeseposition } from "../../api/user-data.js";
   import { getToken } from "../../api/client.js";
+  import { ui } from "../../stores/ui.svelte.js";
   import { onMount, onDestroy } from "svelte";
 
   let {
@@ -541,8 +542,8 @@
         <button class="tool-btn" class:active={ansicht === "breite"} onclick={() => setAnsicht(ansicht === "breite" ? "scroll" : "breite")} title="Seitenbreite">
           <i class="fa-solid fa-arrows-left-right"></i>
         </button>
-        <button class="tool-btn" class:active={ansicht === "seite"} onclick={() => setAnsicht(ansicht === "seite" ? "scroll" : "seite")} title="Ganze Seite">
-          <i class="fa-solid fa-expand"></i>
+        <button class="tool-btn" class:active={ansicht === "seite"} onclick={() => setAnsicht(ansicht === "seite" ? "scroll" : "seite")} title="Ganze Seite einpassen">
+          <i class="fa-solid fa-up-down-left-right"></i>
         </button>
         <button class="tool-btn" class:active={ansicht === "doppel"} onclick={() => setAnsicht(ansicht === "doppel" ? "scroll" : "doppel")} title="Doppelseite">
           <i class="fa-solid fa-book-open"></i>
@@ -572,8 +573,11 @@
         {/if}
       </button>
 
-      <!-- Rechts: Download -->
+      <!-- Rechts: Vollbild + Download -->
       <div class="toolbar-spacer"></div>
+      <button class="tool-btn" class:active={ui.readerFullscreen} onclick={() => ui.toggleReaderFullscreen()} title="{ui.readerFullscreen ? 'Vollbild verlassen' : 'Vollbild'}">
+        <i class="fa-solid {ui.readerFullscreen ? 'fa-compress' : 'fa-expand'}"></i>
+      </button>
       <button class="tool-btn" onclick={downloadFile} title="Herunterladen">
         <i class="fa-solid fa-download"></i>
       </button>
