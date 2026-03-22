@@ -165,21 +165,25 @@
       <ul>
         {#each history as term, i (term)}
           <li>
-            <button
+            <div
               class="suggestion-item history-item"
               class:selected={i === selectedIndex}
+              role="option"
+              aria-selected={i === selectedIndex}
               onmousedown={() => selectHistoryItem(term)}
             >
               <i class="fa-solid fa-clock-rotate-left history-icon"></i>
               <span class="history-term">{term}</span>
-              <button
+              <span
                 class="history-remove"
+                role="button"
+                tabindex="-1"
                 onmousedown={(e) => entferneAusHistorie(term, e)}
                 title="Aus Verlauf entfernen"
               >
                 <i class="fa-solid fa-xmark"></i>
-              </button>
-            </button>
+              </span>
+            </div>
           </li>
         {/each}
       </ul>
