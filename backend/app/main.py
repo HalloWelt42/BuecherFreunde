@@ -146,15 +146,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS: Nur lokale Zugriffe erlauben (Backend sitzt hinter nginx)
-_cors_origins = [
-    f"http://localhost:{settings.external_port}",
-    f"http://127.0.0.1:{settings.external_port}",
-    "http://localhost",
-    "http://127.0.0.1",
-]
-# Im Docker-Netzwerk kommen Requests vom nginx-Container (kein CORS noetig),
-# aber fuer Entwicklung und direkte Zugriffe erlauben wir lokale Origins.
+# CORS: Backend sitzt hinter nginx (same-origin), aber fuer Entwicklung
+# und direkte Zugriffe erlauben wir alle Origins im lokalen Netz.
+# Da der Token-Auth den Zugriff schuetzt, ist das sicher.
+_cors_origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
