@@ -5,6 +5,7 @@
   import { ui } from "../../stores/ui.svelte.js";
   import { untrack } from "svelte";
   import SvelteMarkdown from "@humanspeak/svelte-markdown";
+  import { markedMermaid, MermaidRenderer } from "@humanspeak/svelte-markdown/extensions/mermaid";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
   import LabelPicker from "./LabelPicker.svelte";
   import ReaderLabels from "./ReaderLabels.svelte";
@@ -29,6 +30,25 @@
   // Markdown oder Plaintext?
   let istMarkdown = $derived(format === "md");
 
+  // Mermaid-Erweiterung und Renderer
+  const mermaidExtensions = [markedMermaid()];
+  const mermaidRenderers = { mermaid: MermaidRenderer };
+
+  // Breiten-Modi
+  const breitenModi = [
+    { id: "schmal", label: "Schmal", max: "600px" },
+    { id: "mittel", label: "Mittel", max: "800px" },
+    { id: "breit", label: "Breit", max: "1100px" },
+    { id: "voll", label: "Voll", max: "none" },
+  ];
+  let breiteIdx = $state(1); // Standard: mittel
+  let maxBreite = $derived(breitenModi[breiteIdx].max);
+
+  function toggleBreite() {
+    breiteIdx = (breiteIdx + 1) % breitenModi.length;
+    triggerSave();
+  }
+
   // Geschaetzte Seiten (~2000 Zeichen pro Seite)
   const ZEICHEN_PRO_SEITE = 2000;
   let geschaetzteSeiten = $derived(Math.max(1, Math.ceil(content.length / ZEICHEN_PRO_SEITE)));
@@ -52,12 +72,12 @@
   // Syntax-Highlighting nach Markdown-Rendering anwenden
   $effect(() => {
     if (!laden && istMarkdown && content && scrollContainer) {
-      highlightCodeBlocks();
+      // Kurz warten bis SvelteMarkdown gerendert hat
+      requestAnimationFrame(() => highlightCodeBlocks());
     }
   });
 
   async function highlightCodeBlocks() {
-    // Dynamischer Import - nur laden wenn gebraucht
     try {
       const hljs = await import("highlight.js/lib/core");
       const hljsLib = hljs.default;
@@ -89,7 +109,7 @@
         plaintext: () => import("highlight.js/lib/languages/plaintext"),
       };
 
-      // Alle Code-Bloecke finden
+      // Alle Code-Bloecke finden (nur die ohne Mermaid)
       const codeBlocks = scrollContainer.querySelectorAll("pre code");
       if (codeBlocks.length === 0) return;
 
@@ -99,7 +119,6 @@
         const cls = [...block.classList].find(c => c.startsWith("language-"));
         if (cls) {
           const lang = cls.replace("language-", "");
-          // Aliase aufloesen
           const aliases = { js: "javascript", ts: "typescript", py: "python", sh: "bash", yml: "yaml", html: "xml" };
           needed.add(aliases[lang] || lang);
         }
@@ -115,7 +134,7 @@
         }
       }
 
-      // Wenn keine spezifischen Sprachen, gängige laden fuer Auto-Detect
+      // Wenn keine spezifischen Sprachen, gaengige laden fuer Auto-Detect
       if (needed.size === 0) {
         for (const lang of ["javascript", "python", "bash", "json", "xml", "css", "sql"]) {
           if (!hljsLib.getLanguage(lang)) {
@@ -170,11 +189,9 @@
     triggerSave();
   }
 
-  // Alle Einstellungen speichern
   let saveTimeout;
   function triggerSave() {
     clearTimeout(saveTimeout);
-    // URL sofort
     const params = new URLSearchParams();
     if (fortschritt > 0) params.set("pos", String(fortschritt));
     if (papierModus !== "normal") params.set("papier", papierModus);
@@ -187,6 +204,7 @@
         scrollPct: fortschritt,
         papier: papierModus,
         fontSize,
+        breite: breiteIdx,
       };
       const pos = `txt:${JSON.stringify(settings)}`;
       onPositionChange(pos);
@@ -245,7 +263,6 @@
 
       <div class="toolbar-sep"></div>
 
-      <!-- Geschaetzte Seitenposition -->
       <div class="toolbar-group">
         <span class="page-info">~{aktuelleSeite} / {geschaetzteSeiten}</span>
         <span class="progress-info">{fortschritt}%</span>
@@ -253,7 +270,6 @@
 
       <div class="toolbar-sep"></div>
 
-      <!-- Format-Anzeige -->
       <span class="format-badge">{istMarkdown ? "MD" : "TXT"}</span>
 
       <div class="toolbar-sep"></div>
@@ -270,6 +286,18 @@
           <i class="fa-solid fa-plus"></i>
         </button>
       </div>
+
+      <div class="toolbar-sep"></div>
+
+      <!-- Breite -->
+      <button
+        class="tool-btn breite-btn"
+        onclick={toggleBreite}
+        title="Textbreite: {breitenModi[breiteIdx].label}"
+      >
+        <i class="fa-solid fa-left-right"></i>
+        <span class="breite-label">{breitenModi[breiteIdx].label}</span>
+      </button>
 
       <div class="toolbar-sep"></div>
 
@@ -291,19 +319,16 @@
 
       <div class="toolbar-sep"></div>
 
-      <!-- Markieren-Hinweis -->
       <button class="tool-btn" onclick={() => {}} title="Text auswählen zum Markieren, Kopieren oder als Notiz speichern" style="cursor: help;">
         <i class="fa-solid fa-highlighter"></i>
       </button>
 
-      <!-- Label setzen -->
       <LabelPicker
         {bookId}
         positionLabel={"~S." + aktuelleSeite}
         positionPercent={fortschritt}
       />
 
-      <!-- Labels anzeigen/bearbeiten -->
       <ReaderLabels
         {bookId}
         onNavigate={(label) => {
@@ -332,15 +357,14 @@
       onscroll={handleScroll}
     >
       {#if istMarkdown}
-        <div class="markdown-body" style="font-size: {fontSize}%">
-          <SvelteMarkdown source={content} />
+        <div class="markdown-body" style="font-size: {fontSize}%; max-width: {maxBreite}">
+          <SvelteMarkdown source={content} extensions={mermaidExtensions} renderers={mermaidRenderers} />
         </div>
       {:else}
-        <pre class="text-pre" style="font-size: {fontSize}%">{content}</pre>
+        <pre class="text-pre" style="font-size: {fontSize}%; max-width: {maxBreite}">{content}</pre>
       {/if}
     </div>
 
-    <!-- Textauswahl-Aktionsmenue -->
     <TextSelectionMenu
       {bookId}
       positionLabel={"~S." + aktuelleSeite}
@@ -391,6 +415,7 @@
     background-color: var(--color-bg-secondary);
     flex-shrink: 0;
     height: 36px;
+    overflow-x: auto;
   }
 
   .toolbar-title {
@@ -403,9 +428,7 @@
     max-width: 240px;
   }
 
-  .toolbar-spacer {
-    flex: 1;
-  }
+  .toolbar-spacer { flex: 1; }
 
   .toolbar-group {
     display: flex;
@@ -418,6 +441,7 @@
     height: 20px;
     background-color: var(--color-border);
     margin: 0 0.25rem;
+    flex-shrink: 0;
   }
 
   .format-badge {
@@ -425,17 +449,18 @@
     font-weight: 700;
     font-family: var(--font-mono, monospace);
     color: var(--color-accent);
-    background: var(--color-accent-light, color-mix(in srgb, var(--color-accent) 15%, transparent));
+    background: color-mix(in srgb, var(--color-accent) 15%, transparent);
     padding: 0.125rem 0.375rem;
     border-radius: 3px;
     letter-spacing: 0.05em;
+    flex-shrink: 0;
   }
 
   .tool-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
+    min-width: 28px;
     height: 28px;
     border: none;
     border-radius: 4px;
@@ -444,6 +469,7 @@
     cursor: pointer;
     font-size: 0.75rem;
     transition: background-color 0.1s;
+    flex-shrink: 0;
   }
 
   .tool-btn:hover:not(:disabled) {
@@ -451,30 +477,31 @@
     color: var(--color-text-primary);
   }
 
-  .tool-btn:disabled {
-    opacity: 0.3;
-    cursor: default;
-  }
+  .tool-btn:disabled { opacity: 0.3; cursor: default; }
 
   .tool-btn.active {
-    background-color: var(--color-accent-light);
+    background-color: color-mix(in srgb, var(--color-accent) 15%, transparent);
     color: var(--color-accent);
   }
 
-  .page-info {
+  .breite-btn {
+    gap: 0.25rem;
+    padding: 0 0.375rem;
+  }
+
+  .breite-label {
+    font-size: 0.625rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .page-info, .progress-info {
     font-size: 0.75rem;
-    font-family: inherit;
     color: var(--color-text-primary);
     white-space: nowrap;
   }
 
-  .progress-info {
-    font-size: 0.75rem;
-    font-family: inherit;
-    color: var(--color-text-primary);
-    min-width: 2rem;
-    text-align: center;
-  }
+  .progress-info { min-width: 2rem; text-align: center; }
 
   .zoom-display {
     min-width: 3rem;
@@ -490,9 +517,7 @@
     padding: 0 0.25rem;
   }
 
-  .zoom-display:hover {
-    background-color: var(--color-bg-tertiary);
-  }
+  .zoom-display:hover { background-color: var(--color-bg-tertiary); }
 
   /* Text-Inhalt */
   .text-content {
@@ -502,17 +527,9 @@
     background-color: var(--color-bg-primary);
   }
 
-  .text-content.papier-sepia {
-    background-color: #f4ecd8;
-  }
-
-  :global(:root.dark) .text-content.papier-sepia {
-    background-color: #3d3526;
-  }
-
-  .text-content.papier-dunkel {
-    background-color: #1e1e1e;
-  }
+  .text-content.papier-sepia { background-color: #f4ecd8; }
+  :global(:root.dark) .text-content.papier-sepia { background-color: #3d3526; }
+  .text-content.papier-dunkel { background-color: #1e1e1e; }
 
   /* Plaintext */
   .text-pre {
@@ -521,306 +538,160 @@
     white-space: pre-wrap;
     word-wrap: break-word;
     color: var(--color-text-primary);
-    max-width: 800px;
     margin: 0 auto;
   }
 
-  .papier-sepia .text-pre {
-    color: #3d2b1f;
-  }
-
-  :global(:root.dark) .papier-sepia .text-pre {
-    color: #d4c5a9;
-  }
-
-  .papier-dunkel .text-pre {
-    color: #c8c8c8;
-  }
+  .papier-sepia .text-pre { color: #3d2b1f; }
+  :global(:root.dark) .papier-sepia .text-pre { color: #d4c5a9; }
+  .papier-dunkel .text-pre { color: #c8c8c8; }
 
   /* Markdown-Body */
   .markdown-body {
-    max-width: 800px;
     margin: 0 auto;
     color: var(--color-text-primary);
     line-height: 1.7;
     font-family: var(--font-sans);
   }
 
-  /* Markdown: Ueberschriften */
+  /* Ueberschriften */
   .markdown-body :global(h1) {
-    font-size: 1.75em;
-    font-weight: 700;
-    margin: 1.5em 0 0.75em;
-    padding-bottom: 0.3em;
-    border-bottom: 1px solid var(--color-border);
-    color: var(--color-text-primary);
+    font-size: 1.75em; font-weight: 700; margin: 1.5em 0 0.75em;
+    padding-bottom: 0.3em; border-bottom: 1px solid var(--color-border);
   }
-
   .markdown-body :global(h2) {
-    font-size: 1.4em;
-    font-weight: 700;
-    margin: 1.25em 0 0.5em;
-    padding-bottom: 0.25em;
-    border-bottom: 1px solid var(--color-border);
-    color: var(--color-text-primary);
+    font-size: 1.4em; font-weight: 700; margin: 1.25em 0 0.5em;
+    padding-bottom: 0.25em; border-bottom: 1px solid var(--color-border);
   }
-
-  .markdown-body :global(h3) {
-    font-size: 1.2em;
-    font-weight: 600;
-    margin: 1em 0 0.5em;
-    color: var(--color-text-primary);
-  }
-
+  .markdown-body :global(h3) { font-size: 1.2em; font-weight: 600; margin: 1em 0 0.5em; }
   .markdown-body :global(h4),
   .markdown-body :global(h5),
-  .markdown-body :global(h6) {
-    font-size: 1em;
-    font-weight: 600;
-    margin: 1em 0 0.5em;
-    color: var(--color-text-primary);
-  }
+  .markdown-body :global(h6) { font-size: 1em; font-weight: 600; margin: 1em 0 0.5em; }
 
-  /* Markdown: Absaetze und Text */
-  .markdown-body :global(p) {
-    margin: 0.75em 0;
-  }
+  .markdown-body :global(p) { margin: 0.75em 0; }
+  .markdown-body :global(strong) { font-weight: 700; }
+  .markdown-body :global(a) { color: var(--color-accent); text-decoration: none; }
+  .markdown-body :global(a:hover) { text-decoration: underline; }
 
-  .markdown-body :global(strong) {
-    font-weight: 700;
-    color: var(--color-text-primary);
-  }
+  /* Listen */
+  .markdown-body :global(ul), .markdown-body :global(ol) { padding-left: 1.5em; margin: 0.5em 0; }
+  .markdown-body :global(li) { margin: 0.25em 0; }
 
-  .markdown-body :global(em) {
-    font-style: italic;
-  }
-
-  .markdown-body :global(a) {
-    color: var(--color-accent);
-    text-decoration: none;
-  }
-
-  .markdown-body :global(a:hover) {
-    text-decoration: underline;
-  }
-
-  /* Markdown: Listen */
-  .markdown-body :global(ul),
-  .markdown-body :global(ol) {
-    padding-left: 1.5em;
-    margin: 0.5em 0;
-  }
-
-  .markdown-body :global(li) {
-    margin: 0.25em 0;
-  }
-
-  .markdown-body :global(li > ul),
-  .markdown-body :global(li > ol) {
-    margin: 0.125em 0;
-  }
-
-  /* Markdown: Blockquotes */
+  /* Blockquotes */
   .markdown-body :global(blockquote) {
-    margin: 0.75em 0;
-    padding: 0.5em 1em;
+    margin: 0.75em 0; padding: 0.5em 1em;
     border-left: 4px solid var(--color-accent);
     background: color-mix(in srgb, var(--color-accent) 5%, transparent);
     color: var(--color-text-secondary);
   }
+  .markdown-body :global(blockquote p) { margin: 0.25em 0; }
 
-  .markdown-body :global(blockquote p) {
-    margin: 0.25em 0;
-  }
-
-  /* Markdown: Inline-Code */
+  /* Inline-Code */
   .markdown-body :global(code) {
     font-family: var(--font-mono, "JetBrains Mono", monospace);
     font-size: 0.875em;
-    background: var(--color-bg-tertiary, color-mix(in srgb, var(--color-text-primary) 8%, transparent));
-    padding: 0.15em 0.4em;
-    border-radius: 4px;
-    color: var(--color-text-primary);
+    background: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+    padding: 0.15em 0.4em; border-radius: 4px;
   }
 
-  /* Markdown: Code-Bloecke */
+  /* Code-Bloecke */
   .markdown-body :global(pre) {
-    margin: 1em 0;
-    padding: 1em;
-    border-radius: 8px;
+    margin: 1em 0; padding: 1em; border-radius: 8px;
     background: var(--color-bg-secondary, #f5f5f5);
-    border: 1px solid var(--color-border);
-    overflow-x: auto;
-    position: relative;
+    border: 1px solid var(--color-border); overflow-x: auto;
   }
-
-  :global(:root.dark) .markdown-body :global(pre) {
-    background: #1e1e2e;
-    border-color: #313244;
-  }
+  :global(:root.dark) .markdown-body :global(pre) { background: #1e1e2e; border-color: #313244; }
 
   .markdown-body :global(pre code) {
-    background: none;
-    padding: 0;
-    border-radius: 0;
-    font-size: 0.8125em;
-    line-height: 1.6;
-    display: block;
-    white-space: pre;
-    overflow-x: auto;
+    background: none; padding: 0; border-radius: 0;
+    font-size: 0.8125em; line-height: 1.6; display: block;
+    white-space: pre; overflow-x: auto;
   }
 
-  /* Markdown: Tabellen */
-  .markdown-body :global(table) {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 1em 0;
-    font-size: 0.875em;
-  }
+  /* Tabellen */
+  .markdown-body :global(table) { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 0.875em; }
+  .markdown-body :global(th), .markdown-body :global(td) { padding: 0.5em 0.75em; border: 1px solid var(--color-border); text-align: left; }
+  .markdown-body :global(th) { background: var(--color-bg-secondary); font-weight: 600; }
+  .markdown-body :global(tr:nth-child(even)) { background: color-mix(in srgb, var(--color-bg-secondary) 50%, transparent); }
 
-  .markdown-body :global(th),
-  .markdown-body :global(td) {
-    padding: 0.5em 0.75em;
-    border: 1px solid var(--color-border);
-    text-align: left;
-  }
+  .markdown-body :global(hr) { margin: 1.5em 0; border: none; border-top: 1px solid var(--color-border); }
+  .markdown-body :global(img) { max-width: 100%; border-radius: 6px; margin: 0.5em 0; }
+  .markdown-body :global(input[type="checkbox"]) { margin-right: 0.375em; accent-color: var(--color-accent); }
 
-  .markdown-body :global(th) {
+  /* Mermaid-Diagramme */
+  .markdown-body :global(.mermaid-diagram) {
+    margin: 1em 0; padding: 1em; border-radius: 8px;
     background: var(--color-bg-secondary);
-    font-weight: 600;
+    border: 1px solid var(--color-border);
+    overflow-x: auto; text-align: center;
   }
-
-  .markdown-body :global(tr:nth-child(even)) {
-    background: color-mix(in srgb, var(--color-bg-secondary) 50%, transparent);
+  .markdown-body :global(.mermaid-diagram svg) { max-width: 100%; height: auto; }
+  .markdown-body :global(.mermaid-loading) {
+    padding: 1em; text-align: center;
+    color: var(--color-text-muted); font-size: 0.875em;
   }
-
-  /* Markdown: Horizontale Linie */
-  .markdown-body :global(hr) {
-    margin: 1.5em 0;
-    border: none;
-    border-top: 1px solid var(--color-border);
-  }
-
-  /* Markdown: Bilder */
-  .markdown-body :global(img) {
-    max-width: 100%;
-    border-radius: 6px;
-    margin: 0.5em 0;
-  }
-
-  /* Markdown: Checklisten */
-  .markdown-body :global(input[type="checkbox"]) {
-    margin-right: 0.375em;
-    accent-color: var(--color-accent);
+  .markdown-body :global(.mermaid-error) {
+    padding: 0.75em 1em; border-radius: 6px; margin: 1em 0;
+    background: color-mix(in srgb, var(--color-error) 10%, transparent);
+    border: 1px solid var(--color-error);
+    color: var(--color-error); font-size: 0.8125em;
   }
 
   /* Papier-Modi fuer Markdown */
-  .papier-sepia .markdown-body {
-    color: #3d2b1f;
-  }
-
+  .papier-sepia .markdown-body { color: #3d2b1f; }
   .papier-sepia .markdown-body :global(h1),
   .papier-sepia .markdown-body :global(h2),
-  .papier-sepia .markdown-body :global(h3) {
-    color: #2c1e14;
-  }
+  .papier-sepia .markdown-body :global(h3) { color: #2c1e14; }
+  .papier-sepia .markdown-body :global(pre) { background: #ede3cf; border-color: #d4c5a9; }
+  .papier-sepia .markdown-body :global(code) { background: #ede3cf; }
 
-  .papier-sepia .markdown-body :global(pre) {
-    background: #ede3cf;
-    border-color: #d4c5a9;
-  }
+  :global(:root.dark) .papier-sepia .markdown-body { color: #d4c5a9; }
+  :global(:root.dark) .papier-sepia .markdown-body :global(pre) { background: #352e21; border-color: #4a4133; }
 
-  .papier-sepia .markdown-body :global(code) {
-    background: #ede3cf;
-  }
-
-  :global(:root.dark) .papier-sepia .markdown-body {
-    color: #d4c5a9;
-  }
-
-  :global(:root.dark) .papier-sepia .markdown-body :global(h1),
-  :global(:root.dark) .papier-sepia .markdown-body :global(h2),
-  :global(:root.dark) .papier-sepia .markdown-body :global(h3) {
-    color: #e8d9b8;
-  }
-
-  :global(:root.dark) .papier-sepia .markdown-body :global(pre) {
-    background: #352e21;
-    border-color: #4a4133;
-  }
-
-  .papier-dunkel .markdown-body {
-    color: #c8c8c8;
-  }
-
+  .papier-dunkel .markdown-body { color: #c8c8c8; }
   .papier-dunkel .markdown-body :global(h1),
   .papier-dunkel .markdown-body :global(h2),
-  .papier-dunkel .markdown-body :global(h3) {
-    color: #e0e0e0;
-  }
+  .papier-dunkel .markdown-body :global(h3) { color: #e0e0e0; }
+  .papier-dunkel .markdown-body :global(pre) { background: #2a2a2a; border-color: #3a3a3a; }
+  .papier-dunkel .markdown-body :global(code) { background: #2a2a2a; }
 
-  .papier-dunkel .markdown-body :global(pre) {
-    background: #2a2a2a;
-    border-color: #3a3a3a;
-  }
-
-  .papier-dunkel .markdown-body :global(code) {
-    background: #2a2a2a;
-  }
-
-  /* highlight.js Farben - Light Mode */
+  /* highlight.js - Light */
   .markdown-body :global(.hljs-keyword) { color: #d73a49; }
   .markdown-body :global(.hljs-string) { color: #032f62; }
   .markdown-body :global(.hljs-number) { color: #005cc5; }
   .markdown-body :global(.hljs-comment) { color: #6a737d; font-style: italic; }
-  .markdown-body :global(.hljs-function) { color: #6f42c1; }
+  .markdown-body :global(.hljs-function),
   .markdown-body :global(.hljs-title) { color: #6f42c1; }
-  .markdown-body :global(.hljs-class .hljs-title) { color: #6f42c1; }
   .markdown-body :global(.hljs-built_in) { color: #e36209; }
   .markdown-body :global(.hljs-literal) { color: #005cc5; }
   .markdown-body :global(.hljs-type) { color: #d73a49; }
   .markdown-body :global(.hljs-params) { color: #24292e; }
-  .markdown-body :global(.hljs-meta) { color: #005cc5; }
+  .markdown-body :global(.hljs-meta),
   .markdown-body :global(.hljs-attr) { color: #005cc5; }
   .markdown-body :global(.hljs-variable) { color: #e36209; }
   .markdown-body :global(.hljs-selector-tag) { color: #22863a; }
   .markdown-body :global(.hljs-selector-class) { color: #6f42c1; }
-  .markdown-body :global(.hljs-attribute) { color: #005cc5; }
-  .markdown-body :global(.hljs-symbol) { color: #005cc5; }
   .markdown-body :global(.hljs-addition) { color: #22863a; background-color: #f0fff4; }
   .markdown-body :global(.hljs-deletion) { color: #b31d28; background-color: #ffeef0; }
 
-  /* highlight.js Farben - Dark Mode */
+  /* highlight.js - Dark */
   :global(:root.dark) .markdown-body :global(.hljs-keyword) { color: #ff7b72; }
   :global(:root.dark) .markdown-body :global(.hljs-string) { color: #a5d6ff; }
   :global(:root.dark) .markdown-body :global(.hljs-number) { color: #79c0ff; }
   :global(:root.dark) .markdown-body :global(.hljs-comment) { color: #8b949e; font-style: italic; }
-  :global(:root.dark) .markdown-body :global(.hljs-function) { color: #d2a8ff; }
+  :global(:root.dark) .markdown-body :global(.hljs-function),
   :global(:root.dark) .markdown-body :global(.hljs-title) { color: #d2a8ff; }
   :global(:root.dark) .markdown-body :global(.hljs-built_in) { color: #ffa657; }
   :global(:root.dark) .markdown-body :global(.hljs-literal) { color: #79c0ff; }
   :global(:root.dark) .markdown-body :global(.hljs-type) { color: #ff7b72; }
   :global(:root.dark) .markdown-body :global(.hljs-params) { color: #c9d1d9; }
-  :global(:root.dark) .markdown-body :global(.hljs-meta) { color: #79c0ff; }
+  :global(:root.dark) .markdown-body :global(.hljs-meta),
   :global(:root.dark) .markdown-body :global(.hljs-attr) { color: #79c0ff; }
   :global(:root.dark) .markdown-body :global(.hljs-variable) { color: #ffa657; }
   :global(:root.dark) .markdown-body :global(.hljs-selector-tag) { color: #7ee787; }
-  :global(:root.dark) .markdown-body :global(.hljs-selector-class) { color: #d2a8ff; }
-  :global(:root.dark) .markdown-body :global(.hljs-attribute) { color: #79c0ff; }
-  :global(:root.dark) .markdown-body :global(.hljs-symbol) { color: #79c0ff; }
   :global(:root.dark) .markdown-body :global(.hljs-addition) { color: #aff5b4; background-color: #033a16; }
   :global(:root.dark) .markdown-body :global(.hljs-deletion) { color: #ffdcd7; background-color: #67060c; }
 
   /* User-Highlights */
-  :global(.user-highlight) {
-    background-color: #ffe066;
-    color: #1a1a1a;
-    border-radius: 2px;
-    padding: 0 1px;
-  }
-
-  :global(:root.dark .user-highlight) {
-    background-color: #b8860b;
-    color: #fff;
-  }
+  :global(.user-highlight) { background-color: #ffe066; color: #1a1a1a; border-radius: 2px; padding: 0 1px; }
+  :global(:root.dark .user-highlight) { background-color: #b8860b; color: #fff; }
 </style>

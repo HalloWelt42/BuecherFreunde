@@ -38,6 +38,8 @@
     { name: "pdfjs-dist", lizenz: "Apache-2.0", url: "https://github.com/nicolo-ribaudo/pdfjs-dist", zweck: "PDF-Rendering im Browser" },
     { name: "foliate-js", lizenz: "MIT", url: "https://github.com/nicolo-ribaudo/foliate-js", zweck: "EPUB/MOBI-Reader" },
     { name: "svelte-markdown", lizenz: "MIT", url: "https://github.com/humanspeak/svelte-markdown", zweck: "Markdown-Rendering" },
+    { name: "highlight.js", lizenz: "BSD-3-Clause", url: "https://github.com/highlightjs/highlight.js", zweck: "Syntax-Highlighting in Codeblöcken" },
+    { name: "Mermaid", lizenz: "MIT", url: "https://github.com/mermaid-js/mermaid", zweck: "Diagramme in Markdown" },
     { name: "svelte-spa-router", lizenz: "MIT", url: "https://github.com/ItalyPaleAle/svelte-spa-router", zweck: "Hash-basiertes Routing" },
     { name: "Font Awesome Free", lizenz: "MIT / CC BY 4.0", url: "https://github.com/FortAwesome/Font-Awesome", zweck: "Icons" },
     { name: "Barlow (Font)", lizenz: "OFL-1.1", url: "https://github.com/jpt/barlow", zweck: "Hauptschriftart" },

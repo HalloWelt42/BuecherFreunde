@@ -26,6 +26,7 @@
     "@humanspeak/svelte-markdown": "^1.0.5",
     "foliate-js": "^1.0.1",
     "highlight.js": "^11.11.1",
+    "mermaid": "^11.13.0",
     "pdfjs-dist": "^5.5.207",
     "svelte-spa-router": "^5.0.0"
   }
