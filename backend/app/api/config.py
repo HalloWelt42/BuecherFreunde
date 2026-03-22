@@ -63,6 +63,9 @@ async def get_stats(_token: str = Depends(verify_token)) -> dict:
     mit_labels = await db.fetch_one(
         "SELECT COUNT(DISTINCT book_id) as n FROM book_labels"
     )
+    mit_highlights = await db.fetch_one(
+        "SELECT COUNT(DISTINCT book_id) as n FROM book_highlights"
+    )
     total_n = total["n"] if total else 0
     gelesen_n = gelesen["n"] if gelesen else 0
     return {
@@ -76,6 +79,7 @@ async def get_stats(_token: str = Depends(verify_token)) -> dict:
         "weiterlesen": weiterlesen["n"] if weiterlesen else 0,
         "autoren": autoren["n"] if autoren else 0,
         "mit_labels": mit_labels["n"] if mit_labels else 0,
+        "mit_highlights": mit_highlights["n"] if mit_highlights else 0,
     }
 
 

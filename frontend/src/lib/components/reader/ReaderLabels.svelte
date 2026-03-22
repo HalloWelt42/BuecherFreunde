@@ -4,6 +4,7 @@
 
   let {
     bookId,
+    reloadTrigger = 0,
     onNavigate = () => {},
   } = $props();
 
@@ -43,6 +44,11 @@
 
   // Labels sofort laden damit Badge sichtbar ist
   onMount(() => { ladeLabels(); });
+
+  // Neuladen wenn Trigger sich aendert (z.B. neues Label erstellt)
+  $effect(() => {
+    if (reloadTrigger > 0) ladeLabels();
+  });
 
   async function ladeLabels() {
     laden = true;

@@ -23,6 +23,7 @@ function createBooksStore() {
     gelesen: null,
     hat_isbn: null,
     hat_labels: null,
+    hat_highlights: null,
     weiterlesen: null,
   });
 
@@ -61,6 +62,7 @@ function createBooksStore() {
         gelesen: neueFilter.gelesen ?? null,
         hat_isbn: neueFilter.hat_isbn ?? null,
         hat_labels: neueFilter.hat_labels ?? null,
+        hat_highlights: neueFilter.hat_highlights ?? null,
         weiterlesen: neueFilter.weiterlesen ?? null,
       };
       seite = 1;

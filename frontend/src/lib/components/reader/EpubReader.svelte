@@ -1,13 +1,17 @@
 <script>
   import { View } from "foliate-js/view.js";
+  import { Overlayer } from "foliate-js/overlayer.js";
   import { dateiUrl } from "../../api/books.js";
   import { getToken } from "../../api/client.js";
   import { speichereLeseposition } from "../../api/user-data.js";
   import { ui } from "../../stores/ui.svelte.js";
   import { onDestroy } from "svelte";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
-  import LabelPicker from "./LabelPicker.svelte";
+  import ReaderHighlights from "./ReaderHighlights.svelte";
   import ReaderLabels from "./ReaderLabels.svelte";
+  import ReaderNotes from "./ReaderNotes.svelte";
+  import { highlightsFuerBuch, erstelleHighlight, aktualisiereHighlight, loescheHighlight } from "../../api/highlights.js";
+  import { labelsFuerBuch } from "../../api/labels.js";
 
   let {
     bookId,
@@ -53,6 +57,14 @@
 
   // Textauswahl aus iframe
   let iframeSelection = $state(null);
+
+  // Persistente Highlights
+  let highlights = $state([]);
+  let highlightsReloadTrigger = $state(0);
+
+  // Labels (getrennt von Highlights)
+  let labels = $state([]);
+  let labelsReloadTrigger = $state(0);
 
   // Verfügbare Schriften (lokal gebündelt)
   const schriften = [
@@ -153,6 +165,103 @@
     `;
   }
 
+  // Highlights laden und rendern
+  async function ladeHighlights() {
+    try {
+      highlights = await highlightsFuerBuch(bookId);
+    } catch { highlights = []; }
+  }
+
+  // Labels laden
+  async function ladeLabels() {
+    try {
+      labels = await labelsFuerBuch(bookId);
+    } catch { labels = []; }
+  }
+
+  // Label-Icons in den Text injizieren
+  function renderLabelsForSection() {
+    if (!view || !labels.length) return;
+    for (const label of labels) {
+      if (!label.cfi_reference) continue;
+      try {
+        view.addAnnotation({ value: label.cfi_reference, type: "label", labelId: label.id });
+      } catch {
+        // CFI gehoert zu anderer Sektion
+      }
+    }
+  }
+
+  function isLabelAnnotation(annotation) {
+    return annotation?.type === "label";
+  }
+
+  function getLabelForAnnotation(annotation) {
+    if (!annotation?.labelId) return null;
+    return labels.find(l => l.id === annotation.labelId);
+  }
+
+  async function renderHighlightsForSection() {
+    if (!view || !highlights.length) return;
+    for (const hl of highlights) {
+      try {
+        await view.addAnnotation({ value: hl.cfi_range });
+      } catch {
+        // CFI gehoert zu anderer Sektion - normal
+      }
+    }
+  }
+
+  function getHighlightColor(cfiValue) {
+    const hl = highlights.find(h => h.cfi_range === cfiValue);
+    return hl?.color || "#FFEE58";
+  }
+
+  function isHighlightCfi(cfiValue) {
+    return highlights.some(h => h.cfi_range === cfiValue);
+  }
+
+  async function speichereHighlight(cfi, text, color) {
+    try {
+      const hl = await erstelleHighlight(bookId, {
+        cfi_range: cfi,
+        color,
+        text_snippet: text.slice(0, 500),
+      });
+      highlights = [...highlights, hl];
+      view.addAnnotation({ value: cfi });
+      highlightsReloadTrigger++;
+    } catch {
+      // Fehler beim Speichern
+    }
+  }
+
+  async function onHighlightUpdate(hlId, daten) {
+    try {
+      await aktualisiereHighlight(hlId, daten);
+      const hl = highlights.find(h => h.id === hlId);
+      highlights = highlights.map(h => h.id === hlId ? { ...h, ...daten } : h);
+      highlightsReloadTrigger++;
+      // Annotation neu zeichnen wenn Farbe geaendert
+      if (hl && daten.color) {
+        try { view.addAnnotation({ value: hl.cfi_range, remove: true }); } catch {}
+        try { view.addAnnotation({ value: hl.cfi_range }); } catch {}
+      }
+    } catch {}
+  }
+
+  async function onHighlightDelete(hlId) {
+    const hl = highlights.find(h => h.id === hlId);
+    if (!hl) return;
+    try {
+      await loescheHighlight(hlId);
+      highlights = highlights.filter(h => h.id !== hlId);
+      // Annotation entfernen
+      try { view.addAnnotation({ value: hl.cfi_range, remove: true }); } catch {}
+      highlightsReloadTrigger++;
+    } catch {}
+  }
+
   $effect(() => {
     if (containerEl) ladeEpub(bookId);
   });
@@ -187,9 +296,68 @@
         tocItems = flattenToc(view.book.toc);
       }
 
+      // Highlights und Labels laden
+      await ladeHighlights();
+      await ladeLabels();
+
+      // Annotationen zeichnen
+      view.addEventListener("draw-annotation", (e) => {
+        const { draw, annotation, doc, range } = e.detail;
+
+        // Label-Annotation: Icon direkt in den Text injizieren
+        if (isLabelAnnotation(annotation)) {
+          const label = getLabelForAnnotation(annotation);
+          if (!label || !doc || !range) return;
+          // Prüfen ob Icon schon existiert
+          if (doc.querySelector(`.bf-label-icon[data-label-id="${label.id}"]`)) return;
+          const icon = doc.createElement("span");
+          icon.className = "bf-label-icon";
+          icon.dataset.labelId = label.id;
+          icon.style.cssText = `
+            display: inline-block;
+            width: 16px; height: 16px;
+            background: ${label.color || "#4FC3F7"};
+            color: white;
+            font-size: 10px;
+            line-height: 16px;
+            text-align: center;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 0 2px;
+            vertical-align: text-bottom;
+            font-family: system-ui, sans-serif;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+          `;
+          icon.textContent = "\u2691"; // Flag
+          icon.title = (label.name || "Label") + (label.note ? "\n" + label.note.slice(0, 100) : "");
+          const startRange = doc.createRange();
+          startRange.setStart(range.startContainer, range.startOffset);
+          startRange.collapse(true);
+          startRange.insertNode(icon);
+          return; // Kein Overlay zeichnen
+        }
+
+        // Highlight-Annotation: farbiger Hintergrund via Overlayer
+        const cfi = annotation?.value;
+        if (cfi && isHighlightCfi(cfi)) {
+          const hl = highlights.find(h => h.cfi_range === cfi);
+          if (hl) {
+            draw(Overlayer.highlight, { color: hl.color });
+          }
+        }
+      });
+
       // Bei jedem Section-Load CSS injizieren + Selection-Listener
       view.addEventListener("load", (e) => {
+        const sectionIndex = e.detail.index;
         injectCSS(e.detail.doc);
+
+        // Gespeicherte Highlights und Labels fuer diese Sektion rendern
+        requestAnimationFrame(() => {
+          renderHighlightsForSection();
+          renderLabelsForSection();
+        });
+
         // Textauswahl im iframe abfangen
         e.detail.doc.addEventListener("mouseup", (evt) => {
           const sel = e.detail.doc.getSelection();
@@ -200,11 +368,15 @@
           }
           const range = sel.getRangeAt(0);
           const rect = range.getBoundingClientRect();
+          // CFI der Selektion erzeugen
+          let selCfi = "";
+          try { selCfi = view.getCFI(sectionIndex, range); } catch {}
           // iframe-Position relativ zum Viewport berechnen
           const iframe = e.detail.doc.defaultView?.frameElement;
           const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
           iframeSelection = {
             text,
+            cfi: selCfi,
             x: iframeRect.left + rect.left + rect.width / 2,
             y: iframeRect.top + rect.top,
           };
@@ -222,6 +394,12 @@
       await view.init({
         lastLocation: initialCfi || undefined,
       });
+
+      // Highlights und Labels nach Init nochmals rendern
+      setTimeout(() => {
+        renderHighlightsForSection();
+        renderLabelsForSection();
+      }, 200);
 
       // Prozentuale Navigation (von Volltextsuche)
       if (initialPercent > 0 && !initialCfi) {
@@ -460,22 +638,24 @@
         <i class="fa-solid {singlePage ? 'fa-file' : 'fa-book-open'}"></i>
       </button>
 
-      <!-- Markieren-Hinweis -->
-      <button class="tool-btn" onclick={() => {}} title="Text auswählen zum Markieren, Kopieren oder als Notiz speichern" style="cursor: help;">
-        <i class="fa-solid fa-highlighter"></i>
-      </button>
-
-      <!-- Label setzen -->
-      <LabelPicker
+      <!-- Markierungen verwalten -->
+      <ReaderHighlights
         {bookId}
-        positionLabel={fortschritt + "%"}
-        positionPercent={fortschritt}
-        cfiReference={currentLocation?.cfi || ""}
+        {highlights}
+        reloadTrigger={highlightsReloadTrigger}
+        onNavigate={(hl) => {
+          if (hl.cfi_range && view) {
+            try { view.goTo(hl.cfi_range); } catch {}
+          }
+        }}
+        onUpdate={onHighlightUpdate}
+        onDelete={onHighlightDelete}
       />
 
-      <!-- Labels anzeigen/bearbeiten -->
+      <!-- Labels verwalten (getrennt) -->
       <ReaderLabels
         {bookId}
+        reloadTrigger={labelsReloadTrigger}
         onNavigate={(label) => {
           if (label.cfi_reference && view) {
             try { view.goTo(label.cfi_reference); } catch {}
@@ -483,6 +663,12 @@
             try { view.goToFraction(label.position_percent / 100); } catch {}
           }
         }}
+      />
+
+      <!-- Buchnotizen -->
+      <ReaderNotes
+        {bookId}
+        positionLabel={fortschritt + "%"}
       />
 
       <!-- Suchnavigation (wenn Treffer vorhanden) -->
@@ -565,9 +751,10 @@
     {bookId}
     positionLabel={fortschritt + "%"}
     externalSelection={iframeSelection}
-    onHighlight={(text) => {
-      if (view && currentLocation?.cfi) {
-        try { view.addAnnotation({ value: "highlight:" + currentLocation.cfi }); } catch {}
+    onHighlight={(text, color) => {
+      const cfi = iframeSelection?.cfi;
+      if (cfi) {
+        speichereHighlight(cfi, text, color);
       }
     }}
   />

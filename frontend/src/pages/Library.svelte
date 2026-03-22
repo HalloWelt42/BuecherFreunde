@@ -111,6 +111,7 @@
       gelesen: params.has("gelesen") ? params.get("gelesen") === "true" : null,
       hat_isbn: params.has("hat_isbn") ? params.get("hat_isbn") === "true" : null,
       hat_labels: params.get("hat_labels") === "true" ? true : null,
+      hat_highlights: params.get("hat_highlights") === "true" ? true : null,
       weiterlesen: params.get("weiterlesen") === "true" ? true : null,
       sortierung: sortBy,
       richtung: sortDir,

@@ -41,10 +41,11 @@
   let isBuecher = $derived(params_.get("hat_isbn") === "true");
   let isDokumente = $derived(params_.get("hat_isbn") === "false");
   let isLabels = $derived(params_.get("hat_labels") === "true");
+  let isHighlights = $derived(params_.get("hat_highlights") === "true");
   let isHome = $derived(route.path === "/" || route.path === "");
   let hasNoSpecialFilter = $derived(
     !isFavorite && !isToRead && !isGelesen && !isUngelesen &&
-    !isBuecher && !isDokumente && !isLabels && activeCategories.length === 0
+    !isBuecher && !isDokumente && !isLabels && !isHighlights && activeCategories.length === 0
   );
 
   function toggleCategory(catId) {
@@ -142,6 +143,22 @@
 
   onDestroy(() => {
     if (_unsubProcesses) _unsubProcesses();
+  });
+
+  // Schnellnotiz-Wörter aus localStorage zählen
+  let schnellnotizVersion = $state(0);
+  let schnellnotizWoerter = $derived.by(() => {
+    const _ = ui.scratchPadOpen;
+    const __ = schnellnotizVersion;
+    const text = localStorage.getItem("bf-schnellnotiz") || "";
+    if (!text.trim()) return 0;
+    return text.trim().split(/\s+/).length;
+  });
+
+  $effect(() => {
+    function onUpdate() { schnellnotizVersion++; }
+    window.addEventListener("schnellnotiz-update", onUpdate);
+    return () => window.removeEventListener("schnellnotiz-update", onUpdate);
   });
 </script>
 
@@ -246,6 +263,15 @@
         <span class="nav-count">{stats.mit_labels}</span>
       {/if}
     </button>
+    <button class="nav-item" class:active={isHighlights} onclick={() => toggleSpecial("hat_highlights", "true")}
+      title="Bücher mit markierten Textstellen"
+    >
+      <span class="nav-icon"><i class="fa-solid fa-highlighter"></i></span>
+      <span class="nav-label">Markierte Stellen</span>
+      {#if stats.mit_highlights > 0}
+        <span class="nav-count">{stats.mit_highlights}</span>
+      {/if}
+    </button>
   </nav>
 
   <div class="sidebar-divider"></div>
@@ -327,6 +353,9 @@
     >
       <span class="nav-icon"><i class="fa-solid fa-note-sticky" style="color: var(--color-warning)"></i></span>
       <span class="nav-label">Schnellnotiz</span>
+      {#if schnellnotizWoerter > 0}
+        <span class="nav-count">{schnellnotizWoerter} Wörter</span>
+      {/if}
     </button>
     <a
       href="/settings"

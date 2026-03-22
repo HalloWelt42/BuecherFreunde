@@ -39,12 +39,12 @@ async def erstelle_notiz(
     book_id: int, data: NoteCreate, _: str = Depends(verify_token)
 ):
     """Neue Notiz für ein Buch."""
-    result = await db.execute(
+    cursor = await db.execute(
         """INSERT INTO book_notes (book_id, content, page_reference, cfi_reference)
         VALUES (?, ?, ?, ?)""",
         (book_id, data.content, data.page_reference, data.cfi_reference),
     )
-    return await db.fetch_one("SELECT * FROM book_notes WHERE id = ?", (result,))
+    return await db.fetch_one("SELECT * FROM book_notes WHERE id = ?", (cursor.lastrowid,))
 
 
 @router.patch("/notes/{note_id}")

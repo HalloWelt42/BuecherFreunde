@@ -16,9 +16,13 @@
   let dragOff = { dx: 0, dy: 0 }
   let padEl = $state(null)
 
-  onMount(() => {
+  function ladeText() {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) text = saved
+    text = saved || ''
+  }
+
+  onMount(() => {
+    ladeText()
 
     const pos = localStorage.getItem(POS_KEY)
     if (pos) {
@@ -27,6 +31,11 @@
         x = p.x ?? 320; y = p.y ?? 80; w = p.w ?? 320; h = p.h ?? 260
       } catch {}
     }
+
+    // Auf externe Aenderungen reagieren (z.B. aus Buchnotizen-Toolbar)
+    function onSchnellnotizUpdate() { ladeText(); }
+    window.addEventListener('schnellnotiz-update', onSchnellnotizUpdate)
+    return () => window.removeEventListener('schnellnotiz-update', onSchnellnotizUpdate)
   })
 
   function saveText() {

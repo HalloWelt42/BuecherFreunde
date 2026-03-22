@@ -17,6 +17,7 @@ from backend.app.api.imports import router as imports_router
 from backend.app.api.metadata import router as metadata_router
 from backend.app.api.search import router as search_router
 from backend.app.api.collections import router as collections_router
+from backend.app.api.highlights import router as highlights_router
 from backend.app.api.labels import router as labels_router
 from backend.app.api.notes import router as notes_router
 from backend.app.api.user_data import router as user_data_router
@@ -79,6 +80,7 @@ app.include_router(categories_router)
 app.include_router(collections_router)
 app.include_router(config_router)
 app.include_router(imports_router)
+app.include_router(highlights_router)
 app.include_router(labels_router)
 app.include_router(metadata_router)
 app.include_router(notes_router)

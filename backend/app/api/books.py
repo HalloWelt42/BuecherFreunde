@@ -103,6 +103,7 @@ async def list_books(
     hat_isbn: bool | None = Query(None, description="True=mit ISBN, False=ohne ISBN"),
     weiterlesen: bool | None = Query(None, description="Bücher mit Leseposition"),
     hat_labels: bool | None = Query(None, description="Bücher mit Labels"),
+    hat_highlights: bool | None = Query(None, description="Bücher mit Textmarkierungen"),
     autor: str | None = Query(None, description="Autor-Filter (exakter Match oder LIKE)"),
     verlag: str | None = Query(None, description="Verlag-Filter (exakter Match oder LIKE)"),
     jahr_von: int | None = Query(None, description="Erscheinungsjahr ab"),
@@ -158,6 +159,9 @@ async def list_books(
 
     if hat_labels is not None:
         conditions.append("b.id IN (SELECT DISTINCT book_id FROM book_labels)")
+
+    if hat_highlights is not None:
+        conditions.append("b.id IN (SELECT DISTINCT book_id FROM book_highlights)")
 
     if hat_isbn is not None:
         if hat_isbn:

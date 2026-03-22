@@ -1,6 +1,7 @@
 <script>
   import NoteEditor from "./NoteEditor.svelte";
   import { notizenFuerBuch, erstelleNotiz, loescheNotiz } from "../../api/notes.js";
+  import { navigate } from "../../router.svelte.js";
 
   let { bookId } = $props();
 
@@ -79,8 +80,21 @@
         <div class="note-content">{notiz.content}</div>
         <div class="note-footer">
           <span class="note-date">{formatDate(notiz.updated_at || notiz.created_at)}</span>
-          {#if notiz.page_reference}
-            <span class="note-page">S. {notiz.page_reference}</span>
+          {#if notiz.page_reference || notiz.cfi_reference}
+            <button
+              class="note-jump"
+              onclick={() => {
+                const params = new URLSearchParams();
+                if (notiz.cfi_reference) params.set("cfi", notiz.cfi_reference);
+                else if (notiz.page_reference && notiz.page_reference.includes("%")) params.set("percent", notiz.page_reference.replace("%", ""));
+                else if (notiz.page_reference) params.set("page", notiz.page_reference);
+                navigate(`/book/${bookId}/read${params.toString() ? "?" + params.toString() : ""}`);
+              }}
+              title="Im Reader öffnen"
+            >
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              {notiz.page_reference || "Zur Stelle"}
+            </button>
           {/if}
           <button
             class="delete-btn"
@@ -151,10 +165,23 @@
     color: var(--color-text-muted);
   }
 
-  .note-page {
+  .note-jump {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
     background-color: var(--color-bg-tertiary);
     padding: 0.0625rem 0.375rem;
     border-radius: 4px;
+    border: none;
+    color: var(--color-accent);
+    font-size: 0.6875rem;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .note-jump:hover {
+    background-color: color-mix(in srgb, var(--color-accent) 15%, transparent);
+    text-decoration: underline;
   }
 
   .delete-btn {

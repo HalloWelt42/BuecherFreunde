@@ -10,7 +10,7 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.db")
 
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 13
 
 SCHEMA_SQL = """
 -- Bücher
@@ -125,6 +125,21 @@ CREATE TABLE IF NOT EXISTS book_labels (
 );
 
 CREATE INDEX IF NOT EXISTS idx_labels_book ON book_labels(book_id);
+
+-- Textmarkierungen (Highlights) mit optionalen Label-Feldern
+CREATE TABLE IF NOT EXISTS book_highlights (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL,
+    cfi_range TEXT NOT NULL,
+    color TEXT NOT NULL DEFAULT '#FFEE58',
+    text_snippet TEXT NOT NULL DEFAULT '',
+    label_name TEXT NOT NULL DEFAULT '',
+    label_note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_highlights_book ON book_highlights(book_id);
 
 -- Import-Aufgaben
 CREATE TABLE IF NOT EXISTS import_tasks (
@@ -630,6 +645,52 @@ Verwende deutsche Begriffe. Sei spezifisch, nicht zu allgemein.',
             )
             await self._connection.commit()
             logger.info("Schema-Migration v11 abgeschlossen: book_labels Tabelle")
+
+        if from_version < 12:
+            # v12: Textmarkierungen (Highlights)
+            await self._connection.execute("""
+                CREATE TABLE IF NOT EXISTS book_highlights (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    book_id INTEGER NOT NULL,
+                    cfi_range TEXT NOT NULL,
+                    color TEXT NOT NULL DEFAULT '#FFEE58',
+                    text_snippet TEXT NOT NULL DEFAULT '',
+                    label_id INTEGER DEFAULT NULL,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+                    FOREIGN KEY (label_id) REFERENCES book_labels(id) ON DELETE SET NULL
+                )
+            """)
+            await self._connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_highlights_book ON book_highlights(book_id)"
+            )
+            await self._connection.commit()
+            logger.info("Schema-Migration v12 abgeschlossen: book_highlights Tabelle")
+
+        if from_version < 13:
+            # v13: Label-Felder direkt in Highlights, label_id entfernen
+            # Neue Spalten hinzufügen
+            try:
+                await self._connection.execute(
+                    "ALTER TABLE book_highlights ADD COLUMN label_name TEXT NOT NULL DEFAULT ''"
+                )
+            except Exception:
+                pass  # Spalte existiert bereits
+            try:
+                await self._connection.execute(
+                    "ALTER TABLE book_highlights ADD COLUMN label_note TEXT NOT NULL DEFAULT ''"
+                )
+            except Exception:
+                pass  # Spalte existiert bereits
+            # Bestehende Labels migrieren: label_id -> label_name/label_note
+            await self._connection.execute("""
+                UPDATE book_highlights SET
+                    label_name = COALESCE((SELECT name FROM book_labels WHERE book_labels.id = book_highlights.label_id), ''),
+                    label_note = COALESCE((SELECT note FROM book_labels WHERE book_labels.id = book_highlights.label_id), '')
+                WHERE label_id IS NOT NULL
+            """)
+            await self._connection.commit()
+            logger.info("Schema-Migration v13 abgeschlossen: Label-Felder in book_highlights integriert")
 
     async def _migrate_html_descriptions(self) -> None:
         """Konvertiert bestehende HTML-Beschreibungen in Markdown."""
