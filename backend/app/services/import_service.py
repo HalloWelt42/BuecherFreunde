@@ -61,12 +61,16 @@ async def import_single_file(file_path: Path, task_id: int | None = None, enrich
     result = {"status": "fehler", "datei": original_name}
 
     try:
+        logger.info("import_single_file gestartet: '%s' (task %s)", original_name, task_id)
         return await _do_import(file_path, task_id, enrich, original_name, result)
-    except Exception as e:
-        error = f"Unerwarteter Import-Fehler: {e}"
-        logger.error("Import-Fehler fuer '%s': %s", original_name, e, exc_info=True)
+    except BaseException as e:
+        error = f"{type(e).__name__}: {e}"
+        logger.error("Import-Fehler fuer '%s': %s", original_name, error, exc_info=True)
         if task_id:
-            await update_task_status(task_id, "fehler", 0, "", error)
+            try:
+                await update_task_status(task_id, "fehler", 0, "", error)
+            except BaseException:
+                pass
         result["fehler"] = error
         return result
 

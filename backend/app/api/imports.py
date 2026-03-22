@@ -74,15 +74,20 @@ async def upload_file(
     async def _do_import():
         try:
             logger.info("Starte Import Task %d: %s", task_id, safe_name)
-            await import_single_file(temp_path, task_id)
-        except Exception as exc:
-            logger.error("Import Task %d fehlgeschlagen: %s", task_id, exc, exc_info=True)
+            result = await import_single_file(temp_path, task_id)
+            logger.info("Import Task %d Ergebnis: %s", task_id, result.get("status", "unbekannt"))
+        except BaseException as exc:
+            logger.error("Import Task %d ABBRUCH: %s (%s)", task_id, exc, type(exc).__name__, exc_info=True)
             try:
-                await update_task_status(task_id, "fehler", 0, "", str(exc))
-            except Exception:
+                await update_task_status(task_id, "fehler", 0, "", f"{type(exc).__name__}: {exc}")
+            except BaseException:
                 pass
         finally:
-            temp_path.unlink(missing_ok=True)
+            try:
+                temp_path.unlink(missing_ok=True)
+            except BaseException:
+                pass
+            logger.info("Import Task %d cleanup fertig", task_id)
 
     _fire_and_forget(_do_import())
 
@@ -124,15 +129,20 @@ async def upload_multiple(
         async def _do_import(path=temp_path, tid=task_id, name=safe_name):
             try:
                 logger.info("Starte Import Task %d: %s", tid, name)
-                await import_single_file(path, tid)
-            except Exception as exc:
-                logger.error("Import Task %d fehlgeschlagen: %s", tid, exc, exc_info=True)
+                result = await import_single_file(path, tid)
+                logger.info("Import Task %d Ergebnis: %s", tid, result.get("status", "unbekannt"))
+            except BaseException as exc:
+                logger.error("Import Task %d ABBRUCH: %s (%s)", tid, exc, type(exc).__name__, exc_info=True)
                 try:
-                    await update_task_status(tid, "fehler", 0, "", str(exc))
-                except Exception:
+                    await update_task_status(tid, "fehler", 0, "", f"{type(exc).__name__}: {exc}")
+                except BaseException:
                     pass
             finally:
-                path.unlink(missing_ok=True)
+                try:
+                    path.unlink(missing_ok=True)
+                except BaseException:
+                    pass
+                logger.info("Import Task %d cleanup fertig", tid)
 
         _fire_and_forget(_do_import())
         tasks.append({"task_id": task_id, "datei": file.filename})
