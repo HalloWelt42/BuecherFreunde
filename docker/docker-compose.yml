@@ -6,6 +6,11 @@ services:
     restart: unless-stopped
     env_file:
       - ../.env
+    environment:
+      - STORAGE_DIR=/app/storage
+      - EXTERNAL_DIR=/app/external
+      - IMPORT_DIR=/app/import
+      - DATABASE_DIR=/app/database
     volumes:
       - ${STORAGE_DIR:-../storage}:/app/storage
       - ${EXTERNAL_DIR:-../external}:/app/external:ro
