@@ -312,10 +312,10 @@
     max-width: 600px;
     min-width: 300px;
     max-height: 80vh;
-    background: color-mix(in srgb, var(--color-bg-secondary) 75%, transparent);
-    backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
     border-radius: 8px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
     display: flex;
@@ -333,7 +333,7 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.25rem 0.5rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 25%, transparent);
+    border-bottom: 1px solid var(--glass-border);
     font-size: 0.75rem;
     color: var(--color-text-secondary);
     height: 28px;
@@ -376,20 +376,18 @@
   }
 
   .notes-close:hover {
-    background: color-mix(in srgb, var(--color-bg-tertiary) 60%, transparent);
+    background: var(--glass-bg-btn);
     color: var(--color-text-primary);
   }
 
-  /* Glasmorphism-Feld mit Toolbar */
+  /* Notiz-Feld mit Toolbar */
   .note-field {
     display: flex;
     flex-direction: column;
     margin: 0.25rem 0.375rem;
     border-radius: 6px;
-    background: color-mix(in srgb, var(--color-bg-primary) 40%, transparent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid color-mix(in srgb, var(--color-border) 25%, transparent);
+    background: var(--glass-bg-btn-alt);
+    border: 1px solid var(--glass-border);
     overflow: hidden;
   }
 
@@ -398,14 +396,14 @@
     align-items: center;
     gap: 1px;
     padding: 2px 3px;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 15%, transparent);
-    background: color-mix(in srgb, var(--color-bg-tertiary) 30%, transparent);
+    border-bottom: 1px solid var(--glass-border);
+    background: var(--glass-bg-btn);
   }
 
   .tb-sep {
     width: 1px;
     height: 14px;
-    background: color-mix(in srgb, var(--color-border) 30%, transparent);
+    background: var(--glass-border);
     margin: 0 2px;
   }
 
@@ -425,7 +423,7 @@
   }
 
   .tb:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--color-bg-primary) 60%, transparent);
+    background: var(--glass-bg-btn);
     color: var(--color-text-primary);
   }
 
@@ -526,7 +524,7 @@
   }
 
   .note-toggle:hover {
-    background: color-mix(in srgb, var(--color-bg-primary) 60%, transparent);
+    background: var(--glass-bg-btn);
     color: var(--color-text-primary);
   }
 
