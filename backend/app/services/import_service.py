@@ -44,7 +44,7 @@ async def update_task_status(
     await db.commit()
 
 
-async def import_single_file(file_path: Path, task_id: int | None = None) -> dict:
+async def import_single_file(file_path: Path, task_id: int | None = None, enrich: bool = True) -> dict:
     """Importiert eine einzelne Datei.
 
     Workflow: Hash -> Duplikat? -> Speichern -> Verarbeiten -> DB -> FTS
@@ -53,6 +53,15 @@ async def import_single_file(file_path: Path, task_id: int | None = None) -> dic
         Dict mit Ergebnis: {"status": "ok"|"duplikat"|"fehler", ...}
     """
     result = {"status": "fehler", "datei": file_path.name}
+
+    # 0. Prüfen ob Task noch existiert (könnte abgebrochen worden sein)
+    if task_id:
+        task_row = await db.fetch_one(
+            "SELECT status FROM import_tasks WHERE id = ?", (task_id,)
+        )
+        if not task_row or task_row["status"] not in ("wartend", "verarbeite"):
+            result["status"] = "abgebrochen"
+            return result
 
     # 1. Hash berechnen
     if task_id:
@@ -117,11 +126,11 @@ async def import_single_file(file_path: Path, task_id: int | None = None) -> dic
 
     proc_result = process_book(original)
 
-    # 5. Open Library Anreicherung (wenn ISBN vorhanden)
+    # 5. Open Library Anreicherung (nur bei Einzelimport/Upload, nicht bei Verzeichnis-Scan)
     if task_id:
         await update_task_status(task_id, "verarbeite", 60, "ISBN wird gesucht")
 
-    if proc_result.isbn and settings.openlibrary_enabled:
+    if enrich and proc_result.isbn and settings.openlibrary_enabled:
         if task_id:
             await update_task_status(task_id, "verarbeite", 65, "Metadaten werden angereichert (Open Library)")
         try:
@@ -144,7 +153,7 @@ async def import_single_file(file_path: Path, task_id: int | None = None) -> dic
                 logger.info("Metadaten angereichert via Open Library für ISBN %s", proc_result.isbn)
         except Exception as e:
             logger.warning("Open Library Anreicherung fehlgeschlagen: %s", e)
-    elif not proc_result.isbn and proc_result.title and settings.openlibrary_enabled:
+    elif enrich and not proc_result.isbn and proc_result.title and settings.openlibrary_enabled:
         # Fallback: Titel/Autor-Suche wenn keine ISBN
         if task_id:
             await update_task_status(task_id, "verarbeite", 65, "Suche nach Metadaten (Titel/Autor)")
@@ -287,6 +296,27 @@ async def scan_directory(directory: Path) -> list[dict]:
     return files
 
 
+def list_importable_files(directory: Path) -> list[dict]:
+    """Listet importierbare Dateien schnell auf (ohne Hash, ohne DB-Check).
+
+    Nur Dateiname, Pfad, Größe und Format -- kehrt sofort zurück.
+    """
+    files = []
+    if not directory.exists():
+        return files
+
+    for f in sorted(directory.rglob("*")):
+        if f.is_file() and f.suffix.lower() in SUPPORTED_FORMATS:
+            files.append({
+                "pfad": str(f),
+                "name": f.name,
+                "groesse": f.stat().st_size,
+                "format": f.suffix.lower(),
+            })
+
+    return files
+
+
 async def create_import_task(filename: str, file_path: str = "") -> int:
     """Erstellt eine neue Import-Aufgabe und gibt die ID zurück."""
     cursor = await db.execute(
@@ -297,21 +327,60 @@ async def create_import_task(filename: str, file_path: str = "") -> int:
     return cursor.lastrowid
 
 
-async def get_import_status() -> list[dict]:
-    """Gibt den Status aller Import-Aufgaben zurück."""
-    return await db.fetch_all(
+async def get_import_status() -> dict:
+    """Gibt den Status aller Import-Aufgaben zurück.
+
+    Liefert Gesamtzahlen und nur die aktiven + letzten fertigen Tasks.
+    """
+    counts = await db.fetch_one(
+        """SELECT
+             COUNT(*) as gesamt,
+             SUM(CASE WHEN status = 'wartend' THEN 1 ELSE 0 END) as wartend,
+             SUM(CASE WHEN status = 'verarbeite' THEN 1 ELSE 0 END) as verarbeite,
+             SUM(CASE WHEN status = 'fertig' THEN 1 ELSE 0 END) as fertig,
+             SUM(CASE WHEN status = 'fehler' THEN 1 ELSE 0 END) as fehler,
+             SUM(CASE WHEN status = 'duplikat' THEN 1 ELSE 0 END) as duplikat
+           FROM import_tasks"""
+    )
+
+    # Aktive Tasks (verarbeite + wartend, max 50) + letzte fertige (max 20)
+    aktive = await db.fetch_all(
         """SELECT id, filename, status, progress_percent, current_step,
                   error, book_id, created_at, updated_at
            FROM import_tasks
-           ORDER BY created_at DESC
-           LIMIT 500"""
+           WHERE status IN ('verarbeite', 'wartend')
+           ORDER BY created_at ASC
+           LIMIT 50"""
     )
+
+    letzte = await db.fetch_all(
+        """SELECT id, filename, status, progress_percent, current_step,
+                  error, book_id, created_at, updated_at
+           FROM import_tasks
+           WHERE status IN ('fertig', 'fehler', 'duplikat')
+           ORDER BY updated_at DESC
+           LIMIT 20"""
+    )
+
+    return {
+        "zaehler": dict(counts) if counts else {},
+        "aufgaben": aktive + letzte,
+    }
 
 
 async def clear_finished_tasks() -> int:
     """Löscht alle fertigen, fehlerhaften und duplikat Tasks aus der DB."""
     result = await db.execute(
         "DELETE FROM import_tasks WHERE status IN ('fertig', 'fehler', 'duplikat')"
+    )
+    await db.commit()
+    return result
+
+
+async def cancel_pending_tasks() -> int:
+    """Bricht alle wartenden Tasks ab (löscht sie aus der DB)."""
+    result = await db.execute(
+        "DELETE FROM import_tasks WHERE status = 'wartend'"
     )
     await db.commit()
     return result

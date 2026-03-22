@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     lm_studio_url: str = "http://localhost:1234/v1"
     lm_studio_model: str = "qwen2.5"
 
+    # Host-Pfade (von Docker durchgereicht, für Anzeige im Frontend)
+    host_storage_dir: str = ""
+    host_external_dir: str = ""
+    host_import_dir: str = ""
+    host_database_dir: str = ""
+
     # Logging
     log_level: str = "info"
 

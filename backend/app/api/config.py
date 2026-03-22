@@ -34,12 +34,15 @@ async def get_version() -> dict:
 
 @router.get("/paths")
 async def get_paths(_token: str = Depends(verify_token)) -> dict:
-    """Gibt die konfigurierten Verzeichnispfade zurück."""
+    """Gibt die konfigurierten Verzeichnispfade zurück.
+
+    Zeigt Host-Pfade wenn verfügbar (Docker), sonst die lokalen Pfade.
+    """
     return {
-        "datenbank": str(settings.database_path.resolve()),
-        "speicher": str(settings.storage_dir.resolve()),
-        "import": str(settings.import_dir.resolve()),
-        "extern": str(settings.external_dir.resolve()) if settings.external_dir else "",
+        "datenbank": settings.host_database_dir or str(settings.database_path.resolve()),
+        "speicher": settings.host_storage_dir or str(settings.storage_dir.resolve()),
+        "import": settings.host_import_dir or str(settings.import_dir.resolve()),
+        "extern": settings.host_external_dir or (str(settings.external_dir.resolve()) if settings.external_dir else ""),
     }
 
 

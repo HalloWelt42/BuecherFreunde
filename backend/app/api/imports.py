@@ -13,10 +13,12 @@ from fastapi.responses import StreamingResponse
 from backend.app.core.auth import verify_token, verify_token_query
 from backend.app.core.config import settings
 from backend.app.services.import_service import (
+    cancel_pending_tasks,
     clear_finished_tasks,
     create_import_task,
     get_import_status,
     import_single_file,
+    list_importable_files,
     scan_directory,
     update_task_status,
 )
@@ -113,73 +115,91 @@ async def upload_multiple(
 @router.post("/scan")
 async def scan_import_dir(
     background_tasks: BackgroundTasks,
+    anreichern: bool = Query(False, description="Metadaten via Open Library anreichern"),
     _token: str = Depends(verify_token),
 ):
-    """Scannt das Import-Verzeichnis und importiert neue Dateien."""
-    files = await scan_directory(settings.import_dir)
-    new_files = [f for f in files if not f["ist_duplikat"]]
+    """Scannt das Import-Verzeichnis und importiert neue Dateien.
 
-    if not new_files:
-        return {"gefunden": len(files), "neu": 0, "aufgaben": []}
+    Listet Dateien schnell auf (ohne Hash), erstellt sofort Tasks
+    und verarbeitet alles im Hintergrund. Duplikate werden pro Datei
+    beim Import erkannt.
+    """
+    files = list_importable_files(settings.import_dir)
+
+    if not files:
+        return {"gefunden": 0, "neu": 0, "aufgaben": []}
 
     tasks = []
-    for f in new_files:
+    for f in files:
         file_path = Path(f["pfad"])
         task_id = await create_import_task(f["name"], f["pfad"])
 
-        async def _import(path=file_path, tid=task_id):
-            await import_single_file(path, tid)
+        async def _import(path=file_path, tid=task_id, enrich=anreichern):
+            await import_single_file(path, tid, enrich=enrich)
 
         background_tasks.add_task(_import)
         tasks.append({"task_id": task_id, "datei": f["name"]})
 
-    return {"gefunden": len(files), "neu": len(new_files), "aufgaben": tasks}
+    return {"gefunden": len(files), "neu": len(tasks), "aufgaben": tasks}
 
 
 @router.post("/externes-verzeichnis")
 async def scan_external_dir(
     background_tasks: BackgroundTasks,
+    anreichern: bool = Query(False, description="Metadaten via Open Library anreichern"),
     _token: str = Depends(verify_token),
 ):
-    """Scannt das externe Verzeichnis und importiert neue Dateien."""
+    """Scannt das externe Verzeichnis und importiert neue Dateien.
+
+    Listet Dateien schnell auf (ohne Hash), erstellt sofort Tasks
+    und verarbeitet alles im Hintergrund. Duplikate werden pro Datei
+    beim Import erkannt.
+    """
     if not settings.external_dir.exists():
         raise HTTPException(
             status_code=404, detail="Externes Verzeichnis nicht gefunden"
         )
 
-    files = await scan_directory(settings.external_dir)
-    new_files = [f for f in files if not f["ist_duplikat"]]
+    files = list_importable_files(settings.external_dir)
 
-    if not new_files:
-        return {"gefunden": len(files), "neu": 0, "aufgaben": []}
+    if not files:
+        return {"gefunden": 0, "neu": 0, "aufgaben": []}
 
     tasks = []
-    for f in new_files:
+    for f in files:
         file_path = Path(f["pfad"])
         task_id = await create_import_task(f["name"], f["pfad"])
 
-        async def _import(path=file_path, tid=task_id):
-            await import_single_file(path, tid)
+        async def _import(path=file_path, tid=task_id, enrich=anreichern):
+            await import_single_file(path, tid, enrich=enrich)
 
         background_tasks.add_task(_import)
         tasks.append({"task_id": task_id, "datei": f["name"]})
 
-    return {"gefunden": len(files), "neu": len(new_files), "aufgaben": tasks}
+    return {"gefunden": len(files), "neu": len(tasks), "aufgaben": tasks}
 
 
 @router.get("/status")
 async def import_status(_token: str = Depends(verify_token)):
     """Gibt den Status aller Import-Aufgaben zurück."""
-    tasks = await get_import_status()
-    return {"aufgaben": tasks}
+    result = await get_import_status()
+    return result
 
 
 @router.delete("/bereinigen")
 async def clear_finished(_token: str = Depends(verify_token)):
     """Löscht alle abgeschlossenen Import-Aufgaben aus der Datenbank."""
     await clear_finished_tasks()
-    tasks = await get_import_status()
-    return {"aufgaben": tasks}
+    result = await get_import_status()
+    return result
+
+
+@router.post("/abbrechen")
+async def cancel_import(_token: str = Depends(verify_token)):
+    """Bricht alle wartenden Import-Aufgaben ab."""
+    await cancel_pending_tasks()
+    result = await get_import_status()
+    return result
 
 
 @router.get("/events")
@@ -189,15 +209,18 @@ async def import_events(_token: str = Depends(verify_token_query)):
     async def event_generator():
         last_data = None
         while True:
-            tasks = await get_import_status()
+            result = await get_import_status()
+            zaehler = result.get("zaehler", {})
+            aufgaben = result.get("aufgaben", [])
 
-            # Nur aktive Aufgaben (wartend oder in Verarbeitung)
-            active = [
-                t for t in tasks if t["status"] in ("wartend", "verarbeite")
-            ]
+            aktiv_count = (zaehler.get("wartend", 0) or 0) + (zaehler.get("verarbeite", 0) or 0)
 
             data = json.dumps(
-                {"aufgaben": tasks[:20], "aktiv": len(active)},
+                {
+                    "zaehler": zaehler,
+                    "aufgaben": aufgaben,
+                    "aktiv": aktiv_count,
+                },
                 ensure_ascii=False,
                 default=str,
             )
@@ -206,8 +229,7 @@ async def import_events(_token: str = Depends(verify_token_query)):
                 yield f"data: {data}\n\n"
                 last_data = data
 
-            if not active:
-                # Letzte Aktualisierung senden und beenden
+            if aktiv_count == 0:
                 yield f"data: {data}\n\n"
                 break
 

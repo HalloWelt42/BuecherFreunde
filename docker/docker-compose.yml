@@ -11,6 +11,10 @@ services:
       - EXTERNAL_DIR=/app/external
       - IMPORT_DIR=/app/import
       - DATABASE_DIR=/app/database
+      - HOST_STORAGE_DIR=${STORAGE_DIR:-./storage}
+      - HOST_EXTERNAL_DIR=${EXTERNAL_DIR:-./external}
+      - HOST_IMPORT_DIR=${IMPORT_DIR:-./import}
+      - HOST_DATABASE_DIR=${DATABASE_DIR:-./database}
     volumes:
       - ${STORAGE_DIR:-../storage}:/app/storage
       - ${EXTERNAL_DIR:-../external}:/app/external:ro

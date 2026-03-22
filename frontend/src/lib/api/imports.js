@@ -31,16 +31,17 @@ export function ladeDateienHoch(files) {
  * Import-Verzeichnis scannen.
  * @returns {Promise<{tasks: import("../types/index.js").ImportTask[], count: number}>}
  */
-export function scanneImportVerzeichnis() {
-  return post("/api/import/scan");
+export function scanneImportVerzeichnis(anreichern = false) {
+  return post(`/api/import/scan?anreichern=${anreichern}`);
 }
 
 /**
  * Externes Verzeichnis scannen.
+ * @param {boolean} anreichern - Metadaten via Open Library anreichern
  * @returns {Promise<{tasks: import("../types/index.js").ImportTask[], count: number}>}
  */
-export function scanneExternesVerzeichnis() {
-  return post("/api/import/externes-verzeichnis");
+export function scanneExternesVerzeichnis(anreichern = false) {
+  return post(`/api/import/externes-verzeichnis?anreichern=${anreichern}`);
 }
 
 /**
@@ -76,4 +77,12 @@ export function importEvents(onEvent, onError) {
  */
 export function bereinigeImportTasks() {
   return del("/api/import/bereinigen");
+}
+
+/**
+ * Alle wartenden Import-Tasks abbrechen.
+ * @returns {Promise<Object>}
+ */
+export function brecheImportAb() {
+  return post("/api/import/abbrechen");
 }
