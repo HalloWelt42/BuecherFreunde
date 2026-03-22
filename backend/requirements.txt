@@ -12,4 +12,5 @@ pydantic-settings==2.7.1
 beautifulsoup4==4.12.3
 isbnlib==3.10.14
 Wikipedia-API==0.11.0
+requests>=2.31.0
 setuptools>=70.0.0
