@@ -10,7 +10,7 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.db")
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 SCHEMA_SQL = """
 -- Bücher
@@ -109,6 +109,22 @@ CREATE TABLE IF NOT EXISTS book_notes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_notes_book ON book_notes(book_id);
+
+-- Labels / Lesezeichen
+CREATE TABLE IF NOT EXISTS book_labels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL,
+    color TEXT NOT NULL DEFAULT '#4FC3F7',
+    name TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT '',
+    page_reference TEXT DEFAULT '',
+    position_percent REAL DEFAULT 0,
+    cfi_reference TEXT DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_labels_book ON book_labels(book_id);
 
 -- Import-Aufgaben
 CREATE TABLE IF NOT EXISTS import_tasks (
@@ -592,6 +608,28 @@ Verwende deutsche Begriffe. Sei spezifisch, nicht zu allgemein.',
 
             await self._connection.commit()
             logger.info("Schema-Migration v10 abgeschlossen: Kategorie-Quellen + ai_-Bereinigung")
+
+        if from_version < 11:
+            # v11: Labels / Lesezeichen
+            await self._connection.execute("""
+                CREATE TABLE IF NOT EXISTS book_labels (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    book_id INTEGER NOT NULL,
+                    color TEXT NOT NULL DEFAULT '#4FC3F7',
+                    name TEXT NOT NULL DEFAULT '',
+                    note TEXT NOT NULL DEFAULT '',
+                    page_reference TEXT DEFAULT '',
+                    position_percent REAL DEFAULT 0,
+                    cfi_reference TEXT DEFAULT '',
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+                )
+            """)
+            await self._connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_labels_book ON book_labels(book_id)"
+            )
+            await self._connection.commit()
+            logger.info("Schema-Migration v11 abgeschlossen: book_labels Tabelle")
 
     async def _migrate_html_descriptions(self) -> None:
         """Konvertiert bestehende HTML-Beschreibungen in Markdown."""

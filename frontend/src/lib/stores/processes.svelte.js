@@ -56,6 +56,13 @@ export function onBooksChanged(cb) {
   };
 }
 
+/** Listener manuell benachrichtigen (z.B. nach Favorit/Lesesofa-Toggle) */
+export function notifyBooksChanged() {
+  for (const cb of _onChangeCallbacks) {
+    try { cb(); } catch { /* ignore */ }
+  }
+}
+
 /** Import-Status einmalig abfragen */
 export async function fetchImportStatus() {
   try {

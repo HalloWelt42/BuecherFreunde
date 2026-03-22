@@ -86,9 +86,9 @@
         class="bulk-btn"
         onclick={() => handleAction("zu_lesen", true)}
         disabled={processing}
-        title="Zur Leseliste"
+        title="Aufs Lesesofa legen"
       >
-        <i class="fa-solid fa-bookmark"></i> Leseliste
+        <i class="fa-solid fa-bookmark"></i> Lesesofa
       </button>
 
       <div class="bulk-dropdown-wrap">
@@ -96,6 +96,7 @@
           class="bulk-btn"
           onclick={() => { showCatDropdown = !showCatDropdown; catSearch = ""; if (showCatDropdown) setTimeout(() => catSearchInput?.focus(), 50); }}
           disabled={processing}
+          title="Kategorie zuweisen"
         >
           <i class="fa-solid fa-folder-plus"></i> Kategorie
           <i class="fa-solid fa-chevron-up" style="font-size: 0.5rem"></i>
@@ -140,6 +141,7 @@
             class="bulk-btn danger"
             onclick={() => handleAction("loeschen")}
             disabled={processing}
+            title="Ausgewählte Bücher endgültig löschen"
           >
             {#if processing}
               <i class="fa-solid fa-spinner fa-spin"></i>
@@ -150,6 +152,7 @@
           <button
             class="bulk-btn"
             onclick={() => (confirmDelete = false)}
+            title="Löschen abbrechen"
           >
             Abbrechen
           </button>
@@ -159,6 +162,7 @@
           class="bulk-btn danger"
           onclick={() => (confirmDelete = true)}
           disabled={processing}
+          title="Ausgewählte Bücher löschen"
         >
           <i class="fa-solid fa-trash"></i> Löschen
         </button>

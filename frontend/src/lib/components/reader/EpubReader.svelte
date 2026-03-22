@@ -5,11 +5,15 @@
   import { speichereLeseposition } from "../../api/user-data.js";
   import { ui } from "../../stores/ui.svelte.js";
   import { onDestroy } from "svelte";
+  import TextSelectionMenu from "./TextSelectionMenu.svelte";
+  import LabelPicker from "./LabelPicker.svelte";
+  import ReaderLabels from "./ReaderLabels.svelte";
 
   let {
     bookId,
     title = "",
     initialCfi = "",
+    initialPercent = 0,
     initialPapier = "",
     initialFontSize = 0,
     initialFontFamily = "",
@@ -19,6 +23,7 @@
     initialMaxWidthSingle = 0,
     initialMaxWidthDouble = 0,
     initialSinglePage = false,
+    initialSearchQuery = "",
     onBack = () => {},
     onPositionChange = () => {},
   } = $props();
@@ -40,6 +45,14 @@
   let showSettings = $state(false);
   let currentLocation = $state(null);
   let fortschritt = $state(0);
+
+  // Suchnavigation
+  let searchHits = $state([]);
+  let searchIndex = $state(-1);
+  let searchActive = $derived(searchHits.length > 0);
+
+  // Textauswahl aus iframe
+  let iframeSelection = $state(null);
 
   // Verfügbare Schriften (lokal gebündelt)
   const schriften = [
@@ -174,9 +187,28 @@
         tocItems = flattenToc(view.book.toc);
       }
 
-      // Bei jedem Section-Load CSS injizieren
+      // Bei jedem Section-Load CSS injizieren + Selection-Listener
       view.addEventListener("load", (e) => {
         injectCSS(e.detail.doc);
+        // Textauswahl im iframe abfangen
+        e.detail.doc.addEventListener("mouseup", (evt) => {
+          const sel = e.detail.doc.getSelection();
+          const text = sel?.toString()?.trim();
+          if (!text || text.length < 2) {
+            iframeSelection = null;
+            return;
+          }
+          const range = sel.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          // iframe-Position relativ zum Viewport berechnen
+          const iframe = e.detail.doc.defaultView?.frameElement;
+          const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
+          iframeSelection = {
+            text,
+            x: iframeRect.left + rect.left + rect.width / 2,
+            y: iframeRect.top + rect.top,
+          };
+        });
       });
 
       view.addEventListener("relocate", (e) => {
@@ -190,6 +222,18 @@
       await view.init({
         lastLocation: initialCfi || undefined,
       });
+
+      // Prozentuale Navigation (von Volltextsuche)
+      if (initialPercent > 0 && !initialCfi) {
+        try {
+          await view.goToFraction(initialPercent / 100);
+        } catch { /* goToFraction nicht verfuegbar */ }
+      }
+
+      // Suchbegriff hervorheben (aus Volltextsuche)
+      if (initialSearchQuery) {
+        highlightSearchQuery(initialSearchQuery);
+      }
 
       // Initiale Styles anwenden
       applyStyles();
@@ -241,6 +285,9 @@
     } else if (event.key === "-") {
       event.preventDefault();
       changeFontSize(-10);
+    } else if (event.key === "Escape" && ui.readerFullscreen) {
+      event.preventDefault();
+      ui.readerFullscreen = false;
     }
   }
 
@@ -271,6 +318,62 @@
         await speichereLeseposition(bookId, pos);
       } catch { /* still */ }
     }, 1500);
+  }
+
+  // Suchbegriff im EPUB hervorheben und Trefferliste aufbauen
+  async function highlightSearchQuery(query) {
+    if (!view || !query) return;
+    searchHits = [];
+    searchIndex = -1;
+    try {
+      const gen = view.search({ query });
+      if (!gen) return;
+      const hits = [];
+      for await (const result of gen) {
+        if (result === "done") break;
+        // Buch-Suche liefert { subitems: [{cfi, excerpt}...] } pro Section
+        if (result?.subitems) {
+          for (const sub of result.subitems) {
+            if (sub.cfi) hits.push(sub.cfi);
+          }
+        }
+        // Section-Suche liefert { cfi, excerpt } direkt
+        else if (result?.cfi) {
+          hits.push(result.cfi);
+        }
+      }
+      searchHits = hits;
+      if (hits.length > 0) searchIndex = 0;
+    } catch { /* Suche nicht verfügbar */ }
+  }
+
+  function goToSearchHit(index) {
+    if (!view || index < 0 || index >= searchHits.length) return;
+    searchIndex = index;
+    try { view.goTo(searchHits[index]); } catch {}
+  }
+
+  function nextSearchHit() {
+    if (searchHits.length === 0) return;
+    goToSearchHit((searchIndex + 1) % searchHits.length);
+  }
+
+  function prevSearchHit() {
+    if (searchHits.length === 0) return;
+    goToSearchHit((searchIndex - 1 + searchHits.length) % searchHits.length);
+  }
+
+  function clearSearch() {
+    searchHits = [];
+    searchIndex = -1;
+    // Annotationen entfernen
+    if (view) {
+      try {
+        for (const cfi of searchHits) {
+          view.addAnnotation({ value: "search:" + cfi, remove: true });
+        }
+      } catch {}
+    }
   }
 
   function downloadFile() {
@@ -357,6 +460,45 @@
         <i class="fa-solid {singlePage ? 'fa-file' : 'fa-book-open'}"></i>
       </button>
 
+      <!-- Markieren-Hinweis -->
+      <button class="tool-btn" onclick={() => {}} title="Text auswählen zum Markieren, Kopieren oder als Notiz speichern" style="cursor: help;">
+        <i class="fa-solid fa-highlighter"></i>
+      </button>
+
+      <!-- Label setzen -->
+      <LabelPicker
+        {bookId}
+        positionLabel={fortschritt + "%"}
+        positionPercent={fortschritt}
+        cfiReference={currentLocation?.cfi || ""}
+      />
+
+      <!-- Labels anzeigen/bearbeiten -->
+      <ReaderLabels
+        {bookId}
+        onNavigate={(label) => {
+          if (label.cfi_reference && view) {
+            try { view.goTo(label.cfi_reference); } catch {}
+          } else if (label.position_percent > 0 && view) {
+            try { view.goToFraction(label.position_percent / 100); } catch {}
+          }
+        }}
+      />
+
+      <!-- Suchnavigation (wenn Treffer vorhanden) -->
+      {#if searchActive}
+        <div class="toolbar-sep"></div>
+        <div class="toolbar-group search-nav">
+          <button class="tool-btn" onclick={prevSearchHit} title="Vorheriger Treffer">
+            <i class="fa-solid fa-chevron-up"></i>
+          </button>
+          <span class="search-nav-info" title="Treffer {searchIndex + 1} von {searchHits.length}">{searchIndex + 1}/{searchHits.length}</span>
+          <button class="tool-btn" onclick={nextSearchHit} title="Nächster Treffer">
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+        </div>
+      {/if}
+
       <!-- Einstellungen -->
       <button class="tool-btn" class:active={showSettings} onclick={() => { showSettings = !showSettings; showToc = false; }} title="Leseeinstellungen">
         <i class="fa-solid fa-sliders"></i>
@@ -417,6 +559,18 @@
       <button class="side-backdrop" onclick={() => { showToc = false; }}></button>
     </div>
   {/if}
+
+  <!-- Textauswahl-Aktionsmenü -->
+  <TextSelectionMenu
+    {bookId}
+    positionLabel={fortschritt + "%"}
+    externalSelection={iframeSelection}
+    onHighlight={(text) => {
+      if (view && currentLocation?.cfi) {
+        try { view.addAnnotation({ value: "highlight:" + currentLocation.cfi }); } catch {}
+      }
+    }}
+  />
 
   <!-- Einstellungen Panel (ohne Overlay) -->
   {#if showSettings}
@@ -747,9 +901,9 @@
     border: 1px solid var(--color-border);
     border-radius: 4px;
     background: none;
-    font-size: 0.6875rem;
-    font-family: var(--font-mono);
-    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    font-family: inherit;
+    color: var(--color-text-primary);
     cursor: pointer;
     text-align: center;
     padding: 0 0.25rem;
@@ -760,16 +914,31 @@
   }
 
   .progress-info {
-    font-size: 0.6875rem;
-    font-family: var(--font-mono);
-    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    font-family: inherit;
+    color: var(--color-text-primary);
     min-width: 2.5rem;
     text-align: center;
   }
 
+  .search-nav {
+    background: var(--color-accent-light);
+    border-radius: 4px;
+    padding: 0 2px;
+  }
+
+  .search-nav-info {
+    font-size: 0.75rem;
+    font-family: inherit;
+    color: var(--color-accent);
+    min-width: 2.5rem;
+    text-align: center;
+    font-weight: 600;
+  }
+
   .chapter-info {
-    font-size: 0.6875rem;
-    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -965,7 +1134,7 @@
 
   .color-value {
     font-size: 0.6875rem;
-    font-family: var(--font-mono);
+    font-family: inherit;
     color: var(--color-text-muted);
   }
 
@@ -1040,7 +1209,7 @@
 
   .slider-value {
     font-size: 0.6875rem;
-    font-family: var(--font-mono);
+    font-family: inherit;
     color: var(--color-text-muted);
     min-width: 2.5rem;
     text-align: right;

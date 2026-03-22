@@ -40,10 +40,11 @@
   let isUngelesen = $derived(params_.get("gelesen") === "false");
   let isBuecher = $derived(params_.get("hat_isbn") === "true");
   let isDokumente = $derived(params_.get("hat_isbn") === "false");
+  let isLabels = $derived(params_.get("hat_labels") === "true");
   let isHome = $derived(route.path === "/" || route.path === "");
   let hasNoSpecialFilter = $derived(
     !isFavorite && !isToRead && !isGelesen && !isUngelesen &&
-    !isBuecher && !isDokumente && activeCategories.length === 0
+    !isBuecher && !isDokumente && !isLabels && activeCategories.length === 0
   );
 
   function toggleCategory(catId) {
@@ -158,14 +159,18 @@
         <span class="nav-count">{stats.buecher_gesamt}</span>
       {/if}
     </a>
-    <button class="nav-item" class:active={isBuecher} onclick={() => toggleSpecial("hat_isbn", "true")}>
+    <button class="nav-item" class:active={isBuecher} onclick={() => toggleSpecial("hat_isbn", "true")}
+      title="Nur Bücher mit ISBN anzeigen"
+    >
       <span class="nav-icon"><i class="fa-solid fa-book"></i></span>
       <span class="nav-label">Bücher</span>
       {#if stats.buecher_mit_isbn > 0}
         <span class="nav-count">{stats.buecher_mit_isbn}</span>
       {/if}
     </button>
-    <button class="nav-item" class:active={isDokumente} onclick={() => toggleSpecial("hat_isbn", "false")}>
+    <button class="nav-item" class:active={isDokumente} onclick={() => toggleSpecial("hat_isbn", "false")}
+      title="Dateien ohne ISBN - PDFs, Dokumente, Skripte"
+    >
       <span class="nav-icon"><i class="fa-solid fa-file-lines"></i></span>
       <span class="nav-label">Dokumente</span>
       {#if stats.dokumente > 0}
@@ -179,28 +184,40 @@
   <!-- Status -->
   <div class="section-label">Status</div>
   <nav class="sidebar-nav">
-    <button class="nav-item" class:active={isGelesen} onclick={() => toggleSpecial("gelesen", "true")}>
-      <span class="nav-icon"><i class="fa-solid fa-check-circle"></i></span>
-      <span class="nav-label">Gelesen</span>
-      {#if stats.gelesen > 0}
-        <span class="nav-count">{stats.gelesen}</span>
-      {/if}
+    <button class="nav-item gelesen-toggle" class:active={isGelesen || isUngelesen}
+      title="Klicken zum Umschalten: Alle -> Gelesen -> Ungelesen"
+      onclick={() => {
+        if (!isGelesen && !isUngelesen) toggleSpecial("gelesen", "true");
+        else if (isGelesen) { const p = new URLSearchParams(route.qs || ""); p.set("gelesen", "false"); navigate(p.toString() ? `/?${p.toString()}` : "/"); }
+        else toggleSpecial("gelesen", "false");
+      }}
+    >
+      <span class="nav-icon">
+        <i class="fa-solid fa-check-circle"></i>
+      </span>
+      <span class="nav-label">
+        <span class="gelesen-label" class:gelesen-active={isGelesen} class:gelesen-dim={isUngelesen}>Gelesen</span>
+        <span class="gelesen-sep">/</span>
+        <span class="gelesen-label" class:gelesen-active={isUngelesen} class:gelesen-dim={isGelesen}>Ungelesen</span>
+      </span>
+      <span class="nav-count gelesen-counts">
+        <span class="gelesen-label" class:gelesen-active={isGelesen} class:gelesen-dim={isUngelesen}>{stats.gelesen}</span>
+        <span class="gelesen-sep">/</span>
+        <span class="gelesen-label" class:gelesen-active={isUngelesen} class:gelesen-dim={isGelesen}>{stats.ungelesen}</span>
+      </span>
     </button>
-    <button class="nav-item" class:active={isUngelesen} onclick={() => toggleSpecial("gelesen", "false")}>
-      <span class="nav-icon"><i class="fa-regular fa-circle"></i></span>
-      <span class="nav-label">Ungelesen</span>
-      {#if stats.ungelesen > 0}
-        <span class="nav-count">{stats.ungelesen}</span>
-      {/if}
-    </button>
-    <button class="nav-item" class:active={params_.get("weiterlesen") === "true"} onclick={() => toggleSpecial("weiterlesen", "true")}>
-      <span class="nav-icon"><i class="fa-solid fa-book-open-reader"></i></span>
+    <button class="nav-item" class:active={params_.get("weiterlesen") === "true"} onclick={() => toggleSpecial("weiterlesen", "true")}
+      title="Bücher mit gespeicherter Leseposition"
+    >
+      <span class="nav-icon"><i class="fa-solid fa-bookmark"></i></span>
       <span class="nav-label">Weiterlesen</span>
       {#if stats.weiterlesen > 0}
         <span class="nav-count">{stats.weiterlesen}</span>
       {/if}
     </button>
-    <button class="nav-item" class:active={isFavorite} onclick={goFavoriten}>
+    <button class="nav-item" class:active={isFavorite} onclick={goFavoriten}
+      title="Deine Lieblingsbücher"
+    >
       <span class="nav-icon">
         <i class="fa-solid fa-heart" style="color: var(--color-favorite)"></i>
       </span>
@@ -209,13 +226,24 @@
         <span class="nav-count">{stats.favoriten}</span>
       {/if}
     </button>
-    <button class="nav-item" class:active={isToRead} onclick={goLeseliste}>
+    <button class="nav-item" class:active={isToRead} onclick={goLeseliste}
+      title="Bücher, die du dir zum Lesen vorgemerkt hast"
+    >
       <span class="nav-icon">
-        <i class="fa-solid fa-couch" style="color: var(--color-accent)"></i>
+        <i class="fa-solid fa-book-open"></i>
       </span>
-      <span class="nav-label">Leseliste</span>
+      <span class="nav-label">Lesesofa</span>
       {#if stats.leseliste > 0}
         <span class="nav-count">{stats.leseliste}</span>
+      {/if}
+    </button>
+    <button class="nav-item" class:active={isLabels} onclick={() => toggleSpecial("hat_labels", "true")}
+      title="Bücher mit farbigen Labels"
+    >
+      <span class="nav-icon"><i class="fa-solid fa-tags"></i></span>
+      <span class="nav-label">Labels</span>
+      {#if stats.mit_labels > 0}
+        <span class="nav-count">{stats.mit_labels}</span>
       {/if}
     </button>
   </nav>
@@ -294,7 +322,9 @@
       <span class="nav-icon"><i class="fa-solid fa-file-import"></i></span>
       <span class="nav-label">Import</span>
     </a>
-    <button class="nav-item" class:active={ui.scratchPadOpen} onclick={() => ui.toggleScratchPad()}>
+    <button class="nav-item" class:active={ui.scratchPadOpen} onclick={() => ui.toggleScratchPad()}
+      title="Schnelle Notizen ohne Buchzuordnung"
+    >
       <span class="nav-icon"><i class="fa-solid fa-note-sticky" style="color: var(--color-warning)"></i></span>
       <span class="nav-label">Schnellnotiz</span>
     </button>
@@ -490,6 +520,32 @@
 
   .cat-btn.active .cat-count {
     color: var(--color-accent);
+  }
+
+  /* Gelesen/Ungelesen Toggle */
+  .gelesen-sep {
+    opacity: 0.3;
+    margin: 0 0.1rem;
+    font-weight: 400;
+  }
+
+  .gelesen-label {
+    transition: opacity 0.12s, font-weight 0.12s;
+  }
+
+  .gelesen-active {
+    font-weight: 700;
+  }
+
+  .gelesen-dim {
+    opacity: 0.35;
+    font-weight: 400;
+  }
+
+  .gelesen-counts {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
   }
 
   .empty-hint {

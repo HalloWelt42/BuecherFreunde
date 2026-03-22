@@ -4,11 +4,14 @@
   import { ladeSammlungen, buchZuordnen, buchAusSammlung } from "../lib/api/collections.js";
   import { toggleFavorit, toggleZumLesen, toggleGelesen, setzeBewertung } from "../lib/api/user-data.js";
   import { sucheMetadaten, uebernehmMetadaten, ladeVolltext } from "../lib/api/metadata.js";
+  import { notifyBooksChanged } from "../lib/stores/processes.svelte.js";
+  import { navigate } from "../lib/router.svelte.js";
   import { ui } from "../lib/stores/ui.svelte.js";
   import RatingStars from "../lib/components/ui/RatingStars.svelte";
   import BookMeta from "../lib/components/book/BookMeta.svelte";
   import AiCategorizeDialog from "../lib/components/book/AiCategorizeDialog.svelte";
   import NoteList from "../lib/components/notes/NoteList.svelte";
+  import { labelsFuerBuch, loescheLabel, aktualisiereLabel } from "../lib/api/labels.js";
 
   let { params } = $props();
 
@@ -36,8 +39,17 @@
   let buchSucheOffen = $state(false);
   let buchSuchbegriff = $state("");
   let buchSuchTreffer = $state([]);
+  let buchSuchGesamt = $state(0);
   let buchSuchLaden = $state(false);
   let buchSuchTimer = $state(null);
+  let suchGanzesWort = $state(false);
+  let suchGrossKlein = $state(false);
+  let suchRegex = $state(false);
+
+  // Labels
+  let labels = $state([]);
+  let labelsLaden = $state(false);
+  let labelOffen = $state({});
 
   // Aehnliche Buecher
   let aehnliche = $state({ vom_autor: [], in_kategorie: [] });
@@ -62,19 +74,36 @@
     if (buchSuchTimer) clearTimeout(buchSuchTimer);
     if (!val || val.length < 2) {
       buchSuchTreffer = [];
+      buchSuchGesamt = 0;
       return;
     }
-    buchSuchTimer = setTimeout(async () => {
-      buchSuchLaden = true;
-      try {
-        const res = await volltextSuche(book.id, val);
-        buchSuchTreffer = res.treffer || [];
-      } catch {
-        buchSuchTreffer = [];
-      } finally {
-        buchSuchLaden = false;
-      }
-    }, 400);
+    buchSuchTimer = setTimeout(() => starteSuche(val), 400);
+  }
+
+  async function starteSuche(val) {
+    if (!val || val.length < 2) return;
+    buchSuchLaden = true;
+    try {
+      const res = await volltextSuche(book.id, val, {
+        ganzes_wort: suchGanzesWort,
+        gross_klein: suchGrossKlein,
+        regex: suchRegex,
+      });
+      buchSuchTreffer = res.treffer || [];
+      buchSuchGesamt = res.gesamt || buchSuchTreffer.length;
+    } catch {
+      buchSuchTreffer = [];
+      buchSuchGesamt = 0;
+    } finally {
+      buchSuchLaden = false;
+    }
+  }
+
+  function toggleSuchFilter(filter) {
+    if (filter === "wort") suchGanzesWort = !suchGanzesWort;
+    else if (filter === "case") suchGrossKlein = !suchGrossKlein;
+    else if (filter === "regex") suchRegex = !suchRegex;
+    if (buchSuchbegriff.length >= 2) starteSuche(buchSuchbegriff);
   }
 
   async function startEdit() {
@@ -353,8 +382,9 @@
     fehler = null;
     try {
       book = await holeBuch(id);
-      // Aehnliche Buecher im Hintergrund laden
+      // Aehnliche Buecher + Labels im Hintergrund laden
       aehnlicheBuecher(id).then(r => { aehnliche = r; }).catch(() => {});
+      ladeLabels(id);
     } catch (e) {
       fehler = e.message;
     } finally {
@@ -362,11 +392,40 @@
     }
   }
 
+  async function ladeLabels(id) {
+    try {
+      labels = await labelsFuerBuch(id);
+    } catch {
+      labels = [];
+    }
+  }
+
+  async function onLabelLoeschen(labelId) {
+    try {
+      await loescheLabel(labelId);
+      labels = labels.filter(l => l.id !== labelId);
+    } catch {}
+  }
+
+  let labelEditTimer = {};
+  async function onLabelNotizAendern(labelId, neueNotiz) {
+    // Label lokal sofort aktualisieren
+    labels = labels.map(l => l.id === labelId ? { ...l, note: neueNotiz } : l);
+    // Debounced speichern
+    clearTimeout(labelEditTimer[labelId]);
+    labelEditTimer[labelId] = setTimeout(async () => {
+      try {
+        await aktualisiereLabel(labelId, { note: neueNotiz });
+      } catch {}
+    }, 800);
+  }
+
   async function onFavoritToggle() {
     if (!book) return;
     try {
       const result = await toggleFavorit(book.id);
       book = { ...book, is_favorite: result.ist_favorit ?? result.is_favorite };
+      notifyBooksChanged();
     } catch { /* still */ }
   }
 
@@ -375,6 +434,7 @@
     try {
       const result = await toggleZumLesen(book.id);
       book = { ...book, is_to_read: result.zu_lesen ?? result.is_to_read };
+      notifyBooksChanged();
     } catch { /* still */ }
   }
 
@@ -385,6 +445,7 @@
     try {
       const result = await toggleGelesen(book.id);
       book = { ...book, last_read_at: result.gelesen ? new Date().toISOString() : null };
+      notifyBooksChanged();
     } catch { /* still */ }
   }
 
@@ -501,7 +562,7 @@
               </a>
             {:else}
               <a href="/book/{book.id}/read" class="cover-btn cover-btn-tl" title="Lesen">
-                <i class="fa-solid fa-book-open-reader"></i>
+                <i class="fa-solid fa-bookmark"></i>
               </a>
             {/if}
             <a href="/api/books/{book.id}/file?token={encodeURIComponent(getToken())}" download={book.file_name || true} class="cover-btn cover-btn-bl" title="Buchdatei herunterladen">
@@ -699,8 +760,8 @@
             <button class="action-btn" class:active={book.is_favorite} onclick={onFavoritToggle} title="{book.is_favorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}">
               <i class="{book.is_favorite ? 'fa-solid' : 'fa-regular'} fa-heart"></i> Favorit
             </button>
-            <button class="action-btn" class:active={book.is_to_read} onclick={onZumLesenToggle} title="{book.is_to_read ? 'Von Leseliste entfernen' : 'Auf Leseliste setzen'}">
-              <i class="fa-solid {book.is_to_read ? 'fa-check' : 'fa-plus'}"></i> Leseliste
+            <button class="action-btn" class:active={book.is_to_read} onclick={onZumLesenToggle} title="{book.is_to_read ? 'Vom Lesesofa nehmen' : 'Aufs Lesesofa legen'}">
+              <i class="fa-solid {book.is_to_read ? 'fa-bookmark' : 'fa-plus'}"></i> Lesesofa
             </button>
             <button class="action-btn" class:active={istGelesen} onclick={onGelesenToggle} title="{istGelesen ? 'Als ungelesen markieren' : 'Als gelesen markieren'}">
               <i class="fa-solid {istGelesen ? 'fa-book-open' : 'fa-book'}"></i> {istGelesen ? "Gelesen" : "Ungelesen"}
@@ -1044,35 +1105,131 @@
         <NoteList bookId={book.id} />
       </div>
 
+    <!-- Labels -->
+    {#if labels.length > 0}
+      <div class="labels-section">
+        <h3 class="section-title"><i class="fa-solid fa-tags"></i> Labels ({labels.length})</h3>
+        <div class="labels-list" class:labels-scrollable={labels.length > 5}>
+          {#each labels as label (label.id)}
+            <div class="label-item-wrap">
+              <div class="label-item">
+                <i class="fa-solid fa-tag label-icon" style="color: {label.color}"></i>
+                {#if label.name}
+                  <span class="label-name">{label.name}</span>
+                {/if}
+                {#if label.page_reference}
+                  <button
+                    class="label-page"
+                    onclick={() => {
+                      if (book.file_format === "pdf") {
+                        const seitenMatch = label.page_reference.match(/(\d+)/);
+                        const seite = seitenMatch ? Number(seitenMatch[1]) : 1;
+                        navigate(`/book/${book.id}/read?page=${seite}`);
+                      } else if (label.cfi_reference) {
+                        navigate(`/book/${book.id}/read?cfi=${encodeURIComponent(label.cfi_reference)}`);
+                      } else if (label.position_percent > 0) {
+                        navigate(`/book/${book.id}/read?percent=${label.position_percent}`);
+                      } else {
+                        navigate(`/book/${book.id}/read`);
+                      }
+                    }}
+                    title="Zur markierten Stelle springen"
+                  >{label.page_reference}</button>
+                {/if}
+                <button
+                  class="label-expand"
+                  class:has-note={!!label.note}
+                  onclick={() => { labelOffen = { ...labelOffen, [label.id]: !labelOffen[label.id] }; }}
+                  title={labelOffen[label.id] ? "Notiz einklappen" : "Notiz bearbeiten"}
+                >
+                  <i class="fa-solid fa-chevron-{labelOffen[label.id] ? 'up' : 'down'}"></i>
+                </button>
+                <button class="label-delete" onclick={() => onLabelLoeschen(label.id)} title="Label entfernen">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+              {#if labelOffen[label.id]}
+                <textarea
+                  class="label-note-edit"
+                  placeholder="Notiz zum Label..."
+                  value={label.note || ""}
+                  oninput={(e) => onLabelNotizAendern(label.id, e.target.value)}
+                  rows={Math.max(2, Math.min(10, (label.note || "").split("\n").length + 1))}
+                ></textarea>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
     <!-- Buch-Volltextsuche -->
     <div class="book-search-section">
-      <button class="book-search-toggle" onclick={() => { buchSucheOffen = !buchSucheOffen; if (!buchSucheOffen) { buchSuchbegriff = ""; buchSuchTreffer = []; } }}>
+      <button class="book-search-toggle" onclick={() => { buchSucheOffen = !buchSucheOffen; }} title="Volltextsuche im Buchinhalt">
         <i class="fa-solid fa-magnifying-glass"></i>
         Im Buch suchen
         <i class="fa-solid fa-chevron-{buchSucheOffen ? 'up' : 'down'}" style="margin-left: auto; font-size: 0.75rem;"></i>
       </button>
       {#if buchSucheOffen}
         <div class="book-search-body">
-          <input
-            type="text"
-            class="book-search-input"
-            placeholder="Suchbegriff eingeben..."
-            value={buchSuchbegriff}
-            oninput={onBuchSuche}
-          />
+          <div class="book-search-row">
+            <input
+              type="text"
+              class="book-search-input"
+              placeholder="Suchbegriff eingeben..."
+              value={buchSuchbegriff}
+              oninput={onBuchSuche}
+            />
+            <div class="book-search-filters">
+              <button
+                class="search-filter-btn"
+                class:active={suchGanzesWort}
+                onclick={() => toggleSuchFilter("wort")}
+                title="Nur ganze Wörter suchen"
+              >Ab</button>
+              <button
+                class="search-filter-btn"
+                class:active={suchGrossKlein}
+                onclick={() => toggleSuchFilter("case")}
+                title="Groß-/Kleinschreibung beachten"
+              >Aa</button>
+              <button
+                class="search-filter-btn"
+                class:active={suchRegex}
+                onclick={() => toggleSuchFilter("regex")}
+                title="Regulärer Ausdruck"
+              >.*</button>
+            </div>
+          </div>
           {#if buchSuchLaden}
             <div class="book-search-status"><i class="fa-solid fa-spinner fa-spin"></i> Suche...</div>
           {:else if buchSuchbegriff.length >= 2 && buchSuchTreffer.length === 0}
             <div class="book-search-status">Keine Treffer</div>
           {/if}
           {#if buchSuchTreffer.length > 0}
-            <div class="book-search-count">{buchSuchTreffer.length} Treffer</div>
+            <div class="book-search-count">
+              {buchSuchGesamt} Treffer
+              {#if buchSuchGesamt > buchSuchTreffer.length}
+                <span class="search-count-hint">(zeige {buchSuchTreffer.length})</span>
+              {/if}
+            </div>
             <div class="book-search-results">
               {#each buchSuchTreffer as treffer, i (i)}
-                <a href="#/book/{book.id}/read?page={treffer.seite}" class="book-search-hit">
+                <button
+                  class="book-search-hit"
+                  onclick={() => {
+                    const q = encodeURIComponent(buchSuchbegriff);
+                    if (book.file_format === "pdf") {
+                      navigate(`/book/${book.id}/read?page=${treffer.seite}&q=${q}`);
+                    } else {
+                      navigate(`/book/${book.id}/read?percent=${treffer.prozent}&q=${q}`);
+                    }
+                  }}
+                  title="Zur Stelle im Reader springen ({book.file_format === 'pdf' ? `Seite ${treffer.seite}` : `${treffer.prozent}%`})"
+                >
                   <span class="hit-page">S. {treffer.seite}</span>
                   <span class="hit-kontext">{@html treffer.kontext}</span>
-                </a>
+                </button>
               {/each}
             </div>
           {/if}
@@ -1954,6 +2111,153 @@
     padding: 1rem;
   }
 
+  /* Labels */
+  .labels-section {
+    margin-top: 1.5rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1rem;
+  }
+
+  .labels-section .section-title {
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .labels-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .labels-scrollable {
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .label-item-wrap {
+    border-radius: 4px;
+  }
+
+  .label-item-wrap:hover {
+    background: var(--glass-placeholder);
+  }
+
+  .label-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.375rem;
+  }
+
+  .label-icon {
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  .label-name {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+  }
+
+  .label-page {
+    font-size: 0.6875rem;
+    font-family: inherit;
+    color: var(--color-accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .label-page:hover {
+    text-decoration: underline;
+  }
+
+  .label-expand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 0.5rem;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .label-expand.has-note,
+  .label-item-wrap:hover .label-expand {
+    opacity: 1;
+  }
+
+  .label-expand:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+  }
+
+  .label-note-edit {
+    width: 100%;
+    font-size: 0.8125rem;
+    font-family: inherit;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0.375rem 0.5rem;
+    margin: 0.125rem 0.375rem 0.375rem 1.625rem;
+    line-height: 1.5;
+    resize: vertical;
+    box-sizing: border-box;
+    width: calc(100% - 2rem);
+  }
+
+  .label-note-edit:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .label-delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 0.625rem;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+    margin-left: auto;
+  }
+
+  .label-item-wrap:hover .label-delete {
+    opacity: 1;
+  }
+
+  .label-delete:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-error);
+  }
+
   /* Buch-Volltextsuche */
   .book-search-section {
     margin-top: 1.5rem;
@@ -1987,8 +2291,14 @@
     margin-top: 0.5rem;
   }
 
+  .book-search-row {
+    display: flex;
+    gap: 0.375rem;
+    align-items: center;
+  }
+
   .book-search-input {
-    width: 100%;
+    flex: 1;
     padding: 0.5rem 0.75rem;
     border: 1px solid var(--glass-border);
     border-radius: 6px;
@@ -1996,10 +2306,41 @@
     color: var(--color-text-primary);
     font-size: 0.875rem;
     font-family: inherit;
+    min-width: 0;
   }
 
   .book-search-input:focus {
     outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .book-search-filters {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .search-filter-btn {
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 4px;
+    background: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 0.6875rem;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .search-filter-btn:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+  }
+
+  .search-filter-btn.active {
+    background: var(--color-accent-light);
+    color: var(--color-accent);
     border-color: var(--color-accent);
   }
 
@@ -2015,16 +2356,22 @@
     font-weight: 500;
   }
 
+  .search-count-hint {
+    opacity: 0.6;
+    font-weight: 400;
+  }
+
   .book-search-results {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    max-height: 24rem;
+    max-height: 40rem;
     overflow-y: auto;
   }
 
   .book-search-hit {
     display: flex;
+    width: 100%;
     gap: 0.75rem;
     padding: 0.5rem 0.625rem;
     background: var(--glass-placeholder);
@@ -2033,7 +2380,10 @@
     text-decoration: none;
     color: var(--color-text-primary);
     font-size: 0.8125rem;
+    font-family: inherit;
     line-height: 1.4;
+    text-align: left;
+    cursor: pointer;
     transition: background 0.15s;
   }
 

@@ -110,6 +110,7 @@
       format: params.get("file_format") || null,
       gelesen: params.has("gelesen") ? params.get("gelesen") === "true" : null,
       hat_isbn: params.has("hat_isbn") ? params.get("hat_isbn") === "true" : null,
+      hat_labels: params.get("hat_labels") === "true" ? true : null,
       weiterlesen: params.get("weiterlesen") === "true" ? true : null,
       sortierung: sortBy,
       richtung: sortDir,
@@ -191,6 +192,7 @@
         <button
           class="select-all-btn"
           onclick={() => selectionStore.selectAll(booksStore.books.map(b => b.id))}
+          title="Alle sichtbaren Bücher auswählen"
         >
           <i class="fa-solid fa-check-double"></i> Alle
         </button>
@@ -243,7 +245,7 @@
           class="toggle-btn"
           class:active={isToRead}
           onclick={() => toggleBoolFilter("is_to_read")}
-          title="Leseliste"
+          title="Lesesofa - Bücher zum Lesen vorgemerkt"
         >
           <i class="fa-solid fa-bookmark"></i>
         </button>
@@ -342,7 +344,7 @@
       <div class="state-message error">
         <i class="fa-solid fa-triangle-exclamation state-icon"></i>
         <p>Fehler: {booksStore.fehler}</p>
-        <button class="retry-btn" onclick={() => booksStore.laden_()}>
+        <button class="retry-btn" onclick={() => booksStore.laden_()} title="Bücherliste erneut vom Server laden">
           <i class="fa-solid fa-rotate-right"></i> Erneut versuchen
         </button>
       </div>

@@ -5,6 +5,8 @@
   import { getToken } from "../../api/client.js";
   import { ui } from "../../stores/ui.svelte.js";
   import { onMount, onDestroy } from "svelte";
+  import LabelPicker from "./LabelPicker.svelte";
+  import ReaderLabels from "./ReaderLabels.svelte";
 
   let {
     bookId,
@@ -387,6 +389,9 @@
     } else if (event.key === "End") {
       event.preventDefault();
       goToPage(totalPages);
+    } else if (event.key === "Escape" && ui.readerFullscreen) {
+      event.preventDefault();
+      ui.readerFullscreen = false;
     }
   }
 
@@ -573,6 +578,27 @@
         {/if}
       </button>
 
+      <!-- Label setzen -->
+      <LabelPicker
+        {bookId}
+        positionLabel={"S." + currentPage}
+        positionPercent={totalPages > 0 ? Math.round(currentPage / totalPages * 100) : 0}
+      />
+
+      <!-- Labels anzeigen/bearbeiten -->
+      <ReaderLabels
+        {bookId}
+        onNavigate={(label) => {
+          // Seitenzahl aus page_reference extrahieren (z.B. "S.15" -> 15)
+          const m = label.page_reference?.match(/(\d+)/);
+          if (m) {
+            goToPage(Number(m[1]));
+          } else if (label.position_percent > 0 && totalPages > 0) {
+            goToPage(Math.max(1, Math.round(label.position_percent / 100 * totalPages)));
+          }
+        }}
+      />
+
       <!-- Rechts: Vollbild + Download -->
       <div class="toolbar-spacer"></div>
       <button class="tool-btn" class:active={ui.readerFullscreen} onclick={() => ui.toggleReaderFullscreen()} title="{ui.readerFullscreen ? 'Vollbild verlassen' : 'Vollbild'}">
@@ -727,7 +753,7 @@
     border-radius: 4px;
     padding: 0.125rem 0.25rem;
     font-size: 0.75rem;
-    font-family: var(--font-mono);
+    font-family: inherit;
     background-color: var(--color-bg-primary);
     color: var(--color-text-primary);
     height: 24px;
@@ -740,8 +766,8 @@
 
   .page-total {
     font-size: 0.75rem;
-    color: var(--color-text-muted);
-    font-family: var(--font-mono);
+    color: var(--color-text-primary);
+    font-family: inherit;
   }
 
   .zoom-display {
@@ -750,9 +776,9 @@
     border: 1px solid var(--color-border);
     border-radius: 4px;
     background: none;
-    font-size: 0.6875rem;
-    font-family: var(--font-mono);
-    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    font-family: inherit;
+    color: var(--color-text-primary);
     cursor: pointer;
     text-align: center;
     padding: 0 0.25rem;
@@ -850,6 +876,6 @@
   .page-number {
     font-size: 0.75rem;
     color: #999;
-    font-family: var(--font-mono);
+    font-family: inherit;
   }
 </style>

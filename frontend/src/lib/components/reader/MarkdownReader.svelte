@@ -3,6 +3,9 @@
   import { getToken } from "../../api/client.js";
   import { speichereLeseposition } from "../../api/user-data.js";
   import { ui } from "../../stores/ui.svelte.js";
+  import TextSelectionMenu from "./TextSelectionMenu.svelte";
+  import LabelPicker from "./LabelPicker.svelte";
+  import ReaderLabels from "./ReaderLabels.svelte";
 
   let {
     bookId,
@@ -107,6 +110,13 @@
 
   // Leseposition tracken
   let saveTimeout;
+  function handleKeydown(event) {
+    if (event.key === "Escape" && ui.readerFullscreen) {
+      event.preventDefault();
+      ui.readerFullscreen = false;
+    }
+  }
+
   function handleScroll() {
     if (!scrollContainer) return;
     const scrollMax = scrollContainer.scrollHeight - scrollContainer.clientHeight;
@@ -117,6 +127,8 @@
     triggerSave();
   }
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="md-reader">
   {#if laden}
@@ -177,6 +189,31 @@
         {/if}
       </button>
 
+      <div class="toolbar-sep"></div>
+
+      <!-- Markieren-Hinweis -->
+      <button class="tool-btn" onclick={() => {}} title="Text auswählen zum Markieren, Kopieren oder als Notiz speichern" style="cursor: help;">
+        <i class="fa-solid fa-highlighter"></i>
+      </button>
+
+      <!-- Label setzen -->
+      <LabelPicker
+        {bookId}
+        positionLabel={"~S." + aktuelleSeite}
+        positionPercent={fortschritt}
+      />
+
+      <!-- Labels anzeigen/bearbeiten -->
+      <ReaderLabels
+        {bookId}
+        onNavigate={(label) => {
+          if (label.position_percent > 0 && scrollContainer) {
+            const scrollMax = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+            scrollContainer.scrollTop = (label.position_percent / 100) * scrollMax;
+          }
+        }}
+      />
+
       <div class="toolbar-spacer"></div>
 
       <button class="tool-btn" class:active={ui.readerFullscreen} onclick={() => ui.toggleReaderFullscreen()} title="{ui.readerFullscreen ? 'Vollbild verlassen' : 'Vollbild'}">
@@ -196,6 +233,24 @@
     >
       <pre class="text-pre" style="font-size: {fontSize}%">{content}</pre>
     </div>
+
+    <!-- Textauswahl-Aktionsmenü -->
+    <TextSelectionMenu
+      {bookId}
+      positionLabel={"~S." + aktuelleSeite}
+      onHighlight={(text) => {
+        // Für TXT/MD: Markierung via CSS highlight
+        const sel = window.getSelection();
+        if (sel?.rangeCount > 0) {
+          try {
+            const range = sel.getRangeAt(0);
+            const mark = document.createElement("mark");
+            mark.className = "user-highlight";
+            range.surroundContents(mark);
+          } catch { /* Verschachtelte Ranges */ }
+        }
+      }}
+    />
   {/if}
 </div>
 
@@ -291,16 +346,16 @@
   }
 
   .page-info {
-    font-size: 0.6875rem;
-    font-family: var(--font-mono);
-    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    font-family: inherit;
+    color: var(--color-text-primary);
     white-space: nowrap;
   }
 
   .progress-info {
-    font-size: 0.6875rem;
-    font-family: var(--font-mono);
-    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    font-family: inherit;
+    color: var(--color-text-primary);
     min-width: 2rem;
     text-align: center;
   }
@@ -311,9 +366,9 @@
     border: 1px solid var(--color-border);
     border-radius: 4px;
     background: none;
-    font-size: 0.6875rem;
-    font-family: var(--font-mono);
-    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    font-family: inherit;
+    color: var(--color-text-primary);
     cursor: pointer;
     text-align: center;
     padding: 0 0.25rem;
@@ -363,5 +418,17 @@
 
   .papier-dunkel .text-pre {
     color: #c8c8c8;
+  }
+
+  :global(.user-highlight) {
+    background-color: #ffe066;
+    color: #1a1a1a;
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+
+  :global(:root.dark .user-highlight) {
+    background-color: #b8860b;
+    color: #fff;
   }
 </style>

@@ -27,6 +27,8 @@
       ansicht: sp.get("ansicht") || "",
       papier: sp.get("papier") || "",
       cfi: sp.get("cfi") || "",
+      percent: Number(sp.get("percent")) || 0,
+      q: sp.get("q") || "",
     };
   }
 
@@ -84,7 +86,8 @@
   let initialPapier = $derived(urlParams.papier || saved.papier || "");
   let initialZoom = $derived(urlParams.zoom > 0 ? urlParams.zoom : (saved.zoom || 0));
 
-  let initialCfi = $derived(urlParams.cfi || saved.cfi || "");
+  // Wenn percent in URL -> CFI ignorieren (Volltextsuche-Navigation)
+  let initialCfi = $derived(urlParams.percent > 0 ? "" : (urlParams.cfi || saved.cfi || ""));
 
   function goBack() {
     navigate(`/book/${params.id}`);
@@ -115,6 +118,7 @@
         bookId={book.id}
         title={book.title}
         {initialCfi}
+        initialPercent={urlParams.percent}
         {initialPapier}
         initialFontSize={saved.fontSize || 0}
         initialFontFamily={saved.fontFamily || ""}
@@ -124,6 +128,7 @@
         initialMaxWidthSingle={saved.maxWidthSingle || 0}
         initialMaxWidthDouble={saved.maxWidthDouble || 0}
         initialSinglePage={saved.singlePage || false}
+        initialSearchQuery={urlParams.q}
         onBack={goBack}
       />
     {:else if book.file_format === "txt" || book.file_format === "md"}

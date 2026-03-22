@@ -102,6 +102,7 @@ async def list_books(
     gelesen: bool | None = Query(None, description="Nur gelesene Bücher"),
     hat_isbn: bool | None = Query(None, description="True=mit ISBN, False=ohne ISBN"),
     weiterlesen: bool | None = Query(None, description="Bücher mit Leseposition"),
+    hat_labels: bool | None = Query(None, description="Bücher mit Labels"),
     autor: str | None = Query(None, description="Autor-Filter (exakter Match oder LIKE)"),
     verlag: str | None = Query(None, description="Verlag-Filter (exakter Match oder LIKE)"),
     jahr_von: int | None = Query(None, description="Erscheinungsjahr ab"),
@@ -154,6 +155,9 @@ async def list_books(
                WHERE reading_position IS NOT NULL AND reading_position != ''
                AND last_read_at IS NOT NULL)"""
         )
+
+    if hat_labels is not None:
+        conditions.append("b.id IN (SELECT DISTINCT book_id FROM book_labels)")
 
     if hat_isbn is not None:
         if hat_isbn:
@@ -679,7 +683,10 @@ async def isbn_scan(book_id: int, _token: str = Depends(verify_token)):
 async def fulltext_search_book(
     book_id: int,
     q: str = Query(..., min_length=1, description="Suchbegriff"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(500, ge=1, le=5000),
+    ganzes_wort: bool = Query(False, description="Nur ganze Woerter"),
+    gross_klein: bool = Query(False, description="Gross-/Kleinschreibung beachten"),
+    regex: bool = Query(False, description="Regulaerer Ausdruck"),
     _token: str = Depends(verify_token),
 ):
     """Durchsucht den Volltext eines einzelnen Buches.
@@ -712,15 +719,29 @@ async def fulltext_search_book(
         for i in range(0, len(text), chars_per_page):
             seiten.append(text[i:i + chars_per_page])
 
-    # Suche in jeder Seite
+    # Suchmuster erstellen
     try:
-        pattern = re.compile(re.escape(q), re.IGNORECASE)
+        if regex:
+            pat_str = q
+        else:
+            pat_str = re.escape(q)
+        if ganzes_wort:
+            pat_str = r"\b" + pat_str + r"\b"
+        flags = 0 if gross_klein else re.IGNORECASE
+        pattern = re.compile(pat_str, flags)
     except re.error:
         return {"treffer": [], "gesamt": 0, "suchbegriff": q}
 
     treffer = []
+    gesamt_count = 0
+    text_len = len(text)
+    seiten_offset = 0  # Zeichenoffset am Anfang der aktuellen Seite
     for seiten_nr, seite in enumerate(seiten, 1):
         for match in pattern.finditer(seite):
+            gesamt_count += 1
+            if len(treffer) >= limit:
+                continue  # Weiterzaehlen aber nicht mehr speichern
+
             start = max(0, match.start() - 80)
             end = min(len(seite), match.end() + 80)
             kontext = seite[start:end].strip()
@@ -733,20 +754,21 @@ async def fulltext_search_book(
             if end < len(seite):
                 kontext_marked = kontext_marked + "..."
 
+            # Globaler Offset und Prozent fuer positionsgenaue Navigation
+            global_offset = seiten_offset + match.start()
+            prozent = round((global_offset / text_len) * 100, 1) if text_len > 0 else 0
+
             treffer.append({
                 "seite": seiten_nr,
                 "kontext": kontext_marked,
                 "position": match.start(),
+                "prozent": prozent,
             })
-
-            if len(treffer) >= limit:
-                break
-        if len(treffer) >= limit:
-            break
+        seiten_offset += len(seite) + 1  # +1 fuer \f oder Trennzeichen
 
     return {
         "treffer": treffer,
-        "gesamt": len(treffer),
+        "gesamt": gesamt_count,
         "seiten_gesamt": len(seiten),
         "suchbegriff": q,
     }

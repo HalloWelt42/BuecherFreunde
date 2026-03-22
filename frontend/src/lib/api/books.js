@@ -120,6 +120,19 @@ export function ladeDatei(id) {
  * @param {number} [limit]
  * @returns {Promise<{treffer: Array, gesamt: number, seiten_gesamt: number, suchbegriff: string}>}
  */
-export function volltextSuche(id, suchbegriff, limit = 50) {
-  return get(`/api/books/${id}/volltext-suche`, { q: suchbegriff, limit });
+/**
+ * @param {number} id
+ * @param {string} suchbegriff
+ * @param {Object} [optionen]
+ * @param {number} [optionen.limit]
+ * @param {boolean} [optionen.ganzes_wort]
+ * @param {boolean} [optionen.gross_klein]
+ * @param {boolean} [optionen.regex]
+ */
+export function volltextSuche(id, suchbegriff, optionen = {}) {
+  const params = { q: suchbegriff, limit: optionen.limit || 500 };
+  if (optionen.ganzes_wort) params.ganzes_wort = true;
+  if (optionen.gross_klein) params.gross_klein = true;
+  if (optionen.regex) params.regex = true;
+  return get(`/api/books/${id}/volltext-suche`, params);
 }

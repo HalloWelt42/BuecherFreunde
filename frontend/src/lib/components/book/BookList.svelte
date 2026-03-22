@@ -85,6 +85,35 @@
     txt: "TXT",
     md: "MD",
   };
+
+  function positionPopup(container) {
+    const popup = container.querySelector('.cover-hover-popup');
+    if (!popup) return;
+    const rect = container.getBoundingClientRect();
+    const popupW = 320;
+    const popupH = 453;
+    const viewW = window.innerWidth;
+    const viewH = window.innerHeight;
+    const headerH = 56;
+    const margin = 8;
+
+    // Vertikal: zentriert am Cover, eingegrenzt auf sichtbaren Bereich
+    let top = rect.top + rect.height / 2 - popupH / 2;
+    if (top < headerH + margin) top = headerH + margin;
+    if (top + popupH > viewH - margin) top = viewH - popupH - margin;
+
+    // Horizontal: rechts vom Cover, falls kein Platz dann links
+    let left = rect.right + margin;
+    if (left + popupW > viewW - margin) {
+      left = rect.left - popupW - margin;
+    }
+    if (left < margin) left = margin;
+
+    popup.style.position = 'fixed';
+    popup.style.left = left + 'px';
+    popup.style.top = top + 'px';
+    popup.style.transform = 'none';
+  }
 </script>
 
 <svelte:window onpointerup={handlePointerUp} />
@@ -106,20 +135,30 @@
         onpointerdown={(e) => handlePointerDown(e, book.id)}
         onpointerenter={() => handlePointerEnter(book.id)}
       >
-        <a href="/book/{book.id}" class="detail-link">
-          <div class="detail-cover">
+        <div class="detail-cover-wrap" onmouseenter={(e) => positionPopup(e.currentTarget)}>
+          <a href="/book/{book.id}" class="detail-link">
+            <div class="detail-cover">
+              <img
+                src={coverUrl(book.id, book.updated_at)}
+                alt=""
+                class="detail-cover-img"
+                loading="lazy"
+                onerror={(e) => { e.target.style.display = "none"; e.target.nextElementSibling.style.display = "flex"; }}
+              />
+              <div class="detail-cover-placeholder" style="display: none;">
+                <i class="fa-solid fa-book"></i>
+              </div>
+            </div>
+          </a>
+          <div class="cover-hover-popup">
             <img
               src={coverUrl(book.id, book.updated_at)}
-              alt=""
-              class="detail-cover-img"
-              loading="lazy"
-              onerror={(e) => { e.target.style.display = "none"; e.target.nextElementSibling.style.display = "flex"; }}
+              alt={book.title}
+              class="cover-hover-img"
+              onerror={(e) => (e.target.parentElement.style.display = "none")}
             />
-            <div class="detail-cover-placeholder" style="display: none;">
-              <i class="fa-solid fa-book"></i>
-            </div>
           </div>
-        </a>
+        </div>
 
         <a href="/book/{book.id}" class="detail-info">
           <div class="detail-header">
@@ -182,20 +221,20 @@
       <thead>
         <tr>
           <th class="col-cover"></th>
-          <th class="col-title sortable" onclick={() => handleSort("title")}>
+          <th class="col-title sortable" onclick={() => handleSort("title")} title="Nach Titel sortieren">
             Titel <i class="fa-solid {sortIcon('title')} sort-icon"></i>
           </th>
-          <th class="col-author sortable" onclick={() => handleSort("author")}>
+          <th class="col-author sortable" onclick={() => handleSort("author")} title="Nach Autor sortieren">
             Autor <i class="fa-solid {sortIcon('author')} sort-icon"></i>
           </th>
-          <th class="col-format">Format</th>
-          <th class="col-size sortable" onclick={() => handleSort("file_size")}>
+          <th class="col-format" title="Dateiformat">Format</th>
+          <th class="col-size sortable" onclick={() => handleSort("file_size")} title="Nach Dateigröße sortieren">
             Größe <i class="fa-solid {sortIcon('file_size')} sort-icon"></i>
           </th>
-          <th class="col-rating sortable" onclick={() => handleSort("rating")}>
+          <th class="col-rating sortable" onclick={() => handleSort("rating")} title="Nach Bewertung sortieren">
             Bewertung <i class="fa-solid {sortIcon('rating')} sort-icon"></i>
           </th>
-          <th class="col-year sortable" onclick={() => handleSort("year")}>
+          <th class="col-year sortable" onclick={() => handleSort("year")} title="Nach Erscheinungsjahr sortieren">
             Jahr <i class="fa-solid {sortIcon('year')} sort-icon"></i>
           </th>
         </tr>
@@ -211,20 +250,7 @@
           >
             <td class="col-cover">
               <div class="cover-cell"
-                onmouseenter={(e) => {
-                  const popup = e.currentTarget.querySelector('.cover-hover-popup');
-                  if (!popup) return;
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const popupH = 453;
-                  const viewH = window.innerHeight;
-                  let top = rect.top + rect.height / 2 - popupH / 2;
-                  if (top < 8) top = 8;
-                  if (top + popupH > viewH - 8) top = viewH - popupH - 8;
-                  popup.style.position = 'fixed';
-                  popup.style.left = (rect.right + 8) + 'px';
-                  popup.style.top = top + 'px';
-                  popup.style.transform = 'none';
-                }}
+                onmouseenter={(e) => positionPopup(e.currentTarget)}
               >
                 <a href="/book/{book.id}" class="cover-link">
                   <img
@@ -390,8 +416,14 @@
     z-index: 200;
   }
 
-  .cover-cell:hover .cover-hover-popup {
+  .cover-cell:hover .cover-hover-popup,
+  .detail-cover-wrap:hover .cover-hover-popup {
     opacity: 1;
+  }
+
+  .detail-cover-wrap {
+    position: relative;
+    flex-shrink: 0;
   }
 
   .cover-hover-img {
