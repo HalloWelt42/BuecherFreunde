@@ -101,7 +101,7 @@
             onclick={() => onDelete(notiz.id)}
             title="Notiz löschen"
           >
-            <i class="fa-solid fa-xmark"></i>
+            <i class="fa-solid fa-trash-can"></i>
           </button>
         </div>
       </div>
@@ -185,12 +185,19 @@
   }
 
   .delete-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
     margin-left: auto;
     background: none;
     border: none;
+    border-radius: 4px;
     color: var(--color-text-muted);
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.6875rem;
+    flex-shrink: 0;
   }
 
   .delete-btn:hover {

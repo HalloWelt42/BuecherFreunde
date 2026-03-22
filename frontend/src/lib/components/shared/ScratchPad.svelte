@@ -93,6 +93,11 @@
 
 <svelte:window onmousemove={onMouseMove} onmouseup={onMouseUp} />
 
+{#if dragging || resizing}
+  <!-- Overlay verhindert, dass iframes die Maus-Events schlucken -->
+  <div class="sp-overlay" style="cursor: {resizing ? 'nwse-resize' : 'grabbing'}"></div>
+{/if}
+
 {#if visible}
   <div
     class="sp-wrap"
@@ -235,5 +240,12 @@
     height: 8px;
     border-right: 2px solid var(--color-text-muted);
     border-bottom: 2px solid var(--color-text-muted);
+  }
+
+  .sp-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 8999;
+    cursor: nwse-resize;
   }
 </style>

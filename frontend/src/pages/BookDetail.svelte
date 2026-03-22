@@ -2178,14 +2178,19 @@
   }
 
   .label-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
     font-size: 0.6875rem;
     font-family: inherit;
     color: var(--color-accent);
     background: none;
     border: none;
+    border-radius: 4px;
     cursor: pointer;
     padding: 0;
-    white-space: nowrap;
     flex-shrink: 0;
   }
 
@@ -2197,14 +2202,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     border: none;
     border-radius: 4px;
     background: none;
     color: var(--color-text-muted);
     cursor: pointer;
-    font-size: 0.5rem;
+    font-size: 0.6875rem;
     flex-shrink: 0;
     opacity: 0;
     transition: opacity 0.15s;
@@ -2225,15 +2230,13 @@
     font-size: 0.8125rem;
     font-family: inherit;
     color: var(--color-text-secondary);
-    background: var(--color-bg-primary);
-    border: 1px solid var(--color-border);
+    background: color-mix(in srgb, var(--color-bg-primary) 30%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
     border-radius: 4px;
     padding: 0.375rem 0.5rem;
-    margin: 0.125rem 0.375rem 0.375rem 1.625rem;
     line-height: 1.5;
     resize: vertical;
     box-sizing: border-box;
-    width: calc(100% - 2rem);
   }
 
   .label-note-edit:focus {
@@ -2262,8 +2265,8 @@
 
   .label-name-edit {
     width: 100%;
-    border: 1px solid var(--color-border);
-    background: var(--color-bg-tertiary);
+    border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
+    background: color-mix(in srgb, var(--color-bg-primary) 30%, transparent);
     color: var(--color-text-primary);
     font-size: 0.8125rem;
     font-family: inherit;
@@ -2287,7 +2290,8 @@
     font-style: italic;
     line-height: 1.4;
     padding: 0.25rem 0.375rem;
-    background: color-mix(in srgb, var(--color-bg-tertiary) 50%, transparent);
+    background: color-mix(in srgb, var(--color-bg-primary) 20%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-border) 20%, transparent);
     border-radius: 4px;
     max-height: 4em;
     overflow: hidden;
@@ -2297,14 +2301,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     border: none;
     border-radius: 4px;
     background: none;
     color: var(--color-text-muted);
     cursor: pointer;
-    font-size: 0.625rem;
+    font-size: 0.6875rem;
     flex-shrink: 0;
     opacity: 0;
     transition: opacity 0.15s;

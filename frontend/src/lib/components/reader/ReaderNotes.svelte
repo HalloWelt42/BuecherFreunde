@@ -161,6 +161,10 @@
 
 <svelte:window onmousemove={onMouseMove} onmouseup={onMouseUp} />
 
+{#if dragging}
+  <div class="drag-overlay"></div>
+{/if}
+
 <div class="reader-notes-wrap">
   <button
     class="tool-btn"
@@ -556,5 +560,12 @@
   .note-del:hover {
     background: color-mix(in srgb, var(--color-error) 12%, transparent);
     color: var(--color-error);
+  }
+
+  .drag-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99998;
+    cursor: grabbing;
   }
 </style>
