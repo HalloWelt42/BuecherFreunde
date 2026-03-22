@@ -203,20 +203,11 @@
     if (!view || !highlights.length) return;
     for (const hl of highlights) {
       try {
-        await view.addAnnotation({ value: hl.cfi_range });
+        await view.addAnnotation({ value: hl.cfi_range, color: hl.color });
       } catch {
         // CFI gehoert zu anderer Sektion - normal
       }
     }
-  }
-
-  function getHighlightColor(cfiValue) {
-    const hl = highlights.find(h => h.cfi_range === cfiValue);
-    return hl?.color || "#FFEE58";
-  }
-
-  function isHighlightCfi(cfiValue) {
-    return highlights.some(h => h.cfi_range === cfiValue);
   }
 
   async function speichereHighlight(cfi, text, color) {
@@ -226,11 +217,12 @@
         color,
         text_snippet: text.slice(0, 500),
       });
+      console.log("[Highlight] Gespeichert:", hl.id, "CFI:", cfi);
       highlights = [...highlights, hl];
-      view.addAnnotation({ value: cfi });
+      view.addAnnotation({ value: cfi, color });
       highlightsReloadTrigger++;
-    } catch {
-      // Fehler beim Speichern
+    } catch (err) {
+      console.error("[Highlight] Speichern fehlgeschlagen:", err);
     }
   }
 
@@ -243,7 +235,7 @@
       // Annotation neu zeichnen wenn Farbe geaendert
       if (hl && daten.color) {
         try { view.addAnnotation({ value: hl.cfi_range, remove: true }); } catch {}
-        try { view.addAnnotation({ value: hl.cfi_range }); } catch {}
+        try { view.addAnnotation({ value: hl.cfi_range, color: daten.color }); } catch {}
       }
     } catch {}
   }
@@ -324,12 +316,13 @@
       // Annotationen zeichnen
       view.addEventListener("draw-annotation", (e) => {
         const { draw, annotation } = e.detail;
-        const cfi = annotation?.value;
-        if (cfi && isHighlightCfi(cfi)) {
-          const hl = highlights.find(h => h.cfi_range === cfi);
-          if (hl) {
-            draw(Overlayer.highlight, { color: hl.color });
-          }
+        if (!annotation?.value) return;
+        // Farbe direkt aus Annotation (robust gegen State-Timing)
+        const color = annotation.color
+          || highlights.find(h => h.cfi_range === annotation.value)?.color
+          || "#FFEE58";
+        if (annotation.color || highlights.some(h => h.cfi_range === annotation.value)) {
+          draw(Overlayer.highlight, { color });
         }
       });
 
@@ -361,7 +354,12 @@
           const rect = range.getBoundingClientRect();
           // CFI der Selektion erzeugen
           let selCfi = "";
-          try { selCfi = view.getCFI(sectionIndex, range); } catch {}
+          try {
+            selCfi = view.getCFI(sectionIndex, range);
+            console.log("[Selection] CFI erzeugt:", selCfi);
+          } catch (err) {
+            console.warn("[Selection] getCFI fehlgeschlagen:", err);
+          }
           // iframe-Position relativ zum Viewport berechnen
           const iframe = e.detail.doc.defaultView?.frameElement;
           const iframeRect = iframe?.getBoundingClientRect() || { left: 0, top: 0 };
@@ -653,7 +651,13 @@
         reloadTrigger={highlightsReloadTrigger}
         onNavigate={(hl) => {
           if (hl.cfi_range && view) {
-            try { view.goTo(hl.cfi_range); } catch {}
+            try {
+              view.goTo(hl.cfi_range);
+              // Workaround: foliate-js springt manchmal eine Seite zu frueh
+              setTimeout(() => {
+                try { view.goTo(hl.cfi_range); } catch {}
+              }, 150);
+            } catch {}
           }
         }}
         onUpdate={onHighlightUpdate}
@@ -749,8 +753,11 @@
     {highlighterActive}
     onHighlight={(text, color) => {
       const cfi = iframeSelection?.cfi;
+      console.log("[Highlight] CFI:", cfi, "Text:", text?.slice(0, 30), "Color:", color);
       if (cfi) {
         speichereHighlight(cfi, text, color);
+      } else {
+        console.warn("[Highlight] Kein CFI fuer Selektion vorhanden");
       }
     }}
   />
@@ -1041,10 +1048,20 @@
     gap: 0.25rem;
     padding: 0.25rem 0.5rem;
     border-bottom: 1px solid var(--glass-border);
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
     flex-shrink: 0;
     height: 36px;
+    position: relative;
+    z-index: 40;
+  }
+
+  .epub-toolbar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    z-index: -1;
   }
 
   .toolbar-title {

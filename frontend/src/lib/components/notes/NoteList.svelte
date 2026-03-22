@@ -88,7 +88,10 @@
                 const params = new URLSearchParams();
                 if (notiz.cfi_reference) params.set("cfi", notiz.cfi_reference);
                 else if (notiz.page_reference && notiz.page_reference.includes("%")) params.set("percent", notiz.page_reference.replace("%", ""));
-                else if (notiz.page_reference) params.set("page", notiz.page_reference);
+                else if (notiz.page_reference) {
+                  const seitenNr = notiz.page_reference.replace(/\D/g, "");
+                  if (seitenNr) params.set("page", seitenNr);
+                }
                 navigate(`/book/${bookId}/read${params.toString() ? "?" + params.toString() : ""}`);
               }}
               title="Im Reader öffnen"

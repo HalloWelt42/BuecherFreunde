@@ -875,11 +875,21 @@
     gap: 0.25rem;
     padding: 0.25rem 0.5rem;
     border-bottom: 1px solid var(--glass-border);
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
     flex-shrink: 0;
     height: 36px;
     flex-wrap: wrap;
+    position: relative;
+    z-index: 40;
+  }
+
+  .pdf-toolbar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    z-index: -1;
   }
 
   .back-btn {

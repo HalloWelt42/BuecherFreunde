@@ -99,7 +99,7 @@
       class="hl-panel"
       class:dragging
       bind:this={panelEl}
-      style={positioned ? `position: fixed; left: ${panelPos.x}px; top: ${panelPos.y}px; right: auto;` : ""}
+      style={positioned ? `left: ${panelPos.x}px; top: ${panelPos.y}px; right: auto;` : ""}
     >
       <div class="hl-header" role="button" tabindex="0" onmousedown={onDragStart}>
         <i class="fa-solid fa-grip-vertical drag-handle"></i>
@@ -247,15 +247,17 @@
   }
 
   .hl-panel {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
-    width: 380px;
+    position: fixed;
+    top: 50px;
+    right: 10px;
+    width: 50%;
+    max-width: 600px;
+    min-width: 300px;
     max-height: 80vh;
-    background: color-mix(in srgb, var(--color-bg-secondary) 75%, transparent);
-    backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
     border-radius: 8px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
     display: flex;
@@ -273,7 +275,7 @@
     align-items: center;
     gap: 0.375rem;
     padding: 0.25rem 0.5rem;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 25%, transparent);
+    border-bottom: 1px solid var(--glass-border);
     font-size: 0.75rem;
     color: var(--color-text-secondary);
     height: 28px;

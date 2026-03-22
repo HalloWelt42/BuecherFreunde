@@ -34,14 +34,9 @@
     positioned = true;
   }
 
-  $effect(() => {
-    if (open && panelEl && !positioned) {
-      requestAnimationFrame(initPosition);
-    }
-  });
-
   function onDragStart(e) {
     if (e.target.closest("input, textarea, button")) return;
+    initPosition();
     dragging = true;
     dragOffset = { x: e.clientX - panelPos.x, y: e.clientY - panelPos.y };
     e.preventDefault();
@@ -77,7 +72,11 @@
 
   function toggle() {
     open = !open;
-    if (open) ladeNotizen();
+    if (open) {
+      ladeNotizen();
+    } else {
+      positioned = false;
+    }
   }
 
   async function erstellen() {
@@ -161,7 +160,7 @@
       class="notes-panel"
       class:dragging
       bind:this={panelEl}
-      style="{positioned ? `left: ${panelPos.x}px; top: ${panelPos.y}px;` : ''}"
+      style="{positioned ? `position: fixed; left: ${panelPos.x}px; top: ${panelPos.y}px; right: auto;` : ''}"
     >
       <div class="notes-header" role="button" tabindex="0" onmousedown={onDragStart}>
         <i class="fa-solid fa-grip-vertical drag-handle"></i>

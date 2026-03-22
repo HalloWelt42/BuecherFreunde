@@ -33,9 +33,19 @@
     padding: 0 0.5rem;
     height: 36px;
     border-bottom: 1px solid var(--glass-border);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 40;
+  }
+
+  .reader-toolbar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
     background: var(--glass-bg);
     backdrop-filter: blur(var(--glass-blur));
-    flex-shrink: 0;
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    z-index: -1;
   }
 
   .back-btn {
