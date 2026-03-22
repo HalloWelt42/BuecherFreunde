@@ -5,6 +5,7 @@
   import { navigate } from "../../router.svelte.js";
   import { selectionStore } from "../../stores/selection.svelte.js";
   import { ui } from "../../stores/ui.svelte.js";
+  import { parseProgress } from "../../utils/reading.js";
 
   let { book } = $props();
 
@@ -13,29 +14,6 @@
   // svelte-ignore state_referenced_locally
   let isFavorite = $state(book.is_favorite);
   let coverError = $state(false);
-
-  function parseProgress(position, pageCount) {
-    if (!position) return 0;
-    try {
-      if (position.startsWith("pdf:")) {
-        const data = JSON.parse(position.slice(4));
-        if (data.page && pageCount > 0) {
-          return Math.round((data.page / pageCount) * 100);
-        }
-      }
-      if (position.startsWith("epub:")) {
-        const data = JSON.parse(position.slice(5));
-        if (data.percent > 0) return data.percent;
-      }
-      if (position.startsWith("page:")) {
-        return Math.min(Number(position.slice(5)) || 0, 100);
-      }
-      if (position.startsWith("percent:")) {
-        return Number(position.slice(8)) || 0;
-      }
-    } catch { /* */ }
-    return 0;
-  }
 
   let progress = $derived(parseProgress(book.reading_position, book.page_count));
 
