@@ -55,6 +55,14 @@ async def upload_file(
             detail=f"Format '{suffix}' nicht unterstuetzt. Erlaubt: {', '.join(sorted(SUPPORTED_FORMATS))}",
         )
 
+    # Speicherplatz pruefen (min. 100 MB frei)
+    disk = shutil.disk_usage(settings.import_dir)
+    if disk.free < 100 * 1024 * 1024:
+        raise HTTPException(
+            status_code=507,
+            detail="Nicht genuegend Speicherplatz (weniger als 100 MB frei)",
+        )
+
     task_id = await create_import_task(file.filename)
 
     safe_name = sanitize_filename(file.filename)
@@ -100,6 +108,14 @@ async def upload_multiple(
     _token: str = Depends(verify_token),
 ):
     """Laedt mehrere Dateien hoch und importiert sie."""
+    # Speicherplatz pruefen (min. 100 MB frei)
+    disk = shutil.disk_usage(settings.import_dir)
+    if disk.free < 100 * 1024 * 1024:
+        raise HTTPException(
+            status_code=507,
+            detail="Nicht genuegend Speicherplatz (weniger als 100 MB frei)",
+        )
+
     tasks = []
 
     for file in files:
