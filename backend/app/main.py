@@ -118,6 +118,17 @@ async def lifespan(app: FastAPI):
         datefmt="%d.%m.%Y %H:%M:%S",
     )
     logger.info("BuecherFreunde v%s wird gestartet", settings.version)
+
+    # Sicherheitscheck: Default-Token darf nicht verwendet werden
+    if settings.api_token == "bitte-aendern-sicherer-token-hier":
+        import secrets
+        generated = secrets.token_urlsafe(32)
+        logger.critical(
+            "SICHERHEITSWARNUNG: Standard-API-Token aktiv! "
+            "Bitte API_TOKEN in .env setzen. "
+            "Generierter Vorschlag: API_TOKEN=%s", generated
+        )
+
     _check_storage_mount()
     _ensure_directories()
     await db.connect()
@@ -135,9 +146,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS: Nur lokale Zugriffe erlauben (Backend sitzt hinter nginx)
+_cors_origins = [
+    f"http://localhost:{settings.external_port}",
+    f"http://127.0.0.1:{settings.external_port}",
+    "http://localhost",
+    "http://127.0.0.1",
+]
+# Im Docker-Netzwerk kommen Requests vom nginx-Container (kein CORS noetig),
+# aber fuer Entwicklung und direkte Zugriffe erlauben wir lokale Origins.
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

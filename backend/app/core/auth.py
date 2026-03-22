@@ -1,5 +1,7 @@
 """Bearer Token Authentifizierung für die API."""
 
+import hmac
+
 from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -15,7 +17,7 @@ async def verify_token(
 
     Gibt den Token zurück wenn gültig, wirft 401 wenn ungültig.
     """
-    if credentials.credentials != settings.api_token:
+    if not hmac.compare_digest(credentials.credentials, settings.api_token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Ungültiger API-Token",
@@ -32,7 +34,7 @@ async def verify_token_query(
     EventSource kann keine HTTP-Header setzen, daher wird der Token
     als Query-Parameter übergeben.
     """
-    if token != settings.api_token:
+    if not hmac.compare_digest(token, settings.api_token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Ungültiger API-Token",

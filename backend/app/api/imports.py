@@ -49,10 +49,11 @@ async def upload_file(
     # Import-Aufgabe erstellen
     task_id = await create_import_task(file.filename)
 
-    # Datei temporär speichern
+    # Datei temporär speichern (nur Dateiname ohne Pfad gegen Path Traversal)
+    safe_name = Path(file.filename).name
     import_dir = settings.import_dir
     import_dir.mkdir(parents=True, exist_ok=True)
-    temp_path = import_dir / f"upload_{task_id}_{file.filename}"
+    temp_path = import_dir / f"upload_{task_id}_{safe_name}"
 
     try:
         with open(temp_path, "wb") as f:
@@ -92,9 +93,10 @@ async def upload_multiple(
 
         task_id = await create_import_task(file.filename)
 
+        safe_name = Path(file.filename).name
         import_dir = settings.import_dir
         import_dir.mkdir(parents=True, exist_ok=True)
-        temp_path = import_dir / f"upload_{task_id}_{file.filename}"
+        temp_path = import_dir / f"upload_{task_id}_{safe_name}"
 
         with open(temp_path, "wb") as f:
             content = await file.read()

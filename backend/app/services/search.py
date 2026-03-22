@@ -1,11 +1,29 @@
 """FTS5 Volltextsuche - Indexverwaltung und Suchfunktionen."""
 
 import logging
+import re
 from dataclasses import dataclass
 
 from backend.app.core.database import db
 
 logger = logging.getLogger("buecherfreunde.search")
+
+# Erlaubte HTML-Tags in Suchergebnissen (alles andere wird entfernt)
+_ALLOWED_TAGS = {"b", "mark"}
+_STRIP_TAGS_RE = re.compile(
+    r"</?(?!" + "|".join(_ALLOWED_TAGS) + r")(\w+)[^>]*>", re.IGNORECASE
+)
+
+
+def _sanitize_html(text: str) -> str:
+    """Entfernt alle HTML-Tags ausser den erlaubten (b, mark).
+
+    Verhindert Stored XSS durch bösartige Buchtitel oder Metadaten
+    die per highlight()/snippet() mit HTML-Markup versehen werden.
+    """
+    if not text:
+        return text
+    return _STRIP_TAGS_RE.sub("", text)
 
 
 @dataclass
@@ -54,9 +72,9 @@ async def search_books(
         return [
             SearchResult(
                 book_id=row["id"],
-                title=row["title"],
-                author=row["author"],
-                snippet=row["snippet"] or "",
+                title=_sanitize_html(row["title"]),
+                author=_sanitize_html(row["author"]),
+                snippet=_sanitize_html(row["snippet"] or ""),
                 relevance=abs(row["rank"]),
             )
             for row in rows
@@ -110,7 +128,7 @@ async def suggest(query: str, limit: int = 5) -> list[dict]:
         title_query = f"title:{prefix}"
         rows = await db.fetch_all(sql, (title_query, limit))
         results = [
-            {"id": row["id"], "titel": row["title_hl"], "autor": row["author"], "typ": "titel"}
+            {"id": row["id"], "titel": _sanitize_html(row["title_hl"]), "autor": _sanitize_html(row["author"]), "typ": "titel"}
             for row in rows
         ]
 
@@ -132,7 +150,7 @@ async def suggest(query: str, limit: int = 5) -> list[dict]:
             for row in author_rows:
                 if row["id"] not in existing_ids:
                     results.append(
-                        {"id": row["id"], "titel": row["title"], "autor": row["author_hl"], "typ": "autor"}
+                        {"id": row["id"], "titel": _sanitize_html(row["title"]), "autor": _sanitize_html(row["author_hl"]), "typ": "autor"}
                     )
 
         return results

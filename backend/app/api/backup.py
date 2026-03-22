@@ -92,7 +92,11 @@ async def download_backup(
             raise HTTPException(status_code=404, detail="Kein Backup vorhanden")
         path = backups[0]
     else:
-        path = _backup_dir() / filename
+        # Path Traversal verhindern: nur den Dateinamen verwenden
+        safe_name = Path(filename).name
+        path = _backup_dir() / safe_name
+        if not path.resolve().is_relative_to(_backup_dir().resolve()):
+            raise HTTPException(status_code=400, detail="Ungültiger Dateiname")
         if not path.exists() or not path.is_file():
             raise HTTPException(status_code=404, detail="Backup nicht gefunden")
 
@@ -110,11 +114,24 @@ async def restore_backup(
     """Backup wiederherstellen."""
     with TemporaryDirectory() as tmp:
         tmp_path = Path(tmp) / "backup.zip"
+        content = await file.read()
+
+        # Größenlimit prüfen (1 GB)
+        if len(content) > 1024 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="Backup-Datei zu groß (max 1 GB)")
+
         with open(tmp_path, "wb") as f:
-            content = await file.read()
             f.write(content)
 
+        if not zipfile.is_zipfile(tmp_path):
+            raise HTTPException(status_code=400, detail="Keine gültige ZIP-Datei")
+
         with zipfile.ZipFile(tmp_path, "r") as zf:
+            # Zip-Bomb-Schutz: entpackte Größe prüfen
+            total_size = sum(info.file_size for info in zf.infolist())
+            if total_size > 2 * 1024 * 1024 * 1024:  # 2 GB Limit
+                raise HTTPException(status_code=400, detail="ZIP-Inhalt zu groß (max 2 GB)")
+
             # Datenbank wiederherstellen
             if "database/buecherfreunde.db" in zf.namelist():
                 db_data = zf.read("database/buecherfreunde.db")
@@ -124,12 +141,17 @@ async def restore_backup(
                 with open(settings.database_path, "wb") as db_file:
                     db_file.write(db_data)
 
-            # Metadaten wiederherstellen
+            # Metadaten wiederherstellen (mit Zip Slip Schutz)
+            storage_resolved = settings.storage_dir.resolve()
             for name in zf.namelist():
                 if name.startswith("metadata/"):
                     rel = name[len("metadata/"):]
                     if rel:
-                        target = settings.storage_dir / rel
+                        target = (settings.storage_dir / rel).resolve()
+                        # Zip Slip: Pfad muss innerhalb des Storage bleiben
+                        if not target.is_relative_to(storage_resolved):
+                            logger.warning("Zip Slip Versuch blockiert: %s", name)
+                            continue
                         target.parent.mkdir(parents=True, exist_ok=True)
                         with open(target, "wb") as mf:
                             mf.write(zf.read(name))
