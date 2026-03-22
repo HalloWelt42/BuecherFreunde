@@ -35,7 +35,7 @@
     for (const datei of dateien) {
       try {
         const formData = new FormData();
-        formData.append("file", datei);
+        formData.append("datei", datei);
         await upload("/api/config/design/hintergrund", formData);
         erfolge++;
       } catch {
