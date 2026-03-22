@@ -7,6 +7,7 @@
   import SvelteMarkdown from "@humanspeak/svelte-markdown";
   import { markedMermaid, MermaidRenderer } from "@humanspeak/svelte-markdown/extensions";
   import AlertBlock from "./AlertBlock.svelte";
+  import { readerFarbThemen, readerSchriften } from "../../constants/themes.js";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
   import LabelPicker from "./LabelPicker.svelte";
   import ReaderLabels from "./ReaderLabels.svelte";
@@ -32,23 +33,10 @@
   let fontSize = $state(untrack(() => initialFontSize > 0 ? initialFontSize : 100));
   let scrollContainer = $state(null);
 
-  // Schriftarten (wie EPUB-Reader)
-  const schriften = [
-    { name: "Standard", value: "" },
-    { name: "Barlow", value: "Barlow, sans-serif" },
-    { name: "Serif", value: "Georgia, 'Times New Roman', serif" },
-    { name: "System", value: "system-ui, -apple-system, sans-serif" },
-  ];
+  // Schriftarten und Farbthemen (zentral definiert)
+  const schriften = readerSchriften;
   let fontFamily = $state(untrack(() => initialFontFamily || ""));
-
-  // Farbthemen (wie EPUB-Reader)
-  const farbThemen = [
-    { name: "Hell", fg: "#1a1a1a", bg: "#ffffff", icon: "fa-sun" },
-    { name: "Sepia", fg: "#3d2b1f", bg: "#f4ecd8", icon: "fa-cloud-sun" },
-    { name: "Dämmerung", fg: "#c9b99a", bg: "#3d3526", icon: "fa-cloud-moon" },
-    { name: "Dunkel", fg: "#c8c8c8", bg: "#1e1e1e", icon: "fa-moon" },
-    { name: "Nacht", fg: "#8a8a8a", bg: "#0a0a0a", icon: "fa-star" },
-  ];
+  const farbThemen = readerFarbThemen;
   let fgColor = $state(untrack(() => initialFgColor || "#1a1a1a"));
   let bgColor = $state(untrack(() => initialBgColor || "#ffffff"));
   let activeThemeIndex = $derived.by(() => {

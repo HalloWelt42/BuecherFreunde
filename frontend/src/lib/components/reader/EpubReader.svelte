@@ -5,6 +5,7 @@
   import { getToken } from "../../api/client.js";
   import { speichereLeseposition } from "../../api/user-data.js";
   import { ui } from "../../stores/ui.svelte.js";
+  import { readerFarbThemen, readerSchriften } from "../../constants/themes.js";
   import { onDestroy, untrack } from "svelte";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
   import ReaderHighlights from "./ReaderHighlights.svelte";
@@ -63,24 +64,9 @@
   // Markierstift-Toggle
   let highlighterActive = $state(false);
 
-  // Verfügbare Schriften (lokal gebündelt)
-  const schriften = [
-    { name: "Standard", value: "" },
-    { name: "Barlow", value: "Barlow, sans-serif" },
-    { name: "JetBrains Mono", value: "'JetBrains Mono', monospace" },
-    { name: "Serif", value: "Georgia, 'Times New Roman', serif" },
-    { name: "System", value: "system-ui, -apple-system, sans-serif" },
-  ];
-
-  // Voreingestellte Farbthemen
-  const farbThemen = [
-    { name: "Hell", fg: "#1a1a1a", bg: "#ffffff", icon: "fa-sun" },
-    { name: "Sepia", fg: "#3d2b1f", bg: "#f4ecd8", icon: "fa-cloud-sun" },
-    { name: "Dämmerung", fg: "#c9b99a", bg: "#3d3526", icon: "fa-cloud-moon" },
-    { name: "Dunkel", fg: "#c8c8c8", bg: "#1e1e1e", icon: "fa-moon" },
-    { name: "Nacht", fg: "#8a8a8a", bg: "#0a0a0a", icon: "fa-star" },
-    { name: "Individuell", fg: "", bg: "", icon: "fa-palette" },
-  ];
+  // Verfuegbare Schriften und Farbthemen (zentral definiert)
+  const schriften = readerSchriften;
+  const farbThemen = [...readerFarbThemen, { name: "Individuell", fg: "", bg: "", icon: "fa-palette" }];
 
   // Einstellungen (initiale Werte via untrack)
   let fontSize = $state(untrack(() => initialFontSize > 0 ? initialFontSize : 100));
