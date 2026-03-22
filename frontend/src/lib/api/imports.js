@@ -86,3 +86,29 @@ export function bereinigeImportTasks() {
 export function brecheImportAb() {
   return post("/api/import/abbrechen");
 }
+
+/**
+ * Selektiven Rescan starten (Bücher ohne Cover/ISBN).
+ * @param {boolean} cover - Cover scannen
+ * @param {boolean} isbn - ISBN scannen
+ * @returns {Promise<{gestartet: boolean, anzahl?: number}>}
+ */
+export function starteRescan(cover = true, isbn = true) {
+  return post(`/api/books/rescan?cover=${cover}&isbn=${isbn}`);
+}
+
+/**
+ * Rescan-Status abfragen.
+ * @returns {Promise<Object>}
+ */
+export function holeRescanStatus() {
+  return get("/api/books/rescan/status");
+}
+
+/**
+ * Laufenden Rescan abbrechen.
+ * @returns {Promise<Object>}
+ */
+export function brecheRescanAb() {
+  return post("/api/books/rescan/abbrechen");
+}

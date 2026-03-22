@@ -11,6 +11,9 @@
     importEvents,
     bereinigeImportTasks,
     brecheImportAb,
+    starteRescan,
+    holeRescanStatus,
+    brecheRescanAb,
   } from "../lib/api/imports.js";
 
   let activeTab = $state("dateien");
@@ -21,6 +24,48 @@
   let anreichern = $state(false);
   let zaehler = $state({});
   let sseConnection = $state(null);
+
+  // Rescan
+  let rescanStatus = $state(null);
+  let rescanCover = $state(true);
+  let rescanIsbn = $state(true);
+  let rescanPollInterval = null;
+
+  async function startRescan() {
+    try {
+      const result = await starteRescan(rescanCover, rescanIsbn);
+      if (result.gestartet) {
+        pollRescan();
+      } else {
+        scanInfo = { typ: "info", text: result.grund };
+      }
+    } catch (e) {
+      fehler = e.message;
+    }
+  }
+
+  function pollRescan() {
+    if (rescanPollInterval) return;
+    rescanPollInterval = setInterval(async () => {
+      try {
+        rescanStatus = await holeRescanStatus();
+        if (!rescanStatus.laeuft) {
+          clearInterval(rescanPollInterval);
+          rescanPollInterval = null;
+        }
+      } catch {
+        clearInterval(rescanPollInterval);
+        rescanPollInterval = null;
+      }
+    }, 1000);
+  }
+
+  async function stopRescan() {
+    try {
+      await brecheRescanAb();
+      rescanStatus = await holeRescanStatus();
+    } catch {}
+  }
 
   import { get } from "../lib/api/client.js";
   import { onMount, onDestroy } from "svelte";
@@ -34,13 +79,17 @@
       const result = await get("/api/config/paths");
       pfade.import_dir = result.import || "";
       pfade.extern_dir = result.extern || "";
-    } catch {
-      // Pfade konnten nicht geladen werden
-    }
+    } catch {}
+    // Rescan-Status prüfen (falls einer laeuft)
+    try {
+      rescanStatus = await holeRescanStatus();
+      if (rescanStatus?.laeuft) pollRescan();
+    } catch {}
   });
 
   onDestroy(() => {
     sseConnection?.close();
+    if (rescanPollInterval) clearInterval(rescanPollInterval);
   });
 
   async function aktualisiereStatus() {
@@ -208,6 +257,53 @@
         {/if}
         <span class="scan-desc">Read-only -- Dateien werden kopiert, das Original bleibt unangetastet. Gedacht für USB-Laufwerke oder Netzlaufwerke.</span>
       </div>
+    </div>
+
+    <!-- Rescan-Bereich -->
+    <div class="rescan-section">
+      <h3><i class="fa-solid fa-magnifying-glass"></i> Bibliothek erneut scannen</h3>
+      <p class="rescan-desc">Durchsucht bereits importierte Bücher nach fehlenden Covern und ISBNs.</p>
+
+      <div class="rescan-options">
+        <label class="option-check">
+          <input type="checkbox" bind:checked={rescanCover} />
+          <span>Bücher ohne Cover</span>
+        </label>
+        <label class="option-check">
+          <input type="checkbox" bind:checked={rescanIsbn} />
+          <span>Bücher ohne ISBN</span>
+        </label>
+      </div>
+
+      {#if rescanStatus?.laeuft}
+        <div class="rescan-progress">
+          <div class="rescan-progress-bar">
+            <div class="rescan-progress-fill" style="width: {rescanStatus.gesamt > 0 ? (rescanStatus.fortschritt / rescanStatus.gesamt * 100) : 0}%"></div>
+          </div>
+          <div class="rescan-stats">
+            <span>{rescanStatus.fortschritt} / {rescanStatus.gesamt}</span>
+            {#if rescanStatus.cover_gefunden > 0}<span class="rescan-ok"><i class="fa-solid fa-image"></i> {rescanStatus.cover_gefunden} Cover</span>{/if}
+            {#if rescanStatus.isbn_gefunden > 0}<span class="rescan-ok"><i class="fa-solid fa-barcode"></i> {rescanStatus.isbn_gefunden} ISBN</span>{/if}
+            {#if rescanStatus.fehler > 0}<span class="rescan-err"><i class="fa-solid fa-xmark"></i> {rescanStatus.fehler} Fehler</span>{/if}
+          </div>
+          <div class="rescan-current">{rescanStatus.aktuelles_buch}</div>
+          <button class="action-btn cancel-btn" onclick={stopRescan}>
+            <i class="fa-solid fa-stop"></i> Abbrechen
+          </button>
+        </div>
+      {:else}
+        {#if rescanStatus && !rescanStatus.laeuft && rescanStatus.gesamt > 0}
+          <div class="rescan-result">
+            <span><i class="fa-solid fa-check-circle"></i> Abgeschlossen: {rescanStatus.fortschritt} / {rescanStatus.gesamt} Bücher</span>
+            {#if rescanStatus.cover_gefunden > 0}<span class="rescan-ok">{rescanStatus.cover_gefunden} Cover gefunden</span>{/if}
+            {#if rescanStatus.isbn_gefunden > 0}<span class="rescan-ok">{rescanStatus.isbn_gefunden} ISBN gefunden</span>{/if}
+            {#if rescanStatus.fehler > 0}<span class="rescan-err">{rescanStatus.fehler} Fehler</span>{/if}
+          </div>
+        {/if}
+        <button class="action-btn scan-btn" onclick={startRescan} disabled={!rescanCover && !rescanIsbn}>
+          <i class="fa-solid fa-rotate"></i> Rescan starten
+        </button>
+      {/if}
     </div>
 
     {#if zaehler.gesamt > 0 || tasks.length > 0}
@@ -480,5 +576,89 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+  }
+
+  /* Rescan */
+  .rescan-section {
+    padding: 1.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background-color: var(--color-bg-secondary);
+  }
+
+  .rescan-section h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .rescan-desc {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    margin: 0 0 1rem;
+  }
+
+  .rescan-options {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .rescan-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .rescan-progress-bar {
+    width: 100%;
+    height: 6px;
+    background-color: var(--color-bg-primary);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .rescan-progress-fill {
+    height: 100%;
+    background-color: var(--color-accent);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+
+  .rescan-stats {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+  }
+
+  .rescan-ok {
+    color: var(--color-success);
+  }
+
+  .rescan-err {
+    color: var(--color-error);
+  }
+
+  .rescan-current {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .rescan-result {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .rescan-result .rescan-ok,
+  .rescan-result .rescan-err {
+    font-weight: 600;
   }
 </style>
