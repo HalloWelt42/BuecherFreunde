@@ -146,12 +146,6 @@
   --glass-border: rgba(255, 255, 255, 0.1);
 }
 
-/* Alle Elemente mit bg-Farben bekommen Glaseffekt bei aktivem Hintergrundbild */
-.has-bg .grid-main,
-.has-bg .grid-sidebar,
-.has-bg .grid-footer {
-  backdrop-filter: blur(var(--glass-blur-sm));
-}
 
 /* Basis-Stile */
 *,

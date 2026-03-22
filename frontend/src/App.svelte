@@ -72,7 +72,6 @@
 <div class="app-layout" class:sidebar-collapsed={!ui.sidebarOpen} class:reader-fullscreen={ui.readerFullscreen} class:has-bg={bgUrl}>
   {#if bgUrl}
     <div class="app-bg" style="background-image: url({bgUrl})"></div>
-    <div class="app-bg-overlay"></div>
   {/if}
   <div class="grid-header">
     <Header />
@@ -118,26 +117,13 @@
 
   .app-bg {
     position: fixed;
-    inset: 0;
+    inset: -10px;
     z-index: 0;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
     filter: blur(6px) saturate(1.2);
-    transform: scale(1.02);
     pointer-events: none;
-  }
-
-  .app-bg-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background: rgba(255, 255, 255, 0.55);
-  }
-
-  :global(:root.dark) .app-bg-overlay {
-    background: rgba(0, 0, 0, 0.55);
   }
 
   /* Body transparent bei aktivem Hintergrundbild */
