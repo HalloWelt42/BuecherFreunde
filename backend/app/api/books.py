@@ -128,7 +128,7 @@ async def _get_user_data(book_id: int) -> dict:
 
 
 async def _enrich_book_list_item(book: dict) -> BookListItem:
-    """Reichert ein Buch-Dict mit Relationen an."""
+    """Reichert ein Buch-Dict mit Relationen an (Einzelbuch-Fallback)."""
     ud = await _get_user_data(book["id"])
     cats = await _get_book_categories(book["id"])
     sammlung = await _get_book_sammlung(book)
@@ -142,6 +142,69 @@ async def _enrich_book_list_item(book: dict) -> BookListItem:
         categories=cats,
         sammlung=sammlung,
     )
+
+
+async def _batch_enrich_book_list(rows: list[dict]) -> list[BookListItem]:
+    """Reichert eine Liste von Buechern per Batch-Queries an (statt N+1)."""
+    if not rows:
+        return []
+
+    book_ids = [r["id"] for r in rows]
+    ph = ",".join("?" * len(book_ids))
+
+    # 1. user_book_data batch
+    ud_rows = await db.fetch_all(
+        f"SELECT * FROM user_book_data WHERE book_id IN ({ph})",
+        tuple(book_ids),
+    )
+    ud_map = {r["book_id"]: r for r in ud_rows}
+
+    # 2. Kategorien batch
+    cat_rows = await db.fetch_all(
+        f"""SELECT bc.book_id, c.id, c.name, c.slug
+            FROM book_categories bc
+            JOIN categories c ON c.id = bc.category_id
+            WHERE bc.book_id IN ({ph})""",
+        tuple(book_ids),
+    )
+    cat_map: dict[int, list] = {}
+    for r in cat_rows:
+        cat_map.setdefault(r["book_id"], []).append(
+            {"id": r["id"], "name": r["name"], "slug": r["slug"]}
+        )
+
+    # 3. Sammlungen batch (nur fuer Buecher mit sammlung_id)
+    samml_ids = list({r["sammlung_id"] for r in rows if r.get("sammlung_id")})
+    samml_map: dict[int, dict] = {}
+    if samml_ids:
+        sph = ",".join("?" * len(samml_ids))
+        samml_rows = await db.fetch_all(
+            f"SELECT id, name, color FROM collections WHERE id IN ({sph})",
+            tuple(samml_ids),
+        )
+        samml_map = {r["id"]: dict(r) for r in samml_rows}
+
+    # Zusammenbauen
+    result = []
+    for book in rows:
+        bid = book["id"]
+        ud = ud_map.get(bid, {})
+        cats = cat_map.get(bid, [])
+        sammlung = None
+        if book.get("sammlung_id") and book["sammlung_id"] in samml_map:
+            sammlung = {**samml_map[book["sammlung_id"]], "band_nummer": book.get("band_nummer", "")}
+
+        result.append(BookListItem(
+            **book,
+            is_favorite=bool(ud.get("is_favorite")),
+            is_to_read=bool(ud.get("is_to_read")),
+            rating=ud.get("rating", 0),
+            reading_position=ud.get("reading_position", ""),
+            last_read_at=ud.get("last_read_at"),
+            categories=cats,
+            sammlung=sammlung,
+        ))
+    return result
 
 
 @router.get("", response_model=BookListResponse)
@@ -288,10 +351,7 @@ async def list_books(
     """
     rows = await db.fetch_all(select_sql, tuple(params) + (pro_seite, offset))
 
-    buecher = []
-    for row in rows:
-        item = await _enrich_book_list_item(row)
-        buecher.append(item)
+    buecher = await _batch_enrich_book_list(rows)
 
     return BookListResponse(
         buecher=buecher,
@@ -319,7 +379,7 @@ async def recently_read(
         LIMIT ?
     """
     rows = await db.fetch_all(sql, (limit,))
-    return [await _enrich_book_list_item(row) for row in rows]
+    return await _batch_enrich_book_list(rows)
 
 
 @router.get("/{book_id}/aehnliche")
@@ -355,7 +415,7 @@ async def similar_books(
                 ORDER BY b.title LIMIT ?""",
             (*ids, book_id, limit),
         )
-        result["vom_autor"] = [await _enrich_book_list_item(r) for r in rows]
+        result["vom_autor"] = await _batch_enrich_book_list(rows)
     elif book["author"]:
         rows = await db.fetch_all(
             """SELECT id, hash, title, author, publisher, file_format,
@@ -365,7 +425,7 @@ async def similar_books(
                ORDER BY title LIMIT ?""",
             (book["author"], book_id, limit),
         )
-        result["vom_autor"] = [await _enrich_book_list_item(r) for r in rows]
+        result["vom_autor"] = await _batch_enrich_book_list(rows)
 
     # In derselben Kategorie
     cat_ids = await db.fetch_all(
@@ -396,7 +456,7 @@ async def similar_books(
                     ORDER BY b.title LIMIT ?""",
                 (*filtered, *already, limit),
             )
-            result["in_kategorie"] = [await _enrich_book_list_item(r) for r in rows]
+            result["in_kategorie"] = await _batch_enrich_book_list(rows)
 
     return result
 
