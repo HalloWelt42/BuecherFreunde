@@ -3,9 +3,12 @@
   import { get as apiGet } from "../../api/client.js";
   import { onMount } from "svelte";
   import SearchBar from "../search/SearchBar.svelte";
+  import Bedanken from "../settings/Bedanken.svelte";
 
   const themeIcons = { light: "fa-sun", dark: "fa-moon", system: "fa-circle-half-stroke" };
   const themeLabels = { light: "Hell", dark: "Dunkel", system: "System" };
+
+  let bedankenOpen = $state(false);
 
   onMount(async () => {
     try {
@@ -30,6 +33,9 @@
       <i class="fa-solid fa-book-open brand-icon"></i>
       <span class="brand-text">BücherFreunde</span>
     </a>
+    <button class="donate-heart" onclick={() => bedankenOpen = true} title="Unterstützen">
+      <i class="fa-solid fa-heart"></i>
+    </button>
   </div>
 
   <div class="header-center">
@@ -65,6 +71,8 @@
     </button>
   </div>
 </header>
+
+<Bedanken bind:visible={bedankenOpen} />
 
 <style>
   .app-header {
@@ -127,6 +135,40 @@
     font-weight: 700;
     color: var(--color-text-primary);
     letter-spacing: -0.01em;
+  }
+
+  @keyframes heartPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
+
+  .donate-heart {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: 14px;
+    color: #cc2244;
+    text-shadow:
+      0 0 6px rgba(204, 34, 68, 0.6),
+      0 0 12px rgba(204, 34, 68, 0.3);
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+    transition: all 0.2s ease;
+    animation: heartPulse 2s ease-in-out infinite;
+  }
+
+  .donate-heart:hover {
+    color: #ee3355;
+    text-shadow:
+      0 0 10px rgba(238, 51, 85, 0.8),
+      0 0 20px rgba(238, 51, 85, 0.5),
+      0 0 30px rgba(238, 51, 85, 0.3);
+    transform: scale(1.2);
+    animation: none;
+  }
+
+  .donate-heart:active {
+    transform: scale(0.95);
   }
 
   .header-center {
