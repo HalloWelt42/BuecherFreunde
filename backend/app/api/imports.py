@@ -7,7 +7,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 
 from backend.app.core.auth import verify_token, verify_token_query
@@ -28,14 +28,23 @@ logger = logging.getLogger("buecherfreunde.api.import")
 
 router = APIRouter(prefix="/api/import", tags=["Import"])
 
+# Laufende Import-Tasks tracken damit sie nicht garbage-collected werden
+_running_tasks: set = set()
+
+
+def _fire_and_forget(coro):
+    """Startet eine Coroutine als Task und trackt sie."""
+    task = asyncio.create_task(coro)
+    _running_tasks.add(task)
+    task.add_done_callback(_running_tasks.discard)
+
 
 @router.post("/upload")
 async def upload_file(
     file: UploadFile,
-    background_tasks: BackgroundTasks,
     _token: str = Depends(verify_token),
 ):
-    """Lädt eine einzelne Datei hoch und importiert sie."""
+    """Laedt eine einzelne Datei hoch und importiert sie."""
     if not file.filename:
         raise HTTPException(status_code=400, detail="Kein Dateiname")
 
@@ -43,32 +52,31 @@ async def upload_file(
     if suffix not in SUPPORTED_FORMATS:
         raise HTTPException(
             status_code=400,
-            detail=f"Format '{suffix}' nicht unterstützt. Erlaubt: {', '.join(sorted(SUPPORTED_FORMATS))}",
+            detail=f"Format '{suffix}' nicht unterstuetzt. Erlaubt: {', '.join(sorted(SUPPORTED_FORMATS))}",
         )
 
-    # Import-Aufgabe erstellen
     task_id = await create_import_task(file.filename)
 
-    # Datei temporär speichern (nur Dateiname ohne Pfad gegen Path Traversal)
     safe_name = sanitize_filename(file.filename)
     import_dir = settings.import_dir
     import_dir.mkdir(parents=True, exist_ok=True)
     temp_path = import_dir / f"upload_{task_id}_{safe_name}"
 
     try:
+        content = await file.read()
         with open(temp_path, "wb") as f:
-            content = await file.read()
             f.write(content)
+        logger.info("Upload gespeichert: %s (%d bytes)", safe_name, len(content))
     except Exception as e:
         await update_task_status(task_id, "fehler", 0, "", str(e))
         raise HTTPException(status_code=500, detail=f"Upload fehlgeschlagen: {e}")
 
-    # Import im Hintergrund starten
-    async def _import():
+    async def _do_import():
         try:
+            logger.info("Starte Import Task %d: %s", task_id, safe_name)
             await import_single_file(temp_path, task_id)
         except Exception as exc:
-            logger.error("Import fehlgeschlagen fuer Task %d: %s", task_id, exc)
+            logger.error("Import Task %d fehlgeschlagen: %s", task_id, exc, exc_info=True)
             try:
                 await update_task_status(task_id, "fehler", 0, "", str(exc))
             except Exception:
@@ -76,7 +84,7 @@ async def upload_file(
         finally:
             temp_path.unlink(missing_ok=True)
 
-    background_tasks.add_task(_import)
+    _fire_and_forget(_do_import())
 
     return {"task_id": task_id, "datei": file.filename, "status": "wartend"}
 
@@ -84,10 +92,9 @@ async def upload_file(
 @router.post("/upload-mehrere")
 async def upload_multiple(
     files: list[UploadFile],
-    background_tasks: BackgroundTasks,
     _token: str = Depends(verify_token),
 ):
-    """Lädt mehrere Dateien hoch und importiert sie."""
+    """Laedt mehrere Dateien hoch und importiert sie."""
     tasks = []
 
     for file in files:
@@ -104,15 +111,22 @@ async def upload_multiple(
         import_dir.mkdir(parents=True, exist_ok=True)
         temp_path = import_dir / f"upload_{task_id}_{safe_name}"
 
-        with open(temp_path, "wb") as f:
+        try:
             content = await file.read()
-            f.write(content)
+            with open(temp_path, "wb") as f:
+                f.write(content)
+            logger.info("Upload gespeichert: %s (%d bytes)", safe_name, len(content))
+        except Exception as e:
+            await update_task_status(task_id, "fehler", 0, "", str(e))
+            tasks.append({"task_id": task_id, "datei": file.filename, "fehler": str(e)})
+            continue
 
-        async def _import(path=temp_path, tid=task_id):
+        async def _do_import(path=temp_path, tid=task_id, name=safe_name):
             try:
+                logger.info("Starte Import Task %d: %s", tid, name)
                 await import_single_file(path, tid)
             except Exception as exc:
-                logger.error("Import fehlgeschlagen fuer Task %d: %s", tid, exc)
+                logger.error("Import Task %d fehlgeschlagen: %s", tid, exc, exc_info=True)
                 try:
                     await update_task_status(tid, "fehler", 0, "", str(exc))
                 except Exception:
@@ -120,7 +134,7 @@ async def upload_multiple(
             finally:
                 path.unlink(missing_ok=True)
 
-        background_tasks.add_task(_import)
+        _fire_and_forget(_do_import())
         tasks.append({"task_id": task_id, "datei": file.filename})
 
     return {"aufgaben": tasks, "anzahl": len(tasks)}
@@ -128,16 +142,10 @@ async def upload_multiple(
 
 @router.post("/scan")
 async def scan_import_dir(
-    background_tasks: BackgroundTasks,
     anreichern: bool = Query(False, description="Metadaten via Open Library anreichern"),
     _token: str = Depends(verify_token),
 ):
-    """Scannt das Import-Verzeichnis und importiert neue Dateien.
-
-    Listet Dateien schnell auf (ohne Hash), erstellt sofort Tasks
-    und verarbeitet alles im Hintergrund. Duplikate werden pro Datei
-    beim Import erkannt.
-    """
+    """Scannt das Import-Verzeichnis und importiert neue Dateien."""
     files = list_importable_files(settings.import_dir)
 
     if not files:
@@ -148,10 +156,17 @@ async def scan_import_dir(
         file_path = Path(f["pfad"])
         task_id = await create_import_task(f["name"], f["pfad"])
 
-        async def _import(path=file_path, tid=task_id, enrich=anreichern):
-            await import_single_file(path, tid, enrich=enrich)
+        async def _do_import(path=file_path, tid=task_id, enrich=anreichern):
+            try:
+                await import_single_file(path, tid, enrich=enrich)
+            except Exception as exc:
+                logger.error("Import Task %d fehlgeschlagen: %s", tid, exc)
+                try:
+                    await update_task_status(tid, "fehler", 0, "", str(exc))
+                except Exception:
+                    pass
 
-        background_tasks.add_task(_import)
+        _fire_and_forget(_do_import())
         tasks.append({"task_id": task_id, "datei": f["name"]})
 
     return {"gefunden": len(files), "neu": len(tasks), "aufgaben": tasks}
@@ -159,16 +174,10 @@ async def scan_import_dir(
 
 @router.post("/externes-verzeichnis")
 async def scan_external_dir(
-    background_tasks: BackgroundTasks,
     anreichern: bool = Query(False, description="Metadaten via Open Library anreichern"),
     _token: str = Depends(verify_token),
 ):
-    """Scannt das externe Verzeichnis und importiert neue Dateien.
-
-    Listet Dateien schnell auf (ohne Hash), erstellt sofort Tasks
-    und verarbeitet alles im Hintergrund. Duplikate werden pro Datei
-    beim Import erkannt.
-    """
+    """Scannt das externe Verzeichnis und importiert neue Dateien."""
     if not settings.external_dir.exists():
         raise HTTPException(
             status_code=404, detail="Externes Verzeichnis nicht gefunden"
@@ -184,10 +193,17 @@ async def scan_external_dir(
         file_path = Path(f["pfad"])
         task_id = await create_import_task(f["name"], f["pfad"])
 
-        async def _import(path=file_path, tid=task_id, enrich=anreichern):
-            await import_single_file(path, tid, enrich=enrich)
+        async def _do_import(path=file_path, tid=task_id, enrich=anreichern):
+            try:
+                await import_single_file(path, tid, enrich=enrich)
+            except Exception as exc:
+                logger.error("Import Task %d fehlgeschlagen: %s", tid, exc)
+                try:
+                    await update_task_status(tid, "fehler", 0, "", str(exc))
+                except Exception:
+                    pass
 
-        background_tasks.add_task(_import)
+        _fire_and_forget(_do_import())
         tasks.append({"task_id": task_id, "datei": f["name"]})
 
     return {"gefunden": len(files), "neu": len(tasks), "aufgaben": tasks}
@@ -195,30 +211,27 @@ async def scan_external_dir(
 
 @router.get("/status")
 async def import_status(_token: str = Depends(verify_token)):
-    """Gibt den Status aller Import-Aufgaben zurück."""
-    result = await get_import_status()
-    return result
+    """Gibt den Status aller Import-Aufgaben zurueck."""
+    return await get_import_status()
 
 
 @router.delete("/bereinigen")
 async def clear_finished(_token: str = Depends(verify_token)):
-    """Löscht alle abgeschlossenen Import-Aufgaben aus der Datenbank."""
+    """Loescht alle abgeschlossenen Import-Aufgaben aus der Datenbank."""
     await clear_finished_tasks()
-    result = await get_import_status()
-    return result
+    return await get_import_status()
 
 
 @router.post("/abbrechen")
 async def cancel_import(_token: str = Depends(verify_token)):
     """Bricht alle wartenden Import-Aufgaben ab."""
     await cancel_pending_tasks()
-    result = await get_import_status()
-    return result
+    return await get_import_status()
 
 
 @router.get("/events")
 async def import_events(_token: str = Depends(verify_token_query)):
-    """SSE-Endpunkt für Echtzeit-Fortschritt der Import-Aufgaben."""
+    """SSE-Endpunkt fuer Echtzeit-Fortschritt der Import-Aufgaben."""
 
     async def event_generator():
         last_data = None
