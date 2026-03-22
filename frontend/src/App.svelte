@@ -123,8 +123,8 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    filter: blur(var(--cover-bg-blur)) saturate(var(--cover-bg-saturate));
-    transform: scale(var(--cover-bg-scale));
+    filter: blur(20px) saturate(1.2);
+    transform: scale(1.08);
     pointer-events: none;
   }
 
@@ -133,16 +133,38 @@
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    background: var(--cover-bg-overlay);
+    background: rgba(255, 255, 255, 0.55);
   }
 
+  :global(:root.dark) .app-bg-overlay {
+    background: rgba(0, 0, 0, 0.55);
+  }
+
+  /* Bei aktivem Hintergrundbild: alle Flaechen transparent machen */
+  :global(body:has(.app-layout.has-bg)) {
+    background-color: transparent;
+  }
+
+  .app-layout.has-bg .grid-sidebar,
   .app-layout.has-bg .grid-main,
-  .app-layout.has-bg .grid-sidebar {
+  .app-layout.has-bg .grid-footer {
     background: transparent;
   }
 
-  :global(body:has(.app-layout.has-bg)) {
-    background-color: transparent;
+  :global(.app-layout.has-bg .sidebar) {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+  }
+
+  :global(.app-layout.has-bg .app-header) {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+  }
+
+  :global(.app-layout.has-bg .app-footer) {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border-top-color: var(--glass-border);
   }
 
   .app-layout.sidebar-collapsed {
