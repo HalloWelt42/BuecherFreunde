@@ -131,11 +131,15 @@ async def import_single_file(file_path: Path, task_id: int | None = None, enrich
         await update_task_status(task_id, "verarbeite", 60, "ISBN wird gesucht")
 
     if enrich and proc_result.isbn and settings.openlibrary_enabled:
+        # Abbruch prüfen bevor wir auf externe API warten
+        if task_id and await is_task_cancelled(task_id):
+            result["status"] = "abgebrochen"
+            return result
         if task_id:
             await update_task_status(task_id, "verarbeite", 65, "Metadaten werden angereichert (Open Library)")
         try:
             from backend.app.services.openlibrary import lookup_isbn
-            ol_data = await lookup_isbn(proc_result.isbn)
+            ol_data = await asyncio.wait_for(lookup_isbn(proc_result.isbn), timeout=15.0)
             if ol_data:
                 if not proc_result.author and ol_data.get("autor"):
                     proc_result.author = ol_data["autor"]
@@ -151,16 +155,22 @@ async def import_single_file(file_path: Path, task_id: int | None = None, enrich
                 if ol_data.get("titel") and proc_result.title == file_path.stem.replace("_", " ").replace("-", " "):
                     proc_result.title = ol_data["titel"]
                 logger.info("Metadaten angereichert via Open Library für ISBN %s", proc_result.isbn)
+        except asyncio.TimeoutError:
+            logger.warning("Open Library Timeout für ISBN %s", proc_result.isbn)
         except Exception as e:
             logger.warning("Open Library Anreicherung fehlgeschlagen: %s", e)
     elif enrich and not proc_result.isbn and proc_result.title and settings.openlibrary_enabled:
+        # Abbruch prüfen
+        if task_id and await is_task_cancelled(task_id):
+            result["status"] = "abgebrochen"
+            return result
         # Fallback: Titel/Autor-Suche wenn keine ISBN
         if task_id:
             await update_task_status(task_id, "verarbeite", 65, "Suche nach Metadaten (Titel/Autor)")
         try:
             from backend.app.services.openlibrary import search_books
             query = f"{proc_result.title} {proc_result.author}".strip()
-            results = await search_books(query, limit=1)
+            results = await asyncio.wait_for(search_books(query, limit=1), timeout=15.0)
             if results:
                 ol_data = results[0]
                 if ol_data.get("isbn"):
@@ -170,6 +180,8 @@ async def import_single_file(file_path: Path, task_id: int | None = None, enrich
                 if not proc_result.year and ol_data.get("jahr"):
                     proc_result.year = ol_data["jahr"]
                 logger.info("Metadaten via Titelsuche gefunden: %s", proc_result.title)
+        except asyncio.TimeoutError:
+            logger.warning("Open Library Titel-Suche Timeout für: %s", proc_result.title)
         except Exception as e:
             logger.warning("Open Library Titelsuche fehlgeschlagen: %s", e)
 
@@ -378,9 +390,25 @@ async def clear_finished_tasks() -> int:
 
 
 async def cancel_pending_tasks() -> int:
-    """Bricht alle wartenden Tasks ab (löscht sie aus der DB)."""
-    result = await db.execute(
+    """Bricht alle wartenden und aktiven Tasks ab."""
+    # Wartende löschen
+    await db.execute(
         "DELETE FROM import_tasks WHERE status = 'wartend'"
     )
+    # Laufende als abgebrochen markieren
+    await db.execute(
+        """UPDATE import_tasks SET status = 'fehler', error = 'Abgebrochen',
+           current_step = 'Abgebrochen', updated_at = datetime('now')
+           WHERE status = 'verarbeite'"""
+    )
     await db.commit()
-    return result
+
+
+async def is_task_cancelled(task_id: int) -> bool:
+    """Prüft ob ein Task abgebrochen wurde."""
+    row = await db.fetch_one(
+        "SELECT status FROM import_tasks WHERE id = ?", (task_id,)
+    )
+    if not row:
+        return True  # Task gelöscht = abgebrochen
+    return row["status"] not in ("wartend", "verarbeite")
