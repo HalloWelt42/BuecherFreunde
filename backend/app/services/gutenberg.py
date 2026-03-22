@@ -40,8 +40,8 @@ async def suche(
     if topic:
         params["topic"] = topic
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.get(f"{GUTENDEX_BASE}/books", params=params)
+    async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+        resp = await client.get(f"{GUTENDEX_BASE}/books/", params=params)
         resp.raise_for_status()
         data = resp.json()
 
