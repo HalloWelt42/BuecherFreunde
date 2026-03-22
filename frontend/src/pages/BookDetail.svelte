@@ -551,11 +551,22 @@
           const d = JSON.parse(rest);
           if (d.scrollPct != null) { items.push({ label: "Fortschritt", value: `${d.scrollPct}%` }); percent = Math.round(d.scrollPct); }
           if (d.fontSize) items.push({ label: "Schrift", value: `${d.fontSize}%` });
+          if (d.fontFamily) {
+            fontPreview = {
+              family: d.fontFamily,
+              name: d.fontFamily.split(",")[0].trim().replace(/'/g, ""),
+              fg: d.fgColor || null,
+              bg: d.bgColor || null,
+            };
+          }
           if (d.breite != null) {
             const breitenLabels = ["Schmal", "Mittel", "Breit", "Voll"];
             items.push({ label: "Breite", value: breitenLabels[d.breite] || "Mittel", type: "txt-breite" });
           }
-          if (d.papier) items.push({ label: "Papier", value: d.papier, type: "papier" });
+          if (d.fgColor && d.bgColor) {
+            const themeNames = { "#ffffff": "Hell", "#f4ecd8": "Sepia", "#3d3526": "Dämmerung", "#1e1e1e": "Dunkel", "#0a0a0a": "Nacht" };
+            items.push({ label: "Thema", value: themeNames[d.bgColor] || "Individuell" });
+          }
         } catch { items.push({ label: "Position", value: pos }); }
       } else {
         items.push({ label: "Fortschritt", value: `${rest}%` });

@@ -17,8 +17,11 @@
     format = "txt",
     initialPapier = "",
     initialFontSize = 0,
+    initialFontFamily = "",
     initialScrollPct = 0,
     initialBreite = -1,
+    initialFgColor = "",
+    initialBgColor = "",
     onBack = () => {},
     onPositionChange = () => {},
   } = $props();
@@ -28,6 +31,40 @@
   let fehler = $state(null);
   let fontSize = $state(untrack(() => initialFontSize > 0 ? initialFontSize : 100));
   let scrollContainer = $state(null);
+
+  // Schriftarten (wie EPUB-Reader)
+  const schriften = [
+    { name: "Standard", value: "" },
+    { name: "Barlow", value: "Barlow, sans-serif" },
+    { name: "Serif", value: "Georgia, 'Times New Roman', serif" },
+    { name: "System", value: "system-ui, -apple-system, sans-serif" },
+  ];
+  let fontFamily = $state(untrack(() => initialFontFamily || ""));
+
+  // Farbthemen (wie EPUB-Reader)
+  const farbThemen = [
+    { name: "Hell", fg: "#1a1a1a", bg: "#ffffff", icon: "fa-sun" },
+    { name: "Sepia", fg: "#3d2b1f", bg: "#f4ecd8", icon: "fa-cloud-sun" },
+    { name: "Dämmerung", fg: "#c9b99a", bg: "#3d3526", icon: "fa-cloud-moon" },
+    { name: "Dunkel", fg: "#c8c8c8", bg: "#1e1e1e", icon: "fa-moon" },
+    { name: "Nacht", fg: "#8a8a8a", bg: "#0a0a0a", icon: "fa-star" },
+  ];
+  let fgColor = $state(untrack(() => initialFgColor || "#1a1a1a"));
+  let bgColor = $state(untrack(() => initialBgColor || "#ffffff"));
+  let activeThemeIndex = $derived.by(() => {
+    const idx = farbThemen.findIndex(t => t.fg === fgColor && t.bg === bgColor);
+    return idx >= 0 ? idx : -1;
+  });
+  let istDunkel = $derived(bgColor === "#1e1e1e" || bgColor === "#0a0a0a" || bgColor === "#3d3526");
+
+  function setzeThema(theme) {
+    fgColor = theme.fg;
+    bgColor = theme.bg;
+    triggerSave();
+  }
+
+  // Einstellungspanel
+  let settingsOffen = $state(false);
 
   // Markdown oder Plaintext?
   let istMarkdown = $derived(format === "md");
@@ -49,16 +86,22 @@
         level: "block",
         start(src) { return src.match(/>\s*\[!/)?.index; },
         tokenizer(src) {
-          const match = src.match(/^(?:>\s*\[!(\w+)\]\n)((?:[^\n]*(?:\n(?:>\s?)[^\n]*)*)?)(?:\n|$)/);
+          // Format 1: > [!type] Text auf gleicher Zeile (Obsidian)
+          // Format 2: > [!type]\n> Text auf Folgezeilen (GitHub)
+          const match = src.match(/^>\s*\[!(\w+)\][ \t]*(.*?)(?:\n((?:>\s?[^\n]*(?:\n|$))*))?(?:\n|$)/);
           if (!match) return;
           const raw = match[1].toLowerCase();
           const alertType = ALERT_ALIASES[raw];
           if (!alertType) return;
-          const text = match[2]
+          // Titel von der ersten Zeile
+          const titleText = (match[2] || "").trim();
+          // Folgezeilen (> prefixed)
+          const bodyLines = (match[3] || "")
             .split("\n")
             .map((line) => line.replace(/^>\s?/, ""))
             .join("\n")
             .trim();
+          const text = [titleText, bodyLines].filter(Boolean).join("\n");
           return { type: "alert", raw: match[0], text, alertType };
         },
       }],
@@ -90,25 +133,20 @@
   let aktuelleSeite = $state(1);
   let fortschritt = $state(0);
 
-  // Papier-Modus
-  const papierModi = ["normal", "sepia", "dunkel"];
-  let papierModus = $state(untrack(() => papierModi.includes(initialPapier) ? initialPapier : "normal"));
-
-  function togglePapierModus() {
-    const idx = papierModi.indexOf(papierModus);
-    papierModus = papierModi[(idx + 1) % papierModi.length];
-    triggerSave();
-  }
+  // Papier-Modus entfernt, jetzt Farbthemen
 
   $effect(() => {
     ladeText(bookId);
   });
 
-  // Syntax-Highlighting nach Markdown-Rendering anwenden
+  // Syntax-Highlighting + Copy-Buttons nach Markdown-Rendering anwenden
   $effect(() => {
     if (!laden && istMarkdown && content && scrollContainer) {
       // Kurz warten bis SvelteMarkdown gerendert hat
-      requestAnimationFrame(() => highlightCodeBlocks());
+      requestAnimationFrame(() => {
+        highlightCodeBlocks();
+        addCopyButtons();
+      });
     }
   });
 
@@ -193,6 +231,34 @@
     }
   }
 
+  function addCopyButtons() {
+    if (!scrollContainer) return;
+    const preBlocks = scrollContainer.querySelectorAll("pre");
+    for (const pre of preBlocks) {
+      if (pre.querySelector(".code-copy-btn")) continue;
+      // Wrapper fuer position:relative
+      pre.style.position = "relative";
+      const btn = document.createElement("button");
+      btn.className = "code-copy-btn";
+      btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+      btn.title = "Code kopieren";
+      btn.addEventListener("click", async () => {
+        const code = pre.querySelector("code");
+        const text = code ? code.textContent : pre.textContent;
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+          btn.classList.add("copied");
+          setTimeout(() => {
+            btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+            btn.classList.remove("copied");
+          }, 2000);
+        } catch { /* Clipboard nicht verfuegbar */ }
+      });
+      pre.appendChild(btn);
+    }
+  }
+
   async function ladeText(id) {
     laden = true;
     fehler = null;
@@ -229,7 +295,6 @@
     clearTimeout(saveTimeout);
     const params = new URLSearchParams();
     if (fortschritt > 0) params.set("pos", String(fortschritt));
-    if (papierModus !== "normal") params.set("papier", papierModus);
     if (fontSize !== 100) params.set("font", String(fontSize));
     const newUrl = `/book/${bookId}/read${params.toString() ? "?" + params.toString() : ""}`;
     history.replaceState(null, "", newUrl);
@@ -237,9 +302,11 @@
     saveTimeout = setTimeout(async () => {
       const settings = {
         scrollPct: fortschritt,
-        papier: papierModus,
         fontSize,
+        fontFamily,
         breite: breiteIdx,
+        fgColor,
+        bgColor,
       };
       const pos = `txt:${JSON.stringify(settings)}`;
       onPositionChange(pos);
@@ -336,20 +403,14 @@
 
       <div class="toolbar-sep"></div>
 
-      <!-- Papier-Modus -->
+      <!-- Einstellungen (Schrift, Theme) -->
       <button
         class="tool-btn"
-        class:active={papierModus !== "normal"}
-        onclick={togglePapierModus}
-        title="Papier: {papierModus === 'normal' ? 'Normal' : papierModus === 'sepia' ? 'Sepia' : 'Dunkel'}"
+        class:active={settingsOffen}
+        onclick={() => settingsOffen = !settingsOffen}
+        title="Darstellung"
       >
-        {#if papierModus === "normal"}
-          <i class="fa-solid fa-sun"></i>
-        {:else if papierModus === "sepia"}
-          <i class="fa-solid fa-cloud-sun" style="color: #d4a574"></i>
-        {:else}
-          <i class="fa-solid fa-moon"></i>
-        {/if}
+        <i class="fa-solid fa-palette"></i>
       </button>
 
       <div class="toolbar-sep"></div>
@@ -384,19 +445,53 @@
       </button>
     </div>
 
+    {#if settingsOffen}
+      <div class="settings-panel">
+        <div class="settings-row">
+          <span class="settings-label">Schriftart</span>
+          <div class="settings-options">
+            {#each schriften as s}
+              <button
+                class="option-btn"
+                class:active={fontFamily === s.value}
+                onclick={() => { fontFamily = s.value; triggerSave(); }}
+                style="font-family: {s.value || 'inherit'}"
+              >{s.name}</button>
+            {/each}
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Farbthema</span>
+          <div class="settings-options">
+            {#each farbThemen as theme, i}
+              <button
+                class="theme-btn"
+                class:active={activeThemeIndex === i}
+                onclick={() => setzeThema(theme)}
+                title={theme.name}
+                style="background-color: {theme.bg}; color: {theme.fg}; border-color: {activeThemeIndex === i ? 'var(--color-accent)' : theme.bg === '#ffffff' ? '#ccc' : theme.bg}"
+              >
+                <i class="fa-solid {theme.icon}"></i>
+              </button>
+            {/each}
+          </div>
+        </div>
+      </div>
+    {/if}
+
     <div
       class="text-content"
-      class:papier-sepia={papierModus === "sepia"}
-      class:papier-dunkel={papierModus === "dunkel"}
+      class:ist-dunkel={istDunkel}
       bind:this={scrollContainer}
       onscroll={handleScroll}
+      style="background-color: {bgColor}; color: {fgColor};"
     >
       {#if istMarkdown}
-        <div class="markdown-body" style="font-size: {fontSize}%; max-width: {maxBreite}">
+        <div class="markdown-body" style="font-size: {fontSize}%; max-width: {maxBreite}; font-family: {fontFamily || 'inherit'}">
           <SvelteMarkdown source={content} extensions={mdExtensions} renderers={mdRenderers} />
         </div>
       {:else}
-        <pre class="text-pre" style="font-size: {fontSize}%; max-width: {maxBreite}">{content}</pre>
+        <pre class="text-pre" style="font-size: {fontSize}%; max-width: {maxBreite}; font-family: {fontFamily || 'var(--font-sans)'}">{content}</pre>
       {/if}
     </div>
 
@@ -554,38 +649,94 @@
 
   .zoom-display:hover { background-color: var(--color-bg-tertiary); }
 
+  /* Settings-Panel */
+  .settings-panel {
+    display: flex;
+    gap: 1.5rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-bg-secondary);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .settings-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .settings-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+
+  .settings-options {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .option-btn {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.6875rem;
+    border: 1px solid var(--color-border);
+    border-radius: 3px;
+    background: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+
+  .option-btn:hover {
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .option-btn.active {
+    background-color: color-mix(in srgb, var(--color-accent) 15%, transparent);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .theme-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6875rem;
+    transition: transform 0.1s;
+  }
+
+  .theme-btn:hover { transform: scale(1.15); }
+  .theme-btn.active { transform: scale(1.15); box-shadow: 0 0 0 2px var(--color-accent); }
+
   /* Text-Inhalt */
   .text-content {
     flex: 1;
     overflow: auto;
     padding: 2rem;
-    background-color: var(--color-bg-primary);
   }
-
-  .text-content.papier-sepia { background-color: #f4ecd8; }
-  :global(:root.dark) .text-content.papier-sepia { background-color: #3d3526; }
-  .text-content.papier-dunkel { background-color: #1e1e1e; }
 
   /* Plaintext */
   .text-pre {
-    font-family: var(--font-sans);
     line-height: 1.7;
     white-space: pre-wrap;
     word-wrap: break-word;
-    color: var(--color-text-primary);
+    color: inherit;
     margin: 0 auto;
   }
-
-  .papier-sepia .text-pre { color: #3d2b1f; }
-  :global(:root.dark) .papier-sepia .text-pre { color: #d4c5a9; }
-  .papier-dunkel .text-pre { color: #c8c8c8; }
 
   /* Markdown-Body */
   .markdown-body {
     margin: 0 auto;
-    color: var(--color-text-primary);
+    color: inherit;
     line-height: 1.7;
-    font-family: var(--font-sans);
   }
 
   /* Ueberschriften */
@@ -616,30 +767,72 @@
     margin: 0.75em 0; padding: 0.5em 1em;
     border-left: 4px solid var(--color-accent);
     background: color-mix(in srgb, var(--color-accent) 5%, transparent);
-    color: var(--color-text-secondary);
+    opacity: 0.85;
   }
   .markdown-body :global(blockquote p) { margin: 0.25em 0; }
 
   /* Inline-Code */
   .markdown-body :global(code) {
-    font-family: var(--font-mono, "JetBrains Mono", monospace);
+    font-family: "JetBrains Mono", var(--font-mono, monospace);
+    font-weight: 700;
     font-size: 0.875em;
     background: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
     padding: 0.15em 0.4em; border-radius: 4px;
   }
 
-  /* Code-Bloecke */
+  /* Code-Bloecke - Dracula Theme */
   .markdown-body :global(pre) {
-    margin: 1em 0; padding: 1em; border-radius: 8px;
-    background: var(--color-bg-secondary, #f5f5f5);
-    border: 1px solid var(--color-border); overflow-x: auto;
+    margin: 1em 0; padding: 1em; border-radius: 6px;
+    background: #282a36;
+    border: 1px solid #44475a; overflow-x: auto;
+    position: relative;
   }
-  :global(:root.dark) .markdown-body :global(pre) { background: #1e1e2e; border-color: #313244; }
 
   .markdown-body :global(pre code) {
     background: none; padding: 0; border-radius: 0;
+    font-family: "JetBrains Mono", var(--font-mono, monospace);
+    font-weight: 700;
     font-size: 0.8125em; line-height: 1.6; display: block;
     white-space: pre; overflow-x: auto;
+    color: #f8f8f2;
+  }
+
+  /* Copy-Button */
+  .markdown-body :global(.code-copy-btn) {
+    position: sticky;
+    float: right;
+    top: 0.5em;
+    right: 0;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #6272a4;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+    z-index: 2;
+    margin-top: -0.5em;
+    margin-right: -0.5em;
+  }
+
+  .markdown-body :global(pre:hover .code-copy-btn) {
+    opacity: 1;
+  }
+
+  .markdown-body :global(.code-copy-btn:hover) {
+    background: rgba(255, 255, 255, 0.2);
+    color: #f8f8f2;
+  }
+
+  .markdown-body :global(.code-copy-btn.copied) {
+    color: #50fa7b;
+    opacity: 1;
   }
 
   /* Tabellen */
@@ -671,60 +864,33 @@
     color: var(--color-error); font-size: 0.8125em;
   }
 
-  /* Papier-Modi fuer Markdown */
-  .papier-sepia .markdown-body { color: #3d2b1f; }
-  .papier-sepia .markdown-body :global(h1),
-  .papier-sepia .markdown-body :global(h2),
-  .papier-sepia .markdown-body :global(h3) { color: #2c1e14; }
-  .papier-sepia .markdown-body :global(pre) { background: #ede3cf; border-color: #d4c5a9; }
-  .papier-sepia .markdown-body :global(code) { background: #ede3cf; }
-
-  :global(:root.dark) .papier-sepia .markdown-body { color: #d4c5a9; }
-  :global(:root.dark) .papier-sepia .markdown-body :global(pre) { background: #352e21; border-color: #4a4133; }
-
-  .papier-dunkel .markdown-body { color: #c8c8c8; }
-  .papier-dunkel .markdown-body :global(h1),
-  .papier-dunkel .markdown-body :global(h2),
-  .papier-dunkel .markdown-body :global(h3) { color: #e0e0e0; }
-  .papier-dunkel .markdown-body :global(pre) { background: #2a2a2a; border-color: #3a3a3a; }
-  .papier-dunkel .markdown-body :global(code) { background: #2a2a2a; }
-
-  /* highlight.js - Light */
-  .markdown-body :global(.hljs-keyword) { color: #d73a49; }
-  .markdown-body :global(.hljs-string) { color: #032f62; }
-  .markdown-body :global(.hljs-number) { color: #005cc5; }
-  .markdown-body :global(.hljs-comment) { color: #6a737d; font-style: italic; }
+  /* highlight.js - Dracula Theme (einheitlich fuer alle Modi) */
+  .markdown-body :global(.hljs-keyword) { color: #ff79c6; }
+  .markdown-body :global(.hljs-string) { color: #f1fa8c; }
+  .markdown-body :global(.hljs-number) { color: #bd93f9; }
+  .markdown-body :global(.hljs-comment) { color: #6272a4; font-style: italic; }
   .markdown-body :global(.hljs-function),
-  .markdown-body :global(.hljs-title) { color: #6f42c1; }
-  .markdown-body :global(.hljs-built_in) { color: #e36209; }
-  .markdown-body :global(.hljs-literal) { color: #005cc5; }
-  .markdown-body :global(.hljs-type) { color: #d73a49; }
-  .markdown-body :global(.hljs-params) { color: #24292e; }
+  .markdown-body :global(.hljs-title) { color: #50fa7b; }
+  .markdown-body :global(.hljs-built_in) { color: #8be9fd; font-style: italic; }
+  .markdown-body :global(.hljs-literal) { color: #bd93f9; }
+  .markdown-body :global(.hljs-type) { color: #8be9fd; }
+  .markdown-body :global(.hljs-params) { color: #ffb86c; }
   .markdown-body :global(.hljs-meta),
-  .markdown-body :global(.hljs-attr) { color: #005cc5; }
-  .markdown-body :global(.hljs-variable) { color: #e36209; }
-  .markdown-body :global(.hljs-selector-tag) { color: #22863a; }
-  .markdown-body :global(.hljs-selector-class) { color: #6f42c1; }
-  .markdown-body :global(.hljs-addition) { color: #22863a; background-color: #f0fff4; }
-  .markdown-body :global(.hljs-deletion) { color: #b31d28; background-color: #ffeef0; }
-
-  /* highlight.js - Dark */
-  :global(:root.dark) .markdown-body :global(.hljs-keyword) { color: #ff7b72; }
-  :global(:root.dark) .markdown-body :global(.hljs-string) { color: #a5d6ff; }
-  :global(:root.dark) .markdown-body :global(.hljs-number) { color: #79c0ff; }
-  :global(:root.dark) .markdown-body :global(.hljs-comment) { color: #8b949e; font-style: italic; }
-  :global(:root.dark) .markdown-body :global(.hljs-function),
-  :global(:root.dark) .markdown-body :global(.hljs-title) { color: #d2a8ff; }
-  :global(:root.dark) .markdown-body :global(.hljs-built_in) { color: #ffa657; }
-  :global(:root.dark) .markdown-body :global(.hljs-literal) { color: #79c0ff; }
-  :global(:root.dark) .markdown-body :global(.hljs-type) { color: #ff7b72; }
-  :global(:root.dark) .markdown-body :global(.hljs-params) { color: #c9d1d9; }
-  :global(:root.dark) .markdown-body :global(.hljs-meta),
-  :global(:root.dark) .markdown-body :global(.hljs-attr) { color: #79c0ff; }
-  :global(:root.dark) .markdown-body :global(.hljs-variable) { color: #ffa657; }
-  :global(:root.dark) .markdown-body :global(.hljs-selector-tag) { color: #7ee787; }
-  :global(:root.dark) .markdown-body :global(.hljs-addition) { color: #aff5b4; background-color: #033a16; }
-  :global(:root.dark) .markdown-body :global(.hljs-deletion) { color: #ffdcd7; background-color: #67060c; }
+  .markdown-body :global(.hljs-attr) { color: #50fa7b; }
+  .markdown-body :global(.hljs-variable) { color: #f8f8f2; }
+  .markdown-body :global(.hljs-selector-tag) { color: #ff79c6; }
+  .markdown-body :global(.hljs-selector-class) { color: #50fa7b; }
+  .markdown-body :global(.hljs-selector-id) { color: #8be9fd; }
+  .markdown-body :global(.hljs-tag) { color: #ff79c6; }
+  .markdown-body :global(.hljs-name) { color: #ff79c6; }
+  .markdown-body :global(.hljs-attribute) { color: #50fa7b; }
+  .markdown-body :global(.hljs-regexp) { color: #f1fa8c; }
+  .markdown-body :global(.hljs-symbol) { color: #ff79c6; }
+  .markdown-body :global(.hljs-addition) { color: #50fa7b; background-color: rgba(80, 250, 123, 0.1); }
+  .markdown-body :global(.hljs-deletion) { color: #ff5555; background-color: rgba(255, 85, 85, 0.1); }
+  .markdown-body :global(.hljs-doctag) { color: #8be9fd; }
+  .markdown-body :global(.hljs-section) { color: #bd93f9; }
+  .markdown-body :global(.hljs-property) { color: #66d9ef; }
 
   /* User-Highlights */
   :global(.user-highlight) { background-color: #ffe066; color: #1a1a1a; border-radius: 2px; padding: 0 1px; }

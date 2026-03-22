@@ -27,10 +27,10 @@
 <style>
   .callout {
     margin: 1em 0;
-    border-radius: 6px;
+    border-radius: 3px;
     overflow: hidden;
     background: rgba(var(--callout-rgb), 0.08);
-    border-left: 3px solid rgb(var(--callout-rgb));
+    border: 1px solid rgba(var(--callout-rgb), 0.4);
   }
 
   .callout-title {

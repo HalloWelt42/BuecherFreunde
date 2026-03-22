@@ -139,8 +139,11 @@
         format={book.file_format}
         {initialPapier}
         initialFontSize={saved.fontSize || 0}
+        initialFontFamily={saved.fontFamily || ""}
         initialScrollPct={saved.scrollPct || 0}
         initialBreite={saved.breite ?? -1}
+        initialFgColor={saved.fgColor || ""}
+        initialBgColor={saved.bgColor || ""}
         onBack={goBack}
       />
     {:else}
