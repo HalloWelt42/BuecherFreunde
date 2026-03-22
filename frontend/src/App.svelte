@@ -140,31 +140,9 @@
     background: rgba(0, 0, 0, 0.55);
   }
 
-  /* Bei aktivem Hintergrundbild: alle Flaechen transparent machen */
+  /* Body transparent bei aktivem Hintergrundbild */
   :global(body:has(.app-layout.has-bg)) {
     background-color: transparent;
-  }
-
-  .app-layout.has-bg .grid-sidebar,
-  .app-layout.has-bg .grid-main,
-  .app-layout.has-bg .grid-footer {
-    background: transparent;
-  }
-
-  :global(.app-layout.has-bg .sidebar) {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-  }
-
-  :global(.app-layout.has-bg .app-header) {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-  }
-
-  :global(.app-layout.has-bg .app-footer) {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    border-top-color: var(--glass-border);
   }
 
   .app-layout.sidebar-collapsed {

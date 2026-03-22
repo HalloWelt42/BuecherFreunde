@@ -129,6 +129,21 @@
   --cover-bg-overlay: rgba(0, 0, 0, 0.7);
 }
 
+/* Hintergrundbild aktiv: opake Farben durch halbtransparente ersetzen */
+.has-bg {
+  --color-bg-primary: rgba(255, 255, 255, 0.65);
+  --color-bg-secondary: rgba(243, 244, 246, 0.6);
+  --color-bg-tertiary: rgba(229, 231, 235, 0.55);
+  --color-border: rgba(0, 0, 0, 0.1);
+}
+
+:root.dark .has-bg {
+  --color-bg-primary: rgba(15, 23, 42, 0.7);
+  --color-bg-secondary: rgba(30, 41, 59, 0.65);
+  --color-bg-tertiary: rgba(51, 65, 85, 0.55);
+  --color-border: rgba(255, 255, 255, 0.08);
+}
+
 /* Basis-Stile */
 *,
 *::before,
