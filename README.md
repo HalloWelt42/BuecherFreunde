@@ -240,7 +240,7 @@ docker compose restart backend    # Nur Backend
 docker compose down
 
 # Komplett neu bauen
-docker compose up -d --build
+docker compose --env-file ../.env up -d --build --force-recreate
 ```
 
 ## Ports

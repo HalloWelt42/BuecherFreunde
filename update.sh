@@ -62,7 +62,7 @@ fi
 echo ""
 echo "Baue und starte Container neu..."
 cd docker
-docker compose up -d --build
+docker compose --env-file ../.env up -d --build --force-recreate
 
 echo ""
 echo "=== Update abgeschlossen ==="
