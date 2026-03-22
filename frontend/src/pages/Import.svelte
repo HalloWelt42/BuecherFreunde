@@ -150,8 +150,12 @@
     laden = true;
     fehler = null;
     try {
-      const neueTasks = await ladeDateienHoch(files);
-      tasks = [...(Array.isArray(neueTasks) ? neueTasks : [neueTasks]), ...tasks];
+      const result = await ladeDateienHoch(files);
+      const neueTasks = result.aufgaben || result.tasks || (Array.isArray(result) ? result : []);
+      if (neueTasks.length > 0) {
+        tasks = [...neueTasks, ...tasks];
+      }
+      aktualisiereStatus();
     } catch (e) {
       fehler = e.message;
     } finally {
