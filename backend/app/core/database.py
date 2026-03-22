@@ -311,6 +311,8 @@ class Database:
             )
             await self._connection.commit()
             logger.info("Datenbankschema v%d erstellt", SCHEMA_VERSION)
+            # Standard-Daten einfügen (Prompts etc.)
+            await self._insert_defaults()
         else:
             cursor = await self._connection.execute(
                 "SELECT version FROM schema_version ORDER BY version DESC LIMIT 1"
@@ -327,6 +329,8 @@ class Database:
                     (SCHEMA_VERSION,),
                 )
                 await self._connection.commit()
+        # Sicherstellen, dass Standard-Daten vorhanden sind
+        await self._insert_defaults()
 
     async def _migrate(self, from_version: int) -> None:
         """Führt Schema-Migrationen durch."""
@@ -788,6 +792,68 @@ Verwende deutsche Begriffe. Sei spezifisch, nicht zu allgemein.',
         if self._connection is None:
             raise RuntimeError("Datenbank ist nicht verbunden")
         return self._connection
+
+    async def _insert_defaults(self) -> None:
+        """Standard-Daten einfügen (Prompts etc.) falls Tabellen leer sind."""
+        assert self._connection is not None
+        cursor = await self._connection.execute(
+            "SELECT COUNT(*) as n FROM ai_prompts"
+        )
+        row = await cursor.fetchone()
+        if row and row["n"] > 0:
+            return  # Bereits Prompts vorhanden
+
+        logger.info("Füge Standard-KI-Prompts ein")
+        await self._connection.execute("""
+            INSERT OR IGNORE INTO ai_prompts (schluessel, name, beschreibung, system_prompt, temperatur, max_tokens)
+            VALUES (
+                'kategorisierung',
+                'Buch-Kategorisierung',
+                'Analysiert Titel, Autor und Textauszug und schlägt passende Kategorien vor.',
+                'Du bist ein Bibliothekar der Bücher kategorisiert.
+Analysiere den gegebenen Buchtitel, Autor und Textauszug.
+Schlage 3-5 passende Kategorien vor.
+
+Antworte ausschließlich als JSON-Array mit Objekten:
+[{"kategorie": "Name", "konfidenz": 0.0-1.0}]
+
+Verwende deutsche Kategorienamen. Beispiele:
+Informatik, Belletristik, Geschichte, Philosophie, Naturwissenschaft,
+Wirtschaft, Psychologie, Mathematik, Kunst, Musik, Religion, Politik,
+Science-Fiction, Fantasy, Krimi, Biografie, Ratgeber, Sachbuch',
+                0.3,
+                500
+            )
+        """)
+        await self._connection.execute("""
+            INSERT OR IGNORE INTO ai_prompts (schluessel, name, beschreibung, system_prompt, temperatur, max_tokens)
+            VALUES (
+                'zusammenfassung',
+                'Buch-Zusammenfassung',
+                'Erstellt eine kurze Zusammenfassung basierend auf dem Textauszug.',
+                'Du bist ein Bibliothekar. Erstelle eine prägnante Zusammenfassung des Buches in 2-3 Sätzen auf Deutsch. Basiere dich auf den gegebenen Informationen. Antworte nur mit der Zusammenfassung, ohne Einleitung.',
+                0.4,
+                300
+            )
+        """)
+        await self._connection.execute("""
+            INSERT OR IGNORE INTO ai_prompts (schluessel, name, beschreibung, system_prompt, temperatur, max_tokens)
+            VALUES (
+                'schlagworte',
+                'Schlagwort-Extraktion',
+                'Extrahiert relevante Schlagworte/Tags aus dem Buchinhalt.',
+                'Du bist ein Bibliothekar. Extrahiere 5-10 relevante Schlagworte aus dem gegebenen Buch.
+
+Antworte ausschließlich als JSON-Array mit Strings:
+["Schlagwort1", "Schlagwort2", ...]
+
+Verwende deutsche Begriffe. Sei spezifisch, nicht zu allgemein.',
+                0.3,
+                200
+            )
+        """)
+        await self._connection.commit()
+        logger.info("Standard-KI-Prompts eingefügt")
 
     async def execute(self, sql: str, params: tuple = ()) -> aiosqlite.Cursor:
         """SQL ausführen und Cursor zurückgeben."""
