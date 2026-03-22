@@ -1,7 +1,7 @@
 <script>
   import { route, matchRoute, handleLinkClick } from "./lib/router.svelte.js";
   import { ui } from "./lib/stores/ui.svelte.js";
-  import { hasToken, onAuthError } from "./lib/api/client.js";
+  import { hasToken, onAuthError, getToken } from "./lib/api/client.js";
   import Header from "./lib/components/layout/Header.svelte";
   import Sidebar from "./lib/components/layout/Sidebar.svelte";
   import Footer from "./lib/components/layout/Footer.svelte";
@@ -29,6 +29,12 @@
     showLogin = false;
     window.location.reload();
   }
+
+  let bgUrl = $derived(
+    ui.bgAktuellerDateiname
+      ? `/api/config/design/hintergrund/${ui.bgAktuellerDateiname}?token=${encodeURIComponent(getToken())}`
+      : null
+  );
 
   const routeDefs = [
     { pattern: "/book/:id/read", component: Reader },
@@ -64,6 +70,9 @@
 <svelte:document onclick={handleLinkClick} />
 
 <div class="app-layout" class:sidebar-collapsed={!ui.sidebarOpen} class:reader-fullscreen={ui.readerFullscreen}>
+  {#if bgUrl}
+    <div class="app-bg" style="background-image: url({bgUrl})"></div>
+  {/if}
   <div class="grid-header">
     <Header />
   </div>
@@ -103,6 +112,23 @@
     grid-template-rows: var(--header-height) 1fr auto;
     height: 100vh;
     overflow: hidden;
+    position: relative;
+  }
+
+  .app-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.12;
+    pointer-events: none;
+    transition: background-image 0.5s ease;
+  }
+
+  :global(:root.dark) .app-bg {
+    opacity: 0.08;
   }
 
   .app-layout.sidebar-collapsed {
@@ -135,7 +161,7 @@
     padding: 1.5rem;
     overflow-y: auto;
     overflow-x: hidden;
-    z-index: 1;
+    z-index: 2;
     position: relative;
   }
 
