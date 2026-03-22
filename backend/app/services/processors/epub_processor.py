@@ -101,17 +101,36 @@ class EpubProcessor(BaseProcessor):
 
     def _extract_cover(self, book: epub.EpubBook) -> bytes | None:
         """Extrahiert das Cover-Bild aus dem EPUB."""
-        # Methode 1: Cover-Image aus Metadaten
+        # Methode 1: Cover-Image aus Metadaten (ITEM_COVER)
         try:
             cover_items = book.get_items_of_type(ebooklib.ITEM_COVER)
             for item in cover_items:
                 data = item.get_content()
                 if data and len(data) > 100:
                     return data
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Cover Methode 1 (ITEM_COVER): %s", e)
 
-        # Methode 2: Item mit "cover" im Namen
+        # Methode 2: OPF meta cover-Referenz
+        try:
+            cover_id = None
+            for meta in book.get_metadata("OPF", "cover"):
+                if isinstance(meta, tuple) and len(meta) > 1:
+                    attrs = meta[1] if isinstance(meta[1], dict) else {}
+                    cover_id = attrs.get("content", "")
+                    if not cover_id and isinstance(meta[0], str):
+                        cover_id = meta[0]
+                    break
+            if cover_id:
+                item = book.get_item_with_id(cover_id)
+                if item:
+                    data = item.get_content()
+                    if data and len(data) > 100:
+                        return data
+        except Exception as e:
+            logger.debug("Cover Methode 2 (OPF meta): %s", e)
+
+        # Methode 3: Item mit "cover" im Namen oder ID
         try:
             for item in book.get_items_of_type(ebooklib.ITEM_IMAGE):
                 name = (item.get_name() or "").lower()
@@ -120,16 +139,32 @@ class EpubProcessor(BaseProcessor):
                     data = item.get_content()
                     if data and len(data) > 100:
                         return data
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Cover Methode 3 (Name/ID): %s", e)
 
-        # Methode 3: Erstes Bild nehmen
+        # Methode 4: Item mit "cover" im Dateinamen (Pfad)
         try:
             for item in book.get_items_of_type(ebooklib.ITEM_IMAGE):
+                fname = (item.file_name or "").lower()
+                if "cover" in fname or "titel" in fname or "title" in fname:
+                    data = item.get_content()
+                    if data and len(data) > 100:
+                        return data
+        except Exception as e:
+            logger.debug("Cover Methode 4 (Dateiname): %s", e)
+
+        # Methode 5: Groesstes Bild nehmen (wahrscheinlich Cover)
+        try:
+            groesstes = None
+            groesste_bytes = 0
+            for item in book.get_items_of_type(ebooklib.ITEM_IMAGE):
                 data = item.get_content()
-                if data and len(data) > 1000:
-                    return data
-        except Exception:
-            pass
+                if data and len(data) > groesste_bytes:
+                    groesste_bytes = len(data)
+                    groesstes = data
+            if groesstes and groesste_bytes > 1000:
+                return groesstes
+        except Exception as e:
+            logger.debug("Cover Methode 5 (groesstes Bild): %s", e)
 
         return None

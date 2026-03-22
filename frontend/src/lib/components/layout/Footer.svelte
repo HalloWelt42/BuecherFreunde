@@ -36,11 +36,11 @@
                 : stats.aktuell.filename
               : "Verarbeite..."}
           </span>
-          <span class="process-count">{stats.fertig}/{stats.gesamt}</span>
+          <span class="process-count">noch {stats.verbleibend}</span>
           <div class="mini-progress">
             <div class="mini-progress-fill" style="width: {stats.prozent}%"></div>
           </div>
-          <span class="process-pct">{stats.prozent}%</span>
+          <span class="process-pct">{stats.fertig} fertig</span>
         {:else}
           <i class="fa-solid fa-check-circle process-icon done"></i>
           <span class="process-text">
@@ -67,8 +67,9 @@
         <div class="details-actions">
           <span class="details-stats">
             {stats.fertig} fertig
-            {#if stats.aktiv > 0} / {stats.aktiv} aktiv{/if}
+            {#if stats.verbleibend > 0} / noch {stats.verbleibend} verbleibend{/if}
             {#if stats.fehler > 0} / <span class="err">{stats.fehler} Fehler</span>{/if}
+            {#if stats.duplikat > 0} / {stats.duplikat} Duplikate{/if}
           </span>
           {#if !istAktiv}
             <button class="clear-btn" onclick={clearFinished} title="Liste bereinigen">

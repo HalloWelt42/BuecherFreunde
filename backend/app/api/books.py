@@ -600,18 +600,49 @@ async def delete_all_books(
 
 @router.get("/{book_id}/cover")
 async def get_cover(book_id: int, _token: str = Depends(verify_token_query)):
-    """Gibt das Cover-Bild eines Buches zurück."""
+    """Gibt das Cover-Bild eines Buches zurück oder ein Platzhalter-SVG."""
     book = await db.fetch_one(
-        "SELECT hash, cover_path FROM books WHERE id = ?", (book_id,)
+        "SELECT hash, cover_path, title FROM books WHERE id = ?", (book_id,)
     )
     if not book:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
 
     cover_path = get_sidecar_path(book["hash"], "cover.jpg")
-    if not cover_path.exists():
-        raise HTTPException(status_code=404, detail="Kein Cover vorhanden")
+    if cover_path.exists():
+        return FileResponse(cover_path, media_type="image/jpeg")
 
-    return FileResponse(cover_path, media_type="image/jpeg")
+    # Platzhalter-SVG mit Buchtitel generieren
+    title = book["title"] or "Kein Titel"
+    # Titel auf max 3 Zeilen a 20 Zeichen aufteilen
+    woerter = title.split()
+    zeilen = []
+    aktuelle = ""
+    for wort in woerter:
+        if len(aktuelle) + len(wort) + 1 > 20:
+            zeilen.append(aktuelle.strip())
+            aktuelle = wort
+            if len(zeilen) >= 3:
+                break
+        else:
+            aktuelle += " " + wort if aktuelle else wort
+    if aktuelle and len(zeilen) < 3:
+        zeilen.append(aktuelle.strip())
+
+    text_elemente = ""
+    for i, zeile in enumerate(zeilen):
+        y = 180 + i * 30
+        # XML-Sonderzeichen escapen
+        safe = zeile.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+        text_elemente += f'<text x="120" y="{y}" text-anchor="middle" fill="#94a3b8" font-family="sans-serif" font-size="16">{safe}</text>'
+
+    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="240" height="360" viewBox="0 0 240 360">
+  <rect width="240" height="360" fill="#1e293b" rx="4"/>
+  <rect x="20" y="20" width="200" height="320" fill="none" stroke="#334155" stroke-width="1" rx="2"/>
+  <text x="120" y="120" text-anchor="middle" fill="#475569" font-family="sans-serif" font-size="48">&#128214;</text>
+  {text_elemente}
+</svg>'''
+
+    return Response(content=svg, media_type="image/svg+xml")
 
 
 @router.post("/{book_id}/cover/neu-extrahieren")
@@ -655,7 +686,7 @@ async def re_extract_cover(book_id: int, _token: str = Depends(verify_token)):
             logger.warning("EPUB Cover-Extraktion fehlgeschlagen: %s", e)
 
     if not cover_data:
-        raise HTTPException(status_code=404, detail="Kein Cover im Buch gefunden")
+        raise HTTPException(status_code=422, detail="Kein eingebettetes Cover in der Datei gefunden")
 
     save_cover(book["hash"], cover_data)
     await db.execute(

@@ -17,6 +17,9 @@ export const processes = $state({
   /** @type {Array<{id: number, filename: string, status: string, progress_percent: number, current_step: string, error: string, book_id: number|null}>} */
   importTasks: [],
 
+  /** Echte Zaehler vom Backend (gesamt, wartend, verarbeite, fertig, fehler, duplikat) */
+  zaehler: { gesamt: 0, wartend: 0, verarbeite: 0, fertig: 0, fehler: 0, duplikat: 0 },
+
   /** Ob gerade aktiv gepollt wird */
   polling: false,
 
@@ -27,21 +30,21 @@ export const processes = $state({
   lastUpdate: null,
 });
 
-/** Berechnete Werte */
+/** Berechnete Werte - nutzt echte Zaehler vom Backend */
 export function getProcessStats() {
-  const tasks = processes.importTasks;
-  const fertig = tasks.filter((t) => t.status === "fertig").length;
-  const fehler = tasks.filter((t) => t.status === "fehler").length;
-  const duplikat = tasks.filter((t) => t.status === "duplikat").length;
-  const aktiv = tasks.filter(
-    (t) => t.status === "wartend" || t.status === "verarbeite",
-  ).length;
-  const gesamt = tasks.length;
-  const prozent =
-    gesamt > 0 ? Math.round(((fertig + duplikat) / gesamt) * 100) : 0;
-  const aktuell = tasks.find((t) => t.status === "verarbeite");
+  const z = processes.zaehler;
+  const gesamt = z.gesamt || 0;
+  const fertig = z.fertig || 0;
+  const fehler = z.fehler || 0;
+  const duplikat = z.duplikat || 0;
+  const wartend = z.wartend || 0;
+  const verarbeite = z.verarbeite || 0;
+  const aktiv = wartend + verarbeite;
+  const verbleibend = wartend + verarbeite;
+  const prozent = gesamt > 0 ? Math.round(((fertig + duplikat) / gesamt) * 100) : 0;
+  const aktuell = processes.importTasks.find((t) => t.status === "verarbeite");
 
-  return { fertig, fehler, duplikat, aktiv, gesamt, prozent, aktuell };
+  return { fertig, fehler, duplikat, aktiv, wartend, verarbeite, verbleibend, gesamt, prozent, aktuell };
 }
 
 /**
@@ -68,6 +71,9 @@ export async function fetchImportStatus() {
   try {
     const data = await get("/api/import/status");
     processes.importTasks = data.aufgaben || [];
+    if (data.zaehler) {
+      processes.zaehler = data.zaehler;
+    }
     processes.lastUpdate = new Date();
 
     // Prüfen ob neue Bücher fertig wurden
@@ -126,6 +132,7 @@ export async function clearFinished() {
   try {
     const result = await bereinigeImportTasks();
     processes.importTasks = result.aufgaben || [];
+    if (result.zaehler) processes.zaehler = result.zaehler;
     _lastFertigCount = 0;
   } catch {
     // Fallback: nur lokal bereinigen
