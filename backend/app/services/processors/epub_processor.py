@@ -302,8 +302,47 @@ class EpubProcessor(BaseProcessor):
                         candidate = m.group(1).replace("-", "")
                         if len(candidate) in (10, 13):
                             result.isbn = candidate
-                            logger.info("ZIP-Fallback ISBN: %s", candidate)
+                            logger.info("ZIP-Fallback ISBN aus OPF: %s", candidate)
                             break
+
+                # ISBN aus HTML-Seiten extrahieren (steht oft im Impressum)
+                if not result.isbn:
+                    isbn_text_pattern = re.compile(
+                        r"ISBN[\s:]*(\d[\d\-\s]{8,16}\d)", re.IGNORECASE
+                    )
+                    html_files = sorted([n for n in zf.namelist() if n.lower().endswith((".html", ".xhtml", ".htm"))])
+                    # Nur die ersten paar Seiten durchsuchen (Impressum ist vorne)
+                    for html_name in html_files[:10]:
+                        try:
+                            html_content = zf.read(html_name).decode("utf-8", errors="ignore")
+                            for m in isbn_text_pattern.finditer(html_content):
+                                candidate = re.sub(r"[\-\s]", "", m.group(1))
+                                if len(candidate) in (10, 13):
+                                    result.isbn = candidate
+                                    logger.info("ZIP-Fallback ISBN aus Text (%s): %s", html_name, candidate)
+                                    break
+                        except Exception:
+                            continue
+                        if result.isbn:
+                            break
+
+                # Volltext aus HTML extrahieren wenn noch leer
+                if not result.fulltext:
+                    text_parts = []
+                    html_files = sorted([n for n in zf.namelist() if n.lower().endswith((".html", ".xhtml", ".htm"))])
+                    for html_name in html_files:
+                        try:
+                            html_content = zf.read(html_name).decode("utf-8", errors="ignore")
+                            soup = BeautifulSoup(html_content, "html.parser")
+                            text = soup.get_text(separator="\n", strip=True)
+                            if text:
+                                text_parts.append(text)
+                        except Exception:
+                            continue
+                    if text_parts:
+                        result.fulltext = "\n\n".join(text_parts)
+                        result.page_count = len(text_parts)
+                        logger.info("ZIP-Fallback Volltext: %d Seiten extrahiert", len(text_parts))
 
                 if result.title:
                     logger.info("ZIP-Fallback Metadaten: Titel=%s, Autor=%s", result.title, result.author)

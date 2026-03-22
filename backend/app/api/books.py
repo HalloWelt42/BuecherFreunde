@@ -777,10 +777,39 @@ async def isbn_scan(book_id: int, _token: str = Depends(verify_token)):
 
     # Volltext laden
     fulltext_path = get_sidecar_path(book["hash"], "fulltext.txt")
-    if not fulltext_path.exists():
-        return {"gefunden": [], "aktuell": book["isbn"] or ""}
+    text = ""
+    if fulltext_path.exists():
+        text = fulltext_path.read_text(encoding="utf-8", errors="ignore")
 
-    text = fulltext_path.read_text(encoding="utf-8", errors="ignore")
+    # Fallback: Volltext direkt aus EPUB extrahieren wenn Sidecar leer/fehlt
+    if not text.strip():
+        original = get_original_file(book["hash"])
+        if original and original.exists() and original.suffix.lower() == ".epub":
+            import zipfile
+            try:
+                with zipfile.ZipFile(original) as zf:
+                    parts = []
+                    html_files = sorted([n for n in zf.namelist() if n.lower().endswith((".html", ".xhtml", ".htm"))])
+                    for html_name in html_files:
+                        try:
+                            from bs4 import BeautifulSoup
+                            html_content = zf.read(html_name).decode("utf-8", errors="ignore")
+                            soup = BeautifulSoup(html_content, "html.parser")
+                            t = soup.get_text(separator="\n", strip=True)
+                            if t:
+                                parts.append(t)
+                        except Exception:
+                            continue
+                    if parts:
+                        text = "\n\n".join(parts)
+                        # Volltext auch speichern fuer naechstes Mal
+                        from backend.app.services.storage import save_fulltext
+                        save_fulltext(book["hash"], text)
+            except Exception:
+                pass
+
+    if not text.strip():
+        return {"gefunden": [], "aktuell": book["isbn"] or ""}
     # Gesamten Text durchsuchen - ISBN kann an beliebiger Stelle stehen
     raw_isbns = extract_isbns_from_text(text)
 
