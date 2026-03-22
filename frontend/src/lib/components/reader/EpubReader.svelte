@@ -110,6 +110,8 @@
     savePosition();
   }
 
+  const isTransparent = $derived(bgColor === "transparent");
+
   // CSS in alle geladenen iframes injizieren
   function applyStyles() {
     if (!view?.renderer) return;
@@ -120,6 +122,29 @@
     // Container-Hintergrund
     if (containerEl) {
       containerEl.style.backgroundColor = bgColor;
+    }
+    // View-Element und interne iframes transparent machen
+    if (view) {
+      view.style.backgroundColor = bgColor;
+      if (isTransparent) {
+        // Alle iframes im Shadow DOM oder direkt im View transparent setzen
+        const iframes = view.querySelectorAll?.("iframe") || [];
+        for (const iframe of iframes) {
+          iframe.style.backgroundColor = "transparent";
+        }
+        // Shadow Root durchsuchen (foliate-js nutzt Shadow DOM)
+        if (view.shadowRoot) {
+          const shadowIframes = view.shadowRoot.querySelectorAll("iframe");
+          for (const iframe of shadowIframes) {
+            iframe.style.backgroundColor = "transparent";
+          }
+          // Container-Divs im Shadow Root
+          const divs = view.shadowRoot.querySelectorAll("div");
+          for (const div of divs) {
+            div.style.backgroundColor = "transparent";
+          }
+        }
+      }
     }
   }
 
@@ -132,6 +157,13 @@
       doc.head.appendChild(styleEl);
     }
     const fontDecl = fontFamily ? `font-family: ${fontFamily} !important;` : "";
+    // Bei Transparent: auch alle div/section/article-Hintergründe entfernen
+    const transparentRules = isTransparent ? `
+      div, section, article, main, aside, header, footer, nav {
+        background-color: transparent !important;
+        background-image: none !important;
+      }
+    ` : "";
     styleEl.textContent = `
       html, body {
         color: ${fgColor} !important;
@@ -144,6 +176,7 @@
         color: inherit !important;
         border-color: ${fgColor}33 !important;
       }
+      ${transparentRules}
       a { color: ${fgColor} !important; text-decoration: underline !important; }
       img, svg, video, canvas { max-width: 100% !important; height: auto !important; }
     `;
@@ -264,7 +297,7 @@
       }
 
       view = new View();
-      view.style.cssText = "width: 100%; height: 100%;";
+      view.style.cssText = `width: 100%; height: 100%; background-color: ${bgColor};`;
       containerEl.innerHTML = "";
       containerEl.style.backgroundColor = bgColor;
       containerEl.appendChild(view);
@@ -294,6 +327,12 @@
       view.addEventListener("load", (e) => {
         const sectionIndex = e.detail.index;
         injectCSS(e.detail.doc);
+
+        // iframe-Element selbst transparent machen
+        if (isTransparent) {
+          const iframe = e.detail.doc?.defaultView?.frameElement;
+          if (iframe) iframe.style.backgroundColor = "transparent";
+        }
 
         // Gespeicherte Highlights fuer diese Sektion rendern
         requestAnimationFrame(() => {
@@ -724,7 +763,7 @@
                 <button
                   class="theme-btn"
                   class:active={i === activeThemeIndex}
-                  style="background-color: {theme.bg || bgColor}; color: {theme.fg || fgColor}; border-color: {i === activeThemeIndex ? 'var(--color-accent)' : (theme.fg || fgColor) + '33'};"
+                  style="background-color: {theme.transparent ? 'var(--glass-bg)' : (theme.bg || bgColor)}; color: {theme.fg || fgColor}; border-color: {i === activeThemeIndex ? 'var(--color-accent)' : (theme.fg || fgColor) + '33'}; {theme.transparent ? 'backdrop-filter: blur(8px);' : ''}"
                   onclick={() => setFarbThema(theme)}
                   title={theme.name}
                 >
@@ -892,7 +931,7 @@
             <span class="setting-label">Vorschau</span>
             <div
               class="preview-box"
-              style="background-color: {bgColor}; color: {fgColor}; font-size: {fontSize * 0.14}px; line-height: {lineHeight}; font-family: {fontFamily || 'inherit'};"
+              style="background-color: {isTransparent ? 'var(--glass-bg)' : bgColor}; color: {fgColor}; font-size: {fontSize * 0.14}px; line-height: {lineHeight}; font-family: {fontFamily || 'inherit'}; {isTransparent ? 'backdrop-filter: blur(8px);' : ''}"
             >
               Die Sonne ging unter und tauchte die Stadt in ein warmes, goldenes Licht.
               Sie blickte aus dem Fenster und dachte an die vergangenen Jahre.

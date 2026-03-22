@@ -9,6 +9,7 @@ export const readerFarbThemen = [
   { name: "Daemmerung", fg: "#c9b99a", bg: "#3d3526", icon: "fa-cloud-moon" },
   { name: "Dunkel", fg: "#c8c8c8", bg: "#1e1e1e", icon: "fa-moon" },
   { name: "Nacht", fg: "#8a8a8a", bg: "#0a0a0a", icon: "fa-star" },
+  { name: "Transparent", fg: "#1a1a1a", bg: "transparent", icon: "fa-droplet", transparent: true },
 ];
 
 export const readerSchriften = [

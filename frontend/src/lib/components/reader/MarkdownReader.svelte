@@ -44,6 +44,7 @@
     return idx >= 0 ? idx : -1;
   });
   let istDunkel = $derived(bgColor === "#1e1e1e" || bgColor === "#0a0a0a" || bgColor === "#3d3526");
+  let istTransparent = $derived(bgColor === "transparent");
 
   function setzeThema(theme) {
     fgColor = theme.fg;
@@ -476,7 +477,7 @@
                 class:active={activeThemeIndex === i}
                 onclick={() => setzeThema(theme)}
                 title={theme.name}
-                style="background-color: {theme.bg}; color: {theme.fg}; border-color: {activeThemeIndex === i ? 'var(--color-accent)' : theme.bg === '#ffffff' ? '#ccc' : theme.bg}"
+                style="background-color: {theme.transparent ? 'var(--glass-bg)' : theme.bg}; color: {theme.fg}; border-color: {activeThemeIndex === i ? 'var(--color-accent)' : theme.bg === '#ffffff' ? '#ccc' : theme.bg}; {theme.transparent ? 'backdrop-filter: blur(8px);' : ''}"
               >
                 <i class="fa-solid {theme.icon}"></i>
               </button>
