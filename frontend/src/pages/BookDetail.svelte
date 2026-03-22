@@ -477,7 +477,7 @@
       const result = await toggleFavorit(book.id);
       book = { ...book, is_favorite: result.ist_favorit ?? result.is_favorite };
       notifyBooksChanged();
-    } catch { /* still */ }
+    } catch { ui.toast.error("Favorit konnte nicht geaendert werden"); }
   }
 
   async function onZumLesenToggle() {
@@ -486,7 +486,7 @@
       const result = await toggleZumLesen(book.id);
       book = { ...book, is_to_read: result.zu_lesen ?? result.is_to_read };
       notifyBooksChanged();
-    } catch { /* still */ }
+    } catch { ui.toast.error("Merkliste konnte nicht aktualisiert werden"); }
   }
 
   let istGelesen = $derived(book?.last_read_at != null);
@@ -497,7 +497,7 @@
       const result = await toggleGelesen(book.id);
       book = { ...book, last_read_at: result.gelesen ? new Date().toISOString() : null };
       notifyBooksChanged();
-    } catch { /* still */ }
+    } catch { ui.toast.error("Lesestatus konnte nicht geaendert werden"); }
   }
 
   async function onRate(rating) {
@@ -505,7 +505,7 @@
     try {
       const result = await setzeBewertung(book.id, rating);
       book = { ...book, rating: result.bewertung ?? result.rating };
-    } catch { /* still */ }
+    } catch { ui.toast.error("Bewertung konnte nicht gespeichert werden"); }
   }
 
   const papierLabel = { normal: "Normal", sepia: "Sepia", dunkel: "Dunkel" };

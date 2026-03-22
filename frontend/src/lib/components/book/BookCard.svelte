@@ -4,6 +4,7 @@
   import { toggleFavorit } from "../../api/user-data.js";
   import { navigate } from "../../router.svelte.js";
   import { selectionStore } from "../../stores/selection.svelte.js";
+  import { ui } from "../../stores/ui.svelte.js";
 
   let { book } = $props();
 
@@ -61,7 +62,7 @@
       const result = await toggleFavorit(book.id);
       isFavorite = result.ist_favorit ?? result.is_favorite;
     } catch {
-      // still
+      ui.toast.error("Favorit konnte nicht geaendert werden");
     }
   }
 

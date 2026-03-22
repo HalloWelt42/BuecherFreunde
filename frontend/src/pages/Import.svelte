@@ -17,6 +17,7 @@
     rescanVorschau,
     rescanKategorien,
   } from "../lib/api/imports.js";
+  import { ui } from "../lib/stores/ui.svelte.js";
 
   let activeTab = $state("dateien");
   let tasks = $state([]);
@@ -51,7 +52,7 @@
       ]);
       rescanPreview = preview;
       rescanKats = kats;
-    } catch { rescanPreview = null; rescanKats = []; }
+    } catch { rescanPreview = null; rescanKats = []; ui.toast.error("Vorschau konnte nicht geladen werden"); }
   }
 
   async function startRescan() {
@@ -89,7 +90,7 @@
     try {
       await brecheRescanAb();
       rescanStatus = await holeRescanStatus();
-    } catch {}
+    } catch { ui.toast.error("Rescan konnte nicht abgebrochen werden"); }
   }
 
   import { get } from "../lib/api/client.js";

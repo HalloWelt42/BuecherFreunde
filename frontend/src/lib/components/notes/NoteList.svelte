@@ -2,6 +2,7 @@
   import NoteEditor from "./NoteEditor.svelte";
   import { notizenFuerBuch, erstelleNotiz, loescheNotiz } from "../../api/notes.js";
   import { navigate } from "../../router.svelte.js";
+  import { ui } from "../../stores/ui.svelte.js";
 
   let { bookId } = $props();
 
@@ -29,14 +30,14 @@
       const notiz = await erstelleNotiz(bookId, data);
       notizen = [notiz, ...notizen];
       showEditor = false;
-    } catch { /* still */ }
+    } catch { ui.toast.error("Notiz konnte nicht gespeichert werden"); }
   }
 
   async function onDelete(noteId) {
     try {
       await loescheNotiz(noteId);
       notizen = notizen.filter((n) => n.id !== noteId);
-    } catch { /* still */ }
+    } catch { ui.toast.error("Notiz konnte nicht geloescht werden"); }
   }
 
   function formatDate(dateStr) {
