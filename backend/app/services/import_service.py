@@ -7,6 +7,7 @@ speichert im Hash-System und indexiert für die Volltextsuche.
 import asyncio
 import logging
 import re
+import shutil
 from pathlib import Path
 
 from backend.app.core.config import settings
@@ -26,6 +27,29 @@ from backend.app.services.storage import (
 )
 
 logger = logging.getLogger("buecherfreunde.import")
+
+
+def _repair_orphaned_storage(source_file: Path, storage_path: Path) -> None:
+    """Repariert verwaisten Storage: kopiert Quelldatei rein falls keine Originaldatei vorhanden."""
+    storage_path.mkdir(parents=True, exist_ok=True)
+
+    # Prüfen ob bereits eine Originaldatei im Storage liegt
+    sidecar_names = {"metadata.json", "fulltext.txt", "cover.jpg"}
+    has_original = any(
+        f.name not in sidecar_names and f.is_file()
+        for f in storage_path.iterdir()
+    )
+
+    if has_original:
+        logger.info("Verwaister Storage hat bereits Originaldatei, überspringe Kopie")
+        return
+
+    # Quelldatei in Storage kopieren (mit bereinigtem Namen)
+    raw_name = re.sub(r"^upload_\d+_", "", source_file.name)
+    safe_name = sanitize_filename(raw_name)
+    target = storage_path / safe_name
+    shutil.copy2(source_file, target)
+    logger.info("Quelldatei in verwaisten Storage kopiert: %s -> %s", source_file.name, target.name)
 
 
 async def update_task_status(
@@ -149,8 +173,9 @@ async def _do_import(
         await update_task_status(task_id, "verarbeite", 30, "Datei wird gespeichert")
 
     if dup and not existing:
-        # Verwaiste Datei - Storage-Pfad wiederverwenden
+        # Verwaiste Datei - Storage-Pfad wiederverwenden, Quelldatei reinkopieren
         storage_path = get_storage_path(file_hash)
+        _repair_orphaned_storage(file_path, storage_path)
         logger.info("Verwende vorhandenen Storage-Pfad: %s", storage_path)
     else:
         try:
@@ -170,8 +195,9 @@ async def _do_import(
                 result["book_id"] = race_check["id"]
                 result["titel"] = race_check["title"]
                 return result
-            # Verwaist - Storage wiederverwenden
+            # Verwaist - Storage wiederverwenden, Quelldatei reinkopieren
             storage_path = get_storage_path(file_hash)
+            _repair_orphaned_storage(file_path, storage_path)
             logger.warning("FileExistsError aber kein DB-Eintrag, verwende Storage: %s", storage_path)
         except Exception as e:
             error = f"Speichern fehlgeschlagen: {e}"
