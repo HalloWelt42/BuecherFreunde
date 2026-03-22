@@ -40,28 +40,23 @@ def _check_storage_mount() -> None:
     neue leere DB auf der SD-Karte anzulegen.
     """
     marker = settings.storage_dir / MARKER_FILE
-    db_exists = settings.database_path.exists()
 
-    if db_exists and not settings.storage_dir.exists():
+    if not settings.storage_dir.exists():
         raise RuntimeError(
             f"ABBRUCH: Storage-Verzeichnis {settings.storage_dir} nicht erreichbar. "
             "Ist die externe Festplatte gemountet?"
         )
 
-    if db_exists and not marker.exists():
-        raise RuntimeError(
-            f"ABBRUCH: Marker-Datei {marker} fehlt. "
-            "Das Storage-Verzeichnis ist vermutlich nicht korrekt gemountet. "
-            "Falls die Platte am richtigen Ort ist, erstelle die Datei manuell: "
-            f"touch {marker}"
-        )
-
-    if not db_exists and settings.database_dir.exists():
-        # Prüfe ob das DB-Verzeichnis beschreibbar ist
-        db_marker = settings.database_dir / MARKER_FILE
-        if not db_marker.exists():
-            # Erster Start - Marker anlegen
-            logger.info("Erster Start erkannt - Marker-Dateien werden angelegt")
+    # Marker anlegen falls noch nicht vorhanden
+    if not marker.exists():
+        try:
+            marker.touch()
+            logger.info("Marker-Datei angelegt: %s", marker)
+        except OSError as e:
+            raise RuntimeError(
+                f"ABBRUCH: Kann Marker-Datei {marker} nicht erstellen: {e}. "
+                "Sind die Schreibrechte korrekt?"
+            ) from e
 
 
 def _ensure_directories() -> None:

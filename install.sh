@@ -26,21 +26,41 @@ fi
 if [ ! -f .env ]; then
     echo "Erstelle Konfiguration..."
     echo ""
+    echo "Es werden vier Verzeichnisse benötigt:"
+    echo ""
+    echo "  1. BÜCHER-SPEICHER   Hier legt BücherFreunde alle Bücher ab."
+    echo "                       Jedes Buch bekommt einen eigenen Unterordner"
+    echo "                       mit Originaldatei, Cover und Metadaten."
+    echo "                       -> Braucht viel Platz (externe Festplatte empfohlen)."
+    echo ""
+    echo "  2. IMPORT-ORDNER     Hier legst du neue Bücher rein, die importiert"
+    echo "                       werden sollen. Nach dem Import bleiben die"
+    echo "                       Originale hier liegen."
+    echo ""
+    echo "  3. DATENBANK         SQLite-Datenbank, Suchindex und Einstellungen."
+    echo "                       Braucht wenig Platz, sollte auf schnellem"
+    echo "                       Speicher liegen (z.B. SD-Karte oder SSD)."
+    echo ""
+    echo "  4. EXTERNER ORDNER   Optionaler Nur-Lese-Zugriff auf eine bestehende"
+    echo "                       Büchersammlung (z.B. NAS-Freigabe). Bücher werden"
+    echo "                       von hier erkannt aber nicht verändert."
+    echo ""
 
     # Pfade abfragen
-    read -rp "Bücher-Verzeichnis (Arbeitsordner) [./storage]: " STORAGE
+    read -rp "1. Bücher-Speicher [./storage]: " STORAGE
     STORAGE="${STORAGE:-./storage}"
 
-    read -rp "Scan-/Import-Verzeichnis (kann leer sein) [./import]: " IMPORT
+    read -rp "2. Import-Ordner [./import]: " IMPORT
     IMPORT="${IMPORT:-./import}"
 
-    read -rp "Datenbank-Verzeichnis [./database]: " DATABASE
+    read -rp "3. Datenbank-Ordner [./database]: " DATABASE
     DATABASE="${DATABASE:-./database}"
 
-    read -rp "Externer Scan-Ordner (z.B. NAS, optional) [./external]: " EXTERNAL
+    read -rp "4. Externer Ordner (leer lassen zum Überspringen) [./external]: " EXTERNAL
     EXTERNAL="${EXTERNAL:-./external}"
 
-    read -rp "Externer Port [8160]: " PORT
+    echo ""
+    read -rp "Port für den Webzugriff [8160]: " PORT
     PORT="${PORT:-8160}"
 
     # Token generieren
@@ -94,7 +114,15 @@ ENVFILE
 
     echo ""
     echo "Konfiguration gespeichert in .env"
-    echo "API-Token: $TOKEN"
+    echo ""
+    echo "  Bücher-Speicher:  $STORAGE"
+    echo "  Import-Ordner:    $IMPORT"
+    echo "  Datenbank:        $DATABASE"
+    echo "  Externer Ordner:  $EXTERNAL"
+    echo "  Port:             $PORT"
+    echo ""
+    echo "  API-Token: $TOKEN"
+    echo "  (wird für den Zugriff auf die Weboberfläche benötigt)"
     echo ""
 else
     echo ".env existiert bereits - verwende vorhandene Konfiguration"
@@ -127,17 +155,17 @@ fi
 echo ""
 echo "Baue und starte Container..."
 cd docker
-docker compose up -d --build
+docker compose --env-file ../.env up -d --build
 
 echo ""
 echo "=== BücherFreunde läuft ==="
 echo "Zugriff: http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo 'localhost'):${EXTERNAL_PORT:-8160}"
 echo ""
 echo "Befehle:"
-echo "  Status:    cd $PROJECT_DIR/docker && docker compose ps"
-echo "  Logs:      cd $PROJECT_DIR/docker && docker compose logs -f"
-echo "  Stoppen:   cd $PROJECT_DIR/docker && docker compose down"
-echo "  Neustarten: cd $PROJECT_DIR/docker && docker compose restart"
+echo "  Status:    cd $PROJECT_DIR/docker && docker compose --env-file ../.env ps"
+echo "  Logs:      cd $PROJECT_DIR/docker && docker compose --env-file ../.env logs -f"
+echo "  Stoppen:   cd $PROJECT_DIR/docker && docker compose --env-file ../.env down"
+echo "  Neustarten: cd $PROJECT_DIR/docker && docker compose --env-file ../.env restart"
 echo ""
 
 # Systemd-Service einrichten (optional)
@@ -156,8 +184,8 @@ Requires=docker.service
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=$PROJECT_DIR/docker
-ExecStart=/usr/bin/docker compose up -d
-ExecStop=/usr/bin/docker compose down
+ExecStart=/usr/bin/docker compose --env-file $PROJECT_DIR/.env up -d
+ExecStop=/usr/bin/docker compose --env-file $PROJECT_DIR/.env down
 
 [Install]
 WantedBy=multi-user.target
