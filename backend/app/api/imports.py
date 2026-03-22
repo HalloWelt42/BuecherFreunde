@@ -32,11 +32,21 @@ router = APIRouter(prefix="/api/import", tags=["Import"])
 _running_tasks: set = set()
 
 
+def _task_done(task: asyncio.Task):
+    """Callback: loggt Fehler aus Hintergrund-Tasks und entfernt sie aus dem Set."""
+    _running_tasks.discard(task)
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc:
+        logger.error("Hintergrund-Import-Task fehlgeschlagen: %s", exc, exc_info=exc)
+
+
 def _fire_and_forget(coro):
     """Startet eine Coroutine als Task und trackt sie."""
     task = asyncio.create_task(coro)
     _running_tasks.add(task)
-    task.add_done_callback(_running_tasks.discard)
+    task.add_done_callback(_task_done)
 
 
 @router.post("/upload")
