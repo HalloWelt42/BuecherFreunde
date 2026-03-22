@@ -2,7 +2,7 @@
   let { onFiles = () => {} } = $props();
 
   let dragging = $state(false);
-  let fileInput = $state(null);
+  let fileInput;
 
   function handleDrop(event) {
     event.preventDefault();
