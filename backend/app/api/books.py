@@ -14,6 +14,62 @@ from backend.app.services.storage import get_original_file, get_sidecar_path, sa
 
 router = APIRouter(prefix="/api/books", tags=["Bücher"])
 
+_IMAGE_MAGIC = (
+    b"\xff\xd8\xff",      # JPEG
+    b"\x89PNG",           # PNG
+    b"GIF8",             # GIF
+    b"RIFF",             # WebP
+)
+
+_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+
+def _extract_cover_from_zip(epub_path: Path, logger) -> bytes | None:
+    """Extrahiert das Cover direkt per zipfile -- Fallback wenn ebooklib scheitert."""
+    import zipfile
+
+    try:
+        with zipfile.ZipFile(epub_path) as zf:
+            namen = zf.namelist()
+
+            # 1. Datei mit "cover" im Namen und Bild-Endung
+            for name in namen:
+                lower = name.lower()
+                if "cover" in lower and any(lower.endswith(ext) for ext in _IMAGE_EXTENSIONS):
+                    data = zf.read(name)
+                    if data and len(data) > 500:
+                        logger.info("ZIP-Fallback: Cover gefunden in %s (%d Bytes)", name, len(data))
+                        return data
+
+            # 2. Groesstes Bild im Archiv
+            groesstes = None
+            groesste_bytes = 0
+            groesster_name = ""
+            for name in namen:
+                lower = name.lower()
+                if any(lower.endswith(ext) for ext in _IMAGE_EXTENSIONS):
+                    data = zf.read(name)
+                    if data and len(data) > groesste_bytes:
+                        groesste_bytes = len(data)
+                        groesstes = data
+                        groesster_name = name
+
+            if groesstes and groesste_bytes > 1000:
+                logger.info("ZIP-Fallback: Groesstes Bild als Cover: %s (%d Bytes)", groesster_name, groesste_bytes)
+                return groesstes
+
+            # 3. Beliebige Datei mit Bild-Magic-Bytes
+            for name in namen:
+                data = zf.read(name)
+                if data and len(data) > 1000 and any(data.startswith(m) for m in _IMAGE_MAGIC):
+                    logger.info("ZIP-Fallback: Bild per Magic Bytes: %s (%d Bytes)", name, len(data))
+                    return data
+
+    except Exception as e:
+        logger.warning("ZIP-Fallback fehlgeschlagen: %s", e)
+
+    return None
+
 
 async def _get_book_categories(book_id: int) -> list[dict]:
     """Lädt Kategorien eines Buches."""
@@ -652,14 +708,12 @@ async def re_extract_cover(book_id: int, _token: str = Depends(verify_token)):
             epub_book = ebooklib.epub.read_epub(str(original), options={"ignore_ncx": True})
             proc = EpubProcessor()
             cover_data = proc._extract_cover(epub_book)
-            if not cover_data:
-                # Diagnose-Log: was ist in diesem EPUB drin?
-                items_info = []
-                for item in epub_book.get_items():
-                    items_info.append(f"{item.get_type()}:{getattr(item, 'file_name', '?')}({len(item.get_content() or b'')}B)")
-                logger.warning("Kein Cover gefunden in %s. Items: %s", original.name, ", ".join(items_info[:30]))
         except Exception as e:
-            logger.warning("EPUB Cover-Extraktion fehlgeschlagen: %s", e)
+            logger.warning("ebooklib fehlgeschlagen, versuche ZIP-Fallback: %s", e)
+
+        # Fallback: Direkt per zipfile das Cover suchen (fuer kaputte EPUBs)
+        if not cover_data:
+            cover_data = _extract_cover_from_zip(original, logger)
 
     if not cover_data:
         raise HTTPException(status_code=422, detail="Kein eingebettetes Cover in der Datei gefunden")

@@ -19,55 +19,61 @@ class EpubProcessor(BaseProcessor):
     def process(self, file_path: Path) -> BookProcessingResult:
         result = BookProcessingResult()
 
+        book = None
         try:
             book = epub.read_epub(str(file_path), options={"ignore_ncx": True})
         except Exception as e:
-            result.error = f"EPUB konnte nicht geöffnet werden: {e}"
-            logger.error(result.error)
-            return result
+            logger.warning("ebooklib konnte EPUB nicht vollstaendig lesen: %s", e)
 
-        try:
-            # Metadaten
-            result.title = self._get_metadata(book, "title")
-            result.author = self._get_metadata(book, "creator")
-            result.publisher = self._get_metadata(book, "publisher")
-            result.language = self._get_metadata(book, "language")
-            result.description = self._get_metadata(book, "description")
+        if book:
+            try:
+                # Metadaten
+                result.title = self._get_metadata(book, "title")
+                result.author = self._get_metadata(book, "creator")
+                result.publisher = self._get_metadata(book, "publisher")
+                result.language = self._get_metadata(book, "language")
+                result.description = self._get_metadata(book, "description")
 
-            isbn = self._get_isbn(book)
-            if isbn:
-                result.isbn = isbn
-            # Fallback: ISBN aus Text extrahieren wenn Metadaten leer
+                isbn = self._get_isbn(book)
+                if isbn:
+                    result.isbn = isbn
 
-            # Text extrahieren
-            text_parts = []
-            for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
-                html_content = item.get_content().decode("utf-8", errors="replace")
-                soup = BeautifulSoup(html_content, "html.parser")
-                text = soup.get_text(separator="\n", strip=True)
-                if text:
-                    text_parts.append(text)
+                # Text extrahieren
+                text_parts = []
+                for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
+                    html_content = item.get_content().decode("utf-8", errors="replace")
+                    soup = BeautifulSoup(html_content, "html.parser")
+                    text = soup.get_text(separator="\n", strip=True)
+                    if text:
+                        text_parts.append(text)
 
-            result.fulltext = "\n\n".join(text_parts)
-            result.page_count = len(text_parts)
+                result.fulltext = "\n\n".join(text_parts)
+                result.page_count = len(text_parts)
 
-            # Fallback-ISBN aus Volltext wenn Metadaten-ISBN leer
-            if not result.isbn and result.fulltext:
-                isbn_from_text = extract_isbn_from_fulltext(result.fulltext)
-                if isbn_from_text:
-                    result.isbn = isbn_from_text
-                    logger.info("ISBN aus EPUB-Text extrahiert: %s", isbn_from_text)
+                # Fallback-ISBN aus Volltext wenn Metadaten-ISBN leer
+                if not result.isbn and result.fulltext:
+                    isbn_from_text = extract_isbn_from_fulltext(result.fulltext)
+                    if isbn_from_text:
+                        result.isbn = isbn_from_text
+                        logger.info("ISBN aus EPUB-Text extrahiert: %s", isbn_from_text)
 
-            # Cover extrahieren
-            result.cover_data = self._extract_cover(book)
+                # Cover extrahieren
+                result.cover_data = self._extract_cover(book)
 
-            # Titel aus Dateiname ableiten falls leer
-            if not result.title:
-                result.title = file_path.stem.replace("_", " ").replace("-", " ")
+            except Exception as e:
+                logger.warning("Fehler bei EPUB-Verarbeitung via ebooklib: %s", e)
 
-        except Exception as e:
-            result.error = f"Fehler bei EPUB-Verarbeitung: {e}"
-            logger.error(result.error)
+        # ZIP-Fallback fuer Cover wenn ebooklib gescheitert oder kein Cover gefunden
+        if not result.cover_data:
+            result.cover_data = self._extract_cover_from_zip(file_path)
+
+        # ZIP-Fallback fuer Metadaten wenn ebooklib gescheitert
+        if not book and not result.title:
+            self._extract_metadata_from_zip(file_path, result)
+
+        # Titel aus Dateiname ableiten falls immer noch leer
+        if not result.title:
+            result.title = file_path.stem.replace("_", " ").replace("-", " ")
 
         return result
 
@@ -215,3 +221,79 @@ class EpubProcessor(BaseProcessor):
             logger.debug("Cover Methode 7 (base64 in XHTML): %s", e)
 
         return None
+
+    @staticmethod
+    def _extract_cover_from_zip(file_path: Path) -> bytes | None:
+        """Extrahiert Cover direkt per zipfile -- Fallback fuer kaputte EPUBs."""
+        import zipfile
+
+        _IMG_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+        try:
+            with zipfile.ZipFile(file_path) as zf:
+                namen = zf.namelist()
+
+                # 1. Datei mit "cover" im Namen
+                for name in namen:
+                    lower = name.lower()
+                    if "cover" in lower and any(lower.endswith(e) for e in _IMG_EXT):
+                        data = zf.read(name)
+                        if data and len(data) > 500:
+                            logger.info("ZIP-Fallback Cover: %s (%d Bytes)", name, len(data))
+                            return data
+
+                # 2. Groesstes Bild
+                groesstes = None
+                groesste_bytes = 0
+                for name in namen:
+                    lower = name.lower()
+                    if any(lower.endswith(e) for e in _IMG_EXT):
+                        data = zf.read(name)
+                        if data and len(data) > groesste_bytes:
+                            groesste_bytes = len(data)
+                            groesstes = data
+
+                if groesstes and groesste_bytes > 1000:
+                    return groesstes
+
+        except Exception as e:
+            logger.warning("ZIP-Fallback Cover fehlgeschlagen: %s", e)
+
+        return None
+
+    @staticmethod
+    def _extract_metadata_from_zip(file_path: Path, result) -> None:
+        """Extrahiert Metadaten direkt aus der OPF-Datei per zipfile."""
+        import zipfile
+        import re
+
+        try:
+            with zipfile.ZipFile(file_path) as zf:
+                # OPF-Datei finden
+                opf_file = None
+                for name in zf.namelist():
+                    if name.lower().endswith(".opf"):
+                        opf_file = name
+                        break
+
+                if not opf_file:
+                    return
+
+                opf_content = zf.read(opf_file).decode("utf-8", errors="ignore")
+
+                # Einfache Regex-Extraktion aus OPF
+                def _extract_tag(tag):
+                    m = re.search(rf"<dc:{tag}[^>]*>([^<]+)</dc:{tag}>", opf_content, re.IGNORECASE)
+                    return m.group(1).strip() if m else ""
+
+                result.title = result.title or _extract_tag("title")
+                result.author = result.author or _extract_tag("creator")
+                result.publisher = result.publisher or _extract_tag("publisher")
+                result.language = result.language or _extract_tag("language")
+                result.description = result.description or _extract_tag("description")
+
+                if result.title:
+                    logger.info("ZIP-Fallback Metadaten: Titel=%s, Autor=%s", result.title, result.author)
+
+        except Exception as e:
+            logger.warning("ZIP-Fallback Metadaten fehlgeschlagen: %s", e)
