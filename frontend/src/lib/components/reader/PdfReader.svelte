@@ -661,6 +661,11 @@
 <svelte:window onkeydown={handleKeydown} onresize={handleResize} />
 
 <div class="pdf-reader">
+  {#if ui.readerFullscreen}
+    <button class="fullscreen-close-btn" onclick={() => ui.toggleReaderFullscreen()} title="Vollbild verlassen">
+      <i class="fa-solid fa-compress"></i>
+    </button>
+  {/if}
   {#if laden}
     <div class="status">
       <i class="fa-solid fa-spinner fa-spin"></i>
@@ -1093,5 +1098,29 @@
     font-size: 0.75rem;
     color: #999;
     font-family: inherit;
+  }
+
+  .fullscreen-close-btn {
+    position: fixed;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.4);
+    color: white;
+    font-size: 1rem;
+    z-index: 10000;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .fullscreen-close-btn:hover,
+  .fullscreen-close-btn:active {
+    opacity: 1;
   }
 </style>
