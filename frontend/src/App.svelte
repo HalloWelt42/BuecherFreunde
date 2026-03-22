@@ -123,8 +123,8 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    filter: blur(20px) saturate(1.2);
-    transform: scale(1.08);
+    filter: blur(6px) saturate(1.2);
+    transform: scale(1.02);
     pointer-events: none;
   }
 
