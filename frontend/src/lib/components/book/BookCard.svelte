@@ -190,10 +190,11 @@
   .book-card {
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
     border-radius: 10px;
     overflow: hidden;
-    background-color: var(--color-bg-secondary);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
     text-decoration: none;
     color: inherit;
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
