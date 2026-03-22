@@ -8,6 +8,7 @@
   import SammlungManager from "../lib/components/settings/SammlungManager.svelte";
   import AiSettings from "../lib/components/settings/AiSettings.svelte";
   import LegalInfo from "../lib/components/settings/LegalInfo.svelte";
+  import BackgroundManager from "../lib/components/settings/BackgroundManager.svelte";
 
   import { route } from "../lib/router.svelte.js";
   import { onMount } from "svelte";
@@ -160,6 +161,12 @@
             <i class="fa-solid fa-check"></i> Speichern
           </button>
         </div>
+      </section>
+
+      <section class="settings-section">
+        <h2><i class="fa-solid fa-image"></i> Hintergrundbilder</h2>
+        <p class="section-hint">Lade Hintergrundbilder hoch, die auf der Buch-Detailseite als Hintergrund angezeigt werden. Zwischen mehreren Bildern kannst du im Header mit den Pfeilen wechseln. Die Auswahl wird dauerhaft gespeichert.</p>
+        <BackgroundManager />
       </section>
 
       <section class="settings-section">
