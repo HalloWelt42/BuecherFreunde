@@ -32,8 +32,9 @@
     gap: 0.5rem;
     padding: 0 0.5rem;
     height: 36px;
-    border-bottom: 1px solid var(--color-border);
-    background-color: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
     flex-shrink: 0;
   }
 

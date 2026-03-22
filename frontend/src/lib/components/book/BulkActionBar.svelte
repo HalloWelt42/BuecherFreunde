@@ -188,12 +188,12 @@
     align-items: center;
     gap: 1rem;
     padding: 0.625rem 1.25rem;
-    background-color: var(--color-bg-secondary);
+    background: var(--glass-bg);
     border: 1px solid var(--color-accent);
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     z-index: 200;
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(var(--glass-blur));
   }
 
   .bulk-info {
@@ -274,8 +274,9 @@
     bottom: calc(100% + 4px);
     left: 0;
     min-width: 240px;
-    background-color: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
     border-radius: 8px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
     display: flex;

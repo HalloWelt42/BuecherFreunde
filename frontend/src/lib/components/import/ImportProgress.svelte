@@ -25,8 +25,9 @@
 <style>
   .import-progress {
     padding: 1rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--glass-border);
     border-radius: 8px;
-    background-color: var(--color-bg-secondary);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
   }
 </style>

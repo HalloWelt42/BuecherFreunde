@@ -89,8 +89,9 @@
     width: 100%;
     max-width: 360px;
     padding: 2.5rem 2rem;
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
     border-radius: 12px;
     display: flex;
     flex-direction: column;

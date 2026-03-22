@@ -211,8 +211,9 @@
     justify-content: space-between;
     padding: 0 0.75rem;
     height: 28px;
-    background-color: var(--color-bg-secondary);
-    border-top: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border-top: 1px solid var(--glass-border);
     position: relative;
     flex-shrink: 0;
   }
@@ -316,8 +317,9 @@
     width: min(600px, 100%);
     max-height: 300px;
     overflow-y: auto;
-    background-color: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
     border-bottom: none;
     border-radius: 8px 8px 0 0;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
@@ -329,10 +331,11 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--glass-border);
     position: sticky;
     top: 0;
-    background-color: var(--color-bg-secondary);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
     z-index: 1;
   }
 

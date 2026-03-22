@@ -874,8 +874,9 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.25rem 0.5rem;
-    border-bottom: 1px solid var(--color-border);
-    background-color: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
     flex-shrink: 0;
     height: 36px;
     flex-wrap: wrap;

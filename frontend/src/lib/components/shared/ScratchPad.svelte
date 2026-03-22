@@ -139,8 +139,9 @@
   .sp-wrap {
     position: fixed;
     z-index: 9000;
-    background: var(--color-bg-primary);
-    border: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
     border-radius: 6px;
     display: flex;
     flex-direction: column;
@@ -154,11 +155,11 @@
     align-items: center;
     justify-content: space-between;
     padding: 6px 10px;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--glass-border);
     cursor: grab;
     user-select: none;
     flex-shrink: 0;
-    background: var(--color-bg-tertiary);
+    background: var(--glass-bg-btn);
     border-radius: 6px 6px 0 0;
   }
 

@@ -54,8 +54,9 @@
   }
 
   .modal-content {
-    background-color: var(--color-bg-primary);
-    border: 1px solid var(--color-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
     border-radius: 12px;
     max-width: 560px;
     width: 100%;

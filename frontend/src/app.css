@@ -129,23 +129,20 @@
   --cover-bg-overlay: rgba(0, 0, 0, 0.7);
 }
 
-/* Hintergrundbild aktiv: opake Farben durch halbtransparente ersetzen */
+/* Hintergrundbild aktiv: opake Farben durch neutrale Transparenz ersetzen */
 .has-bg {
-  --color-bg-primary: rgba(255, 255, 255, 0.55);
-  --color-bg-secondary: rgba(255, 255, 255, 0.45);
-  --color-bg-tertiary: rgba(255, 255, 255, 0.35);
-  --color-border: rgba(0, 0, 0, 0.1);
-  --glass-border: rgba(0, 0, 0, 0.1);
+  --color-bg-primary: rgba(255, 255, 255, 0.5);
+  --color-bg-secondary: rgba(255, 255, 255, 0.4);
+  --color-bg-tertiary: rgba(255, 255, 255, 0.3);
+  --color-border: var(--glass-border);
 }
 
 :root.dark .has-bg {
-  --color-bg-primary: rgba(15, 23, 42, 0.6);
-  --color-bg-secondary: rgba(30, 41, 59, 0.5);
-  --color-bg-tertiary: rgba(51, 65, 85, 0.4);
-  --color-border: rgba(255, 255, 255, 0.08);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --color-bg-primary: rgba(0, 0, 0, 0.45);
+  --color-bg-secondary: rgba(0, 0, 0, 0.35);
+  --color-bg-tertiary: rgba(0, 0, 0, 0.25);
+  --color-border: var(--glass-border);
 }
-
 
 /* Basis-Stile */
 *,

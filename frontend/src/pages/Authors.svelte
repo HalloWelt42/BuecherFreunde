@@ -515,7 +515,8 @@
     position: sticky;
     top: 0;
     z-index: 10;
-    background-color: var(--color-bg-primary);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
     margin-left: -1.5rem;
     margin-right: -1.5rem;
     padding: 0.5rem 1.5rem;
