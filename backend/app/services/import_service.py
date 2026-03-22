@@ -124,6 +124,7 @@ async def _do_import(
         await update_task_status(task_id, "verarbeite", 20, "Duplikat wird geprüft")
 
     dup = check_duplicate(file_hash)
+    existing = None
     if dup:
         existing = await db.fetch_one(
             "SELECT id, title FROM books WHERE hash = ?", (file_hash,)
@@ -137,24 +138,47 @@ async def _do_import(
             result["book_id"] = existing["id"]
             result["titel"] = existing["title"]
             return result
+        # Storage existiert aber kein DB-Eintrag -> verwaist, weitermachen
+        logger.warning(
+            "Verwaiste Datei im Storage gefunden (Hash %s...), erstelle DB-Eintrag",
+            file_hash[:16],
+        )
 
-    # 4. Im Hash-Speicher ablegen
+    # 4. Im Hash-Speicher ablegen (oder vorhandenen verwenden)
     if task_id:
         await update_task_status(task_id, "verarbeite", 30, "Datei wird gespeichert")
 
-    try:
-        file_hash, storage_path = store_file(file_path, file_hash)
-    except FileExistsError:
-        if task_id:
-            await update_task_status(task_id, "duplikat", 100, "Datei existiert bereits")
-        result["status"] = "duplikat"
-        return result
-    except Exception as e:
-        error = f"Speichern fehlgeschlagen: {e}"
-        if task_id:
-            await update_task_status(task_id, "fehler", 30, "", error)
-        result["fehler"] = error
-        return result
+    if dup and not existing:
+        # Verwaiste Datei - Storage-Pfad wiederverwenden
+        storage_path = get_storage_path(file_hash)
+        logger.info("Verwende vorhandenen Storage-Pfad: %s", storage_path)
+    else:
+        try:
+            file_hash, storage_path = store_file(file_path, file_hash)
+        except FileExistsError:
+            # Noch ein Sicherheitscheck: vielleicht wurde zwischen Duplikat-Check
+            # und store_file ein DB-Eintrag erstellt (Race Condition)
+            race_check = await db.fetch_one(
+                "SELECT id, title FROM books WHERE hash = ?", (file_hash,)
+            )
+            if race_check:
+                if task_id:
+                    await update_task_status(
+                        task_id, "duplikat", 100, "Duplikat erkannt", "", race_check["id"]
+                    )
+                result["status"] = "duplikat"
+                result["book_id"] = race_check["id"]
+                result["titel"] = race_check["title"]
+                return result
+            # Verwaist - Storage wiederverwenden
+            storage_path = get_storage_path(file_hash)
+            logger.warning("FileExistsError aber kein DB-Eintrag, verwende Storage: %s", storage_path)
+        except Exception as e:
+            error = f"Speichern fehlgeschlagen: {e}"
+            if task_id:
+                await update_task_status(task_id, "fehler", 30, "", error)
+            result["fehler"] = error
+            return result
 
     # 5. Buch verarbeiten (Text, Metadaten, Cover extrahieren)
     if task_id:
