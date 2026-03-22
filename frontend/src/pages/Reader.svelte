@@ -135,6 +135,7 @@
       <MarkdownReader
         bookId={book.id}
         title={book.title}
+        format={book.file_format}
         {initialPapier}
         initialFontSize={saved.fontSize || 0}
         initialScrollPct={saved.scrollPct || 0}

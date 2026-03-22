@@ -4,6 +4,7 @@
   import { speichereLeseposition } from "../../api/user-data.js";
   import { ui } from "../../stores/ui.svelte.js";
   import { untrack } from "svelte";
+  import SvelteMarkdown from "@humanspeak/svelte-markdown";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
   import LabelPicker from "./LabelPicker.svelte";
   import ReaderLabels from "./ReaderLabels.svelte";
@@ -11,6 +12,7 @@
   let {
     bookId,
     title = "",
+    format = "txt",
     initialPapier = "",
     initialFontSize = 0,
     initialScrollPct = 0,
@@ -24,7 +26,10 @@
   let fontSize = $state(untrack(() => initialFontSize > 0 ? initialFontSize : 100));
   let scrollContainer = $state(null);
 
-  // Geschätzte Seiten (~2000 Zeichen pro Seite)
+  // Markdown oder Plaintext?
+  let istMarkdown = $derived(format === "md");
+
+  // Geschaetzte Seiten (~2000 Zeichen pro Seite)
   const ZEICHEN_PRO_SEITE = 2000;
   let geschaetzteSeiten = $derived(Math.max(1, Math.ceil(content.length / ZEICHEN_PRO_SEITE)));
   let aktuelleSeite = $state(1);
@@ -43,6 +48,96 @@
   $effect(() => {
     ladeText(bookId);
   });
+
+  // Syntax-Highlighting nach Markdown-Rendering anwenden
+  $effect(() => {
+    if (!laden && istMarkdown && content && scrollContainer) {
+      highlightCodeBlocks();
+    }
+  });
+
+  async function highlightCodeBlocks() {
+    // Dynamischer Import - nur laden wenn gebraucht
+    try {
+      const hljs = await import("highlight.js/lib/core");
+      const hljsLib = hljs.default;
+
+      // Sprachen on-demand laden
+      const languages = {
+        javascript: () => import("highlight.js/lib/languages/javascript"),
+        typescript: () => import("highlight.js/lib/languages/typescript"),
+        python: () => import("highlight.js/lib/languages/python"),
+        bash: () => import("highlight.js/lib/languages/bash"),
+        shell: () => import("highlight.js/lib/languages/shell"),
+        json: () => import("highlight.js/lib/languages/json"),
+        xml: () => import("highlight.js/lib/languages/xml"),
+        css: () => import("highlight.js/lib/languages/css"),
+        sql: () => import("highlight.js/lib/languages/sql"),
+        java: () => import("highlight.js/lib/languages/java"),
+        c: () => import("highlight.js/lib/languages/c"),
+        cpp: () => import("highlight.js/lib/languages/cpp"),
+        csharp: () => import("highlight.js/lib/languages/csharp"),
+        go: () => import("highlight.js/lib/languages/go"),
+        rust: () => import("highlight.js/lib/languages/rust"),
+        ruby: () => import("highlight.js/lib/languages/ruby"),
+        php: () => import("highlight.js/lib/languages/php"),
+        yaml: () => import("highlight.js/lib/languages/yaml"),
+        markdown: () => import("highlight.js/lib/languages/markdown"),
+        dockerfile: () => import("highlight.js/lib/languages/dockerfile"),
+        ini: () => import("highlight.js/lib/languages/ini"),
+        diff: () => import("highlight.js/lib/languages/diff"),
+        plaintext: () => import("highlight.js/lib/languages/plaintext"),
+      };
+
+      // Alle Code-Bloecke finden
+      const codeBlocks = scrollContainer.querySelectorAll("pre code");
+      if (codeBlocks.length === 0) return;
+
+      // Benoetigte Sprachen registrieren
+      const needed = new Set();
+      for (const block of codeBlocks) {
+        const cls = [...block.classList].find(c => c.startsWith("language-"));
+        if (cls) {
+          const lang = cls.replace("language-", "");
+          // Aliase aufloesen
+          const aliases = { js: "javascript", ts: "typescript", py: "python", sh: "bash", yml: "yaml", html: "xml" };
+          needed.add(aliases[lang] || lang);
+        }
+      }
+
+      // Sprachen registrieren
+      for (const lang of needed) {
+        if (languages[lang] && !hljsLib.getLanguage(lang)) {
+          try {
+            const mod = await languages[lang]();
+            hljsLib.registerLanguage(lang, mod.default);
+          } catch { /* Sprache nicht verfuegbar */ }
+        }
+      }
+
+      // Wenn keine spezifischen Sprachen, gängige laden fuer Auto-Detect
+      if (needed.size === 0) {
+        for (const lang of ["javascript", "python", "bash", "json", "xml", "css", "sql"]) {
+          if (!hljsLib.getLanguage(lang)) {
+            try {
+              const mod = await languages[lang]();
+              hljsLib.registerLanguage(lang, mod.default);
+            } catch { /* */ }
+          }
+        }
+      }
+
+      // Highlighting anwenden
+      for (const block of codeBlocks) {
+        if (!block.dataset.highlighted) {
+          hljsLib.highlightElement(block);
+          block.dataset.highlighted = "true";
+        }
+      }
+    } catch (e) {
+      console.warn("Syntax-Highlighting fehlgeschlagen:", e);
+    }
+  }
 
   async function ladeText(id) {
     laden = true;
@@ -76,6 +171,7 @@
   }
 
   // Alle Einstellungen speichern
+  let saveTimeout;
   function triggerSave() {
     clearTimeout(saveTimeout);
     // URL sofort
@@ -103,14 +199,12 @@
   function downloadFile() {
     const a = document.createElement("a");
     a.href = dateiUrl(bookId);
-    a.download = title || `buch-${bookId}.txt`;
+    a.download = title || `buch-${bookId}.${format}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
   }
 
-  // Leseposition tracken
-  let saveTimeout;
   function handleKeydown(event) {
     if (event.key === "Escape" && ui.readerFullscreen) {
       event.preventDefault();
@@ -151,7 +245,7 @@
 
       <div class="toolbar-sep"></div>
 
-      <!-- Geschätzte Seitenposition -->
+      <!-- Geschaetzte Seitenposition -->
       <div class="toolbar-group">
         <span class="page-info">~{aktuelleSeite} / {geschaetzteSeiten}</span>
         <span class="progress-info">{fortschritt}%</span>
@@ -159,7 +253,12 @@
 
       <div class="toolbar-sep"></div>
 
-      <!-- Schriftgröße -->
+      <!-- Format-Anzeige -->
+      <span class="format-badge">{istMarkdown ? "MD" : "TXT"}</span>
+
+      <div class="toolbar-sep"></div>
+
+      <!-- Schriftgroesse -->
       <div class="toolbar-group">
         <button class="tool-btn" onclick={() => changeFontSize(-10)} title="Schrift kleiner" disabled={fontSize <= 50}>
           <i class="fa-solid fa-minus"></i>
@@ -232,15 +331,20 @@
       bind:this={scrollContainer}
       onscroll={handleScroll}
     >
-      <pre class="text-pre" style="font-size: {fontSize}%">{content}</pre>
+      {#if istMarkdown}
+        <div class="markdown-body" style="font-size: {fontSize}%">
+          <SvelteMarkdown source={content} />
+        </div>
+      {:else}
+        <pre class="text-pre" style="font-size: {fontSize}%">{content}</pre>
+      {/if}
     </div>
 
-    <!-- Textauswahl-Aktionsmenü -->
+    <!-- Textauswahl-Aktionsmenue -->
     <TextSelectionMenu
       {bookId}
       positionLabel={"~S." + aktuelleSeite}
       onHighlight={(text) => {
-        // Für TXT/MD: Markierung via CSS highlight
         const sel = window.getSelection();
         if (sel?.rangeCount > 0) {
           try {
@@ -314,6 +418,17 @@
     height: 20px;
     background-color: var(--color-border);
     margin: 0 0.25rem;
+  }
+
+  .format-badge {
+    font-size: 0.625rem;
+    font-weight: 700;
+    font-family: var(--font-mono, monospace);
+    color: var(--color-accent);
+    background: var(--color-accent-light, color-mix(in srgb, var(--color-accent) 15%, transparent));
+    padding: 0.125rem 0.375rem;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
   }
 
   .tool-btn {
@@ -399,6 +514,7 @@
     background-color: #1e1e1e;
   }
 
+  /* Plaintext */
   .text-pre {
     font-family: var(--font-sans);
     line-height: 1.7;
@@ -421,6 +537,281 @@
     color: #c8c8c8;
   }
 
+  /* Markdown-Body */
+  .markdown-body {
+    max-width: 800px;
+    margin: 0 auto;
+    color: var(--color-text-primary);
+    line-height: 1.7;
+    font-family: var(--font-sans);
+  }
+
+  /* Markdown: Ueberschriften */
+  .markdown-body :global(h1) {
+    font-size: 1.75em;
+    font-weight: 700;
+    margin: 1.5em 0 0.75em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+  }
+
+  .markdown-body :global(h2) {
+    font-size: 1.4em;
+    font-weight: 700;
+    margin: 1.25em 0 0.5em;
+    padding-bottom: 0.25em;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+  }
+
+  .markdown-body :global(h3) {
+    font-size: 1.2em;
+    font-weight: 600;
+    margin: 1em 0 0.5em;
+    color: var(--color-text-primary);
+  }
+
+  .markdown-body :global(h4),
+  .markdown-body :global(h5),
+  .markdown-body :global(h6) {
+    font-size: 1em;
+    font-weight: 600;
+    margin: 1em 0 0.5em;
+    color: var(--color-text-primary);
+  }
+
+  /* Markdown: Absaetze und Text */
+  .markdown-body :global(p) {
+    margin: 0.75em 0;
+  }
+
+  .markdown-body :global(strong) {
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+
+  .markdown-body :global(em) {
+    font-style: italic;
+  }
+
+  .markdown-body :global(a) {
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .markdown-body :global(a:hover) {
+    text-decoration: underline;
+  }
+
+  /* Markdown: Listen */
+  .markdown-body :global(ul),
+  .markdown-body :global(ol) {
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+  }
+
+  .markdown-body :global(li) {
+    margin: 0.25em 0;
+  }
+
+  .markdown-body :global(li > ul),
+  .markdown-body :global(li > ol) {
+    margin: 0.125em 0;
+  }
+
+  /* Markdown: Blockquotes */
+  .markdown-body :global(blockquote) {
+    margin: 0.75em 0;
+    padding: 0.5em 1em;
+    border-left: 4px solid var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 5%, transparent);
+    color: var(--color-text-secondary);
+  }
+
+  .markdown-body :global(blockquote p) {
+    margin: 0.25em 0;
+  }
+
+  /* Markdown: Inline-Code */
+  .markdown-body :global(code) {
+    font-family: var(--font-mono, "JetBrains Mono", monospace);
+    font-size: 0.875em;
+    background: var(--color-bg-tertiary, color-mix(in srgb, var(--color-text-primary) 8%, transparent));
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    color: var(--color-text-primary);
+  }
+
+  /* Markdown: Code-Bloecke */
+  .markdown-body :global(pre) {
+    margin: 1em 0;
+    padding: 1em;
+    border-radius: 8px;
+    background: var(--color-bg-secondary, #f5f5f5);
+    border: 1px solid var(--color-border);
+    overflow-x: auto;
+    position: relative;
+  }
+
+  :global(:root.dark) .markdown-body :global(pre) {
+    background: #1e1e2e;
+    border-color: #313244;
+  }
+
+  .markdown-body :global(pre code) {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    font-size: 0.8125em;
+    line-height: 1.6;
+    display: block;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  /* Markdown: Tabellen */
+  .markdown-body :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 0.875em;
+  }
+
+  .markdown-body :global(th),
+  .markdown-body :global(td) {
+    padding: 0.5em 0.75em;
+    border: 1px solid var(--color-border);
+    text-align: left;
+  }
+
+  .markdown-body :global(th) {
+    background: var(--color-bg-secondary);
+    font-weight: 600;
+  }
+
+  .markdown-body :global(tr:nth-child(even)) {
+    background: color-mix(in srgb, var(--color-bg-secondary) 50%, transparent);
+  }
+
+  /* Markdown: Horizontale Linie */
+  .markdown-body :global(hr) {
+    margin: 1.5em 0;
+    border: none;
+    border-top: 1px solid var(--color-border);
+  }
+
+  /* Markdown: Bilder */
+  .markdown-body :global(img) {
+    max-width: 100%;
+    border-radius: 6px;
+    margin: 0.5em 0;
+  }
+
+  /* Markdown: Checklisten */
+  .markdown-body :global(input[type="checkbox"]) {
+    margin-right: 0.375em;
+    accent-color: var(--color-accent);
+  }
+
+  /* Papier-Modi fuer Markdown */
+  .papier-sepia .markdown-body {
+    color: #3d2b1f;
+  }
+
+  .papier-sepia .markdown-body :global(h1),
+  .papier-sepia .markdown-body :global(h2),
+  .papier-sepia .markdown-body :global(h3) {
+    color: #2c1e14;
+  }
+
+  .papier-sepia .markdown-body :global(pre) {
+    background: #ede3cf;
+    border-color: #d4c5a9;
+  }
+
+  .papier-sepia .markdown-body :global(code) {
+    background: #ede3cf;
+  }
+
+  :global(:root.dark) .papier-sepia .markdown-body {
+    color: #d4c5a9;
+  }
+
+  :global(:root.dark) .papier-sepia .markdown-body :global(h1),
+  :global(:root.dark) .papier-sepia .markdown-body :global(h2),
+  :global(:root.dark) .papier-sepia .markdown-body :global(h3) {
+    color: #e8d9b8;
+  }
+
+  :global(:root.dark) .papier-sepia .markdown-body :global(pre) {
+    background: #352e21;
+    border-color: #4a4133;
+  }
+
+  .papier-dunkel .markdown-body {
+    color: #c8c8c8;
+  }
+
+  .papier-dunkel .markdown-body :global(h1),
+  .papier-dunkel .markdown-body :global(h2),
+  .papier-dunkel .markdown-body :global(h3) {
+    color: #e0e0e0;
+  }
+
+  .papier-dunkel .markdown-body :global(pre) {
+    background: #2a2a2a;
+    border-color: #3a3a3a;
+  }
+
+  .papier-dunkel .markdown-body :global(code) {
+    background: #2a2a2a;
+  }
+
+  /* highlight.js Farben - Light Mode */
+  .markdown-body :global(.hljs-keyword) { color: #d73a49; }
+  .markdown-body :global(.hljs-string) { color: #032f62; }
+  .markdown-body :global(.hljs-number) { color: #005cc5; }
+  .markdown-body :global(.hljs-comment) { color: #6a737d; font-style: italic; }
+  .markdown-body :global(.hljs-function) { color: #6f42c1; }
+  .markdown-body :global(.hljs-title) { color: #6f42c1; }
+  .markdown-body :global(.hljs-class .hljs-title) { color: #6f42c1; }
+  .markdown-body :global(.hljs-built_in) { color: #e36209; }
+  .markdown-body :global(.hljs-literal) { color: #005cc5; }
+  .markdown-body :global(.hljs-type) { color: #d73a49; }
+  .markdown-body :global(.hljs-params) { color: #24292e; }
+  .markdown-body :global(.hljs-meta) { color: #005cc5; }
+  .markdown-body :global(.hljs-attr) { color: #005cc5; }
+  .markdown-body :global(.hljs-variable) { color: #e36209; }
+  .markdown-body :global(.hljs-selector-tag) { color: #22863a; }
+  .markdown-body :global(.hljs-selector-class) { color: #6f42c1; }
+  .markdown-body :global(.hljs-attribute) { color: #005cc5; }
+  .markdown-body :global(.hljs-symbol) { color: #005cc5; }
+  .markdown-body :global(.hljs-addition) { color: #22863a; background-color: #f0fff4; }
+  .markdown-body :global(.hljs-deletion) { color: #b31d28; background-color: #ffeef0; }
+
+  /* highlight.js Farben - Dark Mode */
+  :global(:root.dark) .markdown-body :global(.hljs-keyword) { color: #ff7b72; }
+  :global(:root.dark) .markdown-body :global(.hljs-string) { color: #a5d6ff; }
+  :global(:root.dark) .markdown-body :global(.hljs-number) { color: #79c0ff; }
+  :global(:root.dark) .markdown-body :global(.hljs-comment) { color: #8b949e; font-style: italic; }
+  :global(:root.dark) .markdown-body :global(.hljs-function) { color: #d2a8ff; }
+  :global(:root.dark) .markdown-body :global(.hljs-title) { color: #d2a8ff; }
+  :global(:root.dark) .markdown-body :global(.hljs-built_in) { color: #ffa657; }
+  :global(:root.dark) .markdown-body :global(.hljs-literal) { color: #79c0ff; }
+  :global(:root.dark) .markdown-body :global(.hljs-type) { color: #ff7b72; }
+  :global(:root.dark) .markdown-body :global(.hljs-params) { color: #c9d1d9; }
+  :global(:root.dark) .markdown-body :global(.hljs-meta) { color: #79c0ff; }
+  :global(:root.dark) .markdown-body :global(.hljs-attr) { color: #79c0ff; }
+  :global(:root.dark) .markdown-body :global(.hljs-variable) { color: #ffa657; }
+  :global(:root.dark) .markdown-body :global(.hljs-selector-tag) { color: #7ee787; }
+  :global(:root.dark) .markdown-body :global(.hljs-selector-class) { color: #d2a8ff; }
+  :global(:root.dark) .markdown-body :global(.hljs-attribute) { color: #79c0ff; }
+  :global(:root.dark) .markdown-body :global(.hljs-symbol) { color: #79c0ff; }
+  :global(:root.dark) .markdown-body :global(.hljs-addition) { color: #aff5b4; background-color: #033a16; }
+  :global(:root.dark) .markdown-body :global(.hljs-deletion) { color: #ffdcd7; background-color: #67060c; }
+
+  /* User-Highlights */
   :global(.user-highlight) {
     background-color: #ffe066;
     color: #1a1a1a;
