@@ -51,6 +51,13 @@ async def erstelle_backup(_: str = Depends(verify_token)):
 
     size = zip_path.stat().st_size
     logger.info("Backup erstellt: %s (%d Bytes)", zip_name, size)
+
+    # Alte Backups aufräumen -- nur die letzten 5 behalten
+    alle_backups = sorted(_backup_dir().glob("*.zip"), reverse=True)
+    for altes_backup in alle_backups[5:]:
+        altes_backup.unlink()
+        logger.info("Altes Backup gelöscht: %s", altes_backup.name)
+
     return {
         "message": "Backup erstellt",
         "filename": zip_name,
