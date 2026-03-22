@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import re
 import shutil
 import tempfile
 from pathlib import Path
@@ -25,6 +26,19 @@ from backend.app.services.import_service import (
 from backend.app.services.storage import SUPPORTED_FORMATS
 
 logger = logging.getLogger("buecherfreunde.api.import")
+
+# Zeichen die auf Dateisystemen ungültig sind (Windows, Linux, macOS)
+_UNSAFE_CHARS = re.compile(r'[<>:"|?*\x00-\x1f\\]')
+
+
+def _sanitize_filename(name: str) -> str:
+    """Bereinigt Dateinamen: entfernt Pfad, ersetzt ungültige Zeichen."""
+    clean = Path(name).name
+    clean = _UNSAFE_CHARS.sub("_", clean)
+    # Mehrfach-Unterstriche zusammenfassen
+    clean = re.sub(r"_{2,}", "_", clean)
+    return clean.strip("_. ") or "unbenannt"
+
 
 router = APIRouter(prefix="/api/import", tags=["Import"])
 
@@ -50,7 +64,7 @@ async def upload_file(
     task_id = await create_import_task(file.filename)
 
     # Datei temporär speichern (nur Dateiname ohne Pfad gegen Path Traversal)
-    safe_name = Path(file.filename).name
+    safe_name = _sanitize_filename(file.filename)
     import_dir = settings.import_dir
     import_dir.mkdir(parents=True, exist_ok=True)
     temp_path = import_dir / f"upload_{task_id}_{safe_name}"
@@ -93,7 +107,7 @@ async def upload_multiple(
 
         task_id = await create_import_task(file.filename)
 
-        safe_name = Path(file.filename).name
+        safe_name = _sanitize_filename(file.filename)
         import_dir = settings.import_dir
         import_dir.mkdir(parents=True, exist_ok=True)
         temp_path = import_dir / f"upload_{task_id}_{safe_name}"
