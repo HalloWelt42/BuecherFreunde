@@ -1,6 +1,6 @@
-# BuecherFreunde
+# BücherFreunde
 
-Selbst gehostete Buchverwaltung fuer 50.000+ Buecher. Laeuft per Docker auf Raspberry Pi 5 und Mac.
+Selbst gehostete Buchverwaltung für 50.000+ Bücher. Läuft per Docker auf Raspberry Pi 5 und Mac.
 
 ## Features
 
@@ -10,16 +10,17 @@ Selbst gehostete Buchverwaltung fuer 50.000+ Buecher. Laeuft per Docker auf Rasp
 - **Suche**: FTS5 Volltextsuche mit Snippets und Hervorhebung
 - **Markierungen**: Farbige Textmarkierungen mit Notizen (PDF + EPUB)
 - **Notizen**: Buchnotizen mit Seitenreferenz, Schnellnotiz-Pad
+- **Gutenberg**: Gemeinfreie Bücher direkt von Project Gutenberg importieren
 - **Metadaten**: Open Library, Google Books, Wikipedia/Wikidata
-- **KI**: Kategorisierung ueber LM Studio (optional, lokal)
+- **KI**: Kategorisierung über LM Studio (optional, lokal)
 - **Backup**: DB + Metadaten als ZIP, Buchmaterial per rsync
 - **Dark Mode**: Vier Papier-Modi im Reader (Normal, Sepia, Dunkel, Kontrast)
 
 ## Voraussetzungen
 
 - Docker und Docker Compose
-- Fuer Raspberry Pi: 64-bit OS (Raspberry Pi OS Lite empfohlen)
-- Fuer Mac: Docker Desktop
+- Für Raspberry Pi: 64-bit OS (Raspberry Pi OS Lite empfohlen)
+- Für Mac: Docker Desktop
 
 ## Installation
 
@@ -32,10 +33,10 @@ cd BuecherFreunde
 ```
 
 Das Skript fragt interaktiv nach:
-- Pfad fuer Buecher-Verzeichnis (Storage)
-- Pfad fuer Import-Verzeichnis
-- Pfad fuer Datenbank
-- Pfad fuer externen Scan-Ordner (optional)
+- Pfad für Bücher-Verzeichnis (Storage)
+- Pfad für Import-Verzeichnis
+- Pfad für Datenbank
+- Pfad für externen Scan-Ordner (optional)
 - Port (Standard: 8160)
 - LM Studio Einstellungen (optional)
 
@@ -69,7 +70,7 @@ Alle Einstellungen stehen in der `.env` Datei im Projektverzeichnis:
 
 ```
 # Server
-EXTERNAL_PORT=8160              # Port fuer den Zugriff
+EXTERNAL_PORT=8160              # Port für den Zugriff
 
 # Authentifizierung
 API_TOKEN=dein-token-hier       # Bearer Token (Frontend <-> Backend)
@@ -90,10 +91,10 @@ LM_STUDIO_URL=http://ip:1234/v1
 LM_STUDIO_MODEL=qwen2.5
 ```
 
-### Konfiguration aendern
+### Konfiguration ändern
 
 ```bash
-./setup.sh                      # Interaktives Menue
+./setup.sh                      # Interaktives Menü
 # oder direkt:
 nano .env
 cd docker && docker compose restart
@@ -103,9 +104,9 @@ cd docker && docker compose restart
 
 ### Update-Hinweis im Frontend
 
-Die Sidebar zeigt automatisch an, wenn eine neue Version auf GitHub verfuegbar ist.
+Die Sidebar zeigt automatisch an, wenn eine neue Version auf GitHub verfügbar ist.
 
-### Update ausfuehren
+### Update ausführen
 
 ```bash
 cd ~/BuecherFreunde
@@ -122,10 +123,10 @@ Das Skript:
 
 | Daten | Beim Update | Sicher? |
 |-------|-------------|---------|
-| Buecher (Storage) | Unveraendert (Volume) | Ja |
+| Bücher (Storage) | Unverändert (Volume) | Ja |
 | Datenbank | Auto-Migration + Backup vorher | Ja |
 | Notizen, Markierungen | In der DB, migriert mit | Ja |
-| .env Konfiguration | Unveraendert | Ja |
+| .env Konfiguration | Unverändert | Ja |
 
 ### Rollback
 
@@ -139,18 +140,18 @@ cd docker && docker compose restart backend
 
 ### Schutz vor Datenverlust
 
-Beim ersten Start legt das Backend eine Marker-Datei `.buecherfreunde` im Storage- und Datenbank-Verzeichnis an. Bei jedem weiteren Start wird geprueft:
+Beim ersten Start legt das Backend eine Marker-Datei `.buecherfreunde` im Storage- und Datenbank-Verzeichnis an. Bei jedem weiteren Start wird geprüft:
 
 - **Festplatte nicht gemountet**: Backend startet nicht (statt leere DB auf SD-Karte anzulegen)
 - **Marker-Datei fehlt**: Backend startet nicht (falscher Mount-Punkt?)
-- **Externer Scan-Ordner fehlt**: Wird uebersprungen, Backend startet normal
+- **Externer Scan-Ordner fehlt**: Wird übersprungen, Backend startet normal
 
-Docker startet den Container automatisch neu (`restart: unless-stopped`), sobald die Platte wieder verfuegbar ist.
+Docker startet den Container automatisch neu (`restart: unless-stopped`), sobald die Platte wieder verfügbar ist.
 
 ### Backup
 
 **Anwendungsdaten** (DB, Metadaten, Notizen):
-- Ueber die Einstellungen-Seite oder API: `POST /api/backup/create`
+- Über die Einstellungen-Seite oder API: `POST /api/backup/create`
 - Automatisches Backup vor jedem Update
 
 **Buchmaterial** (die Dateien selbst):
@@ -158,16 +159,34 @@ Docker startet den Container automatisch neu (`restart: unless-stopped`), sobald
 rsync -av /mnt/festplatte/ebooks/ /backup/ebooks/
 ```
 
+## Datenverteilung
+
+| Wo | Was |
+|----|-----|
+| SQLite (DATABASE_DIR) | Metadaten, Kategorien, Sammlungen, Notizen, Highlights, Lesefortschritt, FTS-Index |
+| Hash-Ordner (STORAGE_DIR) | Buchdateien (original.pdf/epub), Cover (cover.jpg), Volltext (fulltext.txt), Metadaten-Sidecar (metadata.json) |
+
+## Gutenberg-Import
+
+Unter **Import > Gutenberg** können gemeinfreie Bücher von Project Gutenberg importiert werden:
+
+- Suche nach Titel, Autor oder Thema
+- Sprachfilter (z.B. `de` für Deutsch, `en` für Englisch, `de,en` für beides)
+- Vorschau mit Cover, Format und Download-Anzahl
+- Mehrfachauswahl und Batch-Import mit Fortschrittsbalken
+- Automatische Kategorie "Gutenberg" für alle importierten Bücher
+- Duplikat-Erkennung per SHA-256 Hash und Gutenberg-ID
+
 ## Architektur
 
 ```
-BuecherFreunde/
+BücherFreunde/
  ├── frontend/          # Svelte 5 + Vite
  ├── backend/           # Python FastAPI + SQLite
  ├── docker/            # docker-compose.yml + nginx.conf
  ├── .env               # Konfiguration (nicht im Git)
  ├── install.sh         # Erstinstallation
- ├── setup.sh           # Konfiguration aendern
+ ├── setup.sh           # Konfiguration ändern
  ├── update.sh          # Updates einspielen
  └── start.sh           # Entwicklungsmodus (ohne Docker)
 ```
@@ -182,6 +201,7 @@ BuecherFreunde/
 | Backend | Python FastAPI + Uvicorn |
 | Datenbank | SQLite + FTS5 |
 | Metadaten | Open Library, Google Books |
+| Gutenberg | Gutendex-API (gutendex.com) |
 | KI | LM Studio (lokal, optional) |
 | Container | Docker Compose (python:3.12-slim, nginx:alpine) |
 
@@ -190,13 +210,15 @@ BuecherFreunde/
 Alle Endpunkte unter `/api/` mit Bearer-Token-Authentifizierung:
 
 - `GET /api/health` - Healthcheck (ohne Auth)
-- `GET /api/books` - Buecher auflisten (paginiert, filterbar)
+- `GET /api/books` - Bücher auflisten (paginiert, filterbar)
 - `GET /api/search?q=...` - Volltextsuche
-- `GET /api/config` - Oeffentliche Konfiguration
-- `GET /api/config/update-check` - Update-Pruefung
+- `GET /api/config` - Öffentliche Konfiguration
+- `GET /api/config/update-check` - Update-Prüfung
+- `GET /api/gutenberg/suche` - Gutenberg-Suche
+- `POST /api/gutenberg/import` - Gutenberg-Bücher importieren
 - `POST /api/backup/create` - Backup erstellen
 
-Vollstaendige API-Dokumentation: `http://localhost:8160/docs`
+Vollständige API-Dokumentation: `http://localhost:8160/docs`
 
 ## Docker-Befehle
 

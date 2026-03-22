@@ -13,6 +13,7 @@ from backend.app.api.backup import router as backup_router
 from backend.app.api.books import router as books_router
 from backend.app.api.categories import router as categories_router
 from backend.app.api.config import router as config_router
+from backend.app.api.gutenberg import router as gutenberg_router
 from backend.app.api.imports import router as imports_router
 from backend.app.api.metadata import router as metadata_router
 from backend.app.api.search import router as search_router
@@ -134,6 +135,7 @@ app.include_router(books_router)
 app.include_router(categories_router)
 app.include_router(collections_router)
 app.include_router(config_router)
+app.include_router(gutenberg_router)
 app.include_router(imports_router)
 app.include_router(highlights_router)
 app.include_router(labels_router)

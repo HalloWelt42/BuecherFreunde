@@ -10,7 +10,7 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.db")
 
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 
 SCHEMA_SQL = """
 -- Bücher
@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS books (
     typ TEXT DEFAULT '',
     sammlung_id INTEGER DEFAULT NULL,
     band_nummer TEXT DEFAULT '',
+    gutenberg_id INTEGER DEFAULT NULL,
     fts_content TEXT DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -43,6 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_books_hash ON books(hash);
 CREATE INDEX IF NOT EXISTS idx_books_title ON books(title);
 CREATE INDEX IF NOT EXISTS idx_books_author ON books(author);
 CREATE INDEX IF NOT EXISTS idx_books_format ON books(file_format);
+CREATE INDEX IF NOT EXISTS idx_books_gutenberg ON books(gutenberg_id);
 
 -- Kategorien (Baumstruktur)
 CREATE TABLE IF NOT EXISTS categories (
@@ -691,6 +693,21 @@ Verwende deutsche Begriffe. Sei spezifisch, nicht zu allgemein.',
             """)
             await self._connection.commit()
             logger.info("Schema-Migration v13 abgeschlossen: Label-Felder in book_highlights integriert")
+
+        if from_version < 14:
+            # v14: Gutenberg-ID für importierte Gutenberg-Bücher
+            try:
+                await self._connection.execute(
+                    "ALTER TABLE books ADD COLUMN gutenberg_id INTEGER DEFAULT NULL"
+                )
+            except Exception as e:
+                if "duplicate column" not in str(e).lower():
+                    logger.warning("Migration-Warnung: %s", e)
+            await self._connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_books_gutenberg ON books(gutenberg_id)"
+            )
+            await self._connection.commit()
+            logger.info("Schema-Migration v14 abgeschlossen: gutenberg_id Spalte")
 
     async def _migrate_html_descriptions(self) -> None:
         """Konvertiert bestehende HTML-Beschreibungen in Markdown."""

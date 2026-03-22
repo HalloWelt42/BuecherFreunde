@@ -518,6 +518,86 @@ async def bulk_action(
     return {"betroffen": betroffen, "aktion": action.aktion}
 
 
+@router.delete("/kategorie/{category_id}/buecher")
+async def delete_books_by_category(
+    category_id: int,
+    datei_loeschen: bool = Query(False, description="Auch Dateien im Speicher löschen"),
+    _token: str = Depends(verify_token),
+):
+    """Löscht alle Bücher einer Kategorie.
+
+    Entfernt die Bücher aus der DB. Optional werden auch die
+    Dateien im Hash-Speicher gelöscht.
+    """
+    # Bücher in dieser Kategorie finden
+    rows = await db.fetch_all(
+        "SELECT b.id, b.hash FROM books b JOIN book_categories bc ON bc.book_id = b.id WHERE bc.category_id = ?",
+        (category_id,),
+    )
+    if not rows:
+        return {"geloescht": 0, "kategorie_id": category_id}
+
+    if datei_loeschen:
+        from backend.app.services.storage import delete_stored_file
+
+    for row in rows:
+        await db.execute("DELETE FROM books WHERE id = ?", (row["id"],))
+        if datei_loeschen:
+            try:
+                delete_stored_file(row["hash"])
+            except Exception:
+                pass
+    await db.commit()
+
+    return {"geloescht": len(rows), "kategorie_id": category_id}
+
+
+@router.delete("/alle")
+async def delete_all_books(
+    datei_loeschen: bool = Query(False, description="Auch Dateien im Speicher löschen"),
+    bestaetigung: str = Query(..., description="Muss 'ALLE LOESCHEN' sein"),
+    _token: str = Depends(verify_token),
+):
+    """Löscht ALLE Bücher aus der Datenbank.
+
+    Erfordert explizite Bestätigung mit bestaetigung='ALLE LOESCHEN'.
+    """
+    if bestaetigung != "ALLE LOESCHEN":
+        raise HTTPException(
+            status_code=400,
+            detail="Sicherheitsbestätigung fehlt. Sende bestaetigung='ALLE LOESCHEN'",
+        )
+
+    if datei_loeschen:
+        from backend.app.services.storage import delete_stored_file
+
+        rows = await db.fetch_all("SELECT hash FROM books")
+        for row in rows:
+            try:
+                delete_stored_file(row["hash"])
+            except Exception:
+                pass
+
+    result = await db.execute("DELETE FROM books")
+    await db.execute("DELETE FROM book_categories")
+    await db.execute("DELETE FROM book_authors")
+    await db.execute("DELETE FROM user_book_data")
+    await db.execute("DELETE FROM book_highlights")
+    await db.execute("DELETE FROM book_labels")
+    await db.execute("DELETE FROM book_notes")
+    await db.execute("DELETE FROM import_tasks")
+    await db.commit()
+
+    # FTS-Index neu aufbauen
+    try:
+        await db.execute("INSERT INTO books_fts(books_fts) VALUES('rebuild')")
+        await db.commit()
+    except Exception:
+        pass
+
+    return {"geloescht": True, "hinweis": "Alle Bücher und zugehörige Daten gelöscht"}
+
+
 @router.get("/{book_id}/cover")
 async def get_cover(book_id: int, _token: str = Depends(verify_token_query)):
     """Gibt das Cover-Bild eines Buches zurück."""

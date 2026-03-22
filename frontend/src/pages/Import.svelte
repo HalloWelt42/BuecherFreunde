@@ -2,6 +2,7 @@
   import UploadZone from "../lib/components/import/UploadZone.svelte";
   import ImportStatus from "../lib/components/import/ImportStatus.svelte";
   import ImportProgress from "../lib/components/import/ImportProgress.svelte";
+  import GutenbergImport from "../lib/components/import/GutenbergImport.svelte";
   import {
     ladeDateienHoch,
     scanneImportVerzeichnis,
@@ -11,6 +12,7 @@
     bereinigeImportTasks,
   } from "../lib/api/imports.js";
 
+  let activeTab = $state("dateien");
   let tasks = $state([]);
   let laden = $state(false);
   let fehler = $state(null);
@@ -42,10 +44,8 @@
       (event) => {
         const d = event.data;
         if (d && d.aufgaben) {
-          // Backend sendet komplettes Aufgaben-Array
           tasks = d.aufgaben;
         } else if (d && d.id) {
-          // Einzelnes Task-Update
           const idx = tasks.findIndex((t) => t.id === d.id);
           if (idx >= 0) {
             tasks[idx] = d;
@@ -56,7 +56,6 @@
         }
       },
       () => {
-        // SSE-Fehler -- nach 5s erneut verbinden
         setTimeout(starteSSE, 5000);
       },
     );
@@ -111,43 +110,63 @@
 <div class="import-page">
   <div class="page-header">
     <h1>Import</h1>
+    <div class="tab-bar">
+      <button
+        class="tab-btn"
+        class:active={activeTab === "dateien"}
+        onclick={() => activeTab = "dateien"}
+      >
+        <i class="fa-solid fa-file-import"></i> Dateien
+      </button>
+      <button
+        class="tab-btn"
+        class:active={activeTab === "gutenberg"}
+        onclick={() => activeTab = "gutenberg"}
+      >
+        <i class="fa-solid fa-landmark-dome"></i> Gutenberg
+      </button>
+    </div>
   </div>
 
-  <UploadZone {onFiles} />
+  {#if activeTab === "dateien"}
+    <UploadZone {onFiles} />
 
-  {#if fehler}
-    <div class="error-banner">
-      <p>{fehler}</p>
-    </div>
-  {/if}
+    {#if fehler}
+      <div class="error-banner">
+        <p>{fehler}</p>
+      </div>
+    {/if}
 
-  <div class="scan-actions">
-    <button class="action-btn" onclick={scanImport} disabled={laden}>
-      <i class="fa-solid fa-folder-open"></i> Import-Verzeichnis scannen
-    </button>
-    <button class="action-btn" onclick={scanExtern} disabled={laden}>
-      <i class="fa-solid fa-hard-drive"></i> Externes Verzeichnis scannen
-    </button>
-  </div>
-
-  {#if tasks.length > 0}
-    <ImportProgress {tasks} />
-
-    {@const fertige = tasks.filter(t => t.status === "fertig" || t.status === "fehler").length}
-    <div class="tasks-header">
-      <span class="tasks-count">{tasks.length} Aufgaben</span>
-      {#if fertige > 0}
-        <button class="action-btn clear-btn" onclick={async () => { try { const r = await bereinigeImportTasks(); tasks = r.aufgaben || []; } catch { tasks = tasks.filter(t => t.status === "wartend" || t.status === "verarbeite"); } }}>
-          <i class="fa-solid fa-broom"></i> {fertige} abgeschlossene bereinigen
-        </button>
-      {/if}
+    <div class="scan-actions">
+      <button class="action-btn" onclick={scanImport} disabled={laden}>
+        <i class="fa-solid fa-folder-open"></i> Import-Verzeichnis scannen
+      </button>
+      <button class="action-btn" onclick={scanExtern} disabled={laden}>
+        <i class="fa-solid fa-hard-drive"></i> Externes Verzeichnis scannen
+      </button>
     </div>
 
-    <div class="tasks-list">
-      {#each tasks as task (task.id)}
-        <ImportStatus {task} />
-      {/each}
-    </div>
+    {#if tasks.length > 0}
+      <ImportProgress {tasks} />
+
+      {@const fertige = tasks.filter(t => t.status === "fertig" || t.status === "fehler").length}
+      <div class="tasks-header">
+        <span class="tasks-count">{tasks.length} Aufgaben</span>
+        {#if fertige > 0}
+          <button class="action-btn clear-btn" onclick={async () => { try { const r = await bereinigeImportTasks(); tasks = r.aufgaben || []; } catch { tasks = tasks.filter(t => t.status === "wartend" || t.status === "verarbeite"); } }}>
+            <i class="fa-solid fa-broom"></i> {fertige} abgeschlossene bereinigen
+          </button>
+        {/if}
+      </div>
+
+      <div class="tasks-list">
+        {#each tasks as task (task.id)}
+          <ImportStatus {task} />
+        {/each}
+      </div>
+    {/if}
+  {:else if activeTab === "gutenberg"}
+    <GutenbergImport />
   {/if}
 </div>
 
@@ -166,12 +185,47 @@
     background-color: var(--color-bg-primary);
     margin: -1.5rem -1.5rem 0;
     padding: 1.5rem 1.5rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
   .page-header h1 {
     font-size: 1.5rem;
     font-weight: 700;
     color: var(--color-text-primary);
+  }
+
+  .tab-bar {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: -1px;
+  }
+
+  .tab-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .tab-btn:hover {
+    color: var(--color-text-primary);
+  }
+
+  .tab-btn.active {
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
+    font-weight: 600;
   }
 
   .error-banner {

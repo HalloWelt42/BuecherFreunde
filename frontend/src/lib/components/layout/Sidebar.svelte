@@ -58,12 +58,11 @@
   let isUngelesen = $derived(params_.get("gelesen") === "false");
   let isBuecher = $derived(params_.get("hat_isbn") === "true");
   let isDokumente = $derived(params_.get("hat_isbn") === "false");
-  let isLabels = $derived(params_.get("hat_labels") === "true");
-  let isHighlights = $derived(params_.get("hat_highlights") === "true");
+  let isLabels = $derived(params_.get("hat_highlights") === "true");
   let isHome = $derived(route.path === "/" || route.path === "");
   let hasNoSpecialFilter = $derived(
     !isFavorite && !isToRead && !isGelesen && !isUngelesen &&
-    !isBuecher && !isDokumente && !isLabels && !isHighlights && activeCategories.length === 0
+    !isBuecher && !isDokumente && !isLabels && activeCategories.length === 0
   );
 
   function toggleCategory(catId) {
@@ -272,20 +271,11 @@
         <span class="nav-count">{stats.leseliste}</span>
       {/if}
     </button>
-    <button class="nav-item" class:active={isLabels} onclick={() => toggleSpecial("hat_labels", "true")}
-      title="Bücher mit farbigen Labels"
+    <button class="nav-item" class:active={isLabels} onclick={() => toggleSpecial("hat_highlights", "true")}
+      title="Bücher mit Labels und Markierungen"
     >
       <span class="nav-icon"><i class="fa-solid fa-tags"></i></span>
       <span class="nav-label">Labels</span>
-      {#if stats.mit_labels > 0}
-        <span class="nav-count">{stats.mit_labels}</span>
-      {/if}
-    </button>
-    <button class="nav-item" class:active={isHighlights} onclick={() => toggleSpecial("hat_highlights", "true")}
-      title="Bücher mit markierten Textstellen"
-    >
-      <span class="nav-icon"><i class="fa-solid fa-highlighter"></i></span>
-      <span class="nav-label">Markierte Stellen</span>
       {#if stats.mit_highlights > 0}
         <span class="nav-count">{stats.mit_highlights}</span>
       {/if}
