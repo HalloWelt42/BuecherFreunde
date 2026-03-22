@@ -5,7 +5,8 @@
   import { ui } from "../../stores/ui.svelte.js";
   import { untrack } from "svelte";
   import SvelteMarkdown from "@humanspeak/svelte-markdown";
-  import { markedMermaid, MermaidRenderer } from "@humanspeak/svelte-markdown/extensions/mermaid";
+  import { markedMermaid, MermaidRenderer, markedAlert } from "@humanspeak/svelte-markdown/extensions";
+  import AlertBlock from "./AlertBlock.svelte";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
   import LabelPicker from "./LabelPicker.svelte";
   import ReaderLabels from "./ReaderLabels.svelte";
@@ -30,9 +31,9 @@
   // Markdown oder Plaintext?
   let istMarkdown = $derived(format === "md");
 
-  // Mermaid-Erweiterung und Renderer
-  const mermaidExtensions = [markedMermaid()];
-  const mermaidRenderers = { mermaid: MermaidRenderer };
+  // Markdown-Erweiterungen und Renderer
+  const mdExtensions = [markedMermaid(), markedAlert()];
+  const mdRenderers = { mermaid: MermaidRenderer, alert: AlertBlock };
 
   // Breiten-Modi
   const breitenModi = [
@@ -358,7 +359,7 @@
     >
       {#if istMarkdown}
         <div class="markdown-body" style="font-size: {fontSize}%; max-width: {maxBreite}">
-          <SvelteMarkdown source={content} extensions={mermaidExtensions} renderers={mermaidRenderers} />
+          <SvelteMarkdown source={content} extensions={mdExtensions} renderers={mdRenderers} />
         </div>
       {:else}
         <pre class="text-pre" style="font-size: {fontSize}%; max-width: {maxBreite}">{content}</pre>
