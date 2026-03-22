@@ -400,7 +400,7 @@
     <a
       href="/settings"
       class="nav-item"
-      class:active={route.path === "/settings"}
+      class:active={route.path.startsWith("/settings")}
     >
       <span class="nav-icon"><i class="fa-solid fa-gear"></i></span>
       <span class="nav-label">Einstellungen</span>

@@ -1,5 +1,6 @@
 <script>
   import { kiStatus, healthCheck, ladeConfig } from "../../api/config.js";
+  import { get } from "../../api/client.js";
   import { onMount } from "svelte";
 
   let services = $state([]);
@@ -213,15 +214,15 @@
         });
       }
 
-      // Gutenberg (Gutendex)
+      // Gutenberg (Gutendex) -- über Backend prüfen
       try {
-        const res = await fetch("https://gutendex.com/books/?page=1&search=test");
+        const gb = await get("/api/gutenberg/status");
         ergebnisse.push({
           name: "Gutenberg (Gutendex)",
           icon: "fa-landmark-dome",
-          status: res.ok ? "online" : "offline",
-          info: res.ok ? "Gutendex-API erreichbar" : `HTTP ${res.status}`,
-          url: "https://gutendex.com",
+          status: gb.erreichbar ? "online" : "offline",
+          info: gb.erreichbar ? "Gutendex-API erreichbar" : gb.info || "Nicht erreichbar",
+          url: gb.url || "https://gutendex.com",
         });
       } catch {
         ergebnisse.push({

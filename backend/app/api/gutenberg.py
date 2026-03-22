@@ -51,6 +51,26 @@ def _reset_status():
     })
 
 
+@router.get("/status")
+async def gutenberg_status(_token: str = Depends(verify_token)) -> dict:
+    """Prüft ob die Gutendex-API erreichbar ist."""
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
+            resp = await client.get("https://gutendex.com/books/?page=1&search=test")
+            return {
+                "erreichbar": resp.status_code == 200,
+                "url": "https://gutendex.com",
+                "info": f"HTTP {resp.status_code}",
+            }
+    except Exception as e:
+        return {
+            "erreichbar": False,
+            "url": "https://gutendex.com",
+            "info": str(e),
+        }
+
+
 @router.get("/suche")
 async def gutenberg_suche(
     q: str = Query("", description="Suchbegriff (Titel, Autor)"),

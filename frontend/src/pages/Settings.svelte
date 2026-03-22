@@ -7,6 +7,7 @@
   import CategoryManager from "../lib/components/settings/CategoryManager.svelte";
   import SammlungManager from "../lib/components/settings/SammlungManager.svelte";
   import AiSettings from "../lib/components/settings/AiSettings.svelte";
+  import LegalInfo from "../lib/components/settings/LegalInfo.svelte";
 
   import { route } from "../lib/router.svelte.js";
   import { onMount } from "svelte";
@@ -16,6 +17,7 @@
     if (route.path.includes("/settings/sammlungen")) return "sammlungen";
     if (route.path.includes("/settings/ai")) return "ai";
     if (route.path.includes("/settings/system")) return "system";
+    if (route.path.includes("/settings/legal")) return "legal";
     return "general";
   });
 
@@ -69,6 +71,9 @@
       <a href="/settings/system" class="tab" class:active={activeTab === "system"}>
         <i class="fa-solid fa-hard-drive"></i> System
       </a>
+      <a href="/settings/legal" class="tab" class:active={activeTab === "legal"}>
+        <i class="fa-solid fa-scale-balanced"></i> Rechtliches
+      </a>
     </nav>
   </div>
 
@@ -78,6 +83,14 @@
     <SammlungManager />
   {:else if activeTab === "ai"}
     <AiSettings />
+  {:else if activeTab === "legal"}
+    <div class="settings-single">
+      <section class="settings-section">
+        <h2><i class="fa-solid fa-scale-balanced"></i> Lizenz, Datenschutz und Drittanbieter</h2>
+        <p class="section-hint">Rechtliche Informationen zu BücherFreunde, verwendeten Bibliotheken und Datenschutz.</p>
+        <LegalInfo />
+      </section>
+    </div>
   {:else if activeTab === "system"}
     <div class="settings-single">
       <section class="settings-section">
