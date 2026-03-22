@@ -14,6 +14,8 @@
   });
 
   let version = $state("...");
+  let updateVerfuegbar = $state(false);
+  let remoteVersion = $state("");
 
   async function ladeVersion() {
     try {
@@ -25,6 +27,22 @@
     } catch {
       version = "?";
     }
+    // Update-Check im Hintergrund
+    pruefeUpdate();
+  }
+
+  async function pruefeUpdate() {
+    try {
+      const token = localStorage.getItem("api_token") || "";
+      const res = await fetch("/api/config/update-check", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        updateVerfuegbar = data.update_verfuegbar || false;
+        remoteVersion = data.remote_version || "";
+      }
+    } catch {}
   }
 
   // Aktive Kategorie-IDs aus URL lesen
@@ -369,7 +387,14 @@
 
   <!-- Spacer + Version -->
   <div class="sidebar-spacer"></div>
-  <div class="sidebar-version">BücherFreunde v{version}</div>
+  <div class="sidebar-version">
+    BücherFreunde v{version}
+    {#if updateVerfuegbar}
+      <span class="update-hint" title="Version {remoteVersion} verfügbar - ./update.sh auf dem Server ausführen">
+        <i class="fa-solid fa-arrow-up"></i> {remoteVersion}
+      </span>
+    {/if}
+  </div>
 </aside>
 
 <style>
@@ -659,5 +684,19 @@
     color: var(--color-text-muted);
     text-align: center;
     opacity: 0.6;
+  }
+
+  .update-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin-left: 0.25rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+    color: var(--color-accent);
+    font-weight: 600;
+    cursor: help;
+    opacity: 1;
   }
 </style>

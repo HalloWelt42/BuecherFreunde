@@ -27,18 +27,72 @@ from backend.app.core.database import db
 logger = logging.getLogger("buecherfreunde")
 
 
+MARKER_FILE = ".buecherfreunde"
+
+
+def _check_storage_mount() -> None:
+    """Prüft ob das Storage-Verzeichnis erreichbar ist.
+
+    Beim ersten Start wird eine Marker-Datei angelegt. Bei jedem weiteren
+    Start muss diese Datei existieren - fehlt sie (z.B. weil die externe
+    Festplatte nicht gemountet ist), wird der Start abgebrochen statt eine
+    neue leere DB auf der SD-Karte anzulegen.
+    """
+    marker = settings.storage_dir / MARKER_FILE
+    db_exists = settings.database_path.exists()
+
+    if db_exists and not settings.storage_dir.exists():
+        raise RuntimeError(
+            f"ABBRUCH: Storage-Verzeichnis {settings.storage_dir} nicht erreichbar. "
+            "Ist die externe Festplatte gemountet?"
+        )
+
+    if db_exists and not marker.exists():
+        raise RuntimeError(
+            f"ABBRUCH: Marker-Datei {marker} fehlt. "
+            "Das Storage-Verzeichnis ist vermutlich nicht korrekt gemountet. "
+            "Falls die Platte am richtigen Ort ist, erstelle die Datei manuell: "
+            f"touch {marker}"
+        )
+
+    if not db_exists and settings.database_dir.exists():
+        # Prüfe ob das DB-Verzeichnis beschreibbar ist
+        db_marker = settings.database_dir / MARKER_FILE
+        if not db_marker.exists():
+            # Erster Start - Marker anlegen
+            logger.info("Erster Start erkannt - Marker-Dateien werden angelegt")
+
+
 def _ensure_directories() -> None:
     """Erstellt alle benötigten Verzeichnisse beim Start."""
     dirs = [
         settings.storage_dir,
-        settings.external_dir,
         settings.import_dir,
         settings.database_dir,
         settings.backup_dir,
     ]
+    # external_dir nur erstellen wenn konfiguriert und erreichbar
+    ext = settings.external_dir
+    if ext.exists() or ext.parent.exists():
+        dirs.append(ext)
+    else:
+        logger.warning(
+            "External-Verzeichnis %s nicht erreichbar - wird übersprungen", ext
+        )
+
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
         logger.info("Verzeichnis bereit: %s", d)
+
+    # Marker-Dateien anlegen falls noch nicht vorhanden
+    for marker_dir in [settings.storage_dir, settings.database_dir]:
+        marker = marker_dir / MARKER_FILE
+        if not marker.exists():
+            marker.write_text(
+                "BuecherFreunde Marker - diese Datei nicht löschen!\n"
+                "Sie verhindert Datenverlust wenn die Festplatte nicht gemountet ist.\n"
+            )
+            logger.info("Marker-Datei angelegt: %s", marker)
 
 
 @asynccontextmanager
@@ -50,6 +104,7 @@ async def lifespan(app: FastAPI):
         datefmt="%d.%m.%Y %H:%M:%S",
     )
     logger.info("BuecherFreunde v%s wird gestartet", settings.version)
+    _check_storage_mount()
     _ensure_directories()
     await db.connect()
     yield

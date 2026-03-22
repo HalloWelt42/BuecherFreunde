@@ -8,10 +8,9 @@ services:
       - ../.env
     volumes:
       - ${STORAGE_DIR:-../storage}:/app/storage
-      - ${EXTERNAL_DIR:-../external}:/app/external
+      - ${EXTERNAL_DIR:-../external}:/app/external:ro
       - ${IMPORT_DIR:-../import}:/app/import
       - ${DATABASE_DIR:-../database}:/app/database
-      - ${BACKUP_DIR:-../database/backups}:/app/database/backups
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 30s

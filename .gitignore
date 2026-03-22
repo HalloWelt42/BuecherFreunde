@@ -1,6 +1,9 @@
 # Temporäre Dateien
 tmp/
 
+# Marker-Dateien (Mount-Sicherheit)
+.buecherfreunde
+
 # Python
 __pycache__/
 *.py[cod]

@@ -1,13 +1,21 @@
 """API-Endpunkte für Konfiguration und Systemstatus."""
 
+import logging
 from pathlib import Path
 
+import httpx
 from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi.responses import FileResponse
 
 from backend.app.core.auth import verify_token, verify_token_query
 from backend.app.core.config import settings
 from backend.app.core.database import db
+
+logger = logging.getLogger("buecherfreunde")
+
+GITHUB_VERSION_URL = (
+    "https://raw.githubusercontent.com/HalloWelt42/BuecherFreunde/main/VERSION"
+)
 
 router = APIRouter(prefix="/api/config", tags=["Konfiguration"])
 
@@ -33,6 +41,31 @@ async def get_paths(_token: str = Depends(verify_token)) -> dict:
         "import": str(settings.import_dir.resolve()),
         "extern": str(settings.external_dir.resolve()) if settings.external_dir else "",
     }
+
+
+@router.get("/update-check")
+async def check_for_updates(_token: str = Depends(verify_token)) -> dict:
+    """Prüft ob eine neuere Version auf GitHub verfügbar ist."""
+    lokale_version = settings.version
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(GITHUB_VERSION_URL)
+            resp.raise_for_status()
+            remote_version = resp.text.strip()
+        update_verfuegbar = remote_version != lokale_version
+        return {
+            "lokale_version": lokale_version,
+            "remote_version": remote_version,
+            "update_verfuegbar": update_verfuegbar,
+        }
+    except Exception as e:
+        logger.debug("Update-Check fehlgeschlagen: %s", e)
+        return {
+            "lokale_version": lokale_version,
+            "remote_version": None,
+            "update_verfuegbar": False,
+            "fehler": "GitHub nicht erreichbar",
+        }
 
 
 @router.get("/stats")
