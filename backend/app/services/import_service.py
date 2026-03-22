@@ -15,7 +15,9 @@ from backend.app.services.storage import (
     SUPPORTED_FORMATS,
     check_duplicate,
     compute_hash,
+    get_original_file,
     get_storage_path,
+    sanitize_filename,
     save_cover,
     save_fulltext,
     save_metadata,
@@ -34,14 +36,17 @@ async def update_task_status(
     book_id: int | None = None,
 ) -> None:
     """Aktualisiert den Status einer Import-Aufgabe."""
-    await db.execute(
-        """UPDATE import_tasks
-           SET status = ?, progress_percent = ?, current_step = ?,
-               error = ?, book_id = ?, updated_at = datetime('now')
-           WHERE id = ?""",
-        (status, progress, step, error, book_id, task_id),
-    )
-    await db.commit()
+    try:
+        await db.execute(
+            """UPDATE import_tasks
+               SET status = ?, progress_percent = ?, current_step = ?,
+                   error = ?, book_id = ?, updated_at = datetime('now')
+               WHERE id = ?""",
+            (status, progress, step, error, book_id, task_id),
+        )
+        await db.commit()
+    except Exception as e:
+        logger.error("Task-Status-Update fehlgeschlagen fuer %d: %s", task_id, e)
 
 
 async def import_single_file(file_path: Path, task_id: int | None = None, enrich: bool = True) -> dict:
@@ -52,9 +57,39 @@ async def import_single_file(file_path: Path, task_id: int | None = None, enrich
     Returns:
         Dict mit Ergebnis: {"status": "ok"|"duplikat"|"fehler", ...}
     """
-    result = {"status": "fehler", "datei": file_path.name}
+    original_name = sanitize_filename(file_path.name)
+    result = {"status": "fehler", "datei": original_name}
 
-    # 0. Prüfen ob Task noch existiert (könnte abgebrochen worden sein)
+    try:
+        return await _do_import(file_path, task_id, enrich, original_name, result)
+    except Exception as e:
+        error = f"Unerwarteter Import-Fehler: {e}"
+        logger.error("Import-Fehler fuer '%s': %s", original_name, e, exc_info=True)
+        if task_id:
+            await update_task_status(task_id, "fehler", 0, "", error)
+        result["fehler"] = error
+        return result
+
+
+async def _do_import(
+    file_path: Path,
+    task_id: int | None,
+    enrich: bool,
+    original_name: str,
+    result: dict,
+) -> dict:
+    """Eigentliche Import-Logik, wird von import_single_file aufgerufen."""
+
+    # 0. Prüfen ob Datei existiert
+    if not file_path.exists():
+        error = f"Datei nicht gefunden: {file_path}"
+        logger.error(error)
+        if task_id:
+            await update_task_status(task_id, "fehler", 0, "", error)
+        result["fehler"] = error
+        return result
+
+    # 1. Prüfen ob Task noch existiert (könnte abgebrochen worden sein)
     if task_id:
         task_row = await db.fetch_one(
             "SELECT status FROM import_tasks WHERE id = ?", (task_id,)
@@ -63,7 +98,7 @@ async def import_single_file(file_path: Path, task_id: int | None = None, enrich
             result["status"] = "abgebrochen"
             return result
 
-    # 1. Hash berechnen
+    # 2. Hash berechnen
     if task_id:
         await update_task_status(task_id, "verarbeite", 10, "Hash wird berechnet")
 
@@ -76,13 +111,12 @@ async def import_single_file(file_path: Path, task_id: int | None = None, enrich
         result["fehler"] = error
         return result
 
-    # 2. Duplikat prüfen
+    # 3. Duplikat prüfen
     if task_id:
         await update_task_status(task_id, "verarbeite", 20, "Duplikat wird geprüft")
 
     dup = check_duplicate(file_hash)
     if dup:
-        # Auch in DB prüfen
         existing = await db.fetch_one(
             "SELECT id, title FROM books WHERE hash = ?", (file_hash,)
         )
@@ -96,7 +130,7 @@ async def import_single_file(file_path: Path, task_id: int | None = None, enrich
             result["titel"] = existing["title"]
             return result
 
-    # 3. Im Hash-Speicher ablegen
+    # 4. Im Hash-Speicher ablegen
     if task_id:
         await update_task_status(task_id, "verarbeite", 30, "Datei wird gespeichert")
 
@@ -114,104 +148,78 @@ async def import_single_file(file_path: Path, task_id: int | None = None, enrich
         result["fehler"] = error
         return result
 
-    # 4. Buch verarbeiten (Text, Metadaten, Cover extrahieren)
+    # 5. Buch verarbeiten (Text, Metadaten, Cover extrahieren)
     if task_id:
         await update_task_status(task_id, "verarbeite", 50, "Inhalt wird extrahiert")
-
-    from backend.app.services.storage import get_original_file
 
     original = get_original_file(file_hash)
     if not original:
         original = file_path  # Fallback
 
-    proc_result = process_book(original)
+    try:
+        proc_result = process_book(original)
+    except Exception as e:
+        logger.error("Prozessor-Fehler fuer '%s': %s", original_name, e)
+        proc_result = None
 
-    # 5. Open Library Anreicherung (nur bei Einzelimport/Upload, nicht bei Verzeichnis-Scan)
+    if proc_result is None or proc_result.error:
+        # Trotz Fehler weitermachen -- Datei ist gespeichert, nur Metadaten fehlen
+        logger.warning(
+            "Verarbeitung fehlerhaft fuer '%s': %s",
+            original_name,
+            proc_result.error if proc_result else "Prozessor gab None zurueck",
+        )
+        if proc_result is None:
+            from backend.app.services.processors.base import BookProcessingResult
+            proc_result = BookProcessingResult()
+            proc_result.title = file_path.stem.replace("_", " ").replace("-", " ")
+
+    # 6. Open Library Anreicherung
     if task_id:
-        await update_task_status(task_id, "verarbeite", 60, "ISBN wird gesucht")
+        await update_task_status(task_id, "verarbeite", 60, "Metadaten werden angereichert")
 
-    if enrich and proc_result.isbn and settings.openlibrary_enabled:
-        # Abbruch prüfen bevor wir auf externe API warten
-        if task_id and await is_task_cancelled(task_id):
-            result["status"] = "abgebrochen"
-            return result
-        if task_id:
-            await update_task_status(task_id, "verarbeite", 65, "Metadaten werden angereichert (Open Library)")
+    if enrich and settings.openlibrary_enabled:
         try:
-            from backend.app.services.openlibrary import lookup_isbn
-            ol_data = await asyncio.wait_for(lookup_isbn(proc_result.isbn), timeout=15.0)
-            if ol_data:
-                if not proc_result.author and ol_data.get("autor"):
-                    proc_result.author = ol_data["autor"]
-                if not proc_result.publisher and ol_data.get("verlag"):
-                    proc_result.publisher = ol_data["verlag"]
-                if not proc_result.year and ol_data.get("jahr"):
-                    proc_result.year = ol_data["jahr"]
-                if not proc_result.language and ol_data.get("sprache"):
-                    proc_result.language = ol_data["sprache"]
-                if not proc_result.description and ol_data.get("beschreibung"):
-                    proc_result.description = ol_data["beschreibung"]
-                # Titel nur übernehmen wenn bisher nur Dateiname
-                if ol_data.get("titel") and proc_result.title == file_path.stem.replace("_", " ").replace("-", " "):
-                    proc_result.title = ol_data["titel"]
-                logger.info("Metadaten angereichert via Open Library für ISBN %s", proc_result.isbn)
-        except asyncio.TimeoutError:
-            logger.warning("Open Library Timeout für ISBN %s", proc_result.isbn)
+            await _enrich_from_openlibrary(proc_result, file_path, task_id)
         except Exception as e:
             logger.warning("Open Library Anreicherung fehlgeschlagen: %s", e)
-    elif enrich and not proc_result.isbn and proc_result.title and settings.openlibrary_enabled:
-        # Abbruch prüfen
-        if task_id and await is_task_cancelled(task_id):
-            result["status"] = "abgebrochen"
-            return result
-        # Fallback: Titel/Autor-Suche wenn keine ISBN
-        if task_id:
-            await update_task_status(task_id, "verarbeite", 65, "Suche nach Metadaten (Titel/Autor)")
-        try:
-            from backend.app.services.openlibrary import search_books
-            query = f"{proc_result.title} {proc_result.author}".strip()
-            results = await asyncio.wait_for(search_books(query, limit=1), timeout=15.0)
-            if results:
-                ol_data = results[0]
-                if ol_data.get("isbn"):
-                    proc_result.isbn = ol_data["isbn"]
-                if not proc_result.author and ol_data.get("autor"):
-                    proc_result.author = ol_data["autor"]
-                if not proc_result.year and ol_data.get("jahr"):
-                    proc_result.year = ol_data["jahr"]
-                logger.info("Metadaten via Titelsuche gefunden: %s", proc_result.title)
-        except asyncio.TimeoutError:
-            logger.warning("Open Library Titel-Suche Timeout für: %s", proc_result.title)
-        except Exception as e:
-            logger.warning("Open Library Titelsuche fehlgeschlagen: %s", e)
 
-    # 6. Sidecar-Dateien speichern
+    # 7. Sidecar-Dateien speichern
     if task_id:
         await update_task_status(task_id, "verarbeite", 75, "Metadaten werden gespeichert")
 
-    metadata = {
-        "titel": proc_result.title,
-        "autor": proc_result.author,
-        "isbn": proc_result.isbn,
-        "verlag": proc_result.publisher,
-        "jahr": proc_result.year,
-        "sprache": proc_result.language,
-        "beschreibung": proc_result.description,
-        "seiten": proc_result.page_count,
-    }
-    save_metadata(file_hash, metadata)
+    try:
+        metadata = {
+            "titel": proc_result.title,
+            "autor": proc_result.author,
+            "isbn": proc_result.isbn,
+            "verlag": proc_result.publisher,
+            "jahr": proc_result.year,
+            "sprache": proc_result.language,
+            "beschreibung": proc_result.description,
+            "seiten": proc_result.page_count,
+        }
+        save_metadata(file_hash, metadata)
 
-    if proc_result.fulltext:
-        save_fulltext(file_hash, proc_result.fulltext)
+        if proc_result.fulltext:
+            save_fulltext(file_hash, proc_result.fulltext)
 
-    if proc_result.cover_data:
-        save_cover(file_hash, proc_result.cover_data)
+        if proc_result.cover_data:
+            save_cover(file_hash, proc_result.cover_data)
+    except Exception as e:
+        logger.warning("Sidecar-Speicherung fehlgeschlagen: %s", e)
 
-    # 7. In Datenbank eintragen
+    # 8. In Datenbank eintragen
     if task_id:
         await update_task_status(task_id, "verarbeite", 85, "Datenbankeintrag wird erstellt")
 
-    file_size = file_path.stat().st_size
+    try:
+        # Dateigroesse aus Storage lesen (nicht aus temp_path die geloescht wird)
+        stored_file = get_original_file(file_hash)
+        file_size = stored_file.stat().st_size if stored_file else 0
+    except Exception:
+        file_size = 0
+
     file_format = file_path.suffix.lower().lstrip(".")
 
     cursor = await db.execute(
@@ -231,7 +239,7 @@ async def import_single_file(file_path: Path, task_id: int | None = None, enrich
             proc_result.description,
             file_format,
             file_size,
-            file_path.name,
+            original_name,
             str(storage_path),
             "cover.jpg" if proc_result.cover_data else "",
             proc_result.page_count,
@@ -243,31 +251,12 @@ async def import_single_file(file_path: Path, task_id: int | None = None, enrich
 
     # Bücher ohne ISBN -> Kategorie "Ungeordnet"
     if not proc_result.isbn:
-        ungeordnet = await db.fetch_one(
-            "SELECT id FROM categories WHERE slug = ?", ("ungeordnet",)
-        )
-        if not ungeordnet:
-            cur = await db.execute(
-                "INSERT OR IGNORE INTO categories (name, slug, description) VALUES (?, ?, ?)",
-                ("Ungeordnet", "ungeordnet", "Bücher ohne ISBN oder Zuordnung"),
-            )
-            await db.commit()
-            if cur.lastrowid:
-                kat_id = cur.lastrowid
-            else:
-                row = await db.fetch_one(
-                    "SELECT id FROM categories WHERE slug = ?", ("ungeordnet",)
-                )
-                kat_id = row["id"]
-        else:
-            kat_id = ungeordnet["id"]
-        await db.execute(
-            "INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'import')",
-            (book_id, kat_id),
-        )
-        await db.commit()
+        try:
+            await _assign_ungeordnet(book_id)
+        except Exception as e:
+            logger.warning("Kategorie-Zuordnung fehlgeschlagen: %s", e)
 
-    # 8. Fertig
+    # 9. Fertig
     if task_id:
         await update_task_status(task_id, "fertig", 100, "Import abgeschlossen", "", book_id)
 
@@ -275,7 +264,77 @@ async def import_single_file(file_path: Path, task_id: int | None = None, enrich
     result["book_id"] = book_id
     result["titel"] = proc_result.title
     result["hash"] = file_hash
+    logger.info("Import erfolgreich: '%s' (ID %d)", proc_result.title, book_id)
     return result
+
+
+async def _enrich_from_openlibrary(proc_result, file_path, task_id):
+    """Reichert Metadaten via Open Library an."""
+    if proc_result.isbn:
+        if task_id and await is_task_cancelled(task_id):
+            return
+        if task_id:
+            await update_task_status(task_id, "verarbeite", 65, "Open Library (ISBN)")
+        from backend.app.services.openlibrary import lookup_isbn
+        ol_data = await asyncio.wait_for(lookup_isbn(proc_result.isbn), timeout=15.0)
+        if ol_data:
+            if not proc_result.author and ol_data.get("autor"):
+                proc_result.author = ol_data["autor"]
+            if not proc_result.publisher and ol_data.get("verlag"):
+                proc_result.publisher = ol_data["verlag"]
+            if not proc_result.year and ol_data.get("jahr"):
+                proc_result.year = ol_data["jahr"]
+            if not proc_result.language and ol_data.get("sprache"):
+                proc_result.language = ol_data["sprache"]
+            if not proc_result.description and ol_data.get("beschreibung"):
+                proc_result.description = ol_data["beschreibung"]
+            if ol_data.get("titel") and proc_result.title == file_path.stem.replace("_", " ").replace("-", " "):
+                proc_result.title = ol_data["titel"]
+            logger.info("Metadaten angereichert via ISBN %s", proc_result.isbn)
+    elif proc_result.title:
+        if task_id and await is_task_cancelled(task_id):
+            return
+        if task_id:
+            await update_task_status(task_id, "verarbeite", 65, "Open Library (Titelsuche)")
+        from backend.app.services.openlibrary import search_books
+        query = f"{proc_result.title} {proc_result.author}".strip()
+        results = await asyncio.wait_for(search_books(query, limit=1), timeout=15.0)
+        if results:
+            ol_data = results[0]
+            if ol_data.get("isbn"):
+                proc_result.isbn = ol_data["isbn"]
+            if not proc_result.author and ol_data.get("autor"):
+                proc_result.author = ol_data["autor"]
+            if not proc_result.year and ol_data.get("jahr"):
+                proc_result.year = ol_data["jahr"]
+            logger.info("Metadaten via Titelsuche: %s", proc_result.title)
+
+
+async def _assign_ungeordnet(book_id: int):
+    """Ordnet ein Buch der Kategorie 'Ungeordnet' zu."""
+    ungeordnet = await db.fetch_one(
+        "SELECT id FROM categories WHERE slug = ?", ("ungeordnet",)
+    )
+    if not ungeordnet:
+        cur = await db.execute(
+            "INSERT OR IGNORE INTO categories (name, slug, description) VALUES (?, ?, ?)",
+            ("Ungeordnet", "ungeordnet", "Bücher ohne ISBN oder Zuordnung"),
+        )
+        await db.commit()
+        if cur.lastrowid:
+            kat_id = cur.lastrowid
+        else:
+            row = await db.fetch_one(
+                "SELECT id FROM categories WHERE slug = ?", ("ungeordnet",)
+            )
+            kat_id = row["id"]
+    else:
+        kat_id = ungeordnet["id"]
+    await db.execute(
+        "INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'import')",
+        (book_id, kat_id),
+    )
+    await db.commit()
 
 
 async def scan_directory(directory: Path) -> list[dict]:
@@ -289,21 +348,23 @@ async def scan_directory(directory: Path) -> list[dict]:
 
     for f in sorted(directory.rglob("*")):
         if f.is_file() and f.suffix.lower() in SUPPORTED_FORMATS:
-            file_hash = compute_hash(f)
-            dup = check_duplicate(file_hash)
-            existing = await db.fetch_one(
-                "SELECT id, title FROM books WHERE hash = ?", (file_hash,)
-            )
-
-            files.append({
-                "pfad": str(f),
-                "name": f.name,
-                "groesse": f.stat().st_size,
-                "format": f.suffix.lower(),
-                "hash": file_hash,
-                "ist_duplikat": dup is not None or existing is not None,
-                "bestehendes_buch": existing["title"] if existing else None,
-            })
+            try:
+                file_hash = compute_hash(f)
+                dup = check_duplicate(file_hash)
+                existing = await db.fetch_one(
+                    "SELECT id, title FROM books WHERE hash = ?", (file_hash,)
+                )
+                files.append({
+                    "pfad": str(f),
+                    "name": f.name,
+                    "groesse": f.stat().st_size,
+                    "format": f.suffix.lower(),
+                    "hash": file_hash,
+                    "ist_duplikat": dup is not None or existing is not None,
+                    "bestehendes_buch": existing["title"] if existing else None,
+                })
+            except Exception as e:
+                logger.warning("Datei '%s' uebersprungen: %s", f.name, e)
 
     return files
 
@@ -311,7 +372,7 @@ async def scan_directory(directory: Path) -> list[dict]:
 def list_importable_files(directory: Path) -> list[dict]:
     """Listet importierbare Dateien schnell auf (ohne Hash, ohne DB-Check).
 
-    Nur Dateiname, Pfad, Größe und Format -- kehrt sofort zurück.
+    Nur Dateiname, Pfad, Groesse und Format -- kehrt sofort zurueck.
     """
     files = []
     if not directory.exists():
@@ -391,11 +452,9 @@ async def clear_finished_tasks() -> int:
 
 async def cancel_pending_tasks() -> int:
     """Bricht alle wartenden und aktiven Tasks ab."""
-    # Wartende löschen
     await db.execute(
         "DELETE FROM import_tasks WHERE status = 'wartend'"
     )
-    # Laufende als abgebrochen markieren
     await db.execute(
         """UPDATE import_tasks SET status = 'fehler', error = 'Abgebrochen',
            current_step = 'Abgebrochen', updated_at = datetime('now')
