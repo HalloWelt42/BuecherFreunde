@@ -41,6 +41,9 @@ database/*.db-shm
 # Buchspeicher
 storage/
 
+# Hintergrundbilder (User-Uploads)
+database/design_bg/
+
 # Backups
 backups/
 
