@@ -7,6 +7,7 @@
   import { ui } from "../../stores/ui.svelte.js";
   import { readerFarbThemen, readerSchriften } from "../../constants/themes.js";
   import { onDestroy, untrack } from "svelte";
+  import { createSwipeHandler } from "../../utils/touch.js";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
   import ReaderHighlights from "./ReaderHighlights.svelte";
   import ReaderNotes from "./ReaderNotes.svelte";
@@ -218,6 +219,16 @@
 
   $effect(() => {
     if (containerEl) ladeEpub(bookId);
+  });
+
+  // Touch-Swipe fuer iPad/Tablets: links = naechste, rechts = vorherige Seite
+  $effect(() => {
+    if (!containerEl) return;
+    const cleanup = createSwipeHandler(containerEl, {
+      onSwipeLeft: () => nextPage(),
+      onSwipeRight: () => prevPage(),
+    });
+    return cleanup;
   });
 
   async function ladeEpub(id) {

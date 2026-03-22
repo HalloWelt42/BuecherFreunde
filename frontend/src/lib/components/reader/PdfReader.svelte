@@ -7,6 +7,7 @@
   import { getToken } from "../../api/client.js";
   import { ui } from "../../stores/ui.svelte.js";
   import { onMount, onDestroy, untrack } from "svelte";
+  import { createSwipeHandler } from "../../utils/touch.js";
   import { highlightsFuerBuch, erstelleHighlight, aktualisiereHighlight, loescheHighlight } from "../../api/highlights.js";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
   import ReaderHighlights from "./ReaderHighlights.svelte";
@@ -100,6 +101,16 @@
 
   $effect(() => {
     ladePdf(bookId);
+  });
+
+  // Touch-Swipe fuer iPad/Tablets: nur bei Einzel-/Doppel-Ansicht
+  $effect(() => {
+    if (!scrollContainer || ansicht === "scroll") return;
+    const cleanup = createSwipeHandler(scrollContainer, {
+      onSwipeLeft: () => nextPage(),
+      onSwipeRight: () => prevPage(),
+    });
+    return cleanup;
   });
 
   async function ladePdf(id) {
