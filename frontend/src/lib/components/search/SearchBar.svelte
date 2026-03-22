@@ -158,7 +158,7 @@
     <div class="suggestions history-dropdown">
       <div class="history-header">
         <span class="history-label"><i class="fa-solid fa-clock-rotate-left"></i> Suchverlauf</span>
-        <button class="history-clear" onmousedown|preventDefault={loescheHistorie}>
+        <button class="history-clear" onmousedown={(e) => { e.preventDefault(); loescheHistorie(); }}>
           Verlauf löschen
         </button>
       </div>
