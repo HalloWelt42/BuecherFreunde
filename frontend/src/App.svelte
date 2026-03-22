@@ -1,10 +1,12 @@
 <script>
   import { route, matchRoute, handleLinkClick } from "./lib/router.svelte.js";
   import { ui } from "./lib/stores/ui.svelte.js";
+  import { hasToken, onAuthError } from "./lib/api/client.js";
   import Header from "./lib/components/layout/Header.svelte";
   import Sidebar from "./lib/components/layout/Sidebar.svelte";
   import Footer from "./lib/components/layout/Footer.svelte";
   import ScratchPad from "./lib/components/shared/ScratchPad.svelte";
+  import TokenLogin from "./lib/components/auth/TokenLogin.svelte";
 
   import Library from "./pages/Library.svelte";
   import BookDetail from "./pages/BookDetail.svelte";
@@ -15,6 +17,17 @@
   import AuthorDetail from "./pages/AuthorDetail.svelte";
   import Import from "./pages/Import.svelte";
   import Settings from "./pages/Settings.svelte";
+
+  let showLogin = $state(!hasToken());
+
+  onAuthError(() => {
+    showLogin = true;
+  });
+
+  function onLoginSuccess() {
+    showLogin = false;
+    window.location.reload();
+  }
 
   const routeDefs = [
     { pattern: "/book/:id/read", component: Reader },
@@ -42,6 +55,10 @@
     return null;
   });
 </script>
+
+{#if showLogin}
+  <TokenLogin onSuccess={onLoginSuccess} />
+{/if}
 
 <svelte:document onclick={handleLinkClick} />
 

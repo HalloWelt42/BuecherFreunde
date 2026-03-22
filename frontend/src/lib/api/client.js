@@ -2,8 +2,26 @@
  * API-Client mit Bearer Token Auth, Fehlerbehandlung und SSE-Support.
  */
 
-const DEFAULT_TOKEN = "bitte-aendern-sicherer-token-hier";
-let apiToken = localStorage.getItem("api_token") || DEFAULT_TOKEN;
+let apiToken = localStorage.getItem("api_token") || "";
+
+/** Callback wenn Token ungültig ist - wird von App.svelte gesetzt */
+let onAuthRequired = null;
+
+/**
+ * Registriert einen Callback für fehlende/ungültige Authentifizierung.
+ * @param {() => void} callback
+ */
+export function onAuthError(callback) {
+  onAuthRequired = callback;
+}
+
+/**
+ * Prüft ob ein Token gespeichert ist.
+ * @returns {boolean}
+ */
+export function hasToken() {
+  return apiToken.length > 0;
+}
 
 /**
  * Setzt den API-Token für alle Requests.
@@ -69,6 +87,11 @@ async function baseFetch(path, options = {}) {
     } catch {
       // Response ohne JSON-Body
     }
+
+    if ((response.status === 401 || response.status === 403) && onAuthRequired) {
+      onAuthRequired();
+    }
+
     const message = data?.detail || `HTTP ${response.status}`;
     throw new ApiError(response.status, message, data);
   }
