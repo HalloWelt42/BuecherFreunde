@@ -8,6 +8,7 @@ import asyncio
 import logging
 import re
 import shutil
+import sqlite3
 from pathlib import Path
 
 from backend.app.core.config import settings
@@ -280,32 +281,43 @@ async def _do_import(
 
     file_format = file_path.suffix.lower().lstrip(".")
 
-    cursor = await db.execute(
-        """INSERT INTO books
-           (hash, title, author, isbn, publisher, year, language, description,
-            file_format, file_size, file_name, storage_path, cover_path,
-            page_count, fts_content)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (
-            file_hash,
-            proc_result.title,
-            proc_result.author,
-            proc_result.isbn,
-            proc_result.publisher,
-            proc_result.year,
-            proc_result.language,
-            proc_result.description,
-            file_format,
-            file_size,
-            original_name,
-            str(storage_path),
-            "cover.jpg" if proc_result.cover_data else "",
-            proc_result.page_count,
-            proc_result.fts_content,
-        ),
-    )
-    await db.commit()
-    book_id = cursor.lastrowid
+    try:
+        cursor = await db.execute(
+            """INSERT INTO books
+               (hash, title, author, isbn, publisher, year, language, description,
+                file_format, file_size, file_name, storage_path, cover_path,
+                page_count, fts_content)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                file_hash,
+                proc_result.title,
+                proc_result.author,
+                proc_result.isbn,
+                proc_result.publisher,
+                proc_result.year,
+                proc_result.language,
+                proc_result.description,
+                file_format,
+                file_size,
+                original_name,
+                str(storage_path),
+                "cover.jpg" if proc_result.cover_data else "",
+                proc_result.page_count,
+                proc_result.fts_content,
+            ),
+        )
+        await db.commit()
+        book_id = cursor.lastrowid
+    except sqlite3.IntegrityError:
+        # Race-Condition: paralleler Import desselben Buchs -- existierendes zurueckgeben
+        logger.info("Duplikat erkannt (Race-Condition) fuer Hash %s", file_hash)
+        row = await db.fetch_one("SELECT id FROM books WHERE hash = ?", (file_hash,))
+        if row:
+            result["status"] = "duplikat"
+            result["book_id"] = row["id"]
+            result["hash"] = file_hash
+            return result
+        raise
 
     # Bücher ohne ISBN -> Kategorie "Ungeordnet"
     if not proc_result.isbn:
