@@ -14,11 +14,46 @@
   let offen = $state({});
   let editTimer = {};
 
+  // Drag-State
+  let panelEl = $state(null);
+  let dragging = $state(false);
+  let dragOffset = { x: 0, y: 0 };
+  let panelPos = $state({ x: 0, y: 0 });
+  let positioned = $state(false);
+
+  function initPosition() {
+    if (positioned || !panelEl) return;
+    const rect = panelEl.getBoundingClientRect();
+    panelPos = { x: rect.left, y: rect.top };
+    positioned = true;
+  }
+
+  function onDragStart(e) {
+    if (e.target.closest("input, textarea, button")) return;
+    initPosition();
+    dragging = true;
+    dragOffset = { x: e.clientX - panelPos.x, y: e.clientY - panelPos.y };
+    e.preventDefault();
+  }
+
+  function onDragMove(e) {
+    if (!dragging) return;
+    panelPos = {
+      x: Math.max(0, Math.min(window.innerWidth - 200, e.clientX - dragOffset.x)),
+      y: Math.max(0, Math.min(window.innerHeight - 100, e.clientY - dragOffset.y)),
+    };
+  }
+
+  function onDragEnd() {
+    dragging = false;
+  }
+
   // Anzahl Labels (Highlights mit Name)
   let labelCount = $derived(highlights.filter(h => h.label_name).length);
 
   function toggle() {
     open = !open;
+    if (!open) positioned = false;
   }
 
   function onFarbeAendern(hlId, neueFarbe) {
@@ -40,6 +75,12 @@
   }
 </script>
 
+<svelte:window onmousemove={onDragMove} onmouseup={onDragEnd} />
+
+{#if dragging}
+  <div class="drag-overlay"></div>
+{/if}
+
 <div class="reader-hl-wrap">
   <button
     class="tool-btn"
@@ -54,8 +95,14 @@
   </button>
 
   {#if open}
-    <div class="hl-panel">
-      <div class="hl-header">
+    <div
+      class="hl-panel"
+      class:dragging
+      bind:this={panelEl}
+      style={positioned ? `position: fixed; left: ${panelPos.x}px; top: ${panelPos.y}px; right: auto;` : ""}
+    >
+      <div class="hl-header" role="button" tabindex="0" onmousedown={onDragStart}>
+        <i class="fa-solid fa-grip-vertical drag-handle"></i>
         <strong>Markierungen</strong>
         <span class="hl-count">{highlights.length} Stellen{#if labelCount > 0}, {labelCount} Labels{/if}</span>
         <button class="hl-close" aria-label="Markierungen schließen" onclick={() => { open = false; }}>
@@ -192,6 +239,13 @@
     text-align: center;
   }
 
+  .drag-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99998;
+    cursor: grabbing;
+  }
+
   .hl-panel {
     position: absolute;
     top: calc(100% + 6px);
@@ -206,7 +260,12 @@
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
     display: flex;
     flex-direction: column;
-    z-index: 300;
+    z-index: 99999;
+  }
+
+  .hl-panel.dragging {
+    user-select: none;
+    cursor: grabbing;
   }
 
   .hl-header {
@@ -218,6 +277,18 @@
     font-size: 0.75rem;
     color: var(--color-text-secondary);
     height: 28px;
+    cursor: grab;
+  }
+
+  .hl-header:active {
+    cursor: grabbing;
+  }
+
+  .drag-handle {
+    color: var(--color-text-muted);
+    font-size: 0.5625rem;
+    opacity: 0.5;
+    flex-shrink: 0;
   }
 
   .hl-header strong {
