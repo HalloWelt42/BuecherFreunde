@@ -231,6 +231,20 @@
     return cleanup;
   });
 
+  // Fullscreen-State synchron halten (z.B. wenn Nutzer per Geste Vollbild verlaesst)
+  $effect(() => {
+    function onFsChange() {
+      const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      ui.readerFullscreen = isFs;
+    }
+    document.addEventListener("fullscreenchange", onFsChange);
+    document.addEventListener("webkitfullscreenchange", onFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("webkitfullscreenchange", onFsChange);
+    };
+  });
+
   async function ladeEpub(id) {
     laden = true;
     fehler = null;

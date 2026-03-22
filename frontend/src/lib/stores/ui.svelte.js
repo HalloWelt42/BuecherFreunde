@@ -98,8 +98,38 @@ function createUiStore() {
     set readerFullscreen(value) {
       readerFullscreen = value;
     },
-    toggleReaderFullscreen() {
-      readerFullscreen = !readerFullscreen;
+    async toggleReaderFullscreen() {
+      const fsElement = document.fullscreenElement || document.webkitFullscreenElement;
+      if (!fsElement) {
+        // Vollbild aktivieren (mit webkit-Prefix fuer Safari)
+        const el = document.documentElement;
+        try {
+          if (el.requestFullscreen) {
+            await el.requestFullscreen();
+          } else if (el.webkitRequestFullscreen) {
+            await el.webkitRequestFullscreen();
+          } else {
+            // Kein Fullscreen-API verfuegbar (z.B. iPad Safari) -- CSS-Fallback
+            readerFullscreen = !readerFullscreen;
+            return;
+          }
+        } catch {
+          // Fullscreen-Anfrage abgelehnt -- CSS-Fallback
+          readerFullscreen = !readerFullscreen;
+          return;
+        }
+        readerFullscreen = true;
+      } else {
+        // Vollbild verlassen
+        try {
+          if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            await document.webkitExitFullscreen();
+          }
+        } catch { /* bereits verlassen */ }
+        readerFullscreen = false;
+      }
     },
 
     // Hintergrundbilder
