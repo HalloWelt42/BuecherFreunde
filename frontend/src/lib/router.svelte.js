@@ -68,6 +68,9 @@ export function handleLinkClick(event) {
   const href = anchor.getAttribute("href");
   if (!href) return;
   if (href.startsWith("http") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+  if (href.startsWith("/api/")) return;
+  if (anchor.hasAttribute("download")) return;
+  if (anchor.getAttribute("target") === "_blank") return;
 
   event.preventDefault();
   navigate(href);

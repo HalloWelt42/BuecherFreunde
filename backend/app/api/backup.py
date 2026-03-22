@@ -10,7 +10,7 @@ from tempfile import TemporaryDirectory
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import verify_token, verify_token_query
 from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde")
@@ -75,7 +75,7 @@ async def liste_backups(_: str = Depends(verify_token)):
 
 @router.get("/download")
 async def download_backup(
-    filename: str = "", _: str = Depends(verify_token)
+    filename: str = "", _: str = Depends(verify_token_query)
 ):
     """Backup-Datei herunterladen."""
     if not filename:

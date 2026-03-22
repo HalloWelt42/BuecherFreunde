@@ -1,6 +1,6 @@
 <script>
   import ProgressBar from "../ui/ProgressBar.svelte";
-  import { get, post } from "../../api/client.js";
+  import { get, post, getToken } from "../../api/client.js";
 
   let backups = $state([]);
   let laden = $state(false);
@@ -78,7 +78,7 @@
             </span>
           </div>
           <a
-            href="/api/backup/download?filename={backup.filename}"
+            href="/api/backup/download?filename={backup.filename}&token={encodeURIComponent(getToken())}"
             class="download-link"
           >
             Herunterladen
