@@ -897,11 +897,15 @@
     bottom: 0;
     z-index: 30;
     pointer-events: none;
+    display: flex;
+    flex-direction: column;
   }
 
   .settings-float .side-panel {
     pointer-events: auto;
     margin-left: auto;
+    height: 100%;
+    max-height: 100%;
     background: rgba(20, 30, 48, 0.88);
     backdrop-filter: blur(24px) saturate(1.3);
     -webkit-backdrop-filter: blur(24px) saturate(1.3);
