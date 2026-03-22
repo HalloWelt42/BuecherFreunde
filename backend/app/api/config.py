@@ -61,7 +61,7 @@ async def get_stats(_token: str = Depends(verify_token)) -> dict:
     )
     autoren = await db.fetch_one("SELECT COUNT(*) as n FROM authors")
     mit_labels = await db.fetch_one(
-        "SELECT COUNT(DISTINCT book_id) as n FROM book_labels"
+        "SELECT COUNT(DISTINCT book_id) as n FROM book_highlights WHERE label_name != ''"
     )
     mit_highlights = await db.fetch_one(
         "SELECT COUNT(DISTINCT book_id) as n FROM book_highlights"

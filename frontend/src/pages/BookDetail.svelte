@@ -11,7 +11,7 @@
   import BookMeta from "../lib/components/book/BookMeta.svelte";
   import AiCategorizeDialog from "../lib/components/book/AiCategorizeDialog.svelte";
   import NoteList from "../lib/components/notes/NoteList.svelte";
-  import { labelsFuerBuch, loescheLabel, aktualisiereLabel } from "../lib/api/labels.js";
+  import { highlightsFuerBuch, loescheHighlight, aktualisiereHighlight } from "../lib/api/highlights.js";
 
   let { params } = $props();
 
@@ -46,10 +46,9 @@
   let suchGrossKlein = $state(false);
   let suchRegex = $state(false);
 
-  // Labels
-  let labels = $state([]);
-  let labelsLaden = $state(false);
-  let labelOffen = $state({});
+  // Markierungen (Highlights mit optionalen Labels)
+  let markierungen = $state([]);
+  let markierungOffen = $state({});
 
   // Aehnliche Buecher
   let aehnliche = $state({ vom_autor: [], in_kategorie: [] });
@@ -382,9 +381,9 @@
     fehler = null;
     try {
       book = await holeBuch(id);
-      // Aehnliche Buecher + Labels im Hintergrund laden
+      // Aehnliche Buecher + Markierungen im Hintergrund laden
       aehnlicheBuecher(id).then(r => { aehnliche = r; }).catch(() => {});
-      ladeLabels(id);
+      ladeMarkierungen(id);
     } catch (e) {
       fehler = e.message;
     } finally {
@@ -392,31 +391,35 @@
     }
   }
 
-  async function ladeLabels(id) {
+  async function ladeMarkierungen(id) {
     try {
-      labels = await labelsFuerBuch(id);
+      markierungen = await highlightsFuerBuch(id);
     } catch {
-      labels = [];
+      markierungen = [];
     }
   }
 
-  async function onLabelLoeschen(labelId) {
+  async function onMarkierungLoeschen(hlId) {
     try {
-      await loescheLabel(labelId);
-      labels = labels.filter(l => l.id !== labelId);
+      await loescheHighlight(hlId);
+      markierungen = markierungen.filter(m => m.id !== hlId);
     } catch {}
   }
 
-  let labelEditTimer = {};
-  async function onLabelNotizAendern(labelId, neueNotiz) {
-    // Label lokal sofort aktualisieren
-    labels = labels.map(l => l.id === labelId ? { ...l, note: neueNotiz } : l);
-    // Debounced speichern
-    clearTimeout(labelEditTimer[labelId]);
-    labelEditTimer[labelId] = setTimeout(async () => {
-      try {
-        await aktualisiereLabel(labelId, { note: neueNotiz });
-      } catch {}
+  let hlEditTimer = {};
+  function onHlNotizAendern(hlId, neueNotiz) {
+    markierungen = markierungen.map(m => m.id === hlId ? { ...m, label_note: neueNotiz } : m);
+    clearTimeout(hlEditTimer["note_" + hlId]);
+    hlEditTimer["note_" + hlId] = setTimeout(async () => {
+      try { await aktualisiereHighlight(hlId, { label_note: neueNotiz }); } catch {}
+    }, 800);
+  }
+
+  function onHlNameAendern(hlId, neuerName) {
+    markierungen = markierungen.map(m => m.id === hlId ? { ...m, label_name: neuerName } : m);
+    clearTimeout(hlEditTimer["name_" + hlId]);
+    hlEditTimer["name_" + hlId] = setTimeout(async () => {
+      try { await aktualisiereHighlight(hlId, { label_name: neuerName }); } catch {}
     }, 800);
   }
 
@@ -1105,57 +1108,64 @@
         <NoteList bookId={book.id} />
       </div>
 
-    <!-- Labels -->
-    {#if labels.length > 0}
+    <!-- Markierungen / Labels -->
+    {#if markierungen.length > 0}
       <div class="labels-section">
-        <h3 class="section-title"><i class="fa-solid fa-tags"></i> Labels ({labels.length})</h3>
-        <div class="labels-list" class:labels-scrollable={labels.length > 5}>
-          {#each labels as label (label.id)}
+        <h3 class="section-title"><i class="fa-solid fa-highlighter"></i> Markierungen ({markierungen.length})</h3>
+        <div class="labels-list" class:labels-scrollable={markierungen.length > 5}>
+          {#each markierungen as hl (hl.id)}
             <div class="label-item-wrap">
               <div class="label-item">
-                <i class="fa-solid fa-tag label-icon" style="color: {label.color}"></i>
-                {#if label.name}
-                  <span class="label-name">{label.name}</span>
+                <i class="fa-solid fa-bookmark label-icon" style="color: {hl.color}"></i>
+                {#if hl.label_name}
+                  <span class="label-name">{hl.label_name}</span>
+                {:else}
+                  <span class="label-snippet">{hl.text_snippet?.slice(0, 40) || "Markierung"}{hl.text_snippet?.length > 40 ? "..." : ""}</span>
                 {/if}
-                {#if label.page_reference}
+                {#if hl.cfi_range}
                   <button
                     class="label-page"
                     onclick={() => {
-                      if (book.file_format === "pdf") {
-                        const seitenMatch = label.page_reference.match(/(\d+)/);
-                        const seite = seitenMatch ? Number(seitenMatch[1]) : 1;
-                        navigate(`/book/${book.id}/read?page=${seite}`);
-                      } else if (label.cfi_reference) {
-                        navigate(`/book/${book.id}/read?cfi=${encodeURIComponent(label.cfi_reference)}`);
-                      } else if (label.position_percent > 0) {
-                        navigate(`/book/${book.id}/read?percent=${label.position_percent}`);
-                      } else {
-                        navigate(`/book/${book.id}/read`);
-                      }
+                      navigate(`/book/${book.id}/read?cfi=${encodeURIComponent(hl.cfi_range)}`);
                     }}
                     title="Zur markierten Stelle springen"
-                  >{label.page_reference}</button>
+                  >
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                  </button>
                 {/if}
                 <button
                   class="label-expand"
-                  class:has-note={!!label.note}
-                  onclick={() => { labelOffen = { ...labelOffen, [label.id]: !labelOffen[label.id] }; }}
-                  title={labelOffen[label.id] ? "Notiz einklappen" : "Notiz bearbeiten"}
+                  class:has-note={!!hl.label_note || !!hl.label_name}
+                  onclick={() => { markierungOffen = { ...markierungOffen, [hl.id]: !markierungOffen[hl.id] }; }}
+                  title={markierungOffen[hl.id] ? "Einklappen" : "Bearbeiten"}
                 >
-                  <i class="fa-solid fa-chevron-{labelOffen[label.id] ? 'up' : 'down'}"></i>
+                  <i class="fa-solid fa-chevron-{markierungOffen[hl.id] ? 'up' : 'down'}"></i>
                 </button>
-                <button class="label-delete" onclick={() => onLabelLoeschen(label.id)} title="Label entfernen">
-                  <i class="fa-solid fa-xmark"></i>
+                <button class="label-delete" onclick={() => onMarkierungLoeschen(hl.id)} title="Markierung löschen">
+                  <i class="fa-solid fa-trash-can"></i>
                 </button>
               </div>
-              {#if labelOffen[label.id]}
-                <textarea
-                  class="label-note-edit"
-                  placeholder="Notiz zum Label..."
-                  value={label.note || ""}
-                  oninput={(e) => onLabelNotizAendern(label.id, e.target.value)}
-                  rows={Math.max(2, Math.min(10, (label.note || "").split("\n").length + 1))}
-                ></textarea>
+              {#if markierungOffen[hl.id]}
+                <div class="label-edit-fields">
+                  <input
+                    class="label-name-edit"
+                    type="text"
+                    placeholder="Label-Name (optional)"
+                    value={hl.label_name || ""}
+                    oninput={(e) => onHlNameAendern(hl.id, e.target.value)}
+                    maxlength="50"
+                  />
+                  <textarea
+                    class="label-note-edit"
+                    placeholder="Notiz zur Markierung..."
+                    value={hl.label_note || ""}
+                    oninput={(e) => onHlNotizAendern(hl.id, e.target.value)}
+                    rows={Math.max(2, Math.min(10, (hl.label_note || "").split("\n").length + 1))}
+                  ></textarea>
+                  {#if hl.text_snippet}
+                    <div class="label-text-snippet">{hl.text_snippet}</div>
+                  {/if}
+                </div>
               {/if}
             </div>
           {/each}
@@ -2229,6 +2239,58 @@
   .label-note-edit:focus {
     outline: none;
     border-color: var(--color-accent);
+  }
+
+  .label-snippet {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-style: italic;
+  }
+
+  .label-edit-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0.25rem 0.375rem 0.375rem 1.625rem;
+    width: calc(100% - 2rem);
+  }
+
+  .label-name-edit {
+    width: 100%;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    font-size: 0.8125rem;
+    font-family: inherit;
+    border-radius: 4px;
+    padding: 0.25rem 0.375rem;
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  .label-name-edit:focus {
+    border-color: var(--color-accent);
+  }
+
+  .label-name-edit::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .label-text-snippet {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    font-style: italic;
+    line-height: 1.4;
+    padding: 0.25rem 0.375rem;
+    background: color-mix(in srgb, var(--color-bg-tertiary) 50%, transparent);
+    border-radius: 4px;
+    max-height: 4em;
+    overflow: hidden;
   }
 
   .label-delete {

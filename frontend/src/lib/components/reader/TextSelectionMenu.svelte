@@ -8,6 +8,7 @@
     bookId,
     positionLabel = "",
     externalSelection = null,
+    highlighterActive = false,
     onHighlight = () => {},
   } = $props();
 
@@ -169,10 +170,12 @@
     {#if feedback}
       <div class="sel-feedback">{feedback}</div>
     {:else if step === "actions"}
-      <!-- Hauptaktionen: Markieren, Kopieren, Notiz -->
-      <button class="sel-btn" onclick={() => { step = "colors"; }} title="Markieren">
-        <i class="fa-solid fa-highlighter"></i>
-      </button>
+      <!-- Hauptaktionen: Markieren (nur wenn Stift aktiv), Kopieren, Notiz -->
+      {#if highlighterActive}
+        <button class="sel-btn" onclick={() => { step = "colors"; }} title="Markieren">
+          <i class="fa-solid fa-highlighter"></i>
+        </button>
+      {/if}
       <button class="sel-btn" onclick={copyText} title="Kopieren">
         <i class="fa-solid fa-copy"></i>
       </button>

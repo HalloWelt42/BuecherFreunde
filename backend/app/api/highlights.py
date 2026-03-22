@@ -1,4 +1,4 @@
-"""API-Endpunkte für Textmarkierungen (Highlights) - reine Farbmarkierungen."""
+"""API-Endpunkte für Textmarkierungen (Highlights) - Farbmarkierungen mit optionalem Label."""
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -13,10 +13,14 @@ class HighlightCreate(BaseModel):
     cfi_range: str
     color: str = "#FFEE58"
     text_snippet: str = ""
+    label_name: str = ""
+    label_note: str = ""
 
 
 class HighlightUpdate(BaseModel):
     color: str | None = None
+    label_name: str | None = None
+    label_note: str | None = None
 
 
 @router.get("/books/{book_id}/highlights")
@@ -35,9 +39,9 @@ async def erstelle_highlight(
 ):
     """Neues Highlight erstellen."""
     cursor = await db.execute(
-        """INSERT INTO book_highlights (book_id, cfi_range, color, text_snippet)
-           VALUES (?, ?, ?, ?)""",
-        (book_id, daten.cfi_range, daten.color, daten.text_snippet),
+        """INSERT INTO book_highlights (book_id, cfi_range, color, text_snippet, label_name, label_note)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (book_id, daten.cfi_range, daten.color, daten.text_snippet, daten.label_name, daten.label_note),
     )
     row = await db.fetch_one(
         "SELECT * FROM book_highlights WHERE id = ?", (cursor.lastrowid,)
@@ -56,12 +60,18 @@ async def loesche_highlight(highlight_id: int, _: str = Depends(verify_token)):
 async def aktualisiere_highlight(
     highlight_id: int, daten: HighlightUpdate, _: str = Depends(verify_token)
 ):
-    """Highlight-Farbe aktualisieren."""
+    """Highlight aktualisieren (Farbe, Name, Notiz)."""
     updates = []
     values = []
     if daten.color is not None:
         updates.append("color = ?")
         values.append(daten.color)
+    if daten.label_name is not None:
+        updates.append("label_name = ?")
+        values.append(daten.label_name)
+    if daten.label_note is not None:
+        updates.append("label_note = ?")
+        values.append(daten.label_note)
     if not updates:
         return {"ok": True}
 

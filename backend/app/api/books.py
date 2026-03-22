@@ -158,7 +158,7 @@ async def list_books(
         )
 
     if hat_labels is not None:
-        conditions.append("b.id IN (SELECT DISTINCT book_id FROM book_labels)")
+        conditions.append("b.id IN (SELECT DISTINCT book_id FROM book_highlights WHERE label_name != '')")
 
     if hat_highlights is not None:
         conditions.append("b.id IN (SELECT DISTINCT book_id FROM book_highlights)")

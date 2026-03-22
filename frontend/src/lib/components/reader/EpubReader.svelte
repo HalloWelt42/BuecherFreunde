@@ -8,10 +8,8 @@
   import { onDestroy } from "svelte";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
   import ReaderHighlights from "./ReaderHighlights.svelte";
-  import ReaderLabels from "./ReaderLabels.svelte";
   import ReaderNotes from "./ReaderNotes.svelte";
   import { highlightsFuerBuch, erstelleHighlight, aktualisiereHighlight, loescheHighlight } from "../../api/highlights.js";
-  import { labelsFuerBuch } from "../../api/labels.js";
 
   let {
     bookId,
@@ -62,9 +60,8 @@
   let highlights = $state([]);
   let highlightsReloadTrigger = $state(0);
 
-  // Labels (getrennt von Highlights)
-  let labels = $state([]);
-  let labelsReloadTrigger = $state(0);
+  // Markierstift-Toggle
+  let highlighterActive = $state(false);
 
   // Verfügbare Schriften (lokal gebündelt)
   const schriften = [
@@ -172,35 +169,6 @@
     } catch { highlights = []; }
   }
 
-  // Labels laden
-  async function ladeLabels() {
-    try {
-      labels = await labelsFuerBuch(bookId);
-    } catch { labels = []; }
-  }
-
-  // Label-Icons in den Text injizieren
-  function renderLabelsForSection() {
-    if (!view || !labels.length) return;
-    for (const label of labels) {
-      if (!label.cfi_reference) continue;
-      try {
-        view.addAnnotation({ value: label.cfi_reference, type: "label", labelId: label.id });
-      } catch {
-        // CFI gehoert zu anderer Sektion
-      }
-    }
-  }
-
-  function isLabelAnnotation(annotation) {
-    return annotation?.type === "label";
-  }
-
-  function getLabelForAnnotation(annotation) {
-    if (!annotation?.labelId) return null;
-    return labels.find(l => l.id === annotation.labelId);
-  }
-
   async function renderHighlightsForSection() {
     if (!view || !highlights.length) return;
     for (const hl of highlights) {
@@ -296,48 +264,12 @@
         tocItems = flattenToc(view.book.toc);
       }
 
-      // Highlights und Labels laden
+      // Highlights laden
       await ladeHighlights();
-      await ladeLabels();
 
       // Annotationen zeichnen
       view.addEventListener("draw-annotation", (e) => {
-        const { draw, annotation, doc, range } = e.detail;
-
-        // Label-Annotation: Icon direkt in den Text injizieren
-        if (isLabelAnnotation(annotation)) {
-          const label = getLabelForAnnotation(annotation);
-          if (!label || !doc || !range) return;
-          // Prüfen ob Icon schon existiert
-          if (doc.querySelector(`.bf-label-icon[data-label-id="${label.id}"]`)) return;
-          const icon = doc.createElement("span");
-          icon.className = "bf-label-icon";
-          icon.dataset.labelId = label.id;
-          icon.style.cssText = `
-            display: inline-block;
-            width: 16px; height: 16px;
-            background: ${label.color || "#4FC3F7"};
-            color: white;
-            font-size: 10px;
-            line-height: 16px;
-            text-align: center;
-            border-radius: 3px;
-            cursor: pointer;
-            margin: 0 2px;
-            vertical-align: text-bottom;
-            font-family: system-ui, sans-serif;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
-          `;
-          icon.textContent = "\u2691"; // Flag
-          icon.title = (label.name || "Label") + (label.note ? "\n" + label.note.slice(0, 100) : "");
-          const startRange = doc.createRange();
-          startRange.setStart(range.startContainer, range.startOffset);
-          startRange.collapse(true);
-          startRange.insertNode(icon);
-          return; // Kein Overlay zeichnen
-        }
-
-        // Highlight-Annotation: farbiger Hintergrund via Overlayer
+        const { draw, annotation } = e.detail;
         const cfi = annotation?.value;
         if (cfi && isHighlightCfi(cfi)) {
           const hl = highlights.find(h => h.cfi_range === cfi);
@@ -352,10 +284,9 @@
         const sectionIndex = e.detail.index;
         injectCSS(e.detail.doc);
 
-        // Gespeicherte Highlights und Labels fuer diese Sektion rendern
+        // Gespeicherte Highlights fuer diese Sektion rendern
         requestAnimationFrame(() => {
           renderHighlightsForSection();
-          renderLabelsForSection();
         });
 
         // Textauswahl im iframe abfangen
@@ -395,10 +326,9 @@
         lastLocation: initialCfi || undefined,
       });
 
-      // Highlights und Labels nach Init nochmals rendern
+      // Highlights nach Init nochmals rendern
       setTimeout(() => {
         renderHighlightsForSection();
-        renderLabelsForSection();
       }, 200);
 
       // Prozentuale Navigation (von Volltextsuche)
@@ -638,6 +568,17 @@
         <i class="fa-solid {singlePage ? 'fa-file' : 'fa-book-open'}"></i>
       </button>
 
+      <!-- Markierstift Toggle -->
+      <button
+        class="tool-btn"
+        class:active={highlighterActive}
+        class:highlighter-on={highlighterActive}
+        onclick={() => { highlighterActive = !highlighterActive; }}
+        title={highlighterActive ? "Markierstift deaktivieren" : "Markierstift aktivieren"}
+      >
+        <i class="fa-solid fa-highlighter"></i>
+      </button>
+
       <!-- Markierungen verwalten -->
       <ReaderHighlights
         {bookId}
@@ -650,19 +591,6 @@
         }}
         onUpdate={onHighlightUpdate}
         onDelete={onHighlightDelete}
-      />
-
-      <!-- Labels verwalten (getrennt) -->
-      <ReaderLabels
-        {bookId}
-        reloadTrigger={labelsReloadTrigger}
-        onNavigate={(label) => {
-          if (label.cfi_reference && view) {
-            try { view.goTo(label.cfi_reference); } catch {}
-          } else if (label.position_percent > 0 && view) {
-            try { view.goToFraction(label.position_percent / 100); } catch {}
-          }
-        }}
       />
 
       <!-- Buchnotizen -->
@@ -751,6 +679,7 @@
     {bookId}
     positionLabel={fortschritt + "%"}
     externalSelection={iframeSelection}
+    {highlighterActive}
     onHighlight={(text, color) => {
       const cfi = iframeSelection?.cfi;
       if (cfi) {
@@ -1080,6 +1009,11 @@
   .tool-btn.active {
     background-color: var(--color-accent-light);
     color: var(--color-accent);
+  }
+
+  .tool-btn.highlighter-on {
+    background-color: color-mix(in srgb, var(--color-warning, #f59e0b) 25%, transparent);
+    color: var(--color-warning, #f59e0b);
   }
 
   .zoom-display {
