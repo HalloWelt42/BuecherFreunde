@@ -27,49 +27,23 @@
   let panelPos = $state({ x: 0, y: 0 });
   let positioned = $state(false);
 
-  // Panel-Breite passt sich an breiteste Textarea an
-  let panelBreite = $state(420);
-  let resizeObserver = null;
-  let resizeRaf = 0;
-
-  function beobachteTextareas() {
-    if (!panelEl) return;
-    resizeObserver?.disconnect();
-    resizeObserver = new ResizeObserver((entries) => {
-      if (!panelEl) return;
-      cancelAnimationFrame(resizeRaf);
-      resizeRaf = requestAnimationFrame(() => {
-        let maxW = 420;
-        for (const entry of entries) {
-          const ta = entry.target;
-          if (ta.style.width) {
-            const w = parseFloat(ta.style.width) + 28;
-            if (w > maxW) maxW = w;
-          }
-        }
-        const neu = Math.ceil(maxW);
-        if (neu !== panelBreite) panelBreite = neu;
-      });
-    });
-    panelEl.querySelectorAll("textarea").forEach(ta => resizeObserver.observe(ta));
+  function initPosition() {
+    if (positioned || !panelEl) return;
+    const rect = panelEl.getBoundingClientRect();
+    panelPos = { x: rect.left, y: rect.top };
+    positioned = true;
   }
 
   $effect(() => {
-    const _ = offen;
-    if (open && panelEl) {
-      setTimeout(beobachteTextareas, 50);
+    if (open && panelEl && !positioned) {
+      requestAnimationFrame(initPosition);
     }
   });
 
   function onDragStart(e) {
     if (e.target.closest("input, textarea, button")) return;
     dragging = true;
-    const rect = panelEl.getBoundingClientRect();
-    dragOffset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    if (!positioned) {
-      panelPos = { x: rect.left, y: rect.top };
-      positioned = true;
-    }
+    dragOffset = { x: e.clientX - panelPos.x, y: e.clientY - panelPos.y };
     e.preventDefault();
   }
 
@@ -87,13 +61,16 @@
 
   onMount(() => {
     ladeNotizen();
-    return () => resizeObserver?.disconnect();
   });
 
   async function ladeNotizen() {
     laden = true;
     try {
       notizen = await notizenFuerBuch(bookId);
+      // Alle Notizen standardmaessig aufklappen
+      const neu = {};
+      for (const n of notizen) neu[n.id] = true;
+      offen = neu;
     } catch { notizen = []; }
     laden = false;
   }
@@ -109,6 +86,7 @@
       const ref = positionLabel || "";
       const n = await erstelleNotiz(bookId, { content: neueNotiz, page_reference: ref });
       notizen = [n, ...notizen];
+      offen = { ...offen, [n.id]: true };
       neueNotiz = "";
     } catch {}
   }
@@ -183,7 +161,7 @@
       class="notes-panel"
       class:dragging
       bind:this={panelEl}
-      style="{positioned ? `position: fixed; left: ${panelPos.x}px; top: ${panelPos.y}px; right: auto;` : ''} width: {panelBreite}px;"
+      style="{positioned ? `left: ${panelPos.x}px; top: ${panelPos.y}px;` : ''}"
     >
       <div class="notes-header" onmousedown={onDragStart}>
         <i class="fa-solid fa-grip-vertical drag-handle"></i>
@@ -326,9 +304,12 @@
   }
 
   .notes-panel {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
+    position: fixed;
+    top: 50px;
+    right: 10px;
+    width: 50%;
+    max-width: 600px;
+    min-width: 300px;
     max-height: 80vh;
     background: color-mix(in srgb, var(--color-bg-secondary) 75%, transparent);
     backdrop-filter: blur(20px) saturate(1.4);
@@ -483,7 +464,7 @@
     font-size: 0.8125rem;
     font-family: inherit;
     padding: 0.375rem;
-    resize: both;
+    resize: vertical;
     outline: none;
     line-height: 1.5;
     min-height: 2.5em;

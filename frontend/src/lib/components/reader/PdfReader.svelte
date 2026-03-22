@@ -1,12 +1,16 @@
 <script>
   import * as pdfjsLib from "pdfjs-dist";
+  import "pdfjs-dist/web/pdf_viewer.css";
+  const { TextLayer } = pdfjsLib;
   import { dateiUrl } from "../../api/books.js";
   import { speichereLeseposition } from "../../api/user-data.js";
   import { getToken } from "../../api/client.js";
   import { ui } from "../../stores/ui.svelte.js";
   import { onMount, onDestroy } from "svelte";
-  import LabelPicker from "./LabelPicker.svelte";
-  import ReaderLabels from "./ReaderLabels.svelte";
+  import { highlightsFuerBuch, erstelleHighlight, aktualisiereHighlight, loescheHighlight } from "../../api/highlights.js";
+  import TextSelectionMenu from "./TextSelectionMenu.svelte";
+  import ReaderHighlights from "./ReaderHighlights.svelte";
+  import ReaderNotes from "./ReaderNotes.svelte";
 
   let {
     bookId,
@@ -44,7 +48,12 @@
   let renderedPages = new Set();
   let renderQueue = new Set();
   let observer = null;
-  let _baseViewport = null; // Viewport bei scale=1 für Seite 1
+  let _baseViewport = null;
+
+  // Highlights
+  let highlights = $state([]);
+  let highlighterActive = $state(false);
+  let highlightsReloadTrigger = $state(0);
 
   // Worker lokal buendeln
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -66,10 +75,10 @@
     }
   }
 
-  // Scale berechnen für Breite/Seite einpassen
+  // Scale berechnen fuer Breite/Seite einpassen
   function berechneAutoScale(modus) {
     if (!_baseViewport || !scrollContainer) return 1.0;
-    const containerW = scrollContainer.clientWidth - 24; // padding abziehen
+    const containerW = scrollContainer.clientWidth - 24;
     const containerH = scrollContainer.clientHeight - 24;
     const pageW = _baseViewport.width;
     const pageH = _baseViewport.height;
@@ -108,12 +117,13 @@
       totalPages = pdfDoc.numPages;
       currentPage = Math.min(initialPage, totalPages);
 
-      // Base viewport speichern
       const page1 = await pdfDoc.getPage(1);
       _baseViewport = page1.getViewport({ scale: 1.0 });
 
-      // Platzhalter für alle Seiten erstellen
       pageElements = new Array(totalPages).fill(null);
+
+      // Highlights laden
+      await ladeHighlights();
     } catch (e) {
       fehler = e.message || "PDF konnte nicht geladen werden";
     } finally {
@@ -121,7 +131,147 @@
     }
   }
 
-  // IntersectionObserver für Lazy-Rendering (nur im Scroll-Modus)
+  // Highlights laden
+  async function ladeHighlights() {
+    try {
+      highlights = await highlightsFuerBuch(bookId);
+    } catch {
+      highlights = [];
+    }
+  }
+
+  async function speichereHighlight(pageNum, text, color) {
+    if (!text) return;
+    // Tatsaechliche Seite aus der Selektion ermitteln
+    const actualPage = getSelectionPage() || pageNum;
+    try {
+      const hl = await erstelleHighlight(bookId, {
+        cfi_range: `page:${actualPage}`,
+        color,
+        text_snippet: text.slice(0, 300),
+      });
+      highlights = [...highlights, hl];
+      highlightsReloadTrigger++;
+      renderAllVisibleHighlights();
+    } catch {}
+  }
+
+  // Ermittelt die Seitennummer aus der aktuellen Textselektion
+  function getSelectionPage() {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    const node = sel.anchorNode;
+    if (!node) return null;
+    const wrapper = node.nodeType === Node.ELEMENT_NODE
+      ? node.closest(".page-wrapper")
+      : node.parentElement?.closest(".page-wrapper");
+    if (wrapper) return Number(wrapper.dataset.page);
+    return null;
+  }
+
+  async function onHighlightUpdate(hlId, daten) {
+    try {
+      await aktualisiereHighlight(hlId, daten);
+      highlights = highlights.map(h => h.id === hlId ? { ...h, ...daten } : h);
+      highlightsReloadTrigger++;
+      renderAllVisibleHighlights();
+    } catch {}
+  }
+
+  async function onHighlightDelete(hlId) {
+    try {
+      await loescheHighlight(hlId);
+      highlights = highlights.filter(h => h.id !== hlId);
+      highlightsReloadTrigger++;
+      renderAllVisibleHighlights();
+    } catch {}
+  }
+
+  // Highlights visuell auf TextLayer-Spans rendern
+  function renderHighlightsForPage(pageNum, textDiv) {
+    if (!textDiv) return;
+
+    const spans = Array.from(textDiv.querySelectorAll("span"));
+    if (spans.length === 0) return;
+
+    const pageHighlights = highlights.filter(h => h.cfi_range === `page:${pageNum}`);
+    if (pageHighlights.length === 0) return;
+
+    for (const hl of pageHighlights) {
+      const snippet = (hl.text_snippet || "").trim();
+      if (!snippet || snippet.length < 2) continue;
+
+      // Farbe mit Alpha fuer sichtbares Highlight
+      const color = hl.color || "#ffeb3b";
+      const bgColor = hexToRgba(color, 0.35);
+
+      // Strategie: Zusammenhaengenden Text aus Spans aufbauen und Snippet darin finden
+      const spanTexts = spans.map(s => s.textContent || "");
+      const fullText = spanTexts.join("");
+
+      // Normalisierte Suche (Whitespace zusammenfassen)
+      const normalSnippet = snippet.replace(/\s+/g, " ");
+      const normalFull = fullText.replace(/\s+/g, " ");
+      const matchIdx = normalFull.indexOf(normalSnippet);
+
+      if (matchIdx === -1) {
+        // Fallback: ersten 30 Zeichen suchen fuer partielle Treffer
+        const shortSnippet = normalSnippet.substring(0, Math.min(30, normalSnippet.length));
+        const shortIdx = normalFull.indexOf(shortSnippet);
+        if (shortIdx === -1) continue;
+        markSpansInRange(spans, spanTexts, shortIdx, shortIdx + normalSnippet.length, bgColor, hl.id);
+      } else {
+        markSpansInRange(spans, spanTexts, matchIdx, matchIdx + normalSnippet.length, bgColor, hl.id);
+      }
+    }
+  }
+
+  // Spans im Zeichenbereich [startChar, endChar) markieren
+  function markSpansInRange(spans, spanTexts, startChar, endChar, bgColor, hlId) {
+    let charPos = 0;
+    for (let i = 0; i < spans.length; i++) {
+      const text = spanTexts[i];
+      const spanStart = charPos;
+      const spanEnd = charPos + text.length;
+      charPos = spanEnd;
+
+      // Span ueberlappt mit dem Highlight-Bereich?
+      if (spanEnd > startChar && spanStart < endChar && text.trim().length > 0) {
+        spans[i].style.backgroundColor = bgColor;
+        spans[i].style.borderRadius = "2px";
+        spans[i].dataset.highlightId = String(hlId);
+      }
+    }
+  }
+
+  function hexToRgba(hex, alpha) {
+    const h = hex.replace("#", "");
+    const r = parseInt(h.substring(0, 2), 16);
+    const g = parseInt(h.substring(2, 4), 16);
+    const b = parseInt(h.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function renderAllVisibleHighlights() {
+    if (!scrollContainer) return;
+    const wrappers = scrollContainer.querySelectorAll(".page-wrapper");
+    for (const w of wrappers) {
+      const textDiv = w.querySelector(".textLayer");
+      if (!textDiv) continue;
+      const pageNum = Number(w.dataset.page);
+      // Erst alte Highlight-Styles entfernen
+      const spans = textDiv.querySelectorAll("span[data-highlight-id]");
+      for (const s of spans) {
+        s.style.backgroundColor = "";
+        s.style.borderRadius = "";
+        delete s.dataset.highlightId;
+      }
+      // Neu rendern
+      renderHighlightsForPage(pageNum, textDiv);
+    }
+  }
+
+  // IntersectionObserver fuer Lazy-Rendering (nur im Scroll-Modus)
   function setupObserver() {
     if (observer) observer.disconnect();
     if (!scrollContainer) return;
@@ -138,7 +288,6 @@
           }
         }
 
-        // Aktuelle Seite bestimmen (oberste sichtbare)
         const visible = entries
           .filter((e) => e.isIntersecting)
           .map((e) => Number(e.target.dataset.page))
@@ -168,9 +317,12 @@
       const wrapper = scrollContainer?.querySelector(`[data-page="${pageNum}"]`);
       if (!wrapper) return;
 
+      // Canvas erstellen/aktualisieren
       let canvas = wrapper.querySelector("canvas");
       if (!canvas) {
         canvas = document.createElement("canvas");
+        // Alte Inhalte entfernen, aber page-loading behalten bis Canvas fertig
+        const loading = wrapper.querySelector(".page-loading");
         wrapper.innerHTML = "";
         wrapper.appendChild(canvas);
       }
@@ -184,9 +336,36 @@
       ctx.scale(dpr, dpr);
 
       await page.render({ canvasContext: ctx, viewport }).promise;
+
+      // TextLayer erstellen
+      let textDiv = wrapper.querySelector(".textLayer");
+      if (textDiv) textDiv.remove();
+      textDiv = document.createElement("div");
+      textDiv.className = "textLayer";
+      textDiv.style.width = viewport.width + "px";
+      textDiv.style.height = viewport.height + "px";
+      // pdfjs CSS benoetigt --total-scale-factor fuer korrekte Schriftgroesse
+      textDiv.style.setProperty("--total-scale-factor", String(scale));
+      wrapper.appendChild(textDiv);
+
+      const textContent = await page.getTextContent();
+      const textLayer = new TextLayer({
+        textContentSource: textContent,
+        container: textDiv,
+        viewport,
+      });
+      await textLayer.render();
+
+      // Highlights fuer diese Seite rendern
+      renderHighlightsForPage(pageNum, textDiv);
+
+      // Wrapper-Groesse setzen
+      wrapper.style.width = viewport.width + "px";
+      wrapper.style.height = viewport.height + "px";
+
       renderedPages.add(pageNum);
-    } catch {
-      // Seite konnte nicht gerendert werden
+    } catch (err) {
+      console.error(`Seite ${pageNum} Render-Fehler:`, err);
     } finally {
       renderQueue.delete(pageNum);
     }
@@ -199,12 +378,11 @@
     renderQueue = new Set();
 
     if (ansicht === "einzeln" || ansicht === "doppel") {
-      // Nur aktuelle Seite(n) rendern
       await renderEinzelSeiten();
       return;
     }
 
-    // Scroll-Modus: Wrapper-Größen aktualisieren
+    // Scroll-Modus: Wrapper-Groessen aktualisieren
     for (let i = 1; i <= totalPages; i++) {
       const wrapper = scrollContainer.querySelector(`[data-page="${i}"]`);
       if (wrapper) {
@@ -214,6 +392,8 @@
         wrapper.style.height = viewport.height + "px";
         const canvas = wrapper.querySelector("canvas");
         if (canvas) canvas.remove();
+        const textLayer = wrapper.querySelector(".textLayer");
+        if (textLayer) textLayer.remove();
       }
     }
 
@@ -226,17 +406,17 @@
     renderedPages = new Set();
     renderQueue = new Set();
 
-    // Alle Wrapper leeren
     const wrappers = scrollContainer.querySelectorAll(".page-wrapper");
     for (const w of wrappers) {
       const canvas = w.querySelector("canvas");
       if (canvas) canvas.remove();
+      const textLayer = w.querySelector(".textLayer");
+      if (textLayer) textLayer.remove();
     }
 
     if (ansicht === "einzeln") {
       await renderPageIfNeeded(currentPage);
     } else if (ansicht === "doppel") {
-      // Linke Seite: gerade, Rechte: ungerade (oder umgekehrt)
       const leftPage = currentPage % 2 === 0 ? currentPage - 1 : currentPage;
       const rightPage = leftPage + 1;
       if (leftPage >= 1) await renderPageIfNeeded(leftPage);
@@ -332,16 +512,17 @@
       if (right <= totalPages) pages.push(right);
       return pages;
     }
-    // Scroll-Modi: alle Seiten
     return null;
   });
 
-  // URL aktualisieren (ohne Navigation auszuloesen)
+  // Fortschritt
+  let fortschritt = $derived(totalPages > 0 ? Math.round(currentPage / totalPages * 100) : 0);
+
+  // URL aktualisieren
   function updateUrl() {
     const params = new URLSearchParams();
     if (currentPage > 1) params.set("page", String(currentPage));
     if (ansicht !== "scroll") params.set("ansicht", ansicht);
-    // Zoom nur bei manuellem Zoom (scroll-Modus) speichern, nicht bei Auto-Scale
     if (ansicht === "scroll" && scale !== 1.0) params.set("zoom", String(Math.round(scale * 100)));
     if (papierModus !== "normal") params.set("papier", papierModus);
     const qs = params.toString();
@@ -354,7 +535,6 @@
     clearTimeout(saveTimeout);
     updateUrl();
     saveTimeout = setTimeout(async () => {
-      // Alle Einstellungen als JSON speichern
       const settings = {
         page: currentPage,
         ansicht,
@@ -365,12 +545,12 @@
       onPositionChange(pos);
       try {
         await speichereLeseposition(bookId, pos);
-      } catch { /* still */ }
+      } catch {}
     }, 1500);
   }
 
   function handleKeydown(event) {
-    if (event.target.tagName === "INPUT") return;
+    if (event.target.tagName === "INPUT" || event.target.tagName === "TEXTAREA") return;
     if (event.key === "+" || event.key === "=") {
       event.preventDefault();
       zoomIn();
@@ -399,7 +579,6 @@
   $effect(() => {
     if (!laden && pdfDoc && scrollContainer && totalPages > 0) {
       requestAnimationFrame(() => {
-        // Initialen Ansichtsmodus anwenden (berechnet Scale)
         if (ansicht !== "scroll") {
           const modus = ansicht === "einzeln" ? "seite" : ansicht;
           scale = berechneAutoScale(modus);
@@ -444,22 +623,6 @@
     }
   }
 
-  // Ansichtsmodus-Labels
-  const ansichtLabels = {
-    scroll: "Scrollen",
-    breite: "Seitenbreite",
-    seite: "Ganze Seite",
-    doppel: "Doppelseite",
-    einzeln: "Einzelseite",
-  };
-  const ansichtIcons = {
-    scroll: "fa-arrows-up-down",
-    breite: "fa-arrows-left-right",
-    seite: "fa-expand",
-    doppel: "fa-columns",
-    einzeln: "fa-file",
-  };
-
   function downloadFile() {
     const a = document.createElement("a");
     a.href = dateiUrl(bookId);
@@ -467,15 +630,6 @@
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-  }
-
-  let showAnsichtMenu = $state(false);
-  function toggleAnsichtMenu() {
-    showAnsichtMenu = !showAnsichtMenu;
-  }
-  function waehleAnsicht(modus) {
-    showAnsichtMenu = false;
-    setAnsicht(modus);
   }
 </script>
 
@@ -493,10 +647,10 @@
       <span>{fehler}</span>
     </div>
   {:else}
-    <!-- Einheitliche Toolbar -->
+    <!-- Toolbar -->
     <div class="pdf-toolbar">
       <!-- Links: Zurueck + Titel -->
-      <button class="tool-btn back-btn" onclick={onBack} title="Zurück">
+      <button class="tool-btn back-btn" onclick={onBack} title="Zurueck">
         <i class="fa-solid fa-arrow-left"></i>
       </button>
       <span class="toolbar-title" title={title}>{title}</span>
@@ -520,9 +674,10 @@
           />
           <span class="page-total">/ {totalPages}</span>
         </div>
-        <button class="tool-btn" onclick={nextPage} disabled={currentPage >= totalPages} title="Nächste Seite">
+        <button class="tool-btn" onclick={nextPage} disabled={currentPage >= totalPages} title="Naechste Seite">
           <i class="fa-solid fa-chevron-right"></i>
         </button>
+        <span class="toolbar-progress">{fortschritt}%</span>
       </div>
 
       <div class="toolbar-sep"></div>
@@ -532,10 +687,10 @@
         <button class="tool-btn" onclick={zoomOut} title="Verkleinern" disabled={scale <= 0.5}>
           <i class="fa-solid fa-minus"></i>
         </button>
-        <button class="zoom-display" onclick={() => setZoom(1.0)} title="100% zurücksetzen">
+        <button class="zoom-display" onclick={() => setZoom(1.0)} title="100% zuruecksetzen">
           {Math.round(scale * 100)}%
         </button>
-        <button class="tool-btn" onclick={zoomIn} title="Vergrößern" disabled={scale >= 3.0}>
+        <button class="tool-btn" onclick={zoomIn} title="Vergroessern" disabled={scale >= 3.0}>
           <i class="fa-solid fa-plus"></i>
         </button>
       </div>
@@ -578,25 +733,34 @@
         {/if}
       </button>
 
-      <!-- Label setzen -->
-      <LabelPicker
+      <!-- Highlighter Toggle -->
+      <button
+        class="tool-btn"
+        class:active={highlighterActive}
+        class:highlighter-on={highlighterActive}
+        onclick={() => { highlighterActive = !highlighterActive; }}
+        title={highlighterActive ? "Markierstift aus" : "Markierstift an"}
+      >
+        <i class="fa-solid fa-highlighter"></i>
+      </button>
+
+      <!-- Highlights Panel -->
+      <ReaderHighlights
         {bookId}
-        positionLabel={"S." + currentPage}
-        positionPercent={totalPages > 0 ? Math.round(currentPage / totalPages * 100) : 0}
+        {highlights}
+        reloadTrigger={highlightsReloadTrigger}
+        onNavigate={(hl) => {
+          const m = hl.cfi_range?.match(/page:(\d+)/);
+          if (m) goToPage(Number(m[1]));
+        }}
+        onUpdate={onHighlightUpdate}
+        onDelete={onHighlightDelete}
       />
 
-      <!-- Labels anzeigen/bearbeiten -->
-      <ReaderLabels
+      <!-- Buchnotizen Panel -->
+      <ReaderNotes
         {bookId}
-        onNavigate={(label) => {
-          // Seitenzahl aus page_reference extrahieren (z.B. "S.15" -> 15)
-          const m = label.page_reference?.match(/(\d+)/);
-          if (m) {
-            goToPage(Number(m[1]));
-          } else if (label.position_percent > 0 && totalPages > 0) {
-            goToPage(Math.max(1, Math.round(label.position_percent / 100 * totalPages)));
-          }
-        }}
+        positionLabel={"S." + currentPage}
       />
 
       <!-- Rechts: Vollbild + Download -->
@@ -620,7 +784,6 @@
       bind:this={scrollContainer}
     >
       {#if ansicht === "einzeln" || ansicht === "doppel"}
-        <!-- Nur sichtbare Seiten anzeigen -->
         <div class="page-spread" class:doppel={ansicht === "doppel"}>
           {#each sichtbareSeiten as pageNum (pageNum)}
             <div class="page-wrapper" data-page={pageNum}>
@@ -631,7 +794,6 @@
           {/each}
         </div>
       {:else}
-        <!-- Alle Seiten (Scroll-Modus) -->
         {#each Array(totalPages) as _, i}
           <div class="page-wrapper" data-page={i + 1}>
             <div class="page-loading">
@@ -641,6 +803,16 @@
         {/each}
       {/if}
     </div>
+
+    <!-- TextSelectionMenu (arbeitet mit window.getSelection auf TextLayer) -->
+    <TextSelectionMenu
+      {bookId}
+      positionLabel={"S." + currentPage}
+      {highlighterActive}
+      onHighlight={(text, color) => {
+        speichereHighlight(currentPage, text, color);
+      }}
+    />
   {/if}
 </div>
 
@@ -710,6 +882,13 @@
     margin: 0 0.25rem;
   }
 
+  .toolbar-progress {
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+    margin-left: 0.25rem;
+    min-width: 2rem;
+  }
+
   .tool-btn {
     display: flex;
     align-items: center;
@@ -738,6 +917,11 @@
   .tool-btn.active {
     background-color: var(--color-accent-light);
     color: var(--color-accent);
+  }
+
+  .tool-btn.highlighter-on {
+    background-color: color-mix(in srgb, var(--color-warning) 20%, transparent);
+    color: var(--color-warning);
   }
 
   .page-nav {
@@ -805,14 +989,12 @@
     background-color: #2a2a2e;
   }
 
-  /* Einzelseiten/Doppelseiten: zentriert, kein Scroll noetig */
   .scroll-container.modus-einzeln,
   .scroll-container.modus-doppel {
     justify-content: center;
     overflow: hidden;
   }
 
-  /* Seiten-Spread für Einzel/Doppel */
   .page-spread {
     display: flex;
     align-items: center;
@@ -840,7 +1022,16 @@
     display: block;
   }
 
-  /* Papier-Modi (unabhaengig vom App-Theme) */
+  /* PDF.js TextLayer - pdfjs CSS wird importiert, hier nur Overrides */
+  .page-wrapper :global(.textLayer) {
+    z-index: 1;
+  }
+
+  .page-wrapper :global(.textLayer ::selection) {
+    background: rgba(0, 100, 255, 0.4);
+  }
+
+  /* Papier-Modi */
   .papier-sepia .page-wrapper {
     background-color: #f4ecd8;
   }
