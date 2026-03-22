@@ -906,6 +906,8 @@
     margin-left: auto;
     height: 100%;
     max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
     background: rgba(20, 30, 48, 0.88);
     backdrop-filter: blur(24px) saturate(1.3);
     -webkit-backdrop-filter: blur(24px) saturate(1.3);
@@ -1175,6 +1177,7 @@
 
   .settings-content {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding: 0.75rem;
     display: flex;
