@@ -677,11 +677,18 @@ async def re_extract_cover(book_id: int, _token: str = Depends(verify_token)):
 
     elif fmt == "epub":
         from backend.app.services.processors.epub_processor import EpubProcessor
+        import ebooklib
         import ebooklib.epub
         try:
             epub_book = ebooklib.epub.read_epub(str(original), options={"ignore_ncx": True})
             proc = EpubProcessor()
             cover_data = proc._extract_cover(epub_book)
+            if not cover_data:
+                # Diagnose-Log: was ist in diesem EPUB drin?
+                items_info = []
+                for item in epub_book.get_items():
+                    items_info.append(f"{item.get_type()}:{getattr(item, 'file_name', '?')}({len(item.get_content() or b'')}B)")
+                logger.warning("Kein Cover gefunden in %s. Items: %s", original.name, ", ".join(items_info[:30]))
         except Exception as e:
             logger.warning("EPUB Cover-Extraktion fehlgeschlagen: %s", e)
 

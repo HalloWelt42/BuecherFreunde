@@ -167,4 +167,51 @@ class EpubProcessor(BaseProcessor):
         except Exception as e:
             logger.debug("Cover Methode 5 (groesstes Bild): %s", e)
 
+        # Methode 6: Alle Items durchsuchen (ebooklib erkennt nicht alle Bilder als ITEM_IMAGE)
+        try:
+            _IMAGE_MAGIC = (
+                b"\xff\xd8\xff",      # JPEG
+                b"\x89PNG",           # PNG
+                b"GIF8",             # GIF
+                b"RIFF",             # WebP
+            )
+            groesstes = None
+            groesste_bytes = 0
+            for item in book.get_items():
+                data = item.get_content()
+                if not data or len(data) < 500:
+                    continue
+                if any(data.startswith(magic) for magic in _IMAGE_MAGIC):
+                    name = (getattr(item, "file_name", "") or "").lower()
+                    item_id = (getattr(item, "id", "") or "").lower()
+                    # Cover-Kandidat priorisieren
+                    if "cover" in name or "cover" in item_id:
+                        return data
+                    if len(data) > groesste_bytes:
+                        groesste_bytes = len(data)
+                        groesstes = data
+            if groesstes and groesste_bytes > 1000:
+                return groesstes
+        except Exception as e:
+            logger.debug("Cover Methode 6 (alle Items Magic Bytes): %s", e)
+
+        # Methode 7: Cover aus XHTML-Seiten extrahieren (base64-eingebettete Bilder)
+        try:
+            import base64
+            import re
+            for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
+                content = item.get_content().decode("utf-8", errors="ignore")
+                # Nur in Seiten suchen die "cover" im Namen oder Inhalt haben
+                name = (getattr(item, "file_name", "") or "").lower()
+                if "cover" not in name and "cover" not in content[:500].lower():
+                    continue
+                # Base64-Bilder suchen
+                matches = re.findall(r'data:image/[^;]+;base64,([A-Za-z0-9+/=]+)', content)
+                for match in matches:
+                    data = base64.b64decode(match)
+                    if len(data) > 1000:
+                        return data
+        except Exception as e:
+            logger.debug("Cover Methode 7 (base64 in XHTML): %s", e)
+
         return None
