@@ -10,7 +10,7 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.db")
 
-SCHEMA_VERSION = 15
+SCHEMA_VERSION = 16
 
 SCHEMA_SQL = """
 -- Bücher
@@ -230,6 +230,8 @@ CREATE TABLE IF NOT EXISTS book_authors (
     FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
     FOREIGN KEY (author_id) REFERENCES authors(id) ON DELETE CASCADE
 );
+CREATE INDEX IF NOT EXISTS idx_book_authors_author ON book_authors(author_id);
+CREATE INDEX IF NOT EXISTS idx_book_categories_category ON book_categories(category_id);
 
 -- Schema-Version
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -725,6 +727,17 @@ Verwende deutsche Begriffe. Sei spezifisch, nicht zu allgemein.',
                     logger.warning("Migration-Warnung: %s", e)
             await self._connection.commit()
             logger.info("Schema-Migration v15 abgeschlossen: manuell_bearbeitet Spalte")
+
+        if from_version < 16:
+            # v16: Indizes fuer haeufige JOINs auf Fremdschluessel
+            await self._connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_book_authors_author ON book_authors(author_id)"
+            )
+            await self._connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_book_categories_category ON book_categories(category_id)"
+            )
+            await self._connection.commit()
+            logger.info("Schema-Migration v16 abgeschlossen: Indizes auf book_authors und book_categories")
 
     async def _migrate_html_descriptions(self) -> None:
         """Konvertiert bestehende HTML-Beschreibungen in Markdown."""
