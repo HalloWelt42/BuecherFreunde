@@ -12,6 +12,20 @@ function createUiStore() {
   let bgBilder = $state([]);
   let bgIndex = $state(parseInt(localStorage.getItem("bgIndex") || "0", 10));
 
+  // Toast-System
+  let toasts = $state([]);
+  let toastCounter = 0;
+
+  function addToast(typ, text, dauer) {
+    const id = ++toastCounter;
+    toasts = [...toasts, { id, typ, text }];
+    if (dauer > 0) {
+      setTimeout(() => {
+        toasts = toasts.filter(t => t.id !== id);
+      }, dauer);
+    }
+  }
+
   const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
   function applyTheme(mode) {
@@ -127,6 +141,20 @@ function createUiStore() {
       const modes = ["light", "dark", "system"];
       const idx = modes.indexOf(theme);
       this.theme = modes[(idx + 1) % modes.length];
+    },
+
+    // Toast-System
+    get toasts() {
+      return toasts;
+    },
+    toast: {
+      success(text, dauer = 4000) { addToast("success", text, dauer); },
+      error(text, dauer = 5000) { addToast("error", text, dauer); },
+      info(text, dauer = 4000) { addToast("info", text, dauer); },
+      warning(text, dauer = 4500) { addToast("warning", text, dauer); },
+    },
+    removeToast(id) {
+      toasts = toasts.filter(t => t.id !== id);
     },
   };
 }

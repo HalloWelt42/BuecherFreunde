@@ -7,6 +7,7 @@
   import Footer from "./lib/components/layout/Footer.svelte";
   import ScratchPad from "./lib/components/shared/ScratchPad.svelte";
   import TokenLogin from "./lib/components/auth/TokenLogin.svelte";
+  import Toast from "./lib/components/ui/Toast.svelte";
 
   import Library from "./pages/Library.svelte";
   import BookDetail from "./pages/BookDetail.svelte";
@@ -89,6 +90,7 @@
 </div>
 
 <ScratchPad visible={ui.scratchPadOpen} onClose={() => ui.scratchPadOpen = false} />
+<Toast />
 
 <style>
   .app-layout {
