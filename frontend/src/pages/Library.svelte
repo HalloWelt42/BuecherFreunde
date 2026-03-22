@@ -40,8 +40,15 @@
     { id: "1", name: "1+ Stern", buch_anzahl: null },
   ];
 
-  let sortBy = $state("titel");
-  let sortDir = $state("asc");
+  // Sortierung aus localStorage wiederherstellen
+  const gespeicherteSort = (() => {
+    try {
+      const s = localStorage.getItem("lib_sort");
+      return s ? JSON.parse(s) : null;
+    } catch { return null; }
+  })();
+  let sortBy = $state(gespeicherteSort?.by || "titel");
+  let sortDir = $state(gespeicherteSort?.dir || "asc");
 
   // Ausgewählte Filter aus URL lesen
   let selectedCategories = $derived.by(() => {
@@ -71,6 +78,14 @@
     isFavorite || isToRead
   );
 
+  // Filter in localStorage speichern bei jeder Änderung
+  function speichereFilter(qs) {
+    try {
+      localStorage.setItem("lib_filter", qs || "");
+      localStorage.setItem("lib_sort", JSON.stringify({ by: sortBy, dir: sortDir }));
+    } catch { /* QuotaExceeded */ }
+  }
+
   function updateUrlParam(key, values) {
     const params = new URLSearchParams(route.qs || "");
     if (values.length > 0) {
@@ -79,6 +94,7 @@
       params.delete(key);
     }
     const qs = params.toString();
+    speichereFilter(qs);
     navigate(qs ? `/?${qs}` : "/");
   }
 
@@ -90,10 +106,12 @@
       params.set(key, "true");
     }
     const qs = params.toString();
+    speichereFilter(qs);
     navigate(qs ? `/?${qs}` : "/");
   }
 
   function clearAllFilters() {
+    speichereFilter("");
     navigate("/");
   }
 
@@ -126,11 +144,13 @@
 
   function onSortChange(value) {
     sortBy = value;
+    speichereFilter(route.qs || "");
     booksStore.setFilter({ ...booksStore.filter, sortierung: value, richtung: sortDir });
   }
 
   function toggleSortDir() {
     sortDir = sortDir === "asc" ? "desc" : "asc";
+    speichereFilter(route.qs || "");
     booksStore.setFilter({ ...booksStore.filter, richtung: sortDir });
   }
 
@@ -143,6 +163,16 @@
   onMount(() => {
     categoriesStore.aktualisieren();
     sammlungenStore.aktualisieren();
+
+    // Gespeicherte Filter wiederherstellen wenn keine URL-Parameter gesetzt
+    if (!route.qs) {
+      try {
+        const gespeichert = localStorage.getItem("lib_filter");
+        if (gespeichert) {
+          navigate(`/?${gespeichert}`, true);
+        }
+      } catch { /* */ }
+    }
 
     // Bei neuen Import-Ergebnissen Bibliothek automatisch aktualisieren
     _unsubProcesses = onBooksChanged(() => {
