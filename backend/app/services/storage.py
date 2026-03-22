@@ -122,7 +122,9 @@ def store_file(
         raise FileExistsError(f"Datei existiert bereits: {file_hash}")
 
     target_dir.mkdir(parents=True, exist_ok=True)
-    safe_name = sanitize_filename(source_path.name)
+    # Upload-Prefix entfernen: "upload_1234_dateiname.pdf" -> "dateiname.pdf"
+    raw_name = re.sub(r"^upload_\d+_", "", source_path.name)
+    safe_name = sanitize_filename(raw_name)
     target_file = target_dir / safe_name
     shutil.copy2(source_path, target_file)
 

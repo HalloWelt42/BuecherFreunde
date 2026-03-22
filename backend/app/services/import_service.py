@@ -6,6 +6,7 @@ speichert im Hash-System und indexiert für die Volltextsuche.
 
 import asyncio
 import logging
+import re
 from pathlib import Path
 
 from backend.app.core.config import settings
@@ -57,7 +58,10 @@ async def import_single_file(file_path: Path, task_id: int | None = None, enrich
     Returns:
         Dict mit Ergebnis: {"status": "ok"|"duplikat"|"fehler", ...}
     """
-    original_name = sanitize_filename(file_path.name)
+    # Upload-Prefix entfernen: "upload_1234_dateiname.pdf" -> "dateiname.pdf"
+    raw_name = file_path.name
+    raw_name = re.sub(r"^upload_\d+_", "", raw_name)
+    original_name = sanitize_filename(raw_name)
     result = {"status": "fehler", "datei": original_name}
 
     try:
