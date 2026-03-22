@@ -11,6 +11,7 @@ import httpx
 from PIL import Image
 
 from backend.app.core.config import settings
+from backend.app.services.data_cleaner import bereinige_metadaten
 
 logger = logging.getLogger("buecherfreunde.openlibrary")
 
@@ -130,7 +131,7 @@ async def lookup_bibkeys(isbn: str) -> dict | None:
         "raw": book,
     }
 
-    return result
+    return bereinige_metadaten(result)
 
 
 async def lookup_isbn(isbn: str) -> dict | None:
@@ -170,7 +171,7 @@ async def lookup_isbn(isbn: str) -> dict | None:
             result["autor"] = ", ".join(author_names)
 
     logger.info("ISBN %s gefunden (Edition-API): %s", clean_isbn, result.get("titel", ""))
-    return result
+    return bereinige_metadaten(result)
 
 
 async def search_books(query: str, limit: int = 5) -> list[dict]:

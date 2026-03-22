@@ -8,6 +8,7 @@ import httpx
 from PIL import Image
 
 from backend.app.core.config import settings
+from backend.app.services.data_cleaner import bereinige_metadaten
 from backend.app.services.html_utils import html_to_markdown
 
 logger = logging.getLogger("buecherfreunde.googlebooks")
@@ -192,7 +193,7 @@ def _parse_volume(item: dict) -> dict | None:
         raw["abmessungen"] = info["dimensions"]
     result["raw"] = raw
 
-    return result
+    return bereinige_metadaten(result)
 
 
 async def download_cover(cover_url: str) -> bytes | None:

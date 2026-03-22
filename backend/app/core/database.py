@@ -10,7 +10,7 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.db")
 
-SCHEMA_VERSION = 14
+SCHEMA_VERSION = 15
 
 SCHEMA_SQL = """
 -- Bücher
@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS books (
     sammlung_id INTEGER DEFAULT NULL,
     band_nummer TEXT DEFAULT '',
     gutenberg_id INTEGER DEFAULT NULL,
+    manuell_bearbeitet INTEGER NOT NULL DEFAULT 0,
     fts_content TEXT DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -712,6 +713,18 @@ Verwende deutsche Begriffe. Sei spezifisch, nicht zu allgemein.',
             )
             await self._connection.commit()
             logger.info("Schema-Migration v14 abgeschlossen: gutenberg_id Spalte")
+
+        if from_version < 15:
+            # v15: manuell_bearbeitet Flag fuer Bücher
+            try:
+                await self._connection.execute(
+                    "ALTER TABLE books ADD COLUMN manuell_bearbeitet INTEGER NOT NULL DEFAULT 0"
+                )
+            except Exception as e:
+                if "duplicate column" not in str(e).lower():
+                    logger.warning("Migration-Warnung: %s", e)
+            await self._connection.commit()
+            logger.info("Schema-Migration v15 abgeschlossen: manuell_bearbeitet Spalte")
 
     async def _migrate_html_descriptions(self) -> None:
         """Konvertiert bestehende HTML-Beschreibungen in Markdown."""

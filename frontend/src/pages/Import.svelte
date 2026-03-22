@@ -14,6 +14,8 @@
     starteRescan,
     holeRescanStatus,
     brecheRescanAb,
+    rescanVorschau,
+    rescanKategorien,
   } from "../lib/api/imports.js";
 
   let activeTab = $state("dateien");
@@ -27,13 +29,36 @@
 
   // Rescan
   let rescanStatus = $state(null);
-  let rescanCover = $state(true);
-  let rescanIsbn = $state(true);
+  let rescanTypen = $state({ cover: true, isbn: true, metadaten: false, volltext: false });
+  let rescanManuell = $state(false);
+  let rescanKategorie = $state(null);
+  let rescanKats = $state([]);
+  let rescanPreview = $state(null);
   let rescanPollInterval = null;
 
-  async function startRescan() {
+  // Aktive Typen als Array
+  function getActiveTypes() {
+    return Object.entries(rescanTypen).filter(([_, v]) => v).map(([k]) => k);
+  }
+
+  async function ladeRescanVorschau() {
+    const typen = getActiveTypes();
+    if (typen.length === 0) { rescanPreview = null; rescanKats = []; return; }
     try {
-      const result = await starteRescan(rescanCover, rescanIsbn);
+      const [preview, kats] = await Promise.all([
+        rescanVorschau(typen, rescanKategorie, rescanManuell),
+        rescanKategorien(typen, rescanManuell),
+      ]);
+      rescanPreview = preview;
+      rescanKats = kats;
+    } catch { rescanPreview = null; rescanKats = []; }
+  }
+
+  async function startRescan() {
+    const typen = getActiveTypes();
+    if (typen.length === 0) return;
+    try {
+      const result = await starteRescan(typen, rescanKategorie, rescanManuell);
       if (result.gestartet) {
         pollRescan();
       } else {
@@ -85,6 +110,7 @@
       rescanStatus = await holeRescanStatus();
       if (rescanStatus?.laeuft) pollRescan();
     } catch {}
+    ladeRescanVorschau();
   });
 
   onDestroy(() => {
@@ -262,18 +288,55 @@
     <!-- Rescan-Bereich -->
     <div class="rescan-section">
       <h3><i class="fa-solid fa-magnifying-glass"></i> Bibliothek erneut scannen</h3>
-      <p class="rescan-desc">Durchsucht bereits importierte Bücher nach fehlenden Covern und ISBNs.</p>
+      <p class="rescan-desc">Durchsucht bereits importierte Bücher gezielt nach fehlenden Daten. Manuell bearbeitete Bücher werden standardmässig übersprungen.</p>
 
-      <div class="rescan-options">
+      <div class="rescan-typen">
         <label class="option-check">
-          <input type="checkbox" bind:checked={rescanCover} />
-          <span>Bücher ohne Cover</span>
+          <input type="checkbox" bind:checked={rescanTypen.cover} onchange={ladeRescanVorschau} />
+          <span><i class="fa-solid fa-image"></i> Cover</span>
+          {#if rescanPreview?.typen?.cover != null}<span class="rescan-badge">{rescanPreview.typen.cover}</span>{/if}
         </label>
         <label class="option-check">
-          <input type="checkbox" bind:checked={rescanIsbn} />
-          <span>Bücher ohne ISBN</span>
+          <input type="checkbox" bind:checked={rescanTypen.isbn} onchange={ladeRescanVorschau} />
+          <span><i class="fa-solid fa-barcode"></i> ISBN</span>
+          {#if rescanPreview?.typen?.isbn != null}<span class="rescan-badge">{rescanPreview.typen.isbn}</span>{/if}
+        </label>
+        <label class="option-check">
+          <input type="checkbox" bind:checked={rescanTypen.metadaten} onchange={ladeRescanVorschau} />
+          <span><i class="fa-solid fa-cloud-arrow-down"></i> Metadaten (OpenLibrary)</span>
+          {#if rescanPreview?.typen?.metadaten != null}<span class="rescan-badge">{rescanPreview.typen.metadaten}</span>{/if}
+        </label>
+        <label class="option-check">
+          <input type="checkbox" bind:checked={rescanTypen.volltext} onchange={ladeRescanVorschau} />
+          <span><i class="fa-solid fa-file-lines"></i> Volltext</span>
+          {#if rescanPreview?.typen?.volltext != null}<span class="rescan-badge">{rescanPreview.typen.volltext}</span>{/if}
         </label>
       </div>
+
+      <div class="rescan-filter">
+        <label class="option-check">
+          <input type="checkbox" bind:checked={rescanManuell} onchange={ladeRescanVorschau} />
+          <span>Manuell bearbeitete einschliessen</span>
+        </label>
+
+        {#if rescanKats.length > 0}
+          <div class="rescan-kat-filter">
+            <select bind:value={rescanKategorie} onchange={ladeRescanVorschau}>
+              <option value={null}>Alle Kategorien</option>
+              {#each rescanKats as kat}
+                <option value={kat.id ?? 0}>{kat.name} ({kat.anzahl})</option>
+              {/each}
+            </select>
+          </div>
+        {/if}
+      </div>
+
+      {#if rescanPreview && getActiveTypes().length > 0}
+        <div class="rescan-vorschau">
+          <i class="fa-solid fa-info-circle"></i>
+          <strong>{rescanPreview.gesamt}</strong> Bücher betroffen
+        </div>
+      {/if}
 
       {#if rescanStatus?.laeuft}
         <div class="rescan-progress">
@@ -281,9 +344,11 @@
             <div class="rescan-progress-fill" style="width: {rescanStatus.gesamt > 0 ? (rescanStatus.fortschritt / rescanStatus.gesamt * 100) : 0}%"></div>
           </div>
           <div class="rescan-stats">
-            <span>{rescanStatus.fortschritt} / {rescanStatus.gesamt}</span>
+            <span>noch {rescanStatus.gesamt - rescanStatus.fortschritt} verbleibend</span>
             {#if rescanStatus.cover_gefunden > 0}<span class="rescan-ok"><i class="fa-solid fa-image"></i> {rescanStatus.cover_gefunden} Cover</span>{/if}
             {#if rescanStatus.isbn_gefunden > 0}<span class="rescan-ok"><i class="fa-solid fa-barcode"></i> {rescanStatus.isbn_gefunden} ISBN</span>{/if}
+            {#if rescanStatus.metadaten_aktualisiert > 0}<span class="rescan-ok"><i class="fa-solid fa-cloud-arrow-down"></i> {rescanStatus.metadaten_aktualisiert} Metadaten</span>{/if}
+            {#if rescanStatus.volltext_extrahiert > 0}<span class="rescan-ok"><i class="fa-solid fa-file-lines"></i> {rescanStatus.volltext_extrahiert} Volltext</span>{/if}
             {#if rescanStatus.fehler > 0}<span class="rescan-err"><i class="fa-solid fa-xmark"></i> {rescanStatus.fehler} Fehler</span>{/if}
           </div>
           <div class="rescan-current">{rescanStatus.aktuelles_buch}</div>
@@ -294,14 +359,17 @@
       {:else}
         {#if rescanStatus && !rescanStatus.laeuft && rescanStatus.gesamt > 0}
           <div class="rescan-result">
-            <span><i class="fa-solid fa-check-circle"></i> Abgeschlossen: {rescanStatus.fortschritt} / {rescanStatus.gesamt} Bücher</span>
-            {#if rescanStatus.cover_gefunden > 0}<span class="rescan-ok">{rescanStatus.cover_gefunden} Cover gefunden</span>{/if}
-            {#if rescanStatus.isbn_gefunden > 0}<span class="rescan-ok">{rescanStatus.isbn_gefunden} ISBN gefunden</span>{/if}
+            <span><i class="fa-solid fa-check-circle"></i> Abgeschlossen: {rescanStatus.fortschritt} / {rescanStatus.gesamt}</span>
+            {#if rescanStatus.cover_gefunden > 0}<span class="rescan-ok">{rescanStatus.cover_gefunden} Cover</span>{/if}
+            {#if rescanStatus.isbn_gefunden > 0}<span class="rescan-ok">{rescanStatus.isbn_gefunden} ISBN</span>{/if}
+            {#if rescanStatus.metadaten_aktualisiert > 0}<span class="rescan-ok">{rescanStatus.metadaten_aktualisiert} Metadaten</span>{/if}
+            {#if rescanStatus.volltext_extrahiert > 0}<span class="rescan-ok">{rescanStatus.volltext_extrahiert} Volltext</span>{/if}
             {#if rescanStatus.fehler > 0}<span class="rescan-err">{rescanStatus.fehler} Fehler</span>{/if}
           </div>
         {/if}
-        <button class="action-btn scan-btn" onclick={startRescan} disabled={!rescanCover && !rescanIsbn}>
+        <button class="action-btn scan-btn" onclick={startRescan} disabled={getActiveTypes().length === 0}>
           <i class="fa-solid fa-rotate"></i> Rescan starten
+          {#if rescanPreview?.gesamt > 0}({rescanPreview.gesamt} Bücher){/if}
         </button>
       {/if}
     </div>
@@ -598,10 +666,62 @@
     margin: 0 0 1rem;
   }
 
-  .rescan-options {
+  .rescan-typen {
     display: flex;
-    gap: 1.5rem;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
     margin-bottom: 1rem;
+  }
+
+  .rescan-typen .option-check {
+    position: relative;
+  }
+
+  .rescan-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.375rem;
+    border-radius: 10px;
+    background: var(--color-accent);
+    color: #fff;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-left: 0.25rem;
+  }
+
+  .rescan-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .rescan-kat-filter select {
+    padding: 0.375rem 0.625rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    background: var(--glass-bg);
+    color: var(--color-text-primary);
+    font-size: 0.8125rem;
+    cursor: pointer;
+  }
+
+  .rescan-vorschau {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+    font-size: 0.8125rem;
+    color: var(--color-accent);
+    margin-bottom: 0.75rem;
   }
 
   .rescan-progress {

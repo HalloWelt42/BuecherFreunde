@@ -6,6 +6,7 @@ import logging
 import httpx
 
 from backend.app.core.config import settings
+from backend.app.services.data_cleaner import bereinige_kategorien
 
 logger = logging.getLogger("buecherfreunde.ai")
 
@@ -99,6 +100,13 @@ async def categorize_book(
         return []
 
     categories = _parse_categories(content)
+
+    # Kategorie-Namen durch den zentralen Cleaner bereinigen
+    roh_namen = [c["kategorie"] for c in categories]
+    bereinigte_namen = bereinige_kategorien(roh_namen)
+    bereinigte_set = {n.lower() for n in bereinigte_namen}
+    categories = [c for c in categories if c["kategorie"].lower() in bereinigte_set]
+
     logger.info(
         "KI-Kategorisierung für '%s': %d Vorschläge",
         title,

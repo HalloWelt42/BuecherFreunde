@@ -88,13 +88,16 @@ export function brecheImportAb() {
 }
 
 /**
- * Selektiven Rescan starten (Bücher ohne Cover/ISBN).
- * @param {boolean} cover - Cover scannen
- * @param {boolean} isbn - ISBN scannen
+ * Selektiven Rescan starten.
+ * @param {string[]} typen - z.B. ["cover", "isbn", "metadaten", "volltext"]
+ * @param {number|null} kategorie - Kategorie-ID oder null fuer alle
+ * @param {boolean} manuellEinschliessen
  * @returns {Promise<{gestartet: boolean, anzahl?: number}>}
  */
-export function starteRescan(cover = true, isbn = true) {
-  return post(`/api/books/rescan?cover=${cover}&isbn=${isbn}`);
+export function starteRescan(typen, kategorie = null, manuellEinschliessen = false) {
+  let url = `/api/books/rescan?typen=${typen.join(",")}&manuell_einschliessen=${manuellEinschliessen}`;
+  if (kategorie !== null) url += `&kategorie=${kategorie}`;
+  return post(url);
 }
 
 /**
@@ -111,4 +114,27 @@ export function holeRescanStatus() {
  */
 export function brecheRescanAb() {
   return post("/api/books/rescan/abbrechen");
+}
+
+/**
+ * Rescan-Vorschau: wie viele Buecher betroffen.
+ * @param {string[]} typen
+ * @param {number|null} kategorie
+ * @param {boolean} manuellEinschliessen
+ * @returns {Promise<Object>}
+ */
+export function rescanVorschau(typen, kategorie = null, manuellEinschliessen = false) {
+  let url = `/api/books/rescan/vorschau?typen=${typen.join(",")}&manuell_einschliessen=${manuellEinschliessen}`;
+  if (kategorie !== null) url += `&kategorie=${kategorie}`;
+  return get(url);
+}
+
+/**
+ * Rescan-Kategorien: betroffene Buecher pro Kategorie.
+ * @param {string[]} typen
+ * @param {boolean} manuellEinschliessen
+ * @returns {Promise<Array>}
+ */
+export function rescanKategorien(typen, manuellEinschliessen = false) {
+  return get(`/api/books/rescan/kategorien?typen=${typen.join(",")}&manuell_einschliessen=${manuellEinschliessen}`);
 }

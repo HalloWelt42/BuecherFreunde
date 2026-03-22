@@ -1,11 +1,10 @@
 """API-Endpunkte für Bücher."""
 
-import asyncio
 import logging
 import math
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -13,16 +12,6 @@ from backend.app.core.auth import verify_token, verify_token_query
 from backend.app.core.database import db
 from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate
 from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover, save_fulltext
-
-_rescan_status = {
-    "laeuft": False,
-    "fortschritt": 0,
-    "gesamt": 0,
-    "cover_gefunden": 0,
-    "isbn_gefunden": 0,
-    "fehler": 0,
-    "aktuelles_buch": "",
-}
 
 router = APIRouter(prefix="/api/books", tags=["Bücher"])
 
@@ -453,7 +442,7 @@ async def update_book(
     set_clause = ", ".join(f"{k} = ?" for k in updates)
     values = list(updates.values()) + [book_id]
     await db.execute(
-        f"UPDATE books SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
+        f"UPDATE books SET {set_clause}, manuell_bearbeitet = 1, updated_at = datetime('now') WHERE id = ?",
         tuple(values),
     )
 
@@ -867,211 +856,54 @@ async def isbn_scan(book_id: int, _token: str = Depends(verify_token)):
 
 @router.post("/rescan")
 async def rescan_books(
-    background_tasks: BackgroundTasks,
-    cover: bool = Query(True, description="Bücher ohne Cover scannen"),
-    isbn: bool = Query(True, description="Bücher ohne ISBN scannen"),
+    typen: str = Query("cover,isbn", description="Kommagetrennt: cover,isbn,metadaten,volltext"),
+    kategorie: int | None = Query(None, description="Nur Buecher dieser Kategorie (0=ohne Kategorie)"),
+    manuell_einschliessen: bool = Query(False, description="Auch manuell bearbeitete Buecher scannen"),
     _token: str = Depends(verify_token),
 ):
-    """Startet einen selektiven Rescan fuer Bücher ohne Cover und/oder ISBN."""
-    if _rescan_status["laeuft"]:
-        raise HTTPException(status_code=409, detail="Rescan laeuft bereits")
-
-    # Bücher ermitteln die gescannt werden muessen
-    bedingungen = []
-    if cover:
-        bedingungen.append("(cover_path IS NULL OR cover_path = '')")
-    if isbn:
-        bedingungen.append("(isbn IS NULL OR isbn = '')")
-
-    if not bedingungen:
-        raise HTTPException(status_code=400, detail="Keine Scan-Optionen gewaehlt")
-
-    where = " OR ".join(bedingungen)
-    buecher = await db.fetch_all(
-        f"SELECT id, hash, title, file_name, file_format, isbn, cover_path FROM books WHERE {where}"
-    )
-
-    if not buecher:
-        return {"gestartet": False, "grund": "Keine Bücher gefunden die gescannt werden muessen"}
-
-    _rescan_status.update({
-        "laeuft": True,
-        "fortschritt": 0,
-        "gesamt": len(buecher),
-        "cover_gefunden": 0,
-        "isbn_gefunden": 0,
-        "fehler": 0,
-        "aktuelles_buch": "",
-    })
-
-    background_tasks.add_task(_rescan_worker, list(buecher), cover, isbn)
-
-    return {"gestartet": True, "anzahl": len(buecher)}
+    """Startet einen selektiven Rescan."""
+    from backend.app.services import rescan_service
+    typ_liste = [t.strip() for t in typen.split(",") if t.strip()]
+    return await rescan_service.starte_rescan(typ_liste, kategorie, manuell_einschliessen)
 
 
 @router.get("/rescan/status")
-async def rescan_status(_token: str = Depends(verify_token)):
+async def rescan_get_status(_token: str = Depends(verify_token)):
     """Gibt den aktuellen Rescan-Status zurück."""
-    return _rescan_status
+    from backend.app.services import rescan_service
+    return rescan_service.status
 
 
 @router.post("/rescan/abbrechen")
 async def rescan_cancel(_token: str = Depends(verify_token)):
     """Bricht den laufenden Rescan ab."""
-    if not _rescan_status["laeuft"]:
-        return {"abgebrochen": False, "grund": "Kein Rescan aktiv"}
-    _rescan_status["laeuft"] = False
-    return {"abgebrochen": True}
+    from backend.app.services import rescan_service
+    return rescan_service.abbrechen()
 
 
-async def _rescan_worker(buecher: list, scan_cover: bool, scan_isbn: bool):
-    """Hintergrund-Worker fuer den Rescan."""
-    rescan_logger = logging.getLogger("buecherfreunde.rescan")
-
-    for i, book in enumerate(buecher):
-        if not _rescan_status["laeuft"]:
-            rescan_logger.info("Rescan abgebrochen bei %d/%d", i, len(buecher))
-            break
-
-        _rescan_status["fortschritt"] = i + 1
-        _rescan_status["aktuelles_buch"] = book["title"] or book["file_name"] or f"ID {book['id']}"
-
-        try:
-            original = get_original_file(book["hash"])
-            if not original or not original.exists():
-                _rescan_status["fehler"] += 1
-                continue
-
-            fmt = book["file_format"].lower() if book["file_format"] else ""
-            hat_cover = book["cover_path"] and book["cover_path"].strip()
-            hat_isbn = book["isbn"] and book["isbn"].strip()
-
-            # Cover extrahieren wenn noetig
-            if scan_cover and not hat_cover:
-                cover_data = None
-                if fmt == "epub":
-                    cover_data = _rescan_epub_cover(original, rescan_logger)
-                elif fmt == "pdf":
-                    cover_data = _rescan_pdf_cover(original, rescan_logger)
-
-                if cover_data:
-                    save_cover(book["hash"], cover_data)
-                    await db.execute(
-                        "UPDATE books SET cover_path = 'cover.jpg', updated_at = datetime('now') WHERE id = ?",
-                        (book["id"],),
-                    )
-                    await db.commit()
-                    _rescan_status["cover_gefunden"] += 1
-
-            # ISBN extrahieren wenn noetig
-            if scan_isbn and not hat_isbn:
-                isbn_found = await _rescan_isbn(book, original, fmt, rescan_logger)
-                if isbn_found:
-                    _rescan_status["isbn_gefunden"] += 1
-
-        except Exception as e:
-            rescan_logger.warning("Rescan Fehler bei Buch %d: %s", book["id"], e)
-            _rescan_status["fehler"] += 1
-
-        # Kurze Pause damit der Event-Loop nicht blockiert
-        await asyncio.sleep(0.05)
-
-    _rescan_status["laeuft"] = False
-    rescan_logger.info(
-        "Rescan abgeschlossen: %d/%d, Cover: %d, ISBN: %d, Fehler: %d",
-        _rescan_status["fortschritt"], _rescan_status["gesamt"],
-        _rescan_status["cover_gefunden"], _rescan_status["isbn_gefunden"],
-        _rescan_status["fehler"],
-    )
+@router.get("/rescan/vorschau")
+async def rescan_vorschau(
+    typen: str = Query("cover,isbn", description="Kommagetrennt: cover,isbn,metadaten,volltext"),
+    kategorie: int | None = Query(None, description="Nur Buecher dieser Kategorie"),
+    manuell_einschliessen: bool = Query(False),
+    _token: str = Depends(verify_token),
+):
+    """Vorschau: wie viele Buecher wuerden gescannt werden."""
+    from backend.app.services import rescan_service
+    typ_liste = [t.strip() for t in typen.split(",") if t.strip()]
+    return await rescan_service.vorschau(typ_liste, kategorie, manuell_einschliessen)
 
 
-def _rescan_epub_cover(epub_path: Path, logger) -> bytes | None:
-    """Cover aus EPUB extrahieren (ebooklib + ZIP-Fallback)."""
-    from backend.app.services.processors.epub_processor import EpubProcessor
-
-    # Erst ebooklib versuchen
-    try:
-        import ebooklib.epub
-        book = ebooklib.epub.read_epub(str(epub_path), options={"ignore_ncx": True})
-        proc = EpubProcessor()
-        data = proc._extract_cover(book)
-        if data:
-            return data
-    except Exception:
-        pass
-
-    # ZIP-Fallback
-    return EpubProcessor._extract_cover_from_zip(epub_path)
-
-
-def _rescan_pdf_cover(pdf_path: Path, logger) -> bytes | None:
-    """Cover aus PDF extrahieren."""
-    try:
-        from backend.app.services.processors.pdf_processor import PdfProcessor
-        import fitz
-        doc = fitz.open(str(pdf_path))
-        proc = PdfProcessor()
-        data = proc._extract_cover(doc)
-        doc.close()
-        return data
-    except Exception as e:
-        logger.debug("PDF Cover Rescan: %s", e)
-    return None
-
-
-async def _rescan_isbn(book: dict, original: Path, fmt: str, logger) -> str | None:
-    """ISBN aus Buch extrahieren."""
-    import re
-    from backend.app.services.isbn_extractor import extract_isbns_from_text
-
-    text = ""
-
-    # Volltext aus Sidecar laden
-    fulltext_path = get_sidecar_path(book["hash"], "fulltext.txt")
-    if fulltext_path.exists():
-        text = fulltext_path.read_text(encoding="utf-8", errors="ignore")
-
-    # Fallback: direkt aus EPUB lesen
-    if not text.strip() and fmt == "epub":
-        import zipfile
-        try:
-            with zipfile.ZipFile(original) as zf:
-                from bs4 import BeautifulSoup
-                parts = []
-                html_files = sorted([n for n in zf.namelist() if n.lower().endswith((".html", ".xhtml", ".htm"))])
-                for html_name in html_files:
-                    try:
-                        html_content = zf.read(html_name).decode("utf-8", errors="ignore")
-                        soup = BeautifulSoup(html_content, "html.parser")
-                        t = soup.get_text(separator="\n", strip=True)
-                        if t:
-                            parts.append(t)
-                    except Exception:
-                        continue
-                if parts:
-                    text = "\n\n".join(parts)
-                    save_fulltext(book["hash"], text)
-        except Exception:
-            pass
-
-    if not text.strip():
-        return None
-
-    raw_isbns = extract_isbns_from_text(text)
-    if raw_isbns:
-        import isbnlib
-        for isbn in raw_isbns:
-            canonical = isbnlib.canonical(isbn)
-            if canonical and len(canonical) in (10, 13):
-                await db.execute(
-                    "UPDATE books SET isbn = ?, updated_at = datetime('now') WHERE id = ?",
-                    (canonical, book["id"]),
-                )
-                await db.commit()
-                logger.info("Rescan ISBN fuer '%s': %s", book["title"] or book["id"], canonical)
-                return canonical
-
-    return None
+@router.get("/rescan/kategorien")
+async def rescan_kategorien(
+    typen: str = Query("cover,isbn", description="Kommagetrennt: cover,isbn,metadaten,volltext"),
+    manuell_einschliessen: bool = Query(False),
+    _token: str = Depends(verify_token),
+):
+    """Zeigt betroffene Buecher pro Kategorie."""
+    from backend.app.services import rescan_service
+    typ_liste = [t.strip() for t in typen.split(",") if t.strip()]
+    return await rescan_service.vorschau_kategorien(typ_liste, manuell_einschliessen)
 
 
 @router.get("/{book_id}/volltext-suche")

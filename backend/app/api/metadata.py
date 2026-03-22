@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from backend.app.core.auth import verify_token
 from backend.app.core.database import db
 from backend.app.services import googlebooks, openlibrary, wikipedia
+from backend.app.services.data_cleaner import bereinige_kategorien
 from backend.app.services.storage import save_cover, load_fulltext
 
 logger = logging.getLogger("buecherfreunde.api.metadata")
@@ -331,9 +332,10 @@ async def apply_metadata(
     if "author" in updates:
         await _sync_book_authors(book_id, updates["author"])
 
-    # Kategorien erstellen und zuordnen
+    # Kategorien erstellen und zuordnen (immer bereinigen)
     kategorien = felder.get("kategorien", [])
     if kategorien:
+        kategorien = bereinige_kategorien(kategorien)
         cat_ids = await _ensure_categories(kategorien)
         await _assign_categories(book_id, cat_ids)
 
