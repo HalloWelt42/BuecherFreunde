@@ -40,6 +40,3 @@ Für die Nutzung dieser Dienste gelten deren jeweilige Nutzungsbedingungen. Alle
 
 Der Nutzer ist selbst für regelmäßige Backups seiner Daten verantwortlich. Die Software bietet Backup-Funktionen an, übernimmt aber keine Garantie für deren Vollständigkeit.
 
----
-
-*Basiert auf den Nutzungsbedingungen von [RadioHub](https://github.com/HalloWelt42/RadioHub) von HalloWelt42.*

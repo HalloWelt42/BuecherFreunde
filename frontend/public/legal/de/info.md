@@ -136,6 +136,3 @@ Jeder API-Aufruf vom Frontend trägt einen Bearer-Token. Das Token wird beim ers
 - [PyMuPDF](https://pymupdf.readthedocs.io/) -- PDF-Verarbeitung
 - [foliate-js](https://github.com/nicolo-ribaudo/foliate-js) -- EPUB-Reader
 
----
-
-*Basiert auf der technischen Dokumentation von [RadioHub](https://github.com/HalloWelt42/RadioHub) von HalloWelt42.*

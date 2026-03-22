@@ -60,6 +60,3 @@ Da BücherFreunde selbst gehostet wird, bist du als Betreiber für den Schutz de
 - Regelmäßige Backups erstellen
 - API-Token sicher aufbewahren und bei Bedarf ändern
 
----
-
-*Basiert auf der Datenschutzerklärung von [RadioHub](https://github.com/HalloWelt42/RadioHub) von HalloWelt42.*
