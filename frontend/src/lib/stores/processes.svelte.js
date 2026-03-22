@@ -92,8 +92,11 @@ export async function fetchImportStatus() {
     if (importData.zaehler) {
       processes.zaehler = importData.zaehler;
     }
-    if (rescanData) {
-      processes.rescan = rescanData;
+    if (rescanData && typeof rescanData === "object") {
+      processes.rescan = {
+        ...processes.rescan,
+        ...rescanData,
+      };
     }
     processes.lastUpdate = new Date();
 

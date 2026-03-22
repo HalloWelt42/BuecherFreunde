@@ -109,8 +109,10 @@
     try {
       rescanStatus = await holeRescanStatus();
       if (rescanStatus?.laeuft) pollRescan();
-    } catch {}
-    ladeRescanVorschau();
+    } catch { /* Endpoint existiert evtl. noch nicht */ }
+    try {
+      await ladeRescanVorschau();
+    } catch { /* Endpoint existiert evtl. noch nicht */ }
   });
 
   onDestroy(() => {

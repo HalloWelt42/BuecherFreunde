@@ -10,12 +10,12 @@
   } from "../../stores/processes.svelte.js";
 
   let stats = $derived(getProcessStats());
-  let rescan = $derived(processes.rescan);
-  let hatProzesse = $derived(processes.importTasks.length > 0 || rescan.laeuft || (rescan.gesamt > 0 && rescan.fortschritt > 0));
+  let rescan = $derived(processes.rescan || {});
+  let hatProzesse = $derived(processes.importTasks.length > 0 || !!rescan.laeuft || (rescan.gesamt > 0 && rescan.fortschritt > 0));
   let istAktiv = $derived(stats.aktiv > 0);
-  let rescanAktiv = $derived(rescan.laeuft);
+  let rescanAktiv = $derived(!!rescan.laeuft);
   let rescanProzent = $derived(rescan.gesamt > 0 ? Math.round((rescan.fortschritt / rescan.gesamt) * 100) : 0);
-  let rescanVerbleibend = $derived(rescan.gesamt - rescan.fortschritt);
+  let rescanVerbleibend = $derived((rescan.gesamt || 0) - (rescan.fortschritt || 0));
   let rescanTreffer = $derived(
     (rescan.cover_gefunden || 0) + (rescan.isbn_gefunden || 0) +
     (rescan.metadaten_aktualisiert || 0) + (rescan.volltext_extrahiert || 0)
