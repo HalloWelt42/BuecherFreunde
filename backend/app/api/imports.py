@@ -67,6 +67,12 @@ async def upload_file(
     async def _import():
         try:
             await import_single_file(temp_path, task_id)
+        except Exception as exc:
+            logger.error("Import fehlgeschlagen fuer Task %d: %s", task_id, exc)
+            try:
+                await update_task_status(task_id, "fehler", 0, "", str(exc))
+            except Exception:
+                pass
         finally:
             temp_path.unlink(missing_ok=True)
 
@@ -105,6 +111,12 @@ async def upload_multiple(
         async def _import(path=temp_path, tid=task_id):
             try:
                 await import_single_file(path, tid)
+            except Exception as exc:
+                logger.error("Import fehlgeschlagen fuer Task %d: %s", tid, exc)
+                try:
+                    await update_task_status(tid, "fehler", 0, "", str(exc))
+                except Exception:
+                    pass
             finally:
                 path.unlink(missing_ok=True)
 
