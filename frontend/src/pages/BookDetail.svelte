@@ -1243,7 +1243,7 @@
           <h2 class="section-title">Vom selben Autor</h2>
           <div class="similar-grid">
             {#each aehnliche.vom_autor as b (b.id)}
-              <a href="#/book/{b.id}" class="similar-card">
+              <a href="/book/{b.id}" class="similar-card">
                 {#if b.cover_path}
                   <img src={coverUrl(b.id, b.updated_at)} alt="" class="similar-cover" onerror={(e) => e.target.style.display = 'none'} />
                 {:else}
@@ -1263,7 +1263,7 @@
           <h2 class="section-title">In derselben Kategorie</h2>
           <div class="similar-grid">
             {#each aehnliche.in_kategorie as b (b.id)}
-              <a href="#/book/{b.id}" class="similar-card">
+              <a href="/book/{b.id}" class="similar-card">
                 {#if b.cover_path}
                   <img src={coverUrl(b.id, b.updated_at)} alt="" class="similar-cover" onerror={(e) => e.target.style.display = 'none'} />
                 {:else}
