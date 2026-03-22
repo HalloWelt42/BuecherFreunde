@@ -16,7 +16,17 @@
   let laden = $state(false);
   let fehler = $state(null);
   let offset = $state(0);
+  let aktiveFilter = $state({});
   const limit = 20;
+
+  const filterLabels = {
+    autor: "Autor",
+    format: "Format",
+    jahr: "Jahr",
+    zeitraum: "Zeitraum",
+    ab_jahr: "Ab",
+    bis_jahr: "Bis",
+  };
 
   $effect(() => {
     if (query) {
@@ -35,6 +45,7 @@
       const data = await suche(q, { limit, offset: off });
       results = data.treffer || data.results || [];
       total = data.gesamt ?? data.total ?? 0;
+      aktiveFilter = data.aktive_filter || {};
     } catch (e) {
       fehler = e.message;
       results = [];
@@ -62,6 +73,18 @@
       </p>
     {/if}
   </div>
+
+  {#if Object.keys(aktiveFilter).length > 0}
+    <div class="active-filters">
+      <span class="filter-label"><i class="fa-solid fa-filter"></i> Filter:</span>
+      {#each Object.entries(aktiveFilter) as [key, value]}
+        <span class="filter-tag">
+          <span class="filter-key">{filterLabels[key] || key}</span>
+          <span class="filter-value">{value}</span>
+        </span>
+      {/each}
+    </div>
+  {/if}
 
   {#if laden}
     <div class="loading">Suche läuft...</div>
@@ -205,5 +228,48 @@
     font-size: 0.6875rem;
     color: var(--color-text-muted);
     font-family: var(--font-mono);
+  }
+
+  .active-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    background: var(--glass-bg);
+  }
+
+  .filter-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .filter-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+    font-size: 0.75rem;
+  }
+
+  .filter-key {
+    color: var(--color-text-muted);
+    font-weight: 500;
+  }
+
+  .filter-value {
+    color: var(--color-accent);
+    font-weight: 600;
   }
 </style>

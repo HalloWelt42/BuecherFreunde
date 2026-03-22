@@ -11,6 +11,7 @@
   let selectedIndex = $state(-1);
   let debounceTimer;
   let showHistory = $state(false);
+  let showSyntaxHelp = $state(false);
 
   // Suchhistorie aus localStorage laden
   let history = $state(ladeHistorie());
@@ -153,6 +154,30 @@
     onfocus={onFocus}
   />
 
+  <button
+    class="syntax-toggle"
+    onclick={() => showSyntaxHelp = !showSyntaxHelp}
+    title="Suchsyntax anzeigen"
+  >
+    <i class="fa-solid fa-circle-question"></i>
+  </button>
+
+  {#if showSyntaxHelp}
+    <div class="syntax-help">
+      <div class="syntax-title">Erweiterte Suchsyntax</div>
+      <div class="syntax-grid">
+        <code>"exakter Satz"</code><span>Phrasensuche</span>
+        <code>autor:Name</code><span>Nach Autor filtern</span>
+        <code>format:epub</code><span>Nach Format (epub, pdf, txt, ...)</span>
+        <code>datum:2023</code><span>Exaktes Erscheinungsjahr</span>
+        <code>datum:2020-2024</code><span>Jahresbereich</span>
+        <code>datum:&gt;2020</code><span>Ab Erscheinungsjahr</span>
+        <code>datum:&lt;2024</code><span>Bis Erscheinungsjahr</span>
+      </div>
+      <div class="syntax-example">Beispiel: <code>"der Ring" autor:Tolkien format:epub</code></div>
+    </div>
+  {/if}
+
   {#if showDropdown && showHistory && history.length > 0}
     <!-- Suchhistorie -->
     <div class="suggestions history-dropdown">
@@ -218,7 +243,7 @@
 
   .search-input {
     width: 100%;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 2rem 0.5rem 1rem;
     border: 1px solid var(--glass-border);
     border-radius: 6px;
     background: var(--glass-placeholder);
@@ -368,5 +393,83 @@
     font-size: 0.75rem;
     color: var(--color-text-muted);
     margin-left: 0.5rem;
+  }
+
+  .syntax-toggle {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0.25rem;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+  }
+
+  .syntax-toggle:hover {
+    opacity: 1;
+    color: var(--color-accent);
+  }
+
+  .syntax-help {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    padding: 0.75rem;
+    z-index: 101;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .syntax-title {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.5rem;
+  }
+
+  .syntax-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .syntax-grid code {
+    font-family: var(--font-mono);
+    color: var(--color-accent);
+    font-size: 0.6875rem;
+    background: var(--glass-placeholder);
+    padding: 0.125rem 0.25rem;
+    border-radius: 3px;
+  }
+
+  .syntax-grid span {
+    color: var(--color-text-secondary);
+  }
+
+  .syntax-example {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-border);
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+  }
+
+  .syntax-example code {
+    font-family: var(--font-mono);
+    color: var(--color-text-secondary);
+    font-size: 0.625rem;
   }
 </style>
