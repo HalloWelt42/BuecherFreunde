@@ -144,3 +144,36 @@ async def assign_categories(
     await db.commit()
 
     return {"book_id": book_id, "kategorien": kategorie_ids}
+
+
+@router.post("/{category_id}/books/{book_id}")
+async def add_book_to_category(
+    category_id: int, book_id: int, _token: str = Depends(verify_token)
+):
+    """Fügt ein Buch zu einer Kategorie hinzu."""
+    book = await db.fetch_one("SELECT id FROM books WHERE id = ?", (book_id,))
+    if not book:
+        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+    cat = await db.fetch_one("SELECT id FROM categories WHERE id = ?", (category_id,))
+    if not cat:
+        raise HTTPException(status_code=404, detail="Kategorie nicht gefunden")
+
+    await db.execute(
+        "INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'manuell')",
+        (book_id, category_id),
+    )
+    await db.commit()
+    return {"message": "Kategorie zugeordnet"}
+
+
+@router.delete("/{category_id}/books/{book_id}")
+async def remove_book_from_category(
+    category_id: int, book_id: int, _token: str = Depends(verify_token)
+):
+    """Entfernt ein Buch aus einer Kategorie."""
+    await db.execute(
+        "DELETE FROM book_categories WHERE book_id = ? AND category_id = ?",
+        (book_id, category_id),
+    )
+    await db.commit()
+    return {"message": "Kategorie entfernt"}

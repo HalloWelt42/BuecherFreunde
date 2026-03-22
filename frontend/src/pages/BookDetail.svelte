@@ -2,6 +2,7 @@
   import { holeBuch, coverUrl, aktualisiereBuch, aehnlicheBuecher, volltextSuche } from "../lib/api/books.js";
   import { post, get as apiGet, getToken } from "../lib/api/client.js";
   import { ladeSammlungen, buchZuordnen, buchAusSammlung } from "../lib/api/collections.js";
+  import { ladeKategorien, ordneBuchZu, entferneBuch as entferneKategorieBuch } from "../lib/api/categories.js";
   import { toggleFavorit, toggleZumLesen, toggleGelesen, setzeBewertung } from "../lib/api/user-data.js";
   import { sucheMetadaten, uebernehmMetadaten, ladeVolltext } from "../lib/api/metadata.js";
   import { notifyBooksChanged } from "../lib/stores/processes.svelte.js";
@@ -49,6 +50,53 @@
   // Markierungen (Highlights mit optionalen Labels)
   let markierungen = $state([]);
   let markierungOffen = $state({});
+
+  // Kategorien bearbeiten
+  let katEditMode = $state(false);
+  let katSuche = $state("");
+  let katAlleKategorien = $state([]);
+  let katSuchTimer = $state(null);
+
+  let katGefiltert = $derived(() => {
+    if (!katSuche.trim()) return [];
+    const q = katSuche.toLowerCase().trim();
+    const buchKatIds = new Set((book?.categories || []).map(c => c.id));
+    return katAlleKategorien
+      .filter(c => !buchKatIds.has(c.id) && c.name.toLowerCase().includes(q))
+      .slice(0, 10);
+  });
+
+  async function katEditStarten() {
+    try {
+      katAlleKategorien = await ladeKategorien();
+    } catch { katAlleKategorien = []; }
+    katSuche = "";
+    katEditMode = true;
+  }
+
+  function katEditBeenden() {
+    katEditMode = false;
+    katSuche = "";
+  }
+
+  async function kategorieEntfernen(catId) {
+    try {
+      await entferneKategorieBuch(catId, book.id);
+      await ladeBuch(book.id);
+    } catch (e) {
+      fehler = e.message || "Fehler beim Entfernen der Kategorie";
+    }
+  }
+
+  async function kategorieHinzufuegen(catId) {
+    try {
+      await ordneBuchZu(catId, book.id);
+      katSuche = "";
+      await ladeBuch(book.id);
+    } catch (e) {
+      fehler = e.message || "Fehler beim Hinzufügen der Kategorie";
+    }
+  }
 
   // Aehnliche Buecher
   let aehnliche = $state({ vom_autor: [], in_kategorie: [] });
@@ -1055,9 +1103,63 @@
           </div>
         {/if}
 
-        {#if book.categories && book.categories.length > 0}
-          <div class="tags-section">
-            <h2 class="section-title">Kategorien ({book.categories.length})</h2>
+        <div class="tags-section">
+          <div class="kat-header">
+            <h2 class="section-title">Kategorien ({book.categories?.length || 0})</h2>
+            <button
+              class="kat-edit-btn"
+              onclick={() => katEditMode ? katEditBeenden() : katEditStarten()}
+              title={katEditMode ? "Bearbeitung beenden" : "Kategorien bearbeiten"}
+            >
+              <i class="fa-solid {katEditMode ? 'fa-check' : 'fa-pen'}"></i>
+            </button>
+          </div>
+
+          {#if katEditMode}
+            <div class="kat-edit-area">
+              {#if book.categories && book.categories.length > 0}
+                <div class="chip-list">
+                  {#each book.categories as cat (cat.id)}
+                    <span class="chip kat-chip-edit">
+                      {cat.name}
+                      <button class="kat-remove-btn" onclick={() => kategorieEntfernen(cat.id)} title="Kategorie entfernen">
+                        <i class="fa-solid fa-xmark"></i>
+                      </button>
+                    </span>
+                  {/each}
+                </div>
+              {:else}
+                <p class="kat-leer">Keine Kategorien zugewiesen</p>
+              {/if}
+
+              <div class="kat-suche-wrap">
+                <i class="fa-solid fa-search kat-suche-icon"></i>
+                <input
+                  class="kat-suche-input"
+                  type="text"
+                  placeholder="Kategorie suchen..."
+                  value={katSuche}
+                  oninput={(e) => katSuche = e.target.value}
+                />
+              </div>
+
+              {#if katGefiltert().length > 0}
+                <div class="kat-ergebnisse">
+                  {#each katGefiltert() as cat (cat.id)}
+                    <button class="kat-ergebnis" onclick={() => kategorieHinzufuegen(cat.id)}>
+                      <i class="fa-solid fa-plus kat-plus-icon"></i>
+                      {cat.name}
+                      {#if cat.buch_anzahl != null}
+                        <span class="kat-count">({cat.buch_anzahl})</span>
+                      {/if}
+                    </button>
+                  {/each}
+                </div>
+              {:else if katSuche.trim().length > 0}
+                <p class="kat-leer">Keine passenden Kategorien gefunden</p>
+              {/if}
+            </div>
+          {:else if book.categories && book.categories.length > 0}
             <div class="chip-list">
               {#each (kategorienAlle ? book.categories : book.categories.slice(0, 5)) as cat (cat.id)}
                 <a href="/?category={cat.id}" class="chip">{cat.name}</a>
@@ -1068,8 +1170,8 @@
                 </button>
               {/if}
             </div>
-          </div>
-        {/if}
+          {/if}
+        </div>
 
         {#if book.sammlung}
           <div class="tags-section">
@@ -1669,6 +1771,147 @@
     background-color: var(--color-bg-tertiary);
     color: var(--color-text-secondary);
     font-weight: 500;
+  }
+
+  /* Kategorien bearbeiten */
+  .kat-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .kat-edit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: none;
+    color: var(--color-text-muted);
+    font-size: 0.625rem;
+    cursor: pointer;
+  }
+
+  .kat-edit-btn:hover {
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  .kat-edit-area {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+
+  .kat-chip-edit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .kat-remove-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--color-text-muted);
+    font-size: 0.5rem;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .kat-remove-btn:hover {
+    background-color: color-mix(in srgb, var(--color-error) 15%, transparent);
+    color: var(--color-error);
+  }
+
+  .kat-suche-wrap {
+    position: relative;
+  }
+
+  .kat-suche-icon {
+    position: absolute;
+    left: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+    pointer-events: none;
+  }
+
+  .kat-suche-input {
+    width: 100%;
+    padding: 0.375rem 0.5rem 0.375rem 1.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-size: 0.75rem;
+    font-family: inherit;
+    outline: none;
+  }
+
+  .kat-suche-input:focus {
+    border-color: var(--color-accent);
+  }
+
+  .kat-suche-input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .kat-ergebnisse {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    overflow: hidden;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .kat-ergebnis {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    border: none;
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-size: 0.75rem;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .kat-ergebnis:hover {
+    background-color: var(--color-accent-light);
+  }
+
+  .kat-plus-icon {
+    font-size: 0.5625rem;
+    color: var(--color-accent);
+  }
+
+  .kat-count {
+    font-size: 0.625rem;
+    color: var(--color-text-muted);
+    margin-left: auto;
+  }
+
+  .kat-leer {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    font-style: italic;
   }
 
   .position-section {
