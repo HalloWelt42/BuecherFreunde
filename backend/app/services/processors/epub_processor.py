@@ -292,6 +292,19 @@ class EpubProcessor(BaseProcessor):
                 result.language = result.language or _extract_tag("language")
                 result.description = result.description or _extract_tag("description")
 
+                # ISBN aus dc:identifier extrahieren
+                if not result.isbn:
+                    isbn_pattern = re.compile(
+                        r"<dc:identifier[^>]*>(?:(?:urn:isbn:)?|(?:ISBN[:\s]?)?)(\d[\d\-]{8,16}\d)</dc:identifier>",
+                        re.IGNORECASE
+                    )
+                    for m in isbn_pattern.finditer(opf_content):
+                        candidate = m.group(1).replace("-", "")
+                        if len(candidate) in (10, 13):
+                            result.isbn = candidate
+                            logger.info("ZIP-Fallback ISBN: %s", candidate)
+                            break
+
                 if result.title:
                     logger.info("ZIP-Fallback Metadaten: Titel=%s, Autor=%s", result.title, result.author)
 
