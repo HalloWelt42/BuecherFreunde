@@ -69,9 +69,10 @@
 
 <svelte:document onclick={handleLinkClick} />
 
-<div class="app-layout" class:sidebar-collapsed={!ui.sidebarOpen} class:reader-fullscreen={ui.readerFullscreen}>
+<div class="app-layout" class:sidebar-collapsed={!ui.sidebarOpen} class:reader-fullscreen={ui.readerFullscreen} class:has-bg={bgUrl}>
   {#if bgUrl}
     <div class="app-bg" style="background-image: url({bgUrl})"></div>
+    <div class="app-bg-overlay"></div>
   {/if}
   <div class="grid-header">
     <Header />
@@ -122,13 +123,26 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    opacity: 0.12;
+    filter: blur(var(--cover-bg-blur)) saturate(var(--cover-bg-saturate));
+    transform: scale(var(--cover-bg-scale));
     pointer-events: none;
-    transition: background-image 0.5s ease;
   }
 
-  :global(:root.dark) .app-bg {
-    opacity: 0.08;
+  .app-bg-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: var(--cover-bg-overlay);
+  }
+
+  .app-layout.has-bg .grid-main,
+  .app-layout.has-bg .grid-sidebar {
+    background: transparent;
+  }
+
+  :global(body:has(.app-layout.has-bg)) {
+    background-color: transparent;
   }
 
   .app-layout.sidebar-collapsed {
