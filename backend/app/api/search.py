@@ -24,6 +24,7 @@ class SearchResponse(BaseModel):
     anfrage: str
     limit: int
     offset: int
+    aktive_filter: dict = {}
 
 
 class SuggestResponse(BaseModel):
@@ -40,8 +41,15 @@ async def search(
     offset: int = Query(0, ge=0),
     _token: str = Depends(verify_token),
 ):
-    """Volltextsuche in allen Büchern mit Kontext-Snippets."""
-    results = await search_books(q, limit, offset)
+    """Volltextsuche in allen Buechern mit Kontext-Snippets.
+
+    Unterstuetzt erweiterte Syntax:
+    - "exakter Satz" fuer Phrasensuche
+    - autor:Name / author:Name
+    - format:epub / format:pdf
+    - datum:2020-2024 / datum:>2020 / datum:<2024 / datum:2023
+    """
+    results, parsed = await search_books(q, limit, offset)
     total = await search_count(q)
 
     treffer = [
@@ -61,6 +69,7 @@ async def search(
         anfrage=q,
         limit=limit,
         offset=offset,
+        aktive_filter=parsed.aktive_filter,
     )
 
 
