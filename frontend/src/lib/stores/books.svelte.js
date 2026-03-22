@@ -98,6 +98,11 @@ function createBooksStore() {
       seite += 1;
       await this.laden_();
     },
+
+    /** Aktualisiert ein einzelnes Buch im Store (z.B. nach Favorit-Toggle). */
+    updateBook(bookId, changes) {
+      books = books.map(b => b.id === bookId ? { ...b, ...changes } : b);
+    },
   };
 }
 

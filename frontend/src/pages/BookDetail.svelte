@@ -8,6 +8,7 @@
   import { notifyBooksChanged } from "../lib/stores/processes.svelte.js";
   import { navigate } from "../lib/router.svelte.js";
   import { ui } from "../lib/stores/ui.svelte.js";
+  import { booksStore } from "../lib/stores/books.svelte.js";
   import RatingStars from "../lib/components/ui/RatingStars.svelte";
   import BookMeta from "../lib/components/book/BookMeta.svelte";
   import AiCategorizeDialog from "../lib/components/book/AiCategorizeDialog.svelte";
@@ -475,7 +476,9 @@
     if (!book) return;
     try {
       const result = await toggleFavorit(book.id);
-      book = { ...book, is_favorite: result.ist_favorit ?? result.is_favorite };
+      const isFav = result.ist_favorit ?? result.is_favorite;
+      book = { ...book, is_favorite: isFav };
+      booksStore.updateBook(book.id, { is_favorite: isFav });
       notifyBooksChanged();
     } catch { ui.toast.error("Favorit konnte nicht geaendert werden"); }
   }
@@ -484,7 +487,9 @@
     if (!book) return;
     try {
       const result = await toggleZumLesen(book.id);
-      book = { ...book, is_to_read: result.zu_lesen ?? result.is_to_read };
+      const isToRead = result.zu_lesen ?? result.is_to_read;
+      book = { ...book, is_to_read: isToRead };
+      booksStore.updateBook(book.id, { is_to_read: isToRead });
       notifyBooksChanged();
     } catch { ui.toast.error("Merkliste konnte nicht aktualisiert werden"); }
   }
@@ -495,7 +500,9 @@
     if (!book) return;
     try {
       const result = await toggleGelesen(book.id);
-      book = { ...book, last_read_at: result.gelesen ? new Date().toISOString() : null };
+      const lastRead = result.gelesen ? new Date().toISOString() : null;
+      book = { ...book, last_read_at: lastRead };
+      booksStore.updateBook(book.id, { last_read_at: lastRead });
       notifyBooksChanged();
     } catch { ui.toast.error("Lesestatus konnte nicht geaendert werden"); }
   }
@@ -504,7 +511,9 @@
     if (!book) return;
     try {
       const result = await setzeBewertung(book.id, rating);
-      book = { ...book, rating: result.bewertung ?? result.rating };
+      const newRating = result.bewertung ?? result.rating;
+      book = { ...book, rating: newRating };
+      booksStore.updateBook(book.id, { rating: newRating });
     } catch { ui.toast.error("Bewertung konnte nicht gespeichert werden"); }
   }
 
