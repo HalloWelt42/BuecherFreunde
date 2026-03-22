@@ -5,7 +5,7 @@
   import { ui } from "../../stores/ui.svelte.js";
   import { untrack } from "svelte";
   import SvelteMarkdown from "@humanspeak/svelte-markdown";
-  import { markedMermaid, MermaidRenderer, markedAlert } from "@humanspeak/svelte-markdown/extensions";
+  import { markedMermaid, MermaidRenderer } from "@humanspeak/svelte-markdown/extensions";
   import AlertBlock from "./AlertBlock.svelte";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
   import LabelPicker from "./LabelPicker.svelte";
@@ -32,8 +32,41 @@
   // Markdown oder Plaintext?
   let istMarkdown = $derived(format === "md");
 
+  // Erweiterte Alert-Typen (Obsidian-kompatibel) auf unsere 5 Grundtypen gemappt
+  const ALERT_ALIASES = {
+    note: "note", info: "note", abstract: "note", summary: "note", tldr: "note",
+    tip: "tip", hint: "tip", success: "tip", check: "tip", done: "tip",
+    important: "important", faq: "important", question: "important",
+    warning: "warning", attention: "warning", todo: "warning",
+    caution: "caution", danger: "caution", error: "caution", failure: "caution",
+    bug: "caution", example: "note", quote: "note", cite: "note",
+  };
+
+  function customAlert() {
+    return {
+      extensions: [{
+        name: "alert",
+        level: "block",
+        start(src) { return src.match(/>\s*\[!/)?.index; },
+        tokenizer(src) {
+          const match = src.match(/^(?:>\s*\[!(\w+)\]\n)((?:[^\n]*(?:\n(?:>\s?)[^\n]*)*)?)(?:\n|$)/);
+          if (!match) return;
+          const raw = match[1].toLowerCase();
+          const alertType = ALERT_ALIASES[raw];
+          if (!alertType) return;
+          const text = match[2]
+            .split("\n")
+            .map((line) => line.replace(/^>\s?/, ""))
+            .join("\n")
+            .trim();
+          return { type: "alert", raw: match[0], text, alertType };
+        },
+      }],
+    };
+  }
+
   // Markdown-Erweiterungen und Renderer
-  const mdExtensions = [markedMermaid(), markedAlert()];
+  const mdExtensions = [markedMermaid(), customAlert()];
   const mdRenderers = { mermaid: MermaidRenderer, alert: AlertBlock };
 
   // Breiten-Modi
