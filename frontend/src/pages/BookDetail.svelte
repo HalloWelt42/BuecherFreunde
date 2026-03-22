@@ -551,6 +551,10 @@
           const d = JSON.parse(rest);
           if (d.scrollPct != null) { items.push({ label: "Fortschritt", value: `${d.scrollPct}%` }); percent = Math.round(d.scrollPct); }
           if (d.fontSize) items.push({ label: "Schrift", value: `${d.fontSize}%` });
+          if (d.breite != null) {
+            const breitenLabels = ["Schmal", "Mittel", "Breit", "Voll"];
+            items.push({ label: "Breite", value: breitenLabels[d.breite] || "Mittel", type: "txt-breite" });
+          }
           if (d.papier) items.push({ label: "Papier", value: d.papier, type: "papier" });
         } catch { items.push({ label: "Position", value: pos }); }
       } else {

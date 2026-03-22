@@ -29,6 +29,7 @@
       cfi: sp.get("cfi") || "",
       percent: Number(sp.get("percent")) || 0,
       q: sp.get("q") || "",
+      restart: sp.get("restart") === "1",
     };
   }
 
@@ -78,8 +79,8 @@
     }
   }
 
-  // Gespeicherte Settings (URL > DB > Defaults)
-  let saved = $derived(parseGespeicherteSettings(book?.reading_position));
+  // Bei restart=1 werden alle gespeicherten Settings ignoriert
+  let saved = $derived(urlParams.restart ? {} : parseGespeicherteSettings(book?.reading_position));
 
   let initialPage = $derived(urlParams.page > 0 ? urlParams.page : (saved.page || 1));
   let initialAnsicht = $derived(urlParams.ansicht || saved.ansicht || "");
@@ -139,6 +140,7 @@
         {initialPapier}
         initialFontSize={saved.fontSize || 0}
         initialScrollPct={saved.scrollPct || 0}
+        initialBreite={saved.breite ?? -1}
         onBack={goBack}
       />
     {:else}

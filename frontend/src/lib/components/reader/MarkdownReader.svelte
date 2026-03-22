@@ -18,6 +18,7 @@
     initialPapier = "",
     initialFontSize = 0,
     initialScrollPct = 0,
+    initialBreite = -1,
     onBack = () => {},
     onPositionChange = () => {},
   } = $props();
@@ -42,7 +43,7 @@
     { id: "breit", label: "Breit", max: "1100px" },
     { id: "voll", label: "Voll", max: "none" },
   ];
-  let breiteIdx = $state(1); // Standard: mittel
+  let breiteIdx = $state(untrack(() => initialBreite >= 0 && initialBreite < breitenModi.length ? initialBreite : 1));
   let maxBreite = $derived(breitenModi[breiteIdx].max);
 
   function toggleBreite() {
