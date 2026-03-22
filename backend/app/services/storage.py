@@ -19,14 +19,17 @@ logger = logging.getLogger("buecherfreunde.storage")
 HASH_CHUNK_SIZE = 65536
 SUPPORTED_FORMATS = {".pdf", ".epub", ".mobi", ".txt", ".md"}
 
-# Zeichen die auf Dateisystemen ungültig sind
+# Zeichen die auf Dateisystemen ungueltig oder problematisch sind
 _UNSAFE_CHARS = re.compile(r'[<>:"|?*\x00-\x1f\\]')
+# Typografische Sonderzeichen die in Dateinamen nichts verloren haben
+_TYPO_CHARS = re.compile(r'[\u2022\u2013\u2014\u201c\u201d\u201e\u201f\u2018\u2019\u00ab\u00bb]')
 
 
 def sanitize_filename(name: str) -> str:
-    """Bereinigt Dateinamen: entfernt Pfad, ersetzt ungültige Zeichen."""
+    """Bereinigt Dateinamen: entfernt Pfad, ersetzt ungueltige Zeichen."""
     clean = Path(name).name
     clean = _UNSAFE_CHARS.sub("_", clean)
+    clean = _TYPO_CHARS.sub("_", clean)
     clean = re.sub(r"_{2,}", "_", clean)
     return clean.strip("_. ") or "unbenannt"
 
