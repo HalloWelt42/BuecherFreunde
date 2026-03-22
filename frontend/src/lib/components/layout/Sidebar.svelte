@@ -3,7 +3,7 @@
   import { categoriesStore } from "../../stores/categories.svelte.js";
   import { sammlungenStore } from "../../stores/tags.svelte.js";
   import { route, navigate } from "../../router.svelte.js";
-  import { get } from "../../api/client.js";
+  import { get, getToken } from "../../api/client.js";
   import { onMount, onDestroy } from "svelte";
   import { onBooksChanged } from "../../stores/processes.svelte.js";
 
@@ -33,7 +33,7 @@
 
   async function pruefeUpdate() {
     try {
-      const token = localStorage.getItem("api_token") || "";
+      const token = getToken();
       const res = await fetch("/api/config/update-check", {
         headers: { Authorization: `Bearer ${token}` },
       });

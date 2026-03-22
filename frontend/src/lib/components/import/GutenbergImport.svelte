@@ -1,5 +1,5 @@
 <script>
-  import { get, post, del } from "../../api/client.js";
+  import { get, post, del, getToken } from "../../api/client.js";
   import { onDestroy } from "svelte";
   import { notifyBooksChanged } from "../../stores/processes.svelte.js";
 
@@ -92,7 +92,7 @@
 
   function starteSSE() {
     sseConnection?.close();
-    const token = localStorage.getItem("api_token") || "";
+    const token = getToken();
     const url = `/api/gutenberg/import/events?token=${encodeURIComponent(token)}`;
     const es = new EventSource(url);
 
