@@ -22,6 +22,8 @@
     setTimeout(() => window.removeEventListener("click", handler, true), 300);
   }
 
+  let listEl = $state(null);
+
   function handlePointerDown(e, bookId) {
     if (!selectionStore.editMode) return;
     if (e.button !== 0) return;
@@ -29,6 +31,7 @@
     if (tag === "button" || e.target.closest("button")) return;
 
     e.preventDefault();
+    e.stopPropagation();
     suppressNextClick();
     isDragging = true;
 
@@ -47,6 +50,23 @@
       selectionStore.add(bookId);
     } else {
       selectionStore.remove(bookId);
+    }
+  }
+
+  function handleListPointerMove(e) {
+    if (!isDragging) return;
+    // Bei Pointer-Capture kommen keine pointerenter-Events,
+    // daher manuell per elementFromPoint die Zeile ermitteln
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el) return;
+    const row = el.closest("[data-book-id]");
+    if (row) {
+      const bookId = parseInt(row.dataset.bookId, 10);
+      if (dragMode === "add") {
+        selectionStore.add(bookId);
+      } else {
+        selectionStore.remove(bookId);
+      }
     }
   }
 
@@ -116,7 +136,7 @@
   }
 </script>
 
-<svelte:window onpointerup={handlePointerUp} />
+<svelte:window onpointerup={handlePointerUp} onpointermove={handleListPointerMove} />
 
 {#if books.length === 0}
   <div class="empty">
@@ -125,7 +145,7 @@
   </div>
 {:else if detailed}
   <!-- Detailliste mit Drag-Selection -->
-  <div class="detail-list" class:edit-mode={selectionStore.editMode} class:drag-active={isDragging}>
+  <div class="detail-list" class:edit-mode={selectionStore.editMode} class:drag-active={isDragging} bind:this={listEl} onpointermove={handleListPointerMove} ondragstart={(e) => selectionStore.editMode && e.preventDefault()}>
     {#each books as book (book.id)}
       {@const isSelected = selectionStore.has(book.id)}
       <div
@@ -218,7 +238,7 @@
   </div>
 {:else}
   <!-- Kompakte Tabelle mit Drag-Selection -->
-  <div class="table-wrapper" class:edit-mode={selectionStore.editMode} class:drag-active={isDragging}>
+  <div class="table-wrapper" class:edit-mode={selectionStore.editMode} class:drag-active={isDragging} bind:this={listEl} onpointermove={handleListPointerMove} ondragstart={(e) => selectionStore.editMode && e.preventDefault()}>
     <table class="book-table">
       <thead>
         <tr>
@@ -305,11 +325,23 @@
   .edit-mode {
     user-select: none;
     -webkit-user-select: none;
+    cursor: crosshair;
+  }
+
+  .edit-mode :global(a) {
+    -webkit-user-drag: none;
+    cursor: crosshair;
+  }
+
+  .edit-mode :global(img) {
+    -webkit-user-drag: none;
+    pointer-events: none;
   }
 
   .drag-active {
     user-select: none;
     -webkit-user-select: none;
+    cursor: crosshair;
   }
 
   /* Kompakte Tabelle */

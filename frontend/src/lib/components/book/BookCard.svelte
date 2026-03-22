@@ -79,7 +79,15 @@
 </script>
 
 <a href="/book/{book.id}" class="book-card" class:selected={isSelected}
+  class:edit-mode={selectionStore.editMode}
   data-book-id={book.id}
+  draggable={selectionStore.editMode ? "false" : undefined}
+  onclick={(e) => {
+    if (selectionStore.editMode) {
+      e.preventDefault();
+      selectionStore.toggle(book.id);
+    }
+  }}
 >
   <div class="cover-container">
     {#if !coverError}
@@ -218,6 +226,16 @@
     transform: translateY(-3px);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     border-color: var(--color-accent);
+  }
+
+  .book-card.edit-mode {
+    cursor: crosshair;
+    -webkit-user-drag: none;
+  }
+
+  .book-card.edit-mode :global(img) {
+    pointer-events: none;
+    -webkit-user-drag: none;
   }
 
   .book-card.selected {

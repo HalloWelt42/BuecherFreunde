@@ -61,11 +61,15 @@
     if (e.target.closest("button")) return;
 
     e.preventDefault();
+    e.stopPropagation();
     marqueeActive = true;
     marqueeStart = { x: e.clientX, y: e.clientY };
     marqueeEnd = { x: e.clientX, y: e.clientY };
     marqueeStartTarget = e.target;
     preMarqueeSelection = new Set(selectionStore.ids);
+
+    // Pointer auf dem Grid festhalten, damit Drag auch außerhalb funktioniert
+    gridEl?.setPointerCapture(e.pointerId);
   }
 
   function handleGridPointerMove(e) {
@@ -78,6 +82,12 @@
     if (marqueeActive) {
       const wasSmall = marqueeRect.width <= 5 && marqueeRect.height <= 5;
       marqueeActive = false;
+
+      // Pointer-Capture freigeben
+      if (gridEl && e.pointerId != null) {
+        try { gridEl.releasePointerCapture(e.pointerId); } catch {}
+      }
+
       if (wasSmall) {
         // Klick ohne Ziehen -> Toggle auf dem angeklickten Element
         const card = marqueeStartTarget?.closest?.("[data-book-id]") || document.elementFromPoint(marqueeStart.x, marqueeStart.y)?.closest("[data-book-id]");
@@ -91,6 +101,16 @@
       }
     }
   }
+
+  // Bearbeitungsmodus: Textauswahl global verhindern
+  $effect(() => {
+    if (selectionStore.editMode) {
+      document.body.classList.add("no-select");
+    } else {
+      document.body.classList.remove("no-select");
+    }
+    return () => document.body.classList.remove("no-select");
+  });
 
   // Cover-Only: Selection
   let coverErrors = $state(new Set());
@@ -109,7 +129,7 @@
     <p class="empty-text">Passe die Filter an oder importiere neue Bücher.</p>
   </div>
 {:else if coversOnly}
-  <div class="cover-grid" role="grid" tabindex="-1" class:drag-active={marqueeActive} bind:this={gridEl} onpointerdown={handleGridPointerDown}>
+  <div class="cover-grid" role="grid" tabindex="-1" class:drag-active={marqueeActive || selectionStore.editMode} bind:this={gridEl} onpointerdown={handleGridPointerDown} ondragstart={(e) => selectionStore.editMode && e.preventDefault()}>
     {#each books as book (book.id)}
       {@const isSelected = selectionStore.has(book.id)}
       <div
@@ -152,7 +172,7 @@
     {/each}
   </div>
 {:else}
-  <div class="book-grid" role="grid" tabindex="-1" class:large class:drag-active={marqueeActive} bind:this={gridEl} onpointerdown={handleGridPointerDown}>
+  <div class="book-grid" role="grid" tabindex="-1" class:large class:drag-active={marqueeActive || selectionStore.editMode} bind:this={gridEl} onpointerdown={handleGridPointerDown} ondragstart={(e) => selectionStore.editMode && e.preventDefault()}>
     {#each books as book (book.id)}
       <div
         data-book-id={book.id}
@@ -182,10 +202,21 @@
     gap: 1.5rem;
   }
 
-  /* Drag-Modus: Textauswahl verhindern */
+  /* Drag-Modus: Textauswahl und Browser-Drag verhindern */
   .drag-active {
     user-select: none;
     -webkit-user-select: none;
+    cursor: crosshair;
+  }
+
+  .drag-active :global(a) {
+    -webkit-user-drag: none;
+    cursor: crosshair;
+  }
+
+  .drag-active :global(img) {
+    pointer-events: none;
+    -webkit-user-drag: none;
   }
 
   /* Cover-Only Grid */

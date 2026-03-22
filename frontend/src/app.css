@@ -184,6 +184,17 @@ a:hover {
   background: var(--color-text-muted);
 }
 
+/* Bearbeitungsmodus: Textauswahl global verhindern */
+body.no-select {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  cursor: crosshair;
+}
+
+body.no-select * {
+  -webkit-user-drag: none !important;
+}
+
 /* Suchmarkierung */
 mark {
   background-color: var(--color-warning);
