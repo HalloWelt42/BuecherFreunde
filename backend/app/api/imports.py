@@ -245,6 +245,8 @@ async def import_events(_token: str = Depends(verify_token_query)):
 
     async def event_generator():
         last_data = None
+        idle_rounds = 0
+        max_idle = 30  # Nach 30 Sekunden Idle schliessen
         while True:
             result = await get_import_status()
             zaehler = result.get("zaehler", {})
@@ -265,10 +267,12 @@ async def import_events(_token: str = Depends(verify_token_query)):
             if data != last_data:
                 yield f"data: {data}\n\n"
                 last_data = data
-
-            if aktiv_count == 0:
-                yield f"data: {data}\n\n"
-                break
+                idle_rounds = 0
+            elif aktiv_count == 0:
+                idle_rounds += 1
+                if idle_rounds >= max_idle:
+                    yield f"data: {data}\n\n"
+                    break
 
             await asyncio.sleep(1)
 

@@ -117,6 +117,7 @@
 
   onDestroy(() => {
     sseConnection?.close();
+    stoppePoll();
     if (rescanPollInterval) clearInterval(rescanPollInterval);
   });
 
@@ -141,7 +142,7 @@
         }
       },
       () => {
-        setTimeout(starteSSE, 5000);
+        setTimeout(starteSSE, 2000);
       },
     );
   }
@@ -155,11 +156,38 @@
       if (neueTasks.length > 0) {
         tasks = [...neueTasks, ...tasks];
       }
-      aktualisiereStatus();
+      // SSE sofort neu starten damit Updates nicht verpasst werden
+      starteSSE();
+      // Status mehrfach abfragen - schnelle Tasks (Duplikate) sind oft in <1s fertig
+      await aktualisiereStatus();
+      startePollNachUpload();
     } catch (e) {
       fehler = e.message;
     } finally {
       laden = false;
+    }
+  }
+
+  let pollTimer = null;
+
+  function startePollNachUpload() {
+    stoppePoll();
+    let runden = 0;
+    pollTimer = setInterval(async () => {
+      runden++;
+      await aktualisiereStatus();
+      // Nach 10 Runden (10s) oder wenn keine aktiven Tasks mehr: stoppen
+      const aktiv = (zaehler.wartend || 0) + (zaehler.verarbeite || 0);
+      if (aktiv === 0 || runden >= 10) {
+        stoppePoll();
+      }
+    }, 1000);
+  }
+
+  function stoppePoll() {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
     }
   }
 
