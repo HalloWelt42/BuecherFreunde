@@ -129,6 +129,8 @@
         initialMaxWidthSingle={saved.maxWidthSingle || 0}
         initialMaxWidthDouble={saved.maxWidthDouble || 0}
         initialSinglePage={saved.singlePage || false}
+        initialRandTransparent={saved.randTransparent || false}
+        initialBlattTransparent={saved.blattTransparent || false}
         initialSearchQuery={urlParams.q}
         onBack={goBack}
       />
@@ -144,6 +146,7 @@
         initialBreite={saved.breite ?? -1}
         initialFgColor={saved.fgColor || ""}
         initialBgColor={saved.bgColor || ""}
+        initialBlattTransparent={saved.blattTransparent || false}
         onBack={goBack}
       />
     {:else}

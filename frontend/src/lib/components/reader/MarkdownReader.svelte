@@ -23,6 +23,7 @@
     initialBreite = -1,
     initialFgColor = "",
     initialBgColor = "",
+    initialBlattTransparent = false,
     onBack = () => {},
     onPositionChange = () => {},
   } = $props();
@@ -44,7 +45,8 @@
     return idx >= 0 ? idx : -1;
   });
   let istDunkel = $derived(bgColor === "#1e1e1e" || bgColor === "#0a0a0a" || bgColor === "#3d3526");
-  let istTransparent = $derived(bgColor === "transparent");
+  let blattTransparent = $state(untrack(() => initialBlattTransparent));
+  let effektiverBg = $derived(blattTransparent ? "transparent" : bgColor);
 
   function setzeThema(theme) {
     fgColor = theme.fg;
@@ -310,6 +312,7 @@
         breite: breiteIdx,
         fgColor,
         bgColor,
+        blattTransparent,
       };
       const pos = `txt:${JSON.stringify(settings)}`;
       onPositionChange(pos);
@@ -477,12 +480,19 @@
                 class:active={activeThemeIndex === i}
                 onclick={() => setzeThema(theme)}
                 title={theme.name}
-                style="background-color: {theme.transparent ? 'var(--glass-bg)' : theme.bg}; color: {theme.fg}; border-color: {activeThemeIndex === i ? 'var(--color-accent)' : theme.bg === '#ffffff' ? '#ccc' : theme.bg}; {theme.transparent ? 'backdrop-filter: blur(8px);' : ''}"
+                style="background-color: {theme.bg}; color: {theme.fg}; border-color: {activeThemeIndex === i ? 'var(--color-accent)' : theme.bg === '#ffffff' ? '#ccc' : theme.bg}"
               >
                 <i class="fa-solid {theme.icon}"></i>
               </button>
             {/each}
           </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Transparenz</span>
+          <label class="toggle-row">
+            <input type="checkbox" bind:checked={blattTransparent} onchange={triggerSave} />
+            <span class="toggle-label"><i class="fa-solid fa-file"></i> Hintergrund transparent</span>
+          </label>
         </div>
       </div>
     {/if}
@@ -492,7 +502,7 @@
       class:ist-dunkel={istDunkel}
       bind:this={scrollContainer}
       onscroll={handleScroll}
-      style="background-color: {bgColor}; color: {fgColor};"
+      style="background-color: {effektiverBg}; color: {fgColor};"
     >
       {#if istMarkdown}
         <div class="markdown-body" style="font-size: {fontSize}%; max-width: {maxBreite}; font-family: {fontFamily || 'inherit'}">
@@ -725,6 +735,35 @@
 
   .theme-btn:hover { transform: scale(1.15); }
   .theme-btn.active { transform: scale(1.15); box-shadow: 0 0 0 2px var(--color-accent); }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+
+  .toggle-row input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+  }
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .toggle-label i {
+    width: 1rem;
+    text-align: center;
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+  }
 
   /* Text-Inhalt */
   .text-content {

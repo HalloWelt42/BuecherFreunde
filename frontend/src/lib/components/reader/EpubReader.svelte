@@ -27,6 +27,8 @@
     initialMaxWidthSingle = 0,
     initialMaxWidthDouble = 0,
     initialSinglePage = false,
+    initialRandTransparent = false,
+    initialBlattTransparent = false,
     initialSearchQuery = "",
     onBack = () => {},
     onPositionChange = () => {},
@@ -75,6 +77,8 @@
   let lineHeight = $state(untrack(() => initialLineHeight > 0 ? initialLineHeight : 1.6));
   let fgColor = $state(untrack(() => initialFgColor || "#1a1a1a"));
   let bgColor = $state(untrack(() => initialBgColor || "#ffffff"));
+  let randTransparent = $state(untrack(() => initialRandTransparent));
+  let blattTransparent = $state(untrack(() => initialBlattTransparent));
 
   // Aktives Farbthema erkennen (Individuell = kein Preset passt)
   let activeThemeIndex = $derived.by(() => {
@@ -110,7 +114,9 @@
     savePosition();
   }
 
-  const isTransparent = $derived(bgColor === "transparent");
+  // Berechnete Hintergrundfarben: Rand und Blatt unabhängig
+  let effektiverRandBg = $derived(randTransparent ? "transparent" : bgColor);
+  let effektiverBlattBg = $derived(blattTransparent ? "transparent" : bgColor);
 
   // CSS in alle geladenen iframes injizieren
   function applyStyles() {
@@ -119,31 +125,33 @@
     for (const { doc } of contents) {
       injectCSS(doc);
     }
-    // Container-Hintergrund
+    // Container-Hintergrund (Rand)
     if (containerEl) {
-      containerEl.style.backgroundColor = bgColor;
+      containerEl.style.backgroundColor = effektiverRandBg;
     }
-    // View-Element und interne iframes transparent machen
+    // View-Element
     if (view) {
-      view.style.backgroundColor = bgColor;
-      if (isTransparent) {
-        // Alle iframes im Shadow DOM oder direkt im View transparent setzen
-        const iframes = view.querySelectorAll?.("iframe") || [];
-        for (const iframe of iframes) {
-          iframe.style.backgroundColor = "transparent";
-        }
-        // Shadow Root durchsuchen (foliate-js nutzt Shadow DOM)
-        if (view.shadowRoot) {
-          const shadowIframes = view.shadowRoot.querySelectorAll("iframe");
-          for (const iframe of shadowIframes) {
-            iframe.style.backgroundColor = "transparent";
-          }
-          // Container-Divs im Shadow Root
-          const divs = view.shadowRoot.querySelectorAll("div");
-          for (const div of divs) {
-            div.style.backgroundColor = "transparent";
-          }
-        }
+      view.style.backgroundColor = effektiverRandBg;
+      // Bei transparentem Rand: auch Shadow-DOM-Elemente durchsichtig
+      makeViewTransparent(randTransparent);
+    }
+  }
+
+  function makeViewTransparent(transparent) {
+    if (!view) return;
+    const bg = transparent ? "transparent" : bgColor;
+    const iframes = view.querySelectorAll?.("iframe") || [];
+    for (const iframe of iframes) {
+      iframe.style.backgroundColor = bg;
+    }
+    if (view.shadowRoot) {
+      const shadowIframes = view.shadowRoot.querySelectorAll("iframe");
+      for (const iframe of shadowIframes) {
+        iframe.style.backgroundColor = bg;
+      }
+      const divs = view.shadowRoot.querySelectorAll("div");
+      for (const div of divs) {
+        div.style.backgroundColor = bg;
       }
     }
   }
@@ -157,9 +165,11 @@
       doc.head.appendChild(styleEl);
     }
     const fontDecl = fontFamily ? `font-family: ${fontFamily} !important;` : "";
-    // Bei Transparent: auch alle div/section/article-Hintergründe entfernen
-    const transparentRules = isTransparent ? `
-      div, section, article, main, aside, header, footer, nav {
+    // Blatthintergrund: transparent oder gewählte Farbe
+    const blattBg = effektiverBlattBg;
+    // Bei transparentem Blatt: alle Container-Hintergründe im EPUB entfernen
+    const transparentRules = blattTransparent ? `
+      div, section, article, main, aside, header, footer, nav, p {
         background-color: transparent !important;
         background-image: none !important;
       }
@@ -167,7 +177,7 @@
     styleEl.textContent = `
       html, body {
         color: ${fgColor} !important;
-        background-color: ${bgColor} !important;
+        background-color: ${blattBg} !important;
         font-size: ${fontSize}% !important;
         line-height: ${lineHeight} !important;
         ${fontDecl}
@@ -297,9 +307,9 @@
       }
 
       view = new View();
-      view.style.cssText = `width: 100%; height: 100%; background-color: ${bgColor};`;
+      view.style.cssText = `width: 100%; height: 100%; background-color: ${effektiverRandBg};`;
       containerEl.innerHTML = "";
-      containerEl.style.backgroundColor = bgColor;
+      containerEl.style.backgroundColor = effektiverRandBg;
       containerEl.appendChild(view);
 
       await view.open(file);
@@ -328,8 +338,8 @@
         const sectionIndex = e.detail.index;
         injectCSS(e.detail.doc);
 
-        // iframe-Element selbst transparent machen
-        if (isTransparent) {
+        // iframe-Element bei transparentem Rand durchsichtig machen
+        if (randTransparent) {
           const iframe = e.detail.doc?.defaultView?.frameElement;
           if (iframe) iframe.style.backgroundColor = "transparent";
         }
@@ -469,6 +479,8 @@
         maxWidthSingle,
         maxWidthDouble,
         singlePage,
+        randTransparent,
+        blattTransparent,
       };
       const pos = `epub:${JSON.stringify(settings)}`;
       onPositionChange(pos);
@@ -763,7 +775,7 @@
                 <button
                   class="theme-btn"
                   class:active={i === activeThemeIndex}
-                  style="background-color: {theme.transparent ? 'var(--glass-bg)' : (theme.bg || bgColor)}; color: {theme.fg || fgColor}; border-color: {i === activeThemeIndex ? 'var(--color-accent)' : (theme.fg || fgColor) + '33'}; {theme.transparent ? 'backdrop-filter: blur(8px);' : ''}"
+                  style="background-color: {theme.bg || bgColor}; color: {theme.fg || fgColor}; border-color: {i === activeThemeIndex ? 'var(--color-accent)' : (theme.fg || fgColor) + '33'};"
                   onclick={() => setFarbThema(theme)}
                   title={theme.name}
                 >
@@ -789,6 +801,21 @@
             <div class="color-row">
               <input type="color" id="setting-fg-color" bind:value={fgColor} oninput={() => { applyStyles(); savePosition(); }} class="color-picker" />
               <span class="color-value">{fgColor}</span>
+            </div>
+          </div>
+
+          <!-- Transparenz-Toggles -->
+          <div class="setting-section">
+            <span class="setting-label">Transparenz</span>
+            <div class="toggle-list">
+              <label class="toggle-row">
+                <input type="checkbox" bind:checked={randTransparent} onchange={() => { applyStyles(); savePosition(); }} />
+                <span class="toggle-label"><i class="fa-solid fa-border-none"></i> Rand transparent</span>
+              </label>
+              <label class="toggle-row">
+                <input type="checkbox" bind:checked={blattTransparent} onchange={() => { applyStyles(); savePosition(); }} />
+                <span class="toggle-label"><i class="fa-solid fa-file"></i> Seitenhintergrund transparent</span>
+              </label>
             </div>
           </div>
 
@@ -931,7 +958,7 @@
             <span class="setting-label">Vorschau</span>
             <div
               class="preview-box"
-              style="background-color: {isTransparent ? 'var(--glass-bg)' : bgColor}; color: {fgColor}; font-size: {fontSize * 0.14}px; line-height: {lineHeight}; font-family: {fontFamily || 'inherit'}; {isTransparent ? 'backdrop-filter: blur(8px);' : ''}"
+              style="background-color: {blattTransparent ? 'var(--glass-bg)' : bgColor}; color: {fgColor}; font-size: {fontSize * 0.14}px; line-height: {lineHeight}; font-family: {fontFamily || 'inherit'}; {blattTransparent ? 'backdrop-filter: blur(8px);' : ''}"
             >
               Die Sonne ging unter und tauchte die Stadt in ein warmes, goldenes Licht.
               Sie blickte aus dem Fenster und dachte an die vergangenen Jahre.
@@ -1318,6 +1345,42 @@
   .color-value {
     font-size: 0.6875rem;
     font-family: inherit;
+    color: var(--color-text-muted);
+  }
+
+  /* Transparenz-Toggles */
+  .toggle-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+  }
+
+  .toggle-row input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+  }
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .toggle-label i {
+    width: 1rem;
+    text-align: center;
+    font-size: 0.6875rem;
     color: var(--color-text-muted);
   }
 
