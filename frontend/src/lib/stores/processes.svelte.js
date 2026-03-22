@@ -5,7 +5,7 @@
  */
 
 import { get } from "../api/client.js";
-import { bereinigeImportTasks } from "../api/imports.js";
+import { bereinigeImportTasks, holeRescanStatus } from "../api/imports.js";
 
 let _pollInterval = null;
 let _lastFertigCount = 0;
@@ -19,6 +19,20 @@ export const processes = $state({
 
   /** Echte Zaehler vom Backend (gesamt, wartend, verarbeite, fertig, fehler, duplikat) */
   zaehler: { gesamt: 0, wartend: 0, verarbeite: 0, fertig: 0, fehler: 0, duplikat: 0 },
+
+  /** Rescan-Status vom Backend */
+  rescan: {
+    laeuft: false,
+    typ: "",
+    gesamt: 0,
+    fortschritt: 0,
+    aktuelles_buch: "",
+    cover_gefunden: 0,
+    isbn_gefunden: 0,
+    metadaten_aktualisiert: 0,
+    volltext_extrahiert: 0,
+    fehler: 0,
+  },
 
   /** Ob gerade aktiv gepollt wird */
   polling: false,
@@ -66,26 +80,28 @@ export function notifyBooksChanged() {
   }
 }
 
-/** Import-Status einmalig abfragen */
+/** Import-Status und Rescan-Status einmalig abfragen */
 export async function fetchImportStatus() {
   try {
-    const data = await get("/api/import/status");
-    processes.importTasks = data.aufgaben || [];
-    if (data.zaehler) {
-      processes.zaehler = data.zaehler;
+    const [importData, rescanData] = await Promise.all([
+      get("/api/import/status"),
+      holeRescanStatus().catch(() => null),
+    ]);
+
+    processes.importTasks = importData.aufgaben || [];
+    if (importData.zaehler) {
+      processes.zaehler = importData.zaehler;
+    }
+    if (rescanData) {
+      processes.rescan = rescanData;
     }
     processes.lastUpdate = new Date();
 
     // Prüfen ob neue Bücher fertig wurden
     const stats = getProcessStats();
     if (stats.fertig > _lastFertigCount && _lastFertigCount > 0) {
-      // Listener benachrichtigen
       for (const cb of _onChangeCallbacks) {
-        try {
-          cb();
-        } catch {
-          /* ignore */
-        }
+        try { cb(); } catch { /* ignore */ }
       }
     }
     _lastFertigCount = stats.fertig;
@@ -102,8 +118,9 @@ export function startPolling() {
   async function poll() {
     await fetchImportStatus();
     const stats = getProcessStats();
+    const rescanAktiv = processes.rescan.laeuft;
 
-    if (stats.aktiv > 0) {
+    if (stats.aktiv > 0 || rescanAktiv) {
       _pollInterval = setTimeout(poll, 1500);
     } else {
       _pollInterval = setTimeout(poll, 10000);

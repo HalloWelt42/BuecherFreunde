@@ -10,8 +10,16 @@
   } from "../../stores/processes.svelte.js";
 
   let stats = $derived(getProcessStats());
-  let hatProzesse = $derived(processes.importTasks.length > 0);
+  let rescan = $derived(processes.rescan);
+  let hatProzesse = $derived(processes.importTasks.length > 0 || rescan.laeuft || (rescan.gesamt > 0 && rescan.fortschritt > 0));
   let istAktiv = $derived(stats.aktiv > 0);
+  let rescanAktiv = $derived(rescan.laeuft);
+  let rescanProzent = $derived(rescan.gesamt > 0 ? Math.round((rescan.fortschritt / rescan.gesamt) * 100) : 0);
+  let rescanVerbleibend = $derived(rescan.gesamt - rescan.fortschritt);
+  let rescanTreffer = $derived(
+    (rescan.cover_gefunden || 0) + (rescan.isbn_gefunden || 0) +
+    (rescan.metadaten_aktualisiert || 0) + (rescan.volltext_extrahiert || 0)
+  );
 
   onMount(() => {
     startPolling();
@@ -26,8 +34,18 @@
 <footer class="app-footer">
   <!-- Prozessbereich links -->
   <div class="footer-left">
-      <button class="process-bar" onclick={toggleExpanded} class:active={istAktiv}>
-        {#if istAktiv}
+      <button class="process-bar" onclick={toggleExpanded} class:active={istAktiv || rescanAktiv}>
+        {#if rescanAktiv}
+          <i class="fa-solid fa-rotate fa-spin process-icon"></i>
+          <span class="process-text">
+            Rescan: {rescan.aktuelles_buch?.length > 25 ? rescan.aktuelles_buch.slice(0, 22) + "..." : rescan.aktuelles_buch || "..."}
+          </span>
+          <span class="process-count">noch {rescanVerbleibend}</span>
+          <div class="mini-progress">
+            <div class="mini-progress-fill" style="width: {rescanProzent}%"></div>
+          </div>
+          <span class="process-pct">{rescanTreffer} Treffer</span>
+        {:else if istAktiv}
           <i class="fa-solid fa-spinner fa-spin process-icon"></i>
           <span class="process-text">
             {stats.aktuell?.filename
@@ -41,6 +59,14 @@
             <div class="mini-progress-fill" style="width: {stats.prozent}%"></div>
           </div>
           <span class="process-pct">{stats.fertig} fertig</span>
+        {:else if rescan.gesamt > 0 && !rescan.laeuft}
+          <i class="fa-solid fa-check-circle process-icon done"></i>
+          <span class="process-text">
+            Rescan: {rescan.fortschritt} gescannt, {rescanTreffer} Treffer
+            {#if rescan.fehler > 0}
+              <span class="error-count">{rescan.fehler} Fehler</span>
+            {/if}
+          </span>
         {:else}
           <i class="fa-solid fa-check-circle process-icon done"></i>
           <span class="process-text">
@@ -71,13 +97,57 @@
             {#if stats.fehler > 0} / <span class="err">{stats.fehler} Fehler</span>{/if}
             {#if stats.duplikat > 0} / {stats.duplikat} Duplikate{/if}
           </span>
-          {#if !istAktiv}
+          {#if !istAktiv && !rescanAktiv}
             <button class="clear-btn" onclick={clearFinished} title="Liste bereinigen">
               <i class="fa-solid fa-broom"></i> Bereinigen
             </button>
           {/if}
         </div>
       </div>
+
+      <!-- Rescan-Bereich -->
+      {#if rescan.laeuft || (rescan.gesamt > 0 && rescan.fortschritt > 0)}
+        <div class="rescan-detail-section">
+          <div class="rescan-detail-header">
+            <span class="rescan-detail-title">
+              {#if rescanAktiv}
+                <i class="fa-solid fa-rotate fa-spin"></i>
+              {:else}
+                <i class="fa-solid fa-check-circle" style="color: var(--color-success)"></i>
+              {/if}
+              Rescan {rescan.typ ? `(${rescan.typ})` : ""}
+            </span>
+            <span class="rescan-detail-count">{rescan.fortschritt} / {rescan.gesamt}</span>
+          </div>
+          <div class="rescan-detail-bar">
+            <div class="rescan-detail-fill" style="width: {rescanProzent}%"></div>
+          </div>
+          {#if rescan.aktuelles_buch && rescanAktiv}
+            <div class="rescan-detail-current">{rescan.aktuelles_buch}</div>
+          {/if}
+          <div class="rescan-detail-stats">
+            {#if rescan.cover_gefunden > 0}
+              <span class="rescan-hit"><i class="fa-solid fa-image"></i> {rescan.cover_gefunden} Cover</span>
+            {/if}
+            {#if rescan.isbn_gefunden > 0}
+              <span class="rescan-hit"><i class="fa-solid fa-barcode"></i> {rescan.isbn_gefunden} ISBN</span>
+            {/if}
+            {#if rescan.metadaten_aktualisiert > 0}
+              <span class="rescan-hit"><i class="fa-solid fa-cloud-arrow-down"></i> {rescan.metadaten_aktualisiert} Metadaten</span>
+            {/if}
+            {#if rescan.volltext_extrahiert > 0}
+              <span class="rescan-hit"><i class="fa-solid fa-file-lines"></i> {rescan.volltext_extrahiert} Volltext</span>
+            {/if}
+            {#if rescan.fehler > 0}
+              <span class="rescan-miss"><i class="fa-solid fa-xmark"></i> {rescan.fehler} Fehler</span>
+            {/if}
+            {#if rescanTreffer === 0 && !rescanAktiv}
+              <span class="rescan-miss">Keine Treffer</span>
+            {/if}
+          </div>
+        </div>
+      {/if}
+
       <div class="details-list">
         {#each processes.importTasks.filter((t) => t.status === "verarbeite") as task (task.id)}
           <div class="detail-row verarbeite">
@@ -400,5 +470,84 @@
 
   .detail-row.more {
     padding: 0.25rem 0.75rem;
+  }
+
+  /* Rescan im Detail-Panel */
+  .rescan-detail-section {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .rescan-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .rescan-detail-title {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .rescan-detail-title i {
+    color: var(--color-accent);
+    font-size: 0.625rem;
+  }
+
+  .rescan-detail-count {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    color: var(--color-text-muted);
+  }
+
+  .rescan-detail-bar {
+    width: 100%;
+    height: 4px;
+    background-color: var(--color-bg-primary);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .rescan-detail-fill {
+    height: 100%;
+    background-color: var(--color-accent);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  .rescan-detail-current {
+    font-size: 0.625rem;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .rescan-detail-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.625rem;
+  }
+
+  .rescan-hit {
+    color: var(--color-success);
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  .rescan-miss {
+    color: var(--color-error);
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
   }
 </style>
