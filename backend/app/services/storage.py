@@ -8,6 +8,7 @@ Neben jeder Datei liegen Sidecar-Dateien: metadata.json, cover.jpg, fulltext.txt
 import hashlib
 import json
 import logging
+import re
 import shutil
 from pathlib import Path
 
@@ -17,6 +18,17 @@ logger = logging.getLogger("buecherfreunde.storage")
 
 HASH_CHUNK_SIZE = 65536
 SUPPORTED_FORMATS = {".pdf", ".epub", ".mobi", ".txt", ".md"}
+
+# Zeichen die auf Dateisystemen ungültig sind
+_UNSAFE_CHARS = re.compile(r'[<>:"|?*\x00-\x1f\\]')
+
+
+def sanitize_filename(name: str) -> str:
+    """Bereinigt Dateinamen: entfernt Pfad, ersetzt ungültige Zeichen."""
+    clean = Path(name).name
+    clean = _UNSAFE_CHARS.sub("_", clean)
+    clean = re.sub(r"_{2,}", "_", clean)
+    return clean.strip("_. ") or "unbenannt"
 
 
 def compute_hash(file_path: Path) -> str:
@@ -107,7 +119,8 @@ def store_file(
         raise FileExistsError(f"Datei existiert bereits: {file_hash}")
 
     target_dir.mkdir(parents=True, exist_ok=True)
-    target_file = target_dir / source_path.name
+    safe_name = sanitize_filename(source_path.name)
+    target_file = target_dir / safe_name
     shutil.copy2(source_path, target_file)
 
     logger.info(
