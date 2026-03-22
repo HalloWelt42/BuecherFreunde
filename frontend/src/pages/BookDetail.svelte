@@ -628,18 +628,18 @@
         {#if editMode}
           <div class="edit-form">
             <div class="edit-field">
-              <label class="edit-label">Titel</label>
-              <input type="text" class="edit-input" bind:value={editData.title} />
+              <label class="edit-label" for="edit-titel">Titel</label>
+              <input type="text" class="edit-input" id="edit-titel" bind:value={editData.title} />
             </div>
             <div class="edit-field">
-              <label class="edit-label">Autor</label>
-              <input type="text" class="edit-input" bind:value={editData.author} />
+              <label class="edit-label" for="edit-autor">Autor</label>
+              <input type="text" class="edit-input" id="edit-autor" bind:value={editData.author} />
             </div>
             <div class="edit-row">
               <div class="edit-field">
-                <label class="edit-label">ISBN</label>
+                <label class="edit-label" for="edit-isbn">ISBN</label>
                 <div class="edit-isbn-row">
-                  <input type="text" class="edit-input mono" bind:value={editData.isbn} />
+                  <input type="text" class="edit-input mono" id="edit-isbn" bind:value={editData.isbn} />
                   <button class="btn btn-sm btn-secondary" onclick={isbnScannen} disabled={isbnScanLaden} title="ISBN aus Buch extrahieren">
                     {#if isbnScanLaden}
                       <i class="fa-solid fa-spinner fa-spin"></i>
@@ -650,8 +650,8 @@
                 </div>
               </div>
               <div class="edit-field">
-                <label class="edit-label">Jahr</label>
-                <input type="number" class="edit-input" bind:value={editData.year} />
+                <label class="edit-label" for="edit-jahr">Jahr</label>
+                <input type="number" class="edit-input" id="edit-jahr" bind:value={editData.year} />
               </div>
             </div>
             {#if isbnScanErgebnis}
@@ -679,22 +679,22 @@
             {/if}
             <div class="edit-row">
               <div class="edit-field">
-                <label class="edit-label">Verlag</label>
-                <input type="text" class="edit-input" bind:value={editData.publisher} />
+                <label class="edit-label" for="edit-verlag">Verlag</label>
+                <input type="text" class="edit-input" id="edit-verlag" bind:value={editData.publisher} />
               </div>
               <div class="edit-field">
-                <label class="edit-label">Sprache</label>
-                <input type="text" class="edit-input" bind:value={editData.language} />
+                <label class="edit-label" for="edit-sprache">Sprache</label>
+                <input type="text" class="edit-input" id="edit-sprache" bind:value={editData.language} />
               </div>
             </div>
             <div class="edit-row">
               <div class="edit-field">
-                <label class="edit-label">Seiten</label>
-                <input type="number" class="edit-input" bind:value={editData.page_count} />
+                <label class="edit-label" for="edit-seiten">Seiten</label>
+                <input type="number" class="edit-input" id="edit-seiten" bind:value={editData.page_count} />
               </div>
               <div class="edit-field">
-                <label class="edit-label">Typ</label>
-                <select class="edit-input" bind:value={editData.typ}>
+                <label class="edit-label" for="edit-typ">Typ</label>
+                <select class="edit-input" id="edit-typ" bind:value={editData.typ}>
                   <option value="">-- Buch (Standard) --</option>
                   <option value="heft">Heft</option>
                   <option value="katalog">Katalog</option>
@@ -704,8 +704,8 @@
             </div>
             <div class="edit-row">
               <div class="edit-field">
-                <label class="edit-label">Sammlung</label>
-                <select class="edit-input" bind:value={editData.sammlung_id}>
+                <label class="edit-label" for="edit-sammlung">Sammlung</label>
+                <select class="edit-input" id="edit-sammlung" bind:value={editData.sammlung_id}>
                   <option value="">-- Keine --</option>
                   {#each sammlungen as s (s.id)}
                     <option value={s.id}>{s.name}</option>
@@ -714,14 +714,14 @@
               </div>
               {#if editData.sammlung_id}
                 <div class="edit-field">
-                  <label class="edit-label">Bandnummer</label>
-                  <input type="text" class="edit-input" bind:value={editData.band_nummer} placeholder="z.B. 42, VII, S1" />
+                  <label class="edit-label" for="edit-band">Bandnummer</label>
+                  <input type="text" class="edit-input" id="edit-band" bind:value={editData.band_nummer} placeholder="z.B. 42, VII, S1" />
                 </div>
               {/if}
             </div>
             <div class="edit-field">
-              <label class="edit-label">Beschreibung</label>
-              <textarea class="edit-input edit-textarea" bind:value={editData.description} rows="3"></textarea>
+              <label class="edit-label" for="edit-beschreibung">Beschreibung</label>
+              <textarea class="edit-input edit-textarea" id="edit-beschreibung" bind:value={editData.description} rows="3"></textarea>
             </div>
             <div class="edit-aktionen">
               <button class="btn btn-primary btn-sm" onclick={saveEdit} disabled={editSpeichern}>

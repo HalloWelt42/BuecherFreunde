@@ -98,7 +98,7 @@
             {#if saving}<i class="fa-solid fa-spinner fa-spin"></i>{:else}<i class="fa-solid fa-check"></i>{/if}
             {editing ? "Speichern" : "Erstellen"}
           </button>
-          <button class="btn-cancel" onclick={cancelForm}>
+          <button class="btn-cancel" onclick={cancelForm} aria-label="Abbrechen">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
@@ -133,7 +133,7 @@
             <button class="act danger" onclick={() => deleteSammlung(s.id)} title="Wirklich löschen">
               <i class="fa-solid fa-check"></i>
             </button>
-            <button class="act" onclick={() => (confirmDeleteId = null)}>
+            <button class="act" onclick={() => (confirmDeleteId = null)} aria-label="Abbrechen">
               <i class="fa-solid fa-xmark"></i>
             </button>
           {:else}

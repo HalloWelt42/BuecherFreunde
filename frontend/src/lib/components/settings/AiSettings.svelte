@@ -280,16 +280,18 @@
             bind:value={editingPrompt.beschreibung}
             placeholder="Beschreibung..."
           />
-          <label class="edit-label">System-Prompt</label>
+          <label class="edit-label" for="edit-system-prompt">System-Prompt</label>
           <textarea
+            id="edit-system-prompt"
             class="edit-textarea"
             bind:value={editingPrompt.system_prompt}
             rows="10"
           ></textarea>
           <div class="edit-params">
             <div class="param">
-              <label>Temperatur</label>
+              <label for="edit-temperatur">Temperatur</label>
               <input
+                id="edit-temperatur"
                 type="number"
                 class="param-input"
                 bind:value={editingPrompt.temperatur}
@@ -299,8 +301,9 @@
               />
             </div>
             <div class="param">
-              <label>Max Tokens</label>
+              <label for="edit-max-tokens">Max Tokens</label>
               <input
+                id="edit-max-tokens"
                 type="number"
                 class="param-input"
                 bind:value={editingPrompt.max_tokens}
@@ -581,14 +584,6 @@
     margin: 0;
   }
 
-  .hint code {
-    font-family: var(--font-mono);
-    font-size: 0.625rem;
-    padding: 0.0625rem 0.25rem;
-    border-radius: 3px;
-    background-color: var(--color-bg-primary);
-    border: 1px solid var(--color-border);
-  }
 
   /* Prompt-Editor */
   .prompt-edit {

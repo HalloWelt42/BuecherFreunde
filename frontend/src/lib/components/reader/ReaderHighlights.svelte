@@ -58,7 +58,7 @@
       <div class="hl-header">
         <strong>Markierungen</strong>
         <span class="hl-count">{highlights.length} Stellen{#if labelCount > 0}, {labelCount} Labels{/if}</span>
-        <button class="hl-close" onclick={() => { open = false; }}>
+        <button class="hl-close" aria-label="Markierungen schließen" onclick={() => { open = false; }}>
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -87,6 +87,7 @@
                 </button>
                 <button
                   class="hl-toggle"
+                  aria-label="Details ein-/ausklappen"
                   onclick={() => { offen = { ...offen, [hl.id]: !offen[hl.id] }; }}
                 >
                   <i class="fa-solid fa-chevron-{offen[hl.id] ? 'up' : 'down'}"></i>

@@ -5,7 +5,7 @@
   import { getToken } from "../../api/client.js";
   import { speichereLeseposition } from "../../api/user-data.js";
   import { ui } from "../../stores/ui.svelte.js";
-  import { onDestroy } from "svelte";
+  import { onDestroy, untrack } from "svelte";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
   import ReaderHighlights from "./ReaderHighlights.svelte";
   import ReaderNotes from "./ReaderNotes.svelte";
@@ -34,10 +34,10 @@
   let laden = $state(true);
   let fehler = $state(null);
 
-  // Layout
-  let maxWidthSingle = $state(initialMaxWidthSingle > 0 ? initialMaxWidthSingle : 700);
-  let maxWidthDouble = $state(initialMaxWidthDouble > 0 ? initialMaxWidthDouble : 1400);
-  let singlePage = $state(initialSinglePage);
+  // Layout (initiale Werte via untrack, damit Svelte nicht warnt)
+  let maxWidthSingle = $state(untrack(() => initialMaxWidthSingle > 0 ? initialMaxWidthSingle : 700));
+  let maxWidthDouble = $state(untrack(() => initialMaxWidthDouble > 0 ? initialMaxWidthDouble : 1400));
+  let singlePage = $state(untrack(() => initialSinglePage));
   let activeMaxWidth = $derived(singlePage ? maxWidthSingle : maxWidthDouble);
 
   // Reader-State
@@ -82,12 +82,12 @@
     { name: "Individuell", fg: "", bg: "", icon: "fa-palette" },
   ];
 
-  // Einstellungen
-  let fontSize = $state(initialFontSize > 0 ? initialFontSize : 100);
-  let fontFamily = $state(initialFontFamily || "");
-  let lineHeight = $state(initialLineHeight > 0 ? initialLineHeight : 1.6);
-  let fgColor = $state(initialFgColor || "#1a1a1a");
-  let bgColor = $state(initialBgColor || "#ffffff");
+  // Einstellungen (initiale Werte via untrack)
+  let fontSize = $state(untrack(() => initialFontSize > 0 ? initialFontSize : 100));
+  let fontFamily = $state(untrack(() => initialFontFamily || ""));
+  let lineHeight = $state(untrack(() => initialLineHeight > 0 ? initialLineHeight : 1.6));
+  let fgColor = $state(untrack(() => initialFgColor || "#1a1a1a"));
+  let bgColor = $state(untrack(() => initialBgColor || "#ffffff"));
 
   // Aktives Farbthema erkennen (Individuell = kein Preset passt)
   let activeThemeIndex = $derived.by(() => {
@@ -654,7 +654,7 @@
       <div class="side-panel">
         <div class="panel-header">
           <span class="panel-title">Inhaltsverzeichnis</span>
-          <button class="tool-btn" onclick={() => { showToc = false; }}>
+          <button class="tool-btn" aria-label="Inhaltsverzeichnis schließen" onclick={() => { showToc = false; }}>
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
@@ -670,7 +670,7 @@
           {/each}
         </div>
       </div>
-      <button class="side-backdrop" onclick={() => { showToc = false; }}></button>
+      <button class="side-backdrop" aria-label="Inhaltsverzeichnis schließen" onclick={() => { showToc = false; }}></button>
     </div>
   {/if}
 
@@ -694,7 +694,7 @@
       <div class="side-panel settings-panel">
         <div class="panel-header">
           <span class="panel-title">Leseeinstellungen</span>
-          <button class="tool-btn" onclick={() => { showSettings = false; }}>
+          <button class="tool-btn" aria-label="Einstellungen schließen" onclick={() => { showSettings = false; }}>
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
@@ -702,7 +702,7 @@
         <div class="settings-content">
           <!-- Farbthemen -->
           <div class="setting-section">
-            <label class="setting-label">Farbthema</label>
+            <span class="setting-label">Farbthema</span>
             <div class="theme-grid">
               {#each farbThemen as theme, i}
                 <button
@@ -721,25 +721,25 @@
 
           <!-- Feinregler Hintergrund -->
           <div class="setting-section">
-            <label class="setting-label">Hintergrund</label>
+            <label class="setting-label" for="setting-bg-color">Hintergrund</label>
             <div class="color-row">
-              <input type="color" bind:value={bgColor} oninput={() => { applyStyles(); savePosition(); }} class="color-picker" />
+              <input type="color" id="setting-bg-color" bind:value={bgColor} oninput={() => { applyStyles(); savePosition(); }} class="color-picker" />
               <span class="color-value">{bgColor}</span>
             </div>
           </div>
 
           <!-- Feinregler Vordergrund -->
           <div class="setting-section">
-            <label class="setting-label">Textfarbe</label>
+            <label class="setting-label" for="setting-fg-color">Textfarbe</label>
             <div class="color-row">
-              <input type="color" bind:value={fgColor} oninput={() => { applyStyles(); savePosition(); }} class="color-picker" />
+              <input type="color" id="setting-fg-color" bind:value={fgColor} oninput={() => { applyStyles(); savePosition(); }} class="color-picker" />
               <span class="color-value">{fgColor}</span>
             </div>
           </div>
 
           <!-- Schriftart -->
           <div class="setting-section">
-            <label class="setting-label">Schriftart</label>
+            <span class="setting-label">Schriftart</span>
             <div class="font-list">
               {#each schriften as s}
                 <button
@@ -756,9 +756,9 @@
 
           <!-- Schriftgröße -->
           <div class="setting-section">
-            <label class="setting-label">Schriftgröße</label>
+            <label class="setting-label" for="setting-font-size">Schriftgröße</label>
             <div class="slider-row">
-              <button class="slider-btn" onclick={() => changeFontSize(-10)} disabled={fontSize <= 50}>
+              <button class="slider-btn" aria-label="Schriftgröße verkleinern" onclick={() => changeFontSize(-10)} disabled={fontSize <= 50}>
                 <i class="fa-solid fa-minus"></i>
               </button>
               <input
@@ -769,8 +769,9 @@
                 bind:value={fontSize}
                 oninput={() => { applyStyles(); savePosition(); }}
                 class="range-slider"
+                id="setting-font-size"
               />
-              <button class="slider-btn" onclick={() => changeFontSize(10)} disabled={fontSize >= 250}>
+              <button class="slider-btn" aria-label="Schriftgröße vergrößern" onclick={() => changeFontSize(10)} disabled={fontSize >= 250}>
                 <i class="fa-solid fa-plus"></i>
               </button>
               <span class="slider-value">{fontSize}%</span>
@@ -779,9 +780,9 @@
 
           <!-- Zeilenabstand -->
           <div class="setting-section">
-            <label class="setting-label">Zeilenabstand</label>
+            <label class="setting-label" for="setting-line-height">Zeilenabstand</label>
             <div class="slider-row">
-              <button class="slider-btn" onclick={() => changeLineHeight(-0.1)} disabled={lineHeight <= 1.0}>
+              <button class="slider-btn" aria-label="Zeilenabstand verkleinern" onclick={() => changeLineHeight(-0.1)} disabled={lineHeight <= 1.0}>
                 <i class="fa-solid fa-minus"></i>
               </button>
               <input
@@ -792,8 +793,9 @@
                 bind:value={lineHeight}
                 oninput={() => { applyStyles(); savePosition(); }}
                 class="range-slider"
+                id="setting-line-height"
               />
-              <button class="slider-btn" onclick={() => changeLineHeight(0.1)} disabled={lineHeight >= 3.0}>
+              <button class="slider-btn" aria-label="Zeilenabstand vergrößern" onclick={() => changeLineHeight(0.1)} disabled={lineHeight >= 3.0}>
                 <i class="fa-solid fa-plus"></i>
               </button>
               <span class="slider-value">{lineHeight.toFixed(1)}</span>
@@ -802,7 +804,7 @@
 
           <!-- Layout -->
           <div class="setting-section">
-            <label class="setting-label">Layout</label>
+            <span class="setting-label">Layout</span>
             <div class="layout-row">
               <button
                 class="layout-btn"
@@ -823,9 +825,9 @@
 
           <!-- Breite Einseitig -->
           <div class="setting-section">
-            <label class="setting-label">Breite einseitig</label>
+            <label class="setting-label" for="setting-width-single">Breite einseitig</label>
             <div class="slider-row">
-              <button class="slider-btn" onclick={() => { maxWidthSingle = Math.max(300, maxWidthSingle - 50); savePosition(); }} disabled={maxWidthSingle <= 300}>
+              <button class="slider-btn" aria-label="Breite einseitig verkleinern" onclick={() => { maxWidthSingle = Math.max(300, maxWidthSingle - 50); savePosition(); }} disabled={maxWidthSingle <= 300}>
                 <i class="fa-solid fa-minus"></i>
               </button>
               <input
@@ -836,8 +838,9 @@
                 bind:value={maxWidthSingle}
                 oninput={() => { savePosition(); }}
                 class="range-slider"
+                id="setting-width-single"
               />
-              <button class="slider-btn" onclick={() => { maxWidthSingle = Math.min(1200, maxWidthSingle + 50); savePosition(); }} disabled={maxWidthSingle >= 1200}>
+              <button class="slider-btn" aria-label="Breite einseitig vergrößern" onclick={() => { maxWidthSingle = Math.min(1200, maxWidthSingle + 50); savePosition(); }} disabled={maxWidthSingle >= 1200}>
                 <i class="fa-solid fa-plus"></i>
               </button>
               <span class="slider-value">{maxWidthSingle}px</span>
@@ -846,9 +849,9 @@
 
           <!-- Breite Zweiseitig -->
           <div class="setting-section">
-            <label class="setting-label">Breite zweiseitig</label>
+            <label class="setting-label" for="setting-width-double">Breite zweiseitig</label>
             <div class="slider-row">
-              <button class="slider-btn" onclick={() => { maxWidthDouble = Math.max(600, maxWidthDouble - 50); savePosition(); }} disabled={maxWidthDouble <= 600}>
+              <button class="slider-btn" aria-label="Breite zweiseitig verkleinern" onclick={() => { maxWidthDouble = Math.max(600, maxWidthDouble - 50); savePosition(); }} disabled={maxWidthDouble <= 600}>
                 <i class="fa-solid fa-minus"></i>
               </button>
               <input
@@ -859,8 +862,9 @@
                 bind:value={maxWidthDouble}
                 oninput={() => { savePosition(); }}
                 class="range-slider"
+                id="setting-width-double"
               />
-              <button class="slider-btn" onclick={() => { maxWidthDouble = Math.min(2400, maxWidthDouble + 50); savePosition(); }} disabled={maxWidthDouble >= 2400}>
+              <button class="slider-btn" aria-label="Breite zweiseitig vergrößern" onclick={() => { maxWidthDouble = Math.min(2400, maxWidthDouble + 50); savePosition(); }} disabled={maxWidthDouble >= 2400}>
                 <i class="fa-solid fa-plus"></i>
               </button>
               <span class="slider-value">{maxWidthDouble}px</span>
@@ -869,7 +873,7 @@
 
           <!-- Vorschau -->
           <div class="setting-section">
-            <label class="setting-label">Vorschau</label>
+            <span class="setting-label">Vorschau</span>
             <div
               class="preview-box"
               style="background-color: {bgColor}; color: {fgColor}; font-size: {fontSize * 0.14}px; line-height: {lineHeight}; font-family: {fontFamily || 'inherit'};"
@@ -1112,12 +1116,6 @@
     flex-direction: column;
     box-shadow: 4px 0 12px rgba(0, 0, 0, 0.15);
     max-height: 100%;
-  }
-
-  .from-right .side-panel {
-    border-right: none;
-    border-left: 1px solid var(--color-border);
-    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
   }
 
   .side-backdrop {

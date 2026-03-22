@@ -84,6 +84,22 @@
       ],
       raw: null,
     },
+    "Gutenberg (Gutendex)": {
+      beschreibung: "JSON-API für Project Gutenberg (gutendex.com). Ermöglicht Suche, Vorschau und Import gemeinfreier Bücher. Unterstützt Sprachfilter und liefert EPUB- und TXT-Downloads.",
+      url: "https://gutendex.com",
+      feldmapping: [
+        { api: "id", lokal: "gutenberg_id" },
+        { api: "title", lokal: "titel" },
+        { api: "authors[].name", lokal: "autor" },
+        { api: "languages[]", lokal: "sprachen" },
+        { api: "formats (epub/txt)", lokal: "download_url" },
+        { api: "formats (image/jpeg)", lokal: "cover" },
+        { api: "bookshelves[]", lokal: "regale" },
+        { api: "subjects[]", lokal: "themen" },
+        { api: "download_count", lokal: "download_anzahl" },
+      ],
+      raw: ["gutenberg_id", "sprachen", "regale", "themen"],
+    },
   };
 
   onMount(() => {
@@ -194,6 +210,26 @@
           info: "Deaktiviert",
           url: config.lm_studio?.url || null,
           config: config.lm_studio,
+        });
+      }
+
+      // Gutenberg (Gutendex)
+      try {
+        const res = await fetch("https://gutendex.com/books/?page=1&search=test");
+        ergebnisse.push({
+          name: "Gutenberg (Gutendex)",
+          icon: "fa-landmark-dome",
+          status: res.ok ? "online" : "offline",
+          info: res.ok ? "Gutendex-API erreichbar" : `HTTP ${res.status}`,
+          url: "https://gutendex.com",
+        });
+      } catch {
+        ergebnisse.push({
+          name: "Gutenberg (Gutendex)",
+          icon: "fa-landmark-dome",
+          status: "offline",
+          info: "Nicht erreichbar",
+          url: "https://gutendex.com",
         });
       }
     }

@@ -84,7 +84,7 @@
           bind:value={search}
         />
         {#if search}
-          <button class="search-clear" onclick={() => (search = "")}>
+          <button class="search-clear" aria-label="Suche leeren" onclick={() => (search = "")}>
             <i class="fa-solid fa-xmark"></i>
           </button>
         {/if}

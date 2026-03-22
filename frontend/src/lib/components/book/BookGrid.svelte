@@ -109,7 +109,7 @@
     <p class="empty-text">Passe die Filter an oder importiere neue Bücher.</p>
   </div>
 {:else if coversOnly}
-  <div class="cover-grid" class:drag-active={marqueeActive} bind:this={gridEl} onpointerdown={handleGridPointerDown}>
+  <div class="cover-grid" role="grid" tabindex="-1" class:drag-active={marqueeActive} bind:this={gridEl} onpointerdown={handleGridPointerDown}>
     {#each books as book (book.id)}
       {@const isSelected = selectionStore.has(book.id)}
       <div
@@ -152,7 +152,7 @@
     {/each}
   </div>
 {:else}
-  <div class="book-grid" class:large class:drag-active={marqueeActive} bind:this={gridEl} onpointerdown={handleGridPointerDown}>
+  <div class="book-grid" role="grid" tabindex="-1" class:large class:drag-active={marqueeActive} bind:this={gridEl} onpointerdown={handleGridPointerDown}>
     {#each books as book (book.id)}
       <div
         data-book-id={book.id}

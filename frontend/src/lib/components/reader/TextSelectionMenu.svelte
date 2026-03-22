@@ -211,7 +211,7 @@
         <button class="sel-note-btn" onclick={showNotizOptionen}>
           <i class="fa-solid fa-list"></i> Vorhandene...
         </button>
-        <button class="sel-note-btn back" onclick={() => { step = "actions"; }}>
+        <button class="sel-note-btn back" aria-label="Zurück" onclick={() => { step = "actions"; }}>
           <i class="fa-solid fa-arrow-left"></i>
         </button>
       </div>
@@ -237,7 +237,7 @@
             {/each}
           </div>
         {/if}
-        <button class="sel-note-btn back" onclick={() => { step = "notiz-wahl"; }}>
+        <button class="sel-note-btn back" aria-label="Zurück" onclick={() => { step = "notiz-wahl"; }}>
           <i class="fa-solid fa-arrow-left"></i>
         </button>
       </div>

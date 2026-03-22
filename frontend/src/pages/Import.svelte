@@ -18,11 +18,21 @@
   let fehler = $state(null);
   let sseConnection = $state(null);
 
+  import { get } from "../lib/api/client.js";
   import { onMount, onDestroy } from "svelte";
 
-  onMount(() => {
+  let pfade = $state({ import_dir: "", extern_dir: "" });
+
+  onMount(async () => {
     aktualisiereStatus();
     starteSSE();
+    try {
+      const result = await get("/api/config/paths");
+      pfade.import_dir = result.import || "";
+      pfade.extern_dir = result.extern || "";
+    } catch {
+      // Pfade konnten nicht geladen werden
+    }
   });
 
   onDestroy(() => {
@@ -138,12 +148,24 @@
     {/if}
 
     <div class="scan-actions">
-      <button class="action-btn" onclick={scanImport} disabled={laden}>
-        <i class="fa-solid fa-folder-open"></i> Import-Verzeichnis scannen
-      </button>
-      <button class="action-btn" onclick={scanExtern} disabled={laden}>
-        <i class="fa-solid fa-hard-drive"></i> Externes Verzeichnis scannen
-      </button>
+      <div class="scan-action-item">
+        <button class="action-btn scan-btn" onclick={scanImport} disabled={laden}>
+          <i class="fa-solid fa-folder-open"></i> Import-Verzeichnis scannen
+        </button>
+        {#if pfade.import_dir}
+          <span class="scan-path">{pfade.import_dir}</span>
+        {/if}
+        <span class="scan-desc">Dateien werden beim Import verschoben und im Hash-Speicher abgelegt. Das Verzeichnis dient als Eingangskorb.</span>
+      </div>
+      <div class="scan-action-item">
+        <button class="action-btn scan-btn" onclick={scanExtern} disabled={laden}>
+          <i class="fa-solid fa-hard-drive"></i> Externes Verzeichnis scannen
+        </button>
+        {#if pfade.extern_dir}
+          <span class="scan-path">{pfade.extern_dir}</span>
+        {/if}
+        <span class="scan-desc">Read-only -- Dateien werden kopiert, das Original bleibt unangetastet. Gedacht für USB-Laufwerke oder Netzlaufwerke.</span>
+      </div>
     </div>
 
     {#if tasks.length > 0}
@@ -239,7 +261,35 @@
 
   .scan-actions {
     display: flex;
-    gap: 0.75rem;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .scan-action-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .scan-btn {
+    width: 100%;
+  }
+
+  .scan-path {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    padding-left: 0.25rem;
+    word-break: break-all;
+    user-select: all;
+  }
+
+  .scan-desc {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    line-height: 1.4;
+    padding-left: 0.25rem;
+    opacity: 0.7;
   }
 
   .action-btn {

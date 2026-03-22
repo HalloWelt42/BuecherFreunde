@@ -4,6 +4,7 @@
   import { sammlungenStore } from "../../stores/tags.svelte.js";
   import { route, navigate } from "../../router.svelte.js";
   import { get, getToken } from "../../api/client.js";
+  import { kiStatus, healthCheck, ladeConfig } from "../../api/config.js";
   import { onMount, onDestroy } from "svelte";
   import { onBooksChanged } from "../../stores/processes.svelte.js";
 
@@ -148,6 +149,7 @@
   onMount(() => {
     ladeStats();
     ladeVersion();
+    pruefeStatus();
     categoriesStore.aktualisieren();
     sammlungenStore.aktualisieren();
 
@@ -164,6 +166,36 @@
 
   // Schnellnotiz-Wörter aus localStorage zählen
   let schnellnotizVersion = $state(0);
+  // Status-LEDs
+  let statusApi = $state("pruefe"); // "online" | "offline" | "pruefe"
+  let statusLlm = $state("pruefe"); // "online" | "offline" | "deaktiviert" | "pruefe"
+
+  async function pruefeStatus() {
+    // API/Backend
+    try {
+      await healthCheck();
+      statusApi = "online";
+    } catch {
+      statusApi = "offline";
+    }
+    // LLM
+    try {
+      const config = await ladeConfig();
+      if (!config.lm_studio?.aktiviert) {
+        statusLlm = "deaktiviert";
+      } else {
+        try {
+          const ki = await kiStatus();
+          statusLlm = ki.erreichbar ? "online" : "offline";
+        } catch {
+          statusLlm = "offline";
+        }
+      }
+    } catch {
+      statusLlm = "offline";
+    }
+  }
+
   let schnellnotizWoerter = $derived.by(() => {
     const _ = ui.scratchPadOpen;
     const __ = schnellnotizVersion;
@@ -375,15 +407,28 @@
     </a>
   </nav>
 
-  <!-- Spacer + Version -->
+  <!-- Spacer + Version + Status -->
   <div class="sidebar-spacer"></div>
-  <div class="sidebar-version">
-    BücherFreunde v{version}
-    {#if updateVerfuegbar}
-      <span class="update-hint" title="Version {remoteVersion} verfügbar - ./update.sh auf dem Server ausführen">
-        <i class="fa-solid fa-arrow-up"></i> {remoteVersion}
+  <div class="sidebar-footer">
+    <div class="status-leds">
+      <span class="status-led" title="Backend API: {statusApi === 'online' ? 'Verbunden' : statusApi === 'pruefe' ? 'Wird geprüft...' : 'Nicht erreichbar'}">
+        <span class="led" class:led-online={statusApi === "online"} class:led-offline={statusApi === "offline"} class:led-pruefe={statusApi === "pruefe"}></span>
+        API
       </span>
-    {/if}
+      <span class="status-led" title="LM Studio: {statusLlm === 'online' ? 'Verbunden' : statusLlm === 'deaktiviert' ? 'Deaktiviert' : statusLlm === 'pruefe' ? 'Wird geprüft...' : 'Nicht erreichbar'}">
+        <span class="led" class:led-online={statusLlm === "online"} class:led-offline={statusLlm === "offline"} class:led-deaktiviert={statusLlm === "deaktiviert"} class:led-pruefe={statusLlm === "pruefe"}></span>
+        LLM
+      </span>
+    </div>
+    <div class="sidebar-version">
+      BücherFreunde v{version}
+      {#if updateVerfuegbar}
+        <span class="update-hint" title="Version {remoteVersion} verfügbar - ./update.sh auf dem Server ausführen">
+          <i class="fa-solid fa-arrow-up"></i> {remoteVersion}
+        </span>
+      {/if}
+    </div>
+    <div class="sidebar-author">HalloWelt42</div>
   </div>
 </aside>
 
@@ -663,17 +708,79 @@
     color: var(--color-accent);
   }
 
-  /* Spacer + Version */
+  /* Spacer + Footer */
   .sidebar-spacer {
     flex: 1;
   }
 
-  .sidebar-version {
+  .sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
     padding: 0.5rem 0.75rem;
+  }
+
+  .status-leds {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+  }
+
+  .status-led {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    cursor: help;
+  }
+
+  .led {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .led-online {
+    background-color: var(--color-success, #22c55e);
+    box-shadow: 0 0 4px var(--color-success, #22c55e);
+  }
+
+  .led-offline {
+    background-color: var(--color-error, #ef4444);
+    box-shadow: 0 0 4px var(--color-error, #ef4444);
+  }
+
+  .led-deaktiviert {
+    background-color: var(--color-text-muted, #6b7280);
+    opacity: 0.5;
+  }
+
+  .led-pruefe {
+    background-color: var(--color-warning, #f59e0b);
+    animation: led-blink 1s ease-in-out infinite;
+  }
+
+  @keyframes led-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .sidebar-version {
     font-size: 0.625rem;
     color: var(--color-text-muted);
     text-align: center;
     opacity: 0.6;
+  }
+
+  .sidebar-author {
+    font-size: 0.5625rem;
+    color: var(--color-text-muted);
+    text-align: center;
+    opacity: 0.4;
   }
 
   .update-hint {

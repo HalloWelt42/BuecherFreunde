@@ -313,7 +313,7 @@
           <span class="scan-titel">
             <i class="fa-solid fa-check-circle"></i> Scan abgeschlossen
           </span>
-          <button class="scan-btn-sm" onclick={() => { scanFertig = false; scanErgebnisse = []; }}>
+          <button class="scan-btn-sm" aria-label="Scan-Ergebnisse schließen" onclick={() => { scanFertig = false; scanErgebnisse = []; }}>
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>

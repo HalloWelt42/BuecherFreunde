@@ -163,13 +163,13 @@
       bind:this={panelEl}
       style="{positioned ? `left: ${panelPos.x}px; top: ${panelPos.y}px;` : ''}"
     >
-      <div class="notes-header" onmousedown={onDragStart}>
+      <div class="notes-header" role="button" tabindex="0" onmousedown={onDragStart}>
         <i class="fa-solid fa-grip-vertical drag-handle"></i>
         <strong>Buchnotizen</strong>
         {#if feedback}
           <span class="header-feedback">{feedback}</span>
         {/if}
-        <button class="notes-close" onclick={() => { open = false; positioned = false; }}>
+        <button class="notes-close" aria-label="Notizen schließen" onclick={() => { open = false; positioned = false; }}>
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -220,6 +220,7 @@
                 </span>
                 <button
                   class="note-toggle"
+                  aria-label="Notiz ein-/ausklappen"
                   onclick={() => { offen = { ...offen, [note.id]: !offen[note.id] }; }}
                 >
                   <i class="fa-solid fa-chevron-{offen[note.id] ? 'up' : 'down'}"></i>
@@ -399,15 +400,6 @@
     padding: 2px 3px;
     border-bottom: 1px solid color-mix(in srgb, var(--color-border) 15%, transparent);
     background: color-mix(in srgb, var(--color-bg-tertiary) 30%, transparent);
-  }
-
-  .field-label {
-    font-size: 0.5625rem;
-    color: var(--color-text-muted);
-    margin-right: auto;
-    padding: 0 3px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
   }
 
   .tb-sep {

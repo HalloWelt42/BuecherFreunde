@@ -218,27 +218,7 @@
     border-bottom-color: var(--color-accent);
   }
 
-  /* 2-Spalten Grid */
-  .settings-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    align-items: start;
-  }
-
-  @media (max-width: 900px) {
-    .settings-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
   .settings-single {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .settings-col {
     display: flex;
     flex-direction: column;
     gap: 1rem;

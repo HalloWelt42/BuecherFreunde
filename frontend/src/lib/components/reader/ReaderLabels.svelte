@@ -110,10 +110,10 @@
       bind:this={panelEl}
       style={positioned ? `position: fixed; left: ${panelPos.x}px; top: ${panelPos.y}px; right: auto;` : ""}
     >
-      <div class="labels-header" onmousedown={onDragStart}>
+      <div class="labels-header" role="button" tabindex="0" onmousedown={onDragStart}>
         <i class="fa-solid fa-grip-vertical drag-handle"></i>
         <strong>Labels</strong>
-        <button class="labels-close" onclick={() => { open = false; positioned = false; }}>
+        <button class="labels-close" aria-label="Labels schließen" onclick={() => { open = false; positioned = false; }}>
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -145,6 +145,7 @@
                 <button
                   class="label-toggle"
                   class:has-note={!!label.note}
+                  aria-label="Notiz ein-/ausklappen"
                   onclick={() => { offen = { ...offen, [label.id]: !offen[label.id] }; }}
                 >
                   <i class="fa-solid fa-chevron-{offen[label.id] ? 'up' : 'down'}"></i>

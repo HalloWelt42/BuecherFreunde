@@ -132,10 +132,12 @@
         class="detail-row"
         class:selected={isSelected}
         data-book-id={book.id}
+        role="row"
+        tabindex="-1"
         onpointerdown={(e) => handlePointerDown(e, book.id)}
         onpointerenter={() => handlePointerEnter(book.id)}
       >
-        <div class="detail-cover-wrap" onmouseenter={(e) => positionPopup(e.currentTarget)}>
+        <div class="detail-cover-wrap" role="img" onmouseenter={(e) => positionPopup(e.currentTarget)}>
           <a href="/book/{book.id}" class="detail-link">
             <div class="detail-cover">
               <img
@@ -250,6 +252,7 @@
           >
             <td class="col-cover">
               <div class="cover-cell"
+                role="img"
                 onmouseenter={(e) => positionPopup(e.currentTarget)}
               >
                 <a href="/book/{book.id}" class="cover-link">

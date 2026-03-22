@@ -361,30 +361,30 @@
         {#if editMode}
           <div class="edit-form">
             <div class="edit-field">
-              <label class="edit-label">Name</label>
-              <input type="text" class="edit-input" bind:value={editData.name} />
+              <label class="edit-label" for="edit-autor-name">Name</label>
+              <input id="edit-autor-name" type="text" class="edit-input" bind:value={editData.name} />
             </div>
             <div class="edit-row">
               <div class="edit-field">
-                <label class="edit-label">Geburtsjahr</label>
-                <input type="number" class="edit-input" bind:value={editData.birth_year} />
+                <label class="edit-label" for="edit-autor-geburt">Geburtsjahr</label>
+                <input id="edit-autor-geburt" type="number" class="edit-input" bind:value={editData.birth_year} />
               </div>
               <div class="edit-field">
-                <label class="edit-label">Todesjahr</label>
-                <input type="number" class="edit-input" bind:value={editData.death_year} />
+                <label class="edit-label" for="edit-autor-tod">Todesjahr</label>
+                <input id="edit-autor-tod" type="number" class="edit-input" bind:value={editData.death_year} />
               </div>
               <div class="edit-field">
-                <label class="edit-label">Nationalität</label>
-                <input type="text" class="edit-input" bind:value={editData.nationality} />
+                <label class="edit-label" for="edit-autor-nationalitaet">Nationalität</label>
+                <input id="edit-autor-nationalitaet" type="text" class="edit-input" bind:value={editData.nationality} />
               </div>
             </div>
             <div class="edit-field">
-              <label class="edit-label">Website</label>
-              <input type="text" class="edit-input" bind:value={editData.website} />
+              <label class="edit-label" for="edit-autor-website">Website</label>
+              <input id="edit-autor-website" type="text" class="edit-input" bind:value={editData.website} />
             </div>
             <div class="edit-field">
-              <label class="edit-label">Biografie (Markdown)</label>
-              <textarea class="edit-input edit-textarea" bind:value={editData.biography} rows="20"></textarea>
+              <label class="edit-label" for="edit-autor-bio">Biografie (Markdown)</label>
+              <textarea id="edit-autor-bio" class="edit-input edit-textarea" bind:value={editData.biography} rows="20"></textarea>
             </div>
             <div class="edit-aktionen">
               <button class="btn btn-primary btn-sm" onclick={saveEdit} disabled={editSpeichern} title="Änderungen speichern">

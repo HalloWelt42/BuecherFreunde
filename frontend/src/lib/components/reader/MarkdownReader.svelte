@@ -3,6 +3,7 @@
   import { getToken } from "../../api/client.js";
   import { speichereLeseposition } from "../../api/user-data.js";
   import { ui } from "../../stores/ui.svelte.js";
+  import { untrack } from "svelte";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
   import LabelPicker from "./LabelPicker.svelte";
   import ReaderLabels from "./ReaderLabels.svelte";
@@ -20,7 +21,7 @@
   let content = $state("");
   let laden = $state(true);
   let fehler = $state(null);
-  let fontSize = $state(initialFontSize > 0 ? initialFontSize : 100);
+  let fontSize = $state(untrack(() => initialFontSize > 0 ? initialFontSize : 100));
   let scrollContainer = $state(null);
 
   // Geschätzte Seiten (~2000 Zeichen pro Seite)
@@ -31,7 +32,7 @@
 
   // Papier-Modus
   const papierModi = ["normal", "sepia", "dunkel"];
-  let papierModus = $state(papierModi.includes(initialPapier) ? initialPapier : "normal");
+  let papierModus = $state(untrack(() => papierModi.includes(initialPapier) ? initialPapier : "normal"));
 
   function togglePapierModus() {
     const idx = papierModi.indexOf(papierModus);

@@ -6,7 +6,7 @@
   import { speichereLeseposition } from "../../api/user-data.js";
   import { getToken } from "../../api/client.js";
   import { ui } from "../../stores/ui.svelte.js";
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, onDestroy, untrack } from "svelte";
   import { highlightsFuerBuch, erstelleHighlight, aktualisiereHighlight, loescheHighlight } from "../../api/highlights.js";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
   import ReaderHighlights from "./ReaderHighlights.svelte";
@@ -26,22 +26,22 @@
   let scrollContainer = $state(null);
   let pdfDoc = $state(null);
   let totalPages = $state(0);
-  let currentPage = $state(initialPage);
-  let scale = $state(initialZoom > 0 ? initialZoom / 100 : 1.0);
+  let currentPage = $state(untrack(() => initialPage));
+  let scale = $state(untrack(() => initialZoom > 0 ? initialZoom / 100 : 1.0));
   let laden = $state(true);
   let fehler = $state(null);
 
   // Papier-Modus: "normal", "dunkel", "sepia", "kontrast"
   const gueltigePapierModi = ["normal", "sepia", "dunkel", "kontrast"];
-  let papierModus = $state(
+  let papierModus = $state(untrack(() =>
     gueltigePapierModi.includes(initialPapier) ? initialPapier : "normal"
-  );
+  ));
 
   // Ansichtsmodus: "scroll", "breite", "seite", "doppel", "einzeln"
   const gueltigeAnsichten = ["scroll", "breite", "seite", "doppel", "einzeln"];
-  let ansicht = $state(
+  let ansicht = $state(untrack(() =>
     gueltigeAnsichten.includes(initialAnsicht) ? initialAnsicht : "scroll"
-  );
+  ));
 
   // Seiten-Canvases
   let pageElements = $state([]);
