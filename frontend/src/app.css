@@ -160,7 +160,11 @@ body {
   background-color: var(--color-bg-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* iOS-Safari: 100vh ist groesser als der sichtbare Bereich (Adressleiste),
+     dadurch werden Steuerleisten weggedrueckt. dvh nutzt die sichtbare Hoehe;
+     100vh bleibt Fallback fuer Browser ohne dvh. */
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 

@@ -110,7 +110,10 @@
       "footer footer";
     grid-template-columns: var(--sidebar-width) 1fr;
     grid-template-rows: var(--header-height) 1fr auto;
+    /* iOS-Safari: dvh statt 100vh, sonst werden Kopf-/Steuerleisten aus dem
+       sichtbaren Bereich gedrueckt. 100vh bleibt Fallback ohne dvh. */
     height: 100vh;
+    height: 100dvh;
     overflow: hidden;
     position: relative;
   }

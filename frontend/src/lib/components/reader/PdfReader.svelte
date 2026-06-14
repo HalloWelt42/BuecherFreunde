@@ -958,7 +958,9 @@
     padding: 0.25rem 0.5rem;
     border-bottom: 1px solid var(--glass-border);
     flex-shrink: 0;
-    height: 36px;
+    /* min-height statt fester Hoehe: auf schmalem iPad darf die Leiste beim
+       Umbrechen wachsen, statt dass Buttons ueberlaufen. */
+    min-height: 36px;
     flex-wrap: wrap;
     position: relative;
     z-index: 40;
