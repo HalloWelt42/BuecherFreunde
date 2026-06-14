@@ -1,5 +1,5 @@
 <script>
-  import * as pdfjsLib from "pdfjs-dist";
+  import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
   import "pdfjs-dist/web/pdf_viewer.css";
   const { TextLayer } = pdfjsLib;
   import { dateiUrl } from "../../api/books.js";
@@ -31,6 +31,7 @@
   let scale = $state(untrack(() => initialZoom > 0 ? initialZoom / 100 : 1.0));
   let laden = $state(true);
   let fehler = $state(null);
+  let langsamerLoad = $state(false);
 
   // Papier-Modus: "normal", "dunkel", "sepia", "kontrast"
   const gueltigePapierModi = ["normal", "sepia", "dunkel", "kontrast"];
@@ -58,7 +59,7 @@
 
   // Worker lokal buendeln
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
+    "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
     import.meta.url,
   ).href;
 
@@ -130,8 +131,12 @@
   async function ladePdf(id) {
     laden = true;
     fehler = null;
+    langsamerLoad = false;
     renderedPages = new Set();
     renderQueue = new Set();
+    // Wenn das Laden zu lange dauert (z.B. pdf.js haengt auf altem iPad),
+    // nach kurzer Zeit den nativen Browser-Viewer als Ausweg anbieten.
+    const langsamTimer = setTimeout(() => { langsamerLoad = true; }, 4000);
     try {
       const url = dateiUrl(id);
       const loadingTask = pdfjsLib.getDocument({
@@ -152,6 +157,7 @@
     } catch (e) {
       fehler = e.message || "PDF konnte nicht geladen werden";
     } finally {
+      clearTimeout(langsamTimer);
       laden = false;
     }
   }
@@ -673,9 +679,20 @@
     </button>
   {/if}
   {#if laden}
-    <div class="status">
+    <div class="status" class:column={langsamerLoad}>
       <i class="fa-solid fa-spinner fa-spin"></i>
       <span>PDF wird geladen...</span>
+      {#if langsamerLoad}
+        <p class="status-hint">Dauert es zu lange oder bleibt es haengen?</p>
+        <div class="status-aktionen">
+          <button class="status-btn" onclick={oeffneNativ}>
+            <i class="fa-solid fa-up-right-from-square"></i> Im Browser öffnen
+          </button>
+          <button class="status-btn" onclick={downloadFile}>
+            <i class="fa-solid fa-download"></i> Herunterladen
+          </button>
+        </div>
+      {/if}
     </div>
   {:else if fehler}
     <div class="status error">
@@ -884,6 +901,16 @@
   .status.error {
     color: var(--color-error);
     flex-direction: column;
+  }
+
+  .status.column {
+    flex-direction: column;
+  }
+
+  .status-hint {
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    text-align: center;
   }
 
   .status-aktionen {
