@@ -656,6 +656,12 @@
     a.click();
     document.body.removeChild(a);
   }
+
+  // Oeffnet das PDF im nativen Viewer des Browsers (neuer Tab).
+  // Sicherheitsnetz fuer Geraete, auf denen pdf.js nicht laeuft (z.B. iPad).
+  function oeffneNativ() {
+    window.open(dateiUrl(bookId), "_blank");
+  }
 </script>
 
 <svelte:window onkeydown={handleKeydown} onresize={handleResize} />
@@ -675,6 +681,17 @@
     <div class="status error">
       <i class="fa-solid fa-triangle-exclamation"></i>
       <span>{fehler}</span>
+      <div class="status-aktionen">
+        <button class="status-btn" onclick={oeffneNativ}>
+          <i class="fa-solid fa-up-right-from-square"></i> Im Browser öffnen
+        </button>
+        <button class="status-btn" onclick={downloadFile}>
+          <i class="fa-solid fa-download"></i> Herunterladen
+        </button>
+        <button class="status-btn ghost" onclick={onBack}>
+          <i class="fa-solid fa-arrow-left"></i> Zurück
+        </button>
+      </div>
     </div>
   {:else}
     <!-- Toolbar -->
@@ -866,6 +883,44 @@
 
   .status.error {
     color: var(--color-error);
+    flex-direction: column;
+  }
+
+  .status-aktionen {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 0.25rem;
+  }
+
+  .status-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-accent);
+    color: #fff;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .status-btn:hover {
+    background: var(--color-accent-hover);
+  }
+
+  .status-btn.ghost {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+  }
+
+  .status-btn.ghost:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
   }
 
   /* Toolbar */

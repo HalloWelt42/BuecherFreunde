@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # Authentifizierung
     api_token: str = "bitte-aendern-sicherer-token-hier"
 
+    # Anmeldung (Benutzername/Passwort fuer das Login-Fenster)
+    auth_username: str = "admin"
+    auth_password: str = "admin"
+
     # Pfade
     storage_dir: Path = _project_root() / "storage"
     external_dir: Path = _project_root() / "external"

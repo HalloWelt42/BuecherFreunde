@@ -3,14 +3,15 @@
 
   let { onSuccess = () => {} } = $props();
 
-  let token = $state("");
+  let benutzername = $state("");
+  let passwort = $state("");
   let fehler = $state("");
   let pruefen = $state(false);
 
   async function anmelden() {
-    const t = token.trim();
-    if (!t) {
-      fehler = "Bitte Token eingeben";
+    const name = benutzername.trim();
+    if (!name || !passwort) {
+      fehler = "Bitte Benutzername und Passwort eingeben";
       return;
     }
 
@@ -18,15 +19,20 @@
     fehler = "";
 
     try {
-      const res = await fetch("/api/config", {
-        headers: { Authorization: `Bearer ${t}` },
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ benutzername: name, passwort }),
       });
 
       if (res.ok) {
-        setToken(t);
+        const daten = await res.json();
+        setToken(daten.token);
         onSuccess();
+      } else if (res.status === 401) {
+        fehler = "Benutzername oder Passwort ist falsch";
       } else {
-        fehler = "Ungültiger Token";
+        fehler = "Anmeldung fehlgeschlagen";
       }
     } catch {
       fehler = "Server nicht erreichbar";
@@ -46,15 +52,27 @@
       <i class="fa-solid fa-book-open-reader"></i>
     </div>
     <h1 class="login-title">BücherFreunde</h1>
-    <p class="login-hint">API-Token eingeben, um fortzufahren.</p>
-    <p class="login-sub">Der Token steht in der <code>.env</code>-Datei auf dem Server.</p>
+    <p class="login-hint">Bitte anmelden, um fortzufahren.</p>
+
+    <div class="login-field">
+      <input
+        class="login-input"
+        type="text"
+        autocomplete="username"
+        placeholder="Benutzername"
+        bind:value={benutzername}
+        onkeydown={onKeydown}
+        disabled={pruefen}
+      />
+    </div>
 
     <div class="login-field">
       <input
         class="login-input"
         type="password"
-        placeholder="API-Token"
-        bind:value={token}
+        autocomplete="current-password"
+        placeholder="Passwort"
+        bind:value={passwort}
         onkeydown={onKeydown}
         disabled={pruefen}
       />
@@ -89,9 +107,8 @@
     width: 100%;
     max-width: 360px;
     padding: 2.5rem 2rem;
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     display: flex;
     flex-direction: column;
@@ -117,23 +134,9 @@
     text-align: center;
   }
 
-  .login-sub {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    text-align: center;
-  }
-
-  .login-sub code {
-    font-family: var(--font-mono);
-    background: var(--color-bg-tertiary);
-    padding: 0.1rem 0.3rem;
-    border-radius: 3px;
-    font-size: 0.6875rem;
-  }
-
   .login-field {
     width: 100%;
-    margin-top: 0.5rem;
+    margin-top: 0.25rem;
   }
 
   .login-input {
@@ -144,7 +147,6 @@
     background: var(--color-bg-primary);
     color: var(--color-text-primary);
     font-size: 0.875rem;
-    font-family: var(--font-mono);
     outline: none;
     box-sizing: border-box;
   }
@@ -155,13 +157,13 @@
 
   .login-input::placeholder {
     color: var(--color-text-muted);
-    font-family: var(--font-sans);
   }
 
   .login-error {
     font-size: 0.8125rem;
     color: var(--color-error);
     font-weight: 500;
+    text-align: center;
   }
 
   .login-btn {
@@ -179,7 +181,7 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    margin-top: 0.25rem;
+    margin-top: 0.5rem;
   }
 
   .login-btn:hover:not(:disabled) {

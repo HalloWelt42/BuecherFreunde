@@ -8,6 +8,21 @@ if (!Map.prototype.getOrInsertComputed) {
   };
 }
 
+// Polyfill: Promise.withResolvers (benoetigt von pdfjs-dist v5+, erst ab
+// iOS/Safari 17.4 nativ vorhanden). Ohne diesen Polyfill laesst sich auf
+// aelteren iPads kein PDF oeffnen.
+if (typeof Promise.withResolvers !== "function") {
+  Promise.withResolvers = function () {
+    let resolve;
+    let reject;
+    const promise = new Promise((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
+
 import "./app.css";
 import App from "./App.svelte";
 import { mount } from "svelte";
