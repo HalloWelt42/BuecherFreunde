@@ -138,6 +138,7 @@
     top: -1.5rem;
     z-index: 10;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     margin: -1.5rem -1.5rem 1.5rem;
     padding: 1.5rem 1.5rem 0.75rem;
@@ -184,6 +185,7 @@
 
   .result-item:hover {
     background: var(--glass-bg-btn);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
   }
 

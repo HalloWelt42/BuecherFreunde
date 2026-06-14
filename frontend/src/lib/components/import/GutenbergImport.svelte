@@ -354,6 +354,7 @@
     border: 1px solid var(--glass-border);
     border-radius: 8px;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
   }
 
@@ -400,6 +401,7 @@
     border: 1px solid var(--glass-border);
     border-radius: 6px;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     color: var(--color-text-primary);
     font-size: 0.875rem;

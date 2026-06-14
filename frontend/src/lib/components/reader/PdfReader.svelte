@@ -942,6 +942,7 @@
     position: absolute;
     inset: 0;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     z-index: -1;

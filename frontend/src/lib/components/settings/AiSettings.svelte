@@ -463,6 +463,7 @@
     font-family: var(--font-mono);
     color: var(--color-text-primary);
     background: var(--glass-placeholder);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
     padding: 0.375rem 0.5rem;
     border-radius: 4px;

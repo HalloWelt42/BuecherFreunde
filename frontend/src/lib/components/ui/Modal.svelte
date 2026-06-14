@@ -55,6 +55,7 @@
 
   .modal-content {
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
     border-radius: 12px;

@@ -255,6 +255,7 @@
     gap: 2px;
     padding: 4px;
     background: color-mix(in srgb, var(--color-bg-secondary) 90%, transparent);
+    -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
     border: 1px solid var(--color-border);
     border-radius: 8px;
@@ -264,6 +265,7 @@
   .sel-menu.expanded {
     padding: 0;
     border-radius: 8px;
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
     backdrop-filter: blur(20px) saturate(1.4);
     background: color-mix(in srgb, var(--color-bg-secondary) 85%, transparent);
   }

@@ -193,6 +193,7 @@
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     z-index: 200;
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
   }
 
@@ -275,6 +276,7 @@
     left: 0;
     min-width: 240px;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
     border-radius: 8px;

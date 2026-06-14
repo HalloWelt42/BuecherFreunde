@@ -588,6 +588,7 @@
     flex-direction: column;
     gap: 0.75rem;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
     border-radius: 10px;
@@ -606,6 +607,7 @@
     align-items: center;
     justify-content: center;
     background: var(--glass-bg-btn-alt);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
     border: 1px solid var(--glass-border);
     border-radius: 8px;
@@ -685,6 +687,7 @@
     border: 1px solid var(--glass-border-btn);
     border-radius: 6px;
     background: var(--glass-bg-btn-alt);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-secondary);
     font-size: 0.8125rem;
@@ -846,6 +849,7 @@
     overflow-y: auto;
     padding: 1rem;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
     border-radius: 10px;
@@ -906,6 +910,7 @@
     border: 1px solid var(--glass-border);
     border-radius: 4px;
     background: var(--glass-placeholder);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
     font-size: 0.875rem;
@@ -974,6 +979,7 @@
     margin-top: 1rem;
     padding: 0.75rem;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
     border-radius: 10px;

@@ -212,6 +212,7 @@
     padding: 0 0.75rem;
     height: 28px;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     border-top: 1px solid var(--glass-border);
     position: relative;
@@ -318,6 +319,7 @@
     max-height: 300px;
     overflow-y: auto;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
     border-bottom: none;
@@ -335,6 +337,7 @@
     position: sticky;
     top: 0;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     z-index: 1;
   }

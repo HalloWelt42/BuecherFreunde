@@ -194,6 +194,7 @@
     border-radius: 10px;
     overflow: hidden;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     text-decoration: none;
     color: inherit;
@@ -297,6 +298,7 @@
 
   .overlay-btn {
     background: rgba(255, 255, 255, 0.15);
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
@@ -336,6 +338,7 @@
     align-items: center;
     gap: 0.25rem;
     background: rgba(0, 0, 0, 0.65);
+    -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
     color: #fff;
     font-size: 0.625rem;
@@ -354,6 +357,7 @@
     display: inline-flex;
     align-items: center;
     background: rgba(0, 0, 0, 0.65);
+    -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
     color: #fff;
     font-size: 0.625rem;

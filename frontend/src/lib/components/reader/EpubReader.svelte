@@ -998,6 +998,7 @@
     min-height: 0;
     overflow: hidden;
     background: rgba(20, 30, 48, 0.88);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3);
     backdrop-filter: blur(24px) saturate(1.3);
     -webkit-backdrop-filter: blur(24px) saturate(1.3);
     border-left: 1px solid rgba(255, 255, 255, 0.1);
@@ -1059,6 +1060,7 @@
     position: absolute;
     inset: 0;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     z-index: -1;
@@ -1217,6 +1219,7 @@
   .side-panel {
     width: min(340px, 85%);
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     border-right: 1px solid var(--glass-border);
     display: flex;

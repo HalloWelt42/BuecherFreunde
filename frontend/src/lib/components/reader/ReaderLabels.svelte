@@ -219,6 +219,7 @@
     width: 480px;
     max-height: 85vh;
     background: color-mix(in srgb, var(--color-bg-secondary) 80%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
     backdrop-filter: blur(20px) saturate(1.4);
     -webkit-backdrop-filter: blur(20px) saturate(1.4);
     border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);

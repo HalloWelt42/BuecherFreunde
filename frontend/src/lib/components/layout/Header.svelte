@@ -82,6 +82,7 @@
     padding: 0 1rem;
     height: var(--header-height);
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     border-bottom: 1px solid var(--glass-border);
     gap: 1rem;
@@ -112,6 +113,7 @@
 
   .header-btn:hover {
     background: var(--glass-bg-btn);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
     border-color: var(--glass-border);

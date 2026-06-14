@@ -123,6 +123,7 @@
     align-items: center;
     justify-content: center;
     background: rgba(0, 0, 0, 0.6);
+    -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
     animation: fadeIn 0.2s ease;
   }

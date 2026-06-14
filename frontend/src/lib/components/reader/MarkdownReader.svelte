@@ -561,6 +561,7 @@
     padding: 0.25rem 0.5rem;
     border-bottom: 1px solid var(--glass-border);
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     flex-shrink: 0;
     height: 36px;
@@ -675,6 +676,7 @@
     padding: 0.5rem 0.75rem;
     border-bottom: 1px solid var(--glass-border);
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     flex-shrink: 0;
     flex-wrap: wrap;

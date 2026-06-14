@@ -516,6 +516,7 @@
     top: 0;
     z-index: 10;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     margin-left: -1.5rem;
     margin-right: -1.5rem;
@@ -543,6 +544,7 @@
     border: 1px solid var(--color-border);
     border-radius: 6px;
     background: var(--glass-placeholder);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
     font-size: 0.875rem;
@@ -571,6 +573,7 @@
 
   .sort-btn:hover {
     background: var(--glass-bg-btn);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
   }
 
@@ -603,6 +606,7 @@
     overflow: hidden;
     transition: transform 0.15s, box-shadow 0.15s;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
   }
@@ -687,6 +691,7 @@
     margin-bottom: 1rem;
     padding: 0.5rem 0.75rem;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
     border-radius: 6px;
@@ -775,6 +780,7 @@
   .scan-aktiv, .scan-ergebnis {
     padding: 0.75rem;
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
     border-radius: 8px;
@@ -891,6 +897,7 @@
 
   .scan-treffer:hover {
     background: var(--glass-bg-btn);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
   }
 

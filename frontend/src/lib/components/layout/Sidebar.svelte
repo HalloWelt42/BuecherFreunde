@@ -435,6 +435,7 @@
 <style>
   .sidebar {
     background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     backdrop-filter: blur(var(--glass-blur));
     border-right: 1px solid var(--glass-border);
     padding: 0.75rem;
@@ -493,12 +494,14 @@
 
   .nav-item:hover {
     background: var(--glass-bg-btn);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
   }
 
   .nav-item.active {
     background: color-mix(in srgb, var(--color-accent) 50%, transparent);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
     border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
     color: #fff;
@@ -563,12 +566,14 @@
 
   .cat-btn:hover {
     background: var(--glass-bg-btn);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
   }
 
   .cat-btn.active {
     background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-accent);
     font-weight: 600;
@@ -671,12 +676,14 @@
 
   .sammlung-btn:hover {
     background: var(--glass-bg-btn);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-text-primary);
   }
 
   .sammlung-btn.active {
     background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+    -webkit-backdrop-filter: blur(var(--glass-blur-btn));
     backdrop-filter: blur(var(--glass-blur-btn));
     color: var(--color-accent);
     font-weight: 600;
