@@ -161,6 +161,7 @@
 
   .grid-main {
     grid-area: main;
+    min-height: 0;
     padding: 1.5rem;
     overflow-y: auto;
     overflow-x: hidden;

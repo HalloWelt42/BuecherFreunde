@@ -161,7 +161,10 @@
   .reader-page {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    /* +3rem gleicht das vertikale Padding von .grid-main aus, das der
+       negative Rand ueberdeckt - sonst bleibt unten eine Luecke und der
+       Footer wird scheinbar nach unten verschoben. */
+    height: calc(100% + 3rem);
     margin: -1.5rem;
   }
 
