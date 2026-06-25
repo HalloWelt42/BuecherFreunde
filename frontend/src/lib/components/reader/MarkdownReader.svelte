@@ -6,6 +6,7 @@
   import { untrack } from "svelte";
   import SvelteMarkdown from "@humanspeak/svelte-markdown";
   import { markedMermaid, MermaidRenderer } from "@humanspeak/svelte-markdown/extensions";
+  import Vorlesen from "./Vorlesen.svelte";
   import AlertBlock from "./AlertBlock.svelte";
   import { readerFarbThemen, readerSchriften } from "../../constants/themes.js";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
@@ -445,6 +446,9 @@
           }
         }}
       />
+
+      <!-- Vorlesen -->
+      <Vorlesen {bookId} />
 
       <div class="toolbar-spacer"></div>
 

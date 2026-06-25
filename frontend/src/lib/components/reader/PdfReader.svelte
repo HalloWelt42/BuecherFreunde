@@ -12,6 +12,7 @@
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
   import ReaderHighlights from "./ReaderHighlights.svelte";
   import ReaderNotes from "./ReaderNotes.svelte";
+  import Vorlesen from "./Vorlesen.svelte";
 
   let {
     bookId,
@@ -668,6 +669,18 @@
   function oeffneNativ() {
     window.open(dateiUrl(bookId), "_blank");
   }
+
+  // Text der aktuellen Seite fuer die Vorlesefunktion
+  async function getSeitenText() {
+    if (!pdfDoc) return "";
+    try {
+      const page = await pdfDoc.getPage(currentPage);
+      const tc = await page.getTextContent();
+      return tc.items.map((it) => it.str).join(" ");
+    } catch {
+      return "";
+    }
+  }
 </script>
 
 <svelte:window onkeydown={handleKeydown} onresize={handleResize} />
@@ -826,6 +839,9 @@
         {bookId}
         positionLabel={"S." + currentPage}
       />
+
+      <!-- Vorlesen -->
+      <Vorlesen {bookId} einheitLabel="Seite" getEinheit={getSeitenText} />
 
       <!-- Rechts: Vollbild + Download -->
       <div class="toolbar-spacer"></div>

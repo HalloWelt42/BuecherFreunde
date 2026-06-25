@@ -1,6 +1,7 @@
 <script>
   import { materialColors } from "../../utils/colors.js";
   import { notizenFuerBuch, erstelleNotiz, aktualisiereNotiz } from "../../api/notes.js";
+  import { sprich } from "../../stores/tts.svelte.js";
 
   const STORAGE_KEY = "bf-schnellnotiz";
 
@@ -77,6 +78,11 @@
       feedback = "Kopiert";
       setTimeout(() => { visible = false; feedback = ""; }, 800);
     });
+  }
+
+  function vorlesenAuswahl() {
+    sprich(selectedText, "Auswahl");
+    visible = false;
   }
 
   function highlightWithColor(color) {
@@ -178,6 +184,9 @@
       {/if}
       <button class="sel-btn" onclick={copyText} title="Kopieren">
         <i class="fa-solid fa-copy"></i>
+      </button>
+      <button class="sel-btn" onclick={vorlesenAuswahl} title="Vorlesen">
+        <i class="fa-solid fa-volume-high"></i>
       </button>
       <button class="sel-btn" onclick={() => { step = "notiz-wahl"; }} title="In Notiz speichern">
         <i class="fa-solid fa-note-sticky"></i>

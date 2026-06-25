@@ -11,6 +11,7 @@
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
   import ReaderHighlights from "./ReaderHighlights.svelte";
   import ReaderNotes from "./ReaderNotes.svelte";
+  import Vorlesen from "./Vorlesen.svelte";
   import { highlightsFuerBuch, erstelleHighlight, aktualisiereHighlight, loescheHighlight } from "../../api/highlights.js";
 
   let {
@@ -46,6 +47,19 @@
 
   // Reader-State
   let view = null;
+
+  // Text des aktuellen Kapitels fuer die Vorlesefunktion
+  function getKapitelText() {
+    try {
+      const contents = view?.renderer?.getContents?.() || [];
+      return contents
+        .map((c) => (c && c.doc && c.doc.body ? c.doc.body.textContent : ""))
+        .join("\n")
+        .trim();
+    } catch {
+      return "";
+    }
+  }
   let tocItems = $state([]);
   let showToc = $state(false);
   let showSettings = $state(false);
@@ -669,6 +683,9 @@
         {bookId}
         positionLabel={fortschritt + "%"}
       />
+
+      <!-- Vorlesen -->
+      <Vorlesen {bookId} einheitLabel="Kapitel" getEinheit={getKapitelText} />
 
       <!-- Suchnavigation (wenn Treffer vorhanden) -->
       {#if searchActive}
