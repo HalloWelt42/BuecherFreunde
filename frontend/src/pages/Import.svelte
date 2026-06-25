@@ -148,6 +148,14 @@
     );
   }
 
+  // Neue Tasks voranstellen, aber Duplikate (gleiche id) vermeiden - sonst
+  // wirft Sveltes keyed each einen each_key_duplicate-Fehler, wenn eine Task
+  // (z.B. der laufende Upload) schon in der Liste steht.
+  function mischeTasks(neue, alte) {
+    const ids = new Set(neue.map((t) => t.id));
+    return [...neue, ...alte.filter((t) => !ids.has(t.id))];
+  }
+
   async function onFiles(files) {
     laden = true;
     fehler = null;
@@ -155,7 +163,7 @@
       const result = await ladeDateienHoch(files);
       const neueTasks = result.aufgaben || result.tasks || (Array.isArray(result) ? result : []);
       if (neueTasks.length > 0) {
-        tasks = [...neueTasks, ...tasks];
+        tasks = mischeTasks(neueTasks, tasks);
       }
       // SSE sofort neu starten damit Updates nicht verpasst werden
       starteSSE();
@@ -200,7 +208,7 @@
       const result = await scanneImportVerzeichnis(anreichern);
       const neueTasks = result.aufgaben || result.tasks || [];
       if (neueTasks.length > 0) {
-        tasks = [...neueTasks, ...tasks];
+        tasks = mischeTasks(neueTasks, tasks);
         scanInfo = { typ: "erfolg", text: `${result.gefunden || 0} Dateien gefunden, ${neueTasks.length} neue werden importiert` };
       } else if (result.gefunden > 0) {
         scanInfo = { typ: "info", text: `${result.gefunden} Dateien gefunden -- alle bereits importiert (Duplikate)` };
@@ -233,7 +241,7 @@
       const result = await scanneExternesVerzeichnis(anreichern);
       const neueTasks = result.aufgaben || result.tasks || [];
       if (neueTasks.length > 0) {
-        tasks = [...neueTasks, ...tasks];
+        tasks = mischeTasks(neueTasks, tasks);
         scanInfo = { typ: "erfolg", text: `${result.gefunden || 0} Dateien gefunden, ${neueTasks.length} neue werden importiert` };
       } else if (result.gefunden > 0) {
         scanInfo = { typ: "info", text: `${result.gefunden} Dateien gefunden -- alle bereits importiert (Duplikate)` };
