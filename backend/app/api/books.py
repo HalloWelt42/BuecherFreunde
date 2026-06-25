@@ -1,10 +1,12 @@
 """API-Endpunkte für Bücher."""
 
+import asyncio
 import logging
 import math
 from pathlib import Path
+from xml.sax.saxutils import escape
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -715,20 +717,135 @@ async def delete_all_books(
     return {"geloescht": True, "hinweis": "Alle Bücher und zugehörige Daten gelöscht"}
 
 
+def _platzhalter_cover_svg(title: str, file_format: str) -> str:
+    """Erzeugt ein schlichtes Platzhalter-Cover als SVG (immer verfügbar)."""
+    titel = (title or "Ohne Titel").strip() or "Ohne Titel"
+    fmt = (file_format or "").upper()
+    farbton = sum(ord(c) for c in titel) % 360
+    # Titel grob auf Zeilen umbrechen (max. 7 Zeilen)
+    zeilen: list[str] = []
+    akt = ""
+    for wort in titel.split():
+        if akt and len(akt) + len(wort) + 1 > 16:
+            zeilen.append(akt)
+            akt = wort
+        else:
+            akt = (akt + " " + wort).strip()
+        if len(zeilen) >= 7:
+            break
+    if akt and len(zeilen) < 7:
+        zeilen.append(akt)
+    if not zeilen:
+        zeilen = ["Ohne Titel"]
+    start_y = 300 - (len(zeilen) - 1) * 21
+    tspans = "".join(
+        f'<tspan x="200" y="{start_y + i * 42}">{escape(z)}</tspan>'
+        for i, z in enumerate(zeilen)
+    )
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" '
+        'viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice">'
+        '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
+        f'<stop offset="0" stop-color="hsl({farbton},42%,32%)"/>'
+        f'<stop offset="1" stop-color="hsl({(farbton + 40) % 360},42%,20%)"/>'
+        '</linearGradient></defs>'
+        '<rect width="400" height="600" fill="url(#g)"/>'
+        '<rect x="14" y="14" width="372" height="572" fill="none" '
+        'stroke="rgba(255,255,255,0.14)" stroke-width="2" rx="6"/>'
+        '<text fill="rgba(255,255,255,0.92)" font-family="Georgia,serif" '
+        f'font-size="30" font-weight="700" text-anchor="middle">{tspans}</text>'
+        '<text x="200" y="565" fill="rgba(255,255,255,0.5)" '
+        'font-family="sans-serif" font-size="18" letter-spacing="3" '
+        f'text-anchor="middle">{escape(fmt)}</text>'
+        '</svg>'
+    )
+
+
+def _generate_cover_sync(file_hash: str, file_format: str) -> bytes | None:
+    """Erzeugt ein Cover aus der Quelldatei (erste PDF-Seite bzw. eingebettetes
+    EPUB-Cover). CPU-lastig -> wird im Threadpool aufgerufen.
+    """
+    logger = logging.getLogger("buecherfreunde.api.books")
+    original = get_original_file(file_hash)
+    if not original or not original.exists():
+        return None
+    fmt = (file_format or original.suffix.lstrip(".")).lower()
+    try:
+        if fmt == "pdf":
+            import fitz
+            from backend.app.services.processors.pdf_processor import PdfProcessor
+
+            doc = fitz.open(str(original))
+            try:
+                return PdfProcessor()._extract_cover(doc)
+            finally:
+                doc.close()
+        if fmt == "epub":
+            from backend.app.services.processors.epub_processor import EpubProcessor
+
+            proc = EpubProcessor()
+            data = None
+            try:
+                import ebooklib.epub
+
+                buch = ebooklib.epub.read_epub(str(original), options={"ignore_ncx": True})
+                data = proc._extract_cover(buch)
+            except Exception:
+                data = None
+            if not data:
+                try:
+                    data = proc._extract_cover_from_zip(original)
+                except Exception:
+                    data = None
+            return data
+    except Exception as e:
+        logger.warning("Cover-Generierung fehlgeschlagen (%s): %s", file_hash, e)
+    return None
+
+
 @router.get("/{book_id}/cover")
 async def get_cover(book_id: int, _token: str = Depends(verify_token_query)):
-    """Gibt das Cover-Bild eines Buches zurück."""
+    """Liefert das Cover eines Buches und gibt NIE 404 zurück.
+
+    Reihenfolge: vorhandenes cover.jpg -> sonst aus der Quelldatei erzeugen
+    (erste PDF-Seite bzw. eingebettetes EPUB-Cover) und cachen -> sonst ein
+    Platzhalter-SVG. So entstehen keine Konsolen-/API-Fehler.
+    """
     book = await db.fetch_one(
-        "SELECT hash, cover_path FROM books WHERE id = ?", (book_id,)
+        "SELECT hash, title, file_format FROM books WHERE id = ?", (book_id,)
     )
     if not book:
-        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+        return Response(
+            content=_platzhalter_cover_svg("", ""),
+            media_type="image/svg+xml",
+            headers={"Cache-Control": "no-store"},
+        )
 
     cover_path = get_sidecar_path(book["hash"], "cover.jpg")
-    if not cover_path.exists():
-        raise HTTPException(status_code=404, detail="Kein Cover vorhanden")
+    if cover_path.exists():
+        return FileResponse(cover_path, media_type="image/jpeg")
 
-    return FileResponse(cover_path, media_type="image/jpeg")
+    # Cover fehlt -> aus der Quelldatei erzeugen (CPU-lastig, daher im Thread)
+    try:
+        data = await asyncio.to_thread(
+            _generate_cover_sync, book["hash"], book["file_format"]
+        )
+    except Exception:
+        data = None
+
+    if data:
+        try:
+            save_cover(book["hash"], data)  # für nächstes Mal cachen
+        except Exception:
+            pass
+        return Response(content=data, media_type="image/jpeg")
+
+    # Letzter Ausweg: Platzhalter (kein 404)
+    return Response(
+        content=_platzhalter_cover_svg(book["title"], book["file_format"]),
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @router.post("/{book_id}/cover/neu-extrahieren")

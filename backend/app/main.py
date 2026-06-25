@@ -23,6 +23,7 @@ from backend.app.api.highlights import router as highlights_router
 from backend.app.api.labels import router as labels_router
 from backend.app.api.notes import router as notes_router
 from backend.app.api.user_data import router as user_data_router
+from backend.app.api.wartung import router as wartung_router
 from backend.app.core.config import settings
 from backend.app.core.database import db
 
@@ -176,6 +177,7 @@ app.include_router(metadata_router)
 app.include_router(notes_router)
 app.include_router(search_router)
 app.include_router(user_data_router)
+app.include_router(wartung_router)
 
 
 @app.get("/api/health")
