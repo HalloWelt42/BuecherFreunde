@@ -1,10 +1,7 @@
 <script>
   import { onDestroy } from "svelte";
-  import { tts, sprich, stop, pause, weiter } from "../../stores/tts.svelte.js";
+  import { tts, sprich, stop } from "../../stores/tts.svelte.js";
   import { ladeVolltext } from "../../api/metadata.js";
-
-  // Beim Verlassen des Readers laufendes Vorlesen beenden
-  onDestroy(() => stop());
 
   let {
     bookId,
@@ -16,13 +13,16 @@
   let laedt = $state(false);
   let wrapperEl = $state(null);
 
+  // Beim Verlassen des Readers laufendes Vorlesen beenden
+  onDestroy(() => stop());
+
   async function vorlesenEinheit() {
     menuOffen = false;
     if (!getEinheit) return;
     laedt = true;
     try {
       const text = await getEinheit();
-      if (text && text.trim()) sprich(text, einheitLabel || "Abschnitt");
+      await sprich(text, einheitLabel || "Abschnitt");
     } catch {
       /* ignore */
     } finally {
@@ -35,8 +35,7 @@
     laedt = true;
     try {
       const r = await ladeVolltext(bookId, 1, 100000);
-      const text = (r && r.volltext) || "";
-      if (text.trim()) sprich(text, "Ganzes Buch");
+      await sprich((r && r.volltext) || "", "Ganzes Buch");
     } catch {
       /* ignore */
     } finally {
@@ -44,7 +43,7 @@
     }
   }
 
-  // Menü bei Klick ausserhalb schliessen (mit sauberem Cleanup)
+  // Menü bei Klick ausserhalb schliessen (mit Cleanup)
   $effect(() => {
     if (!menuOffen) return;
     function aufKlick(e) {
@@ -53,53 +52,52 @@
     document.addEventListener("click", aufKlick, true);
     return () => document.removeEventListener("click", aufKlick, true);
   });
+
+  // Fehlermeldung nach einigen Sekunden automatisch ausblenden
+  $effect(() => {
+    if (!tts.fehler) return;
+    const t = setTimeout(() => {
+      tts.fehler = "";
+    }, 6000);
+    return () => clearTimeout(t);
+  });
 </script>
 
-{#if tts.verfuegbar}
-  <div class="vorlesen" bind:this={wrapperEl}>
-    {#if tts.aktiv}
-      {#if tts.modus === "webspeech"}
-        {#if tts.pausiert}
-          <button class="tool-btn" onclick={weiter} title="Weiter vorlesen">
-            <i class="fa-solid fa-play"></i>
-          </button>
-        {:else}
-          <button class="tool-btn pulsiert" onclick={pause} title="Pause">
-            <i class="fa-solid fa-pause"></i>
+<div class="vorlesen" bind:this={wrapperEl}>
+  {#if tts.aktiv}
+    <span class="tool-btn pulsiert" title="Pappagei liest vor{tts.label ? ' (' + tts.label + ')' : ''}">
+      <i class="fa-solid fa-volume-high"></i>
+    </span>
+    <button class="tool-btn stop" onclick={stop} title="Vorlesen stoppen">
+      <i class="fa-solid fa-stop"></i>
+    </button>
+  {:else}
+    <button
+      class="tool-btn"
+      onclick={() => (menuOffen = !menuOffen)}
+      title="Mit Pappagei vorlesen"
+      disabled={laedt}
+    >
+      <i class="fa-solid {laedt ? 'fa-spinner fa-spin' : 'fa-volume-high'}"></i>
+    </button>
+    {#if menuOffen}
+      <div class="vorlesen-menu">
+        {#if getEinheit && einheitLabel}
+          <button onclick={vorlesenEinheit}>
+            <i class="fa-solid fa-volume-low"></i> {einheitLabel} vorlesen
           </button>
         {/if}
-      {:else}
-        <span class="tool-btn pulsiert" title="Pappagei liest vor">
-          <i class="fa-solid fa-volume-high"></i>
-        </span>
-      {/if}
-      <button class="tool-btn stop" onclick={stop} title="Vorlesen stoppen">
-        <i class="fa-solid fa-stop"></i>
-      </button>
-    {:else}
-      <button
-        class="tool-btn"
-        onclick={() => (menuOffen = !menuOffen)}
-        title="Vorlesen"
-        disabled={laedt}
-      >
-        <i class="fa-solid {laedt ? 'fa-spinner fa-spin' : 'fa-volume-high'}"></i>
-      </button>
-      {#if menuOffen}
-        <div class="vorlesen-menu">
-          {#if getEinheit && einheitLabel}
-            <button onclick={vorlesenEinheit}>
-              <i class="fa-solid fa-volume-low"></i> {einheitLabel} vorlesen
-            </button>
-          {/if}
-          <button onclick={vorlesenBuch}>
-            <i class="fa-solid fa-book-open"></i> Ganzes Buch vorlesen
-          </button>
-        </div>
-      {/if}
+        <button onclick={vorlesenBuch}>
+          <i class="fa-solid fa-book-open"></i> Ganzes Buch vorlesen
+        </button>
+      </div>
     {/if}
-  </div>
-{/if}
+  {/if}
+
+  {#if tts.fehler}
+    <div class="vorlesen-fehler">{tts.fehler}</div>
+  {/if}
+</div>
 
 <style>
   .vorlesen {
@@ -163,5 +161,21 @@
     color: var(--color-text-muted);
     width: 1rem;
     text-align: center;
+  }
+
+  .vorlesen-fehler {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 200;
+    width: 230px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-error);
+    color: var(--color-text-primary);
+    border-radius: 8px;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
   }
 </style>

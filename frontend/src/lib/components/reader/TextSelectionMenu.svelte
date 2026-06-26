@@ -80,9 +80,14 @@
     });
   }
 
-  function vorlesenAuswahl() {
-    sprich(selectedText, "Auswahl");
-    visible = false;
+  async function vorlesenAuswahl() {
+    const ok = await sprich(selectedText, "Auswahl");
+    if (ok) {
+      visible = false;
+    } else {
+      feedback = "Pappagei nicht erreichbar";
+      setTimeout(() => { visible = false; feedback = ""; }, 1600);
+    }
   }
 
   function highlightWithColor(color) {
