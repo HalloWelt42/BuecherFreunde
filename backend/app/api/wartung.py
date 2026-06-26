@@ -9,6 +9,7 @@ konservativ, um gesunde Bücher nicht fälschlich auszusortieren.
 import asyncio
 import logging
 import shutil
+import threading
 import zipfile
 from pathlib import Path
 
@@ -25,6 +26,10 @@ router = APIRouter(prefix="/api/wartung", tags=["Wartung"])
 
 # Nebenläufigkeit beim Prüfen (mehrere Dateien gleichzeitig im Threadpool)
 _PRUEF_PARALLEL = 6
+
+# MuPDF-Warnungen liegen in einem prozessweiten Speicher -> beim Auslesen
+# serialisieren, damit die Zuordnung Datei<->Warnung stimmt.
+_fitz_lock = threading.Lock()
 
 
 def _quarantaene_dir() -> Path:
@@ -53,13 +58,20 @@ def _pruefe_datei(file_format: str, path: Path | None) -> str | None:
         if fmt == "pdf":
             import fitz
 
-            doc = fitz.open(str(path))
-            try:
-                if doc.page_count == 0:
-                    return "PDF hat 0 Seiten"
-                doc.load_page(0)  # erste Seite muss ladbar sein
-            finally:
-                doc.close()
+            with _fitz_lock:
+                fitz.TOOLS.mupdf_warnings()  # alten Warnungsspeicher leeren (reset=True)
+                doc = fitz.open(str(path))
+                try:
+                    if doc.page_count == 0:
+                        return "PDF hat 0 Seiten"
+                    doc.load_page(0)  # erste Seite muss ladbar sein
+                finally:
+                    doc.close()
+                warnungen = (fitz.TOOLS.mupdf_warnings() or "").lower()
+            # MuPDF repariert kaputte PDFs still; pdf.js (der Reader) kann das
+            # nicht und zeigt "Invalid PDF structure". Solche Dateien aussortieren.
+            if "repair" in warnungen or "rebuild" in warnungen:
+                return "PDF strukturell beschädigt (MuPDF musste reparieren – Reader scheitert)"
 
         elif fmt == "epub":
             if not zipfile.is_zipfile(path):
