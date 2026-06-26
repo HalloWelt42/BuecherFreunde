@@ -58,14 +58,20 @@
 {#if tts.verfuegbar}
   <div class="vorlesen" bind:this={wrapperEl}>
     {#if tts.aktiv}
-      {#if tts.pausiert}
-        <button class="tool-btn" onclick={weiter} title="Weiter vorlesen">
-          <i class="fa-solid fa-play"></i>
-        </button>
+      {#if tts.modus === "webspeech"}
+        {#if tts.pausiert}
+          <button class="tool-btn" onclick={weiter} title="Weiter vorlesen">
+            <i class="fa-solid fa-play"></i>
+          </button>
+        {:else}
+          <button class="tool-btn pulsiert" onclick={pause} title="Pause">
+            <i class="fa-solid fa-pause"></i>
+          </button>
+        {/if}
       {:else}
-        <button class="tool-btn pulsiert" onclick={pause} title="Pause">
-          <i class="fa-solid fa-pause"></i>
-        </button>
+        <span class="tool-btn pulsiert" title="Pappagei liest vor">
+          <i class="fa-solid fa-volume-high"></i>
+        </span>
       {/if}
       <button class="tool-btn stop" onclick={stop} title="Vorlesen stoppen">
         <i class="fa-solid fa-stop"></i>
