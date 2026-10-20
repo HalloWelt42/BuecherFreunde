@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from backend.app.services.seiten import seiten_aus
 from backend.app.core.auth import verify_token, verify_token_query
 from backend.app.core.database import db
 from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate
@@ -1113,15 +1114,7 @@ async def fulltext_search_book(
     if not text:
         return {"treffer": [], "gesamt": 0, "suchbegriff": q}
 
-    # In Seiten aufteilen (gleiche Logik wie Volltext-Endpunkt)
-    if "\f" in text:
-        seiten = text.split("\f")
-    else:
-        total_pages = book["page_count"] or 1
-        chars_per_page = max(len(text) // total_pages, 500)
-        seiten = []
-        for i in range(0, len(text), chars_per_page):
-            seiten.append(text[i:i + chars_per_page])
+    seiten = seiten_aus(text, book["page_count"])
 
     # Suchmuster erstellen
     try:

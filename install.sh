@@ -63,8 +63,7 @@ if [ ! -f .env ]; then
     read -rp "Port für den Webzugriff [8160]: " PORT
     PORT="${PORT:-8160}"
 
-    # Token generieren
-    TOKEN="bf-$(openssl rand -hex 16 2>/dev/null || head -c 32 /dev/urandom | xxd -p)"
+    read -rp "Adresse der Kellerwolke (etwa https://192.168.178.49:39280): " KELLERWOLKE
 
     # LM Studio
     echo ""
@@ -90,8 +89,11 @@ HOST=0.0.0.0
 PORT=8000
 EXTERNAL_PORT=$PORT
 
-# Authentifizierung (Bearer Token fuer Frontend-Backend)
-API_TOKEN=$TOKEN
+# Anmeldung mit dem Konto der Kellerwolke (App-Zugang in zugang/kellerwolke.schluessel, Modus 0600)
+KELLERWOLKE_URL=$KELLERWOLKE
+KELLERWOLKE_CA=/app/zugang/hausstelle.pem
+KELLERWOLKE_SCHLUESSEL_DATEI=/app/zugang/kellerwolke.schluessel
+FUNDUS_APPS=Fundus
 
 # Pfade
 STORAGE_DIR=$STORAGE
@@ -121,8 +123,8 @@ ENVFILE
     echo "  Externer Ordner:  $EXTERNAL"
     echo "  Port:             $PORT"
     echo ""
-    echo "  API-Token: $TOKEN"
-    echo "  (wird für den Zugriff auf die Weboberfläche benötigt)"
+    echo "  Anmeldung: mit dem Konto der Kellerwolke; den App-Zugang auf ihrem Rechner anlegen:"
+    echo "  tools/app_zugang.py --konto <konto> --app BücherFreunde --datei $(pwd)/zugang/kellerwolke.schluessel"
     echo ""
 else
     echo ".env existiert bereits - verwende vorhandene Konfiguration"

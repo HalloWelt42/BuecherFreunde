@@ -25,13 +25,6 @@ class Settings(BaseSettings):
     port: int = 8000
     external_port: int = 8160
 
-    # Authentifizierung
-    api_token: str = "bitte-aendern-sicherer-token-hier"
-
-    # Anmeldung (Benutzername/Passwort fuer das Login-Fenster)
-    auth_username: str = "admin"
-    auth_password: str = "admin"
-
     # Pfade
     storage_dir: Path = _project_root() / "storage"
     external_dir: Path = _project_root() / "external"
@@ -59,6 +52,14 @@ class Settings(BaseSettings):
     host_external_dir: str = ""
     host_import_dir: str = ""
     host_database_dir: str = ""
+
+    # Anbieter für Fundus (fundus-anbieter/1): Apps rufen mit ihrem App-Schlüssel der Kellerwolke;
+    # geprüft wird bei der Kellerwolke, wer ruft. Nur die genannten Apps dürfen den Bestand lesen.
+    kellerwolke_url: str = ""
+    kellerwolke_ca: str = ""          # Zertifikatsstelle für https zur Kellerwolke; leer: die üblichen Stellen
+    kellerwolke_schluessel_datei: str = ""   # eigener App-Zugang der Kellerwolke (Datei, Modus 0600)
+    anmeldung_konten: str = ""        # weitere Konten der Kellerwolke, die die App nutzen dürfen (kommagetrennt)
+    fundus_apps: str = "Fundus"       # Kommagetrennte Namen der Apps, die den Bestand lesen dürfen
 
     # Logging
     log_level: str = "info"

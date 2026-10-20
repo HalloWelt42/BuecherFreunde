@@ -31,7 +31,7 @@ echo "  2) Import-Verzeichnis"
 echo "  3) Externer Scan-Ordner"
 echo "  4) Datenbank-Verzeichnis"
 echo "  5) Port"
-echo "  6) API-Token neu generieren"
+echo "  6) Adresse der Kellerwolke"
 echo "  7) LM Studio Einstellungen"
 echo "  8) .env direkt bearbeiten"
 echo "  9) Alle Pfade anzeigen (Docker-Volumes)"
@@ -83,10 +83,15 @@ case "$CHOICE" in
         fi
         ;;
     6)
-        TOKEN="bf-$(openssl rand -hex 16 2>/dev/null || head -c 32 /dev/urandom | xxd -p)"
-        sed -i "s|^API_TOKEN=.*|API_TOKEN=$TOKEN|" .env
-        echo "Neuer Token: $TOKEN"
-        echo "Neustart nötig: cd docker && docker compose restart"
+        read -rp "Adresse der Kellerwolke [${KELLERWOLKE_URL:-}]: " NEW
+        if [ -n "$NEW" ]; then
+            if grep -q "^KELLERWOLKE_URL=" .env; then
+                sed -i "s|^KELLERWOLKE_URL=.*|KELLERWOLKE_URL=$NEW|" .env
+            else
+                echo "KELLERWOLKE_URL=$NEW" >> .env
+            fi
+            echo "Geändert. Neustart nötig: cd docker && docker compose restart"
+        fi
         ;;
     7)
         read -rp "LM Studio aktivieren? (j/n) [${LM_STUDIO_ENABLED:-n}]: " ENABLED

@@ -19,11 +19,13 @@ from backend.app.api.imports import router as imports_router
 from backend.app.api.metadata import router as metadata_router
 from backend.app.api.search import router as search_router
 from backend.app.api.collections import router as collections_router
+from backend.app.api.fundus import router as fundus_router
 from backend.app.api.highlights import router as highlights_router
 from backend.app.api.labels import router as labels_router
 from backend.app.api.notes import router as notes_router
 from backend.app.api.user_data import router as user_data_router
 from backend.app.api.wartung import router as wartung_router
+from backend.app.core.anmeldung import eigener_zugang, schliessen as anmeldung_schliessen
 from backend.app.core.config import settings
 from backend.app.core.database import db
 
@@ -121,22 +123,16 @@ async def lifespan(app: FastAPI):
     )
     logger.info("BuecherFreunde v%s wird gestartet", settings.version)
 
-    # Sicherheitscheck: Default-Token darf nicht verwendet werden
-    if settings.api_token == "bitte-aendern-sicherer-token-hier":
-        import secrets
-        generated = secrets.token_urlsafe(32)
-        logger.critical(
-            "SICHERHEITSWARNUNG: Standard-API-Token aktiv! "
-            "Bitte API_TOKEN in .env setzen. "
-            "Generierter Vorschlag: API_TOKEN=%s", generated
-        )
-
     _check_storage_mount()
+    if not await eigener_zugang.erfragen():
+        logger.warning("Kein App-Zugang der Kellerwolke: Anmelden geht erst nach der Einrichtung "
+                       "(KELLERWOLKE_URL, KELLERWOLKE_SCHLUESSEL_DATEI)")
     _ensure_directories()
     await db.connect()
     # Verwaiste Tasks aufräumen (vom letzten Lauf übrig geblieben)
     await _cleanup_stale_tasks()
     yield
+    await anmeldung_schliessen()
     await db.disconnect()
     logger.info("BuecherFreunde wird heruntergefahren")
 
@@ -169,6 +165,7 @@ app.include_router(books_router)
 app.include_router(categories_router)
 app.include_router(collections_router)
 app.include_router(config_router)
+app.include_router(fundus_router)
 app.include_router(gutenberg_router)
 app.include_router(imports_router)
 app.include_router(highlights_router)

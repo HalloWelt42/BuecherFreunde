@@ -1,6 +1,9 @@
 # Temporäre Dateien
 tmp/
 
+# Zugang zur Kellerwolke: App-Schlüssel und Zertifikatsstelle (je Rechner, nie ins Repo)
+zugang/
+
 # Marker-Dateien (Mount-Sicherheit)
 .buecherfreunde
 

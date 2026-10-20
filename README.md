@@ -58,7 +58,7 @@ EXTERNAL_DIR=/mnt/festplatte/scan-ordner
 git clone https://github.com/HalloWelt42/BuecherFreunde.git
 cd BuecherFreunde
 cp .env.example .env
-# .env anpassen (Token, Pfade, LM Studio)
+# .env anpassen (Kellerwolke, Pfade, LM Studio)
 ./start.sh
 ```
 
@@ -72,8 +72,12 @@ Alle Einstellungen stehen in der `.env` Datei im Projektverzeichnis:
 # Server
 EXTERNAL_PORT=8160              # Port für den Zugriff
 
-# Authentifizierung
-API_TOKEN=dein-token-hier       # Bearer Token (Frontend <-> Backend)
+# Anmeldung mit dem Konto der Kellerwolke
+KELLERWOLKE_URL=https://ip:39280                          # Adresse der Kellerwolke
+KELLERWOLKE_CA=/app/zugang/hausstelle.pem                 # Zertifikatsstelle des Heimnetzes
+KELLERWOLKE_SCHLUESSEL_DATEI=/app/zugang/kellerwolke.schluessel   # eigener App-Zugang (Modus 0600)
+ANMELDUNG_KONTEN=                                         # weitere Konten außer dem Besitzer (kommagetrennt)
+FUNDUS_APPS=Fundus                                        # Apps, die den Bestand über fundus/* lesen dürfen
 
 # Pfade
 STORAGE_DIR=/pfad/zu/buechern   # Arbeitsverzeichnis mit Hash-Ordnern
@@ -207,7 +211,15 @@ BücherFreunde/
 
 ### API
 
-Alle Endpunkte unter `/api/` mit Bearer-Token-Authentifizierung:
+Anmeldung mit dem Konto der Kellerwolke (Passwort oder Gerät mit Code aus der Kellerwolke koppeln) über den
+Anmeldebaustein des Appkern; Wege unter `/api/anmeldung`. Den App-Zugang legt man auf dem Rechner der Kellerwolke an
+(`tools/app_zugang.py --konto <konto> --app BücherFreunde --datei <ordner>/zugang/kellerwolke.schluessel`); der
+Ordner `zugang/` wird nach `/app/zugang` eingebunden. Anmelden darf das Konto, dem der Zugang gehört.
+
+Für Fundus gibt es den Anbieterweg `GET /api/v1/fundus/{steckbrief,suche,inhalt/{buch},bestand,umschlag/{buch}}`,
+nur mit dem App-Schlüssel der Kellerwolke einer App aus `FUNDUS_APPS`.
+
+Alle anderen Endpunkte unter `/api/` brauchen eine Anmeldung (Kopf `Authorization: Bearer` oder `X-Kellerwolke-Sitzung`):
 
 - `GET /api/health` - Healthcheck (ohne Auth)
 - `GET /api/books` - Bücher auflisten (paginiert, filterbar)

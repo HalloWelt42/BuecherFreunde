@@ -33,6 +33,22 @@ export function setToken(token) {
 }
 
 /**
+ * Abmelden: beendet die Sitzung in der Kellerwolke (auf einem gekoppelten Gerät trennt es das Gerät).
+ */
+export async function abmelden() {
+  try {
+    await fetch("/api/anmeldung/abmelden", {
+      method: "POST",
+      headers: { "X-Kellerwolke-Sitzung": apiToken },
+    });
+  } catch {
+    // egal: lokal ist man danach abgemeldet
+  }
+  setToken("");
+  if (onAuthRequired) onAuthRequired();
+}
+
+/**
  * Gibt den aktuellen Token zurück.
  * @returns {string}
  */
@@ -68,6 +84,7 @@ async function baseFetch(path, options = {}) {
 
   if (apiToken) {
     headers["Authorization"] = `Bearer ${apiToken}`;
+    headers["X-Kellerwolke-Sitzung"] = apiToken;
   }
 
   if (

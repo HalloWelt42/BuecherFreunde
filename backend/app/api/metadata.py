@@ -5,6 +5,7 @@ import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from backend.app.services.seiten import seiten_aus
 from backend.app.core.auth import verify_token
 from backend.app.core.database import db
 from backend.app.services import googlebooks, openlibrary, wikipedia
@@ -389,16 +390,7 @@ async def get_fulltext(
     if not fulltext:
         return {"volltext": "", "seiten_gesamt": 0, "seite_von": 1, "seite_bis": 1}
 
-    # Seiten aufteilen: Formfeed (\f) als Seitenumbruch oder gleichmäßig
-    if "\f" in fulltext:
-        seiten = fulltext.split("\f")
-    else:
-        # Gleichmäßig aufteilen basierend auf Seitenanzahl aus DB
-        total_pages = book["page_count"] or 1
-        chars_per_page = max(len(fulltext) // total_pages, 500)
-        seiten = []
-        for i in range(0, len(fulltext), chars_per_page):
-            seiten.append(fulltext[i:i + chars_per_page])
+    seiten = seiten_aus(fulltext, book["page_count"])
 
     seiten_gesamt = len(seiten)
     # Bereich begrenzen

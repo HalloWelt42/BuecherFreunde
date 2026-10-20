@@ -20,6 +20,8 @@ services:
       - ${EXTERNAL_DIR:-../external}:/app/external:ro
       - ${IMPORT_DIR:-../import}:/app/import
       - ${DATABASE_DIR:-../database}:/app/database
+      # Zugang zur Kellerwolke: eigener App-Schlüssel (Modus 0600) und Zertifikatsstelle des Heimnetzes
+      - ../zugang:/app/zugang:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 15s

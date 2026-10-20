@@ -3,7 +3,7 @@
   import { categoriesStore } from "../../stores/categories.svelte.js";
   import { sammlungenStore } from "../../stores/tags.svelte.js";
   import { route, navigate } from "../../router.svelte.js";
-  import { get, getToken } from "../../api/client.js";
+  import { abmelden, get, getToken } from "../../api/client.js";
   import { kiStatus, healthCheck, ladeConfig } from "../../api/config.js";
   import { onMount, onDestroy } from "svelte";
   import { onBooksChanged } from "../../stores/processes.svelte.js";
@@ -405,6 +405,10 @@
       <span class="nav-icon"><i class="fa-solid fa-gear"></i></span>
       <span class="nav-label">Einstellungen</span>
     </a>
+    <button class="nav-item" onclick={abmelden} title="Sitzung der Kellerwolke beenden; ein gekoppeltes Gerät wird getrennt">
+      <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
+      <span class="nav-label">Abmelden</span>
+    </button>
   </nav>
 
   <!-- Spacer + Version + Status -->

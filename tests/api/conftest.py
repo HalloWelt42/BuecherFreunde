@@ -24,10 +24,38 @@ def event_loop():
     loop.close()
 
 
+SITZUNG = "test-sitzung"
+FUNDUS_SCHLUESSEL = "kw_app_test_fundus"
+
+
+class _ScheinAnmeldung:
+    """Statt der Kellerwolke: eine gültige Sitzung des Nutzers und der App-Schlüssel von Fundus."""
+
+    async def pruefen(self, token: str):
+        from appkern.anmeldung import Konto
+
+        if token == SITZUNG:
+            return Konto(id="1", name="admin")
+        if token == FUNDUS_SCHLUESSEL:
+            return Konto(id="1", name="admin", app="Fundus")
+        return None
+
+
+@pytest.fixture(autouse=True)
+def schein_anmeldung(monkeypatch):
+    from backend.app.core import auth
+
+    async def name():
+        return "BücherFreunde"
+
+    monkeypatch.setattr(auth, "anmeldung", _ScheinAnmeldung())
+    monkeypatch.setattr(auth.eigener_zugang, "erfragen", name)
+
+
 @pytest.fixture(scope="session")
 def api_token() -> str:
-    """Gibt den konfigurierten API-Token zurueck."""
-    return settings.api_token
+    """Die Sitzung des Nutzers (Anmeldung der Kellerwolke, in Tests vorgetäuscht)."""
+    return SITZUNG
 
 
 @pytest.fixture(scope="session")
