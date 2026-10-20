@@ -61,3 +61,6 @@ async def test_suche_inhalt_bestand(fundus, test_db):
     r = await fundus.get("/api/v1/fundus/bestand")
     b = r.json()["buecher"][0]
     assert b["buch"] == buch and b["volltext_zeichen"] > 0 and b["lesestand"] is False
+
+    r = await fundus.get(f"/api/v1/fundus/datei/{buch}")
+    assert r.status_code == 404                 # im Test liegt keine Originaldatei, der Weg ist aber da

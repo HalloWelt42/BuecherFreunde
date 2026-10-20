@@ -10,6 +10,7 @@ fertigen Daten (Suchindex, fulltext.txt, Angaben), keine Rechnung; die Angaben b
 | GET /api/v1/fundus/inhalt/{buch}?von=&bis= | Seiten des Volltexts (Seite N wie im Leser) |
 | GET /api/v1/fundus/bestand?ab=&n= | Angaben aller Bücher seitenweise, mit Lesestand und Zahl der Notizen |
 | GET /api/v1/fundus/umschlag/{buch} | der Umschlag |
+| GET /api/v1/fundus/datei/{buch} | die Originaldatei (PDF, EPUB), damit Fundus und seine Apps das Original zeigen können |
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.app.api.books import get_cover
+from backend.app.api.books import get_cover, get_file
 from appkern.anmeldung import Konto
 
 from backend.app.core.auth import app_pruefen
@@ -199,3 +200,8 @@ async def bestand(ab: int = Query(0, ge=0), n: int = Query(500, ge=1, le=2000), 
 @router.get("/umschlag/{buch}")
 async def umschlag(buch: int, _app: Konto = Depends(app_pruefen)):
     return await get_cover(buch, _token="")
+
+
+@router.get("/datei/{buch}")
+async def datei(buch: int, _app: Konto = Depends(app_pruefen)):
+    return await get_file(buch, _token="")
