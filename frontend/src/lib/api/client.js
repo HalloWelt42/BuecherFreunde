@@ -2,7 +2,21 @@
  * API-Client mit Bearer Token Auth, Fehlerbehandlung und SSE-Support.
  */
 
-let apiToken = localStorage.getItem("api_token") || "";
+const SCHLUESSEL = "api_token";
+
+// Die Anmeldung liegt im Speicher des Browsers (je Adresse geteilt von allen Tabs) und wird bei jeder Anfrage frisch
+// gelesen: meldet man sich in einem Tab an, gilt das sofort für alle (etwa einen Leser, der aus dem Assistenten an einer
+// Seite geöffnet wurde und noch die Anmeldung zeigt).
+let apiToken = lesen() ?? "";
+
+/** @returns {string | null} null, wenn es keinen Speicher gibt (dann gilt der Wert dieser Seite) */
+function lesen() {
+  try {
+    return localStorage.getItem(SCHLUESSEL) || "";
+  } catch {
+    return null;
+  }
+}
 
 /** Callback wenn Token ungültig ist - wird von App.svelte gesetzt */
 let onAuthRequired = null;
@@ -20,7 +34,20 @@ export function onAuthError(callback) {
  * @returns {boolean}
  */
 export function hasToken() {
-  return apiToken.length > 0;
+  return getToken().length > 0;
+}
+
+/**
+ * Ein anderer Tab hat sich an- oder abgemeldet.
+ * @param {(token: string) => void} tun
+ */
+export function beiTokenWechsel(tun) {
+  addEventListener("storage", (e) => {
+    if (e.key === SCHLUESSEL) {
+      apiToken = e.newValue || "";
+      tun(apiToken);
+    }
+  });
 }
 
 /**
@@ -29,7 +56,8 @@ export function hasToken() {
  */
 export function setToken(token) {
   apiToken = token;
-  localStorage.setItem("api_token", token);
+  if (token) localStorage.setItem(SCHLUESSEL, token);
+  else localStorage.removeItem(SCHLUESSEL);
 }
 
 /**
@@ -39,7 +67,7 @@ export async function abmelden() {
   try {
     await fetch("/api/anmeldung/abmelden", {
       method: "POST",
-      headers: { "X-Kellerwolke-Sitzung": apiToken },
+      headers: { "X-Kellerwolke-Sitzung": getToken() },
     });
   } catch {
     // egal: lokal ist man danach abgemeldet
@@ -53,6 +81,7 @@ export async function abmelden() {
  * @returns {string}
  */
 export function getToken() {
+  apiToken = lesen() ?? apiToken;
   return apiToken;
 }
 
@@ -82,9 +111,10 @@ export class ApiError extends Error {
 async function baseFetch(path, options = {}) {
   const headers = { ...options.headers };
 
-  if (apiToken) {
-    headers["Authorization"] = `Bearer ${apiToken}`;
-    headers["X-Kellerwolke-Sitzung"] = apiToken;
+  const token = getToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+    headers["X-Kellerwolke-Sitzung"] = token;
   }
 
   if (
@@ -105,7 +135,8 @@ async function baseFetch(path, options = {}) {
       // Response ohne JSON-Body
     }
 
-    if ((response.status === 401 || response.status === 403) && onAuthRequired) {
+    // Nur eine abgewiesene Anmeldung (401) führt zur Anmeldung; 403 heißt "nicht erlaubt" und meldet nie ab
+    if (response.status === 401 && onAuthRequired) {
       onAuthRequired();
     }
 
@@ -200,7 +231,8 @@ export async function upload(path, formData) {
  * @returns {{ close: () => void }}
  */
 export function sse(path, onEvent, onError) {
-  const url = apiToken ? `${path}?token=${apiToken}` : path;
+  const token = getToken();
+  const url = token ? `${path}?token=${token}` : path;
   const source = new EventSource(url);
 
   source.onmessage = (event) => {

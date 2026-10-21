@@ -1,7 +1,7 @@
 <script>
   import { route, matchRoute, handleLinkClick } from "./lib/router.svelte.js";
   import { ui } from "./lib/stores/ui.svelte.js";
-  import { hasToken, onAuthError, getToken } from "./lib/api/client.js";
+  import { hasToken, onAuthError, getToken, beiTokenWechsel } from "./lib/api/client.js";
   import Header from "./lib/components/layout/Header.svelte";
   import Sidebar from "./lib/components/layout/Sidebar.svelte";
   import Footer from "./lib/components/layout/Footer.svelte";
@@ -25,10 +25,18 @@
     showLogin = true;
   });
 
+  // Nach der Anmeldung lädt die Seite an derselben Adresse neu: ein Verweis (etwa /book/12/read?page=38&q=Begriff)
+  // öffnet danach genau diese Stelle
   function onLoginSuccess() {
     showLogin = false;
     window.location.reload();
   }
+
+  // In einem anderen Tab angemeldet: dieser zeigt seine Stelle, statt weiter die Anmeldung
+  beiTokenWechsel((token) => {
+    if (token && showLogin) onLoginSuccess();
+    else if (!token) showLogin = true;
+  });
 
   let bgUrl = $derived(
     ui.bgAktuellerDateiname
