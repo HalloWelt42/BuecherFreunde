@@ -184,7 +184,7 @@ def get_original_file(file_hash: str, storage_dir: Path | None = None) -> Path |
     if not dir_path.exists():
         return None
 
-    sidecar_names = {"metadata.json", "fulltext.txt", "cover.jpg"}
+    sidecar_names = {"metadata.json", "fulltext.txt", "cover.jpg", "seiten.json"}
     for f in dir_path.iterdir():
         if f.name not in sidecar_names and f.is_file():
             return f

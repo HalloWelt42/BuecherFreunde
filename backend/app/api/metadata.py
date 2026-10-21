@@ -5,7 +5,7 @@ import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.app.services.seiten import seiten_aus
+from backend.app.services.seiten import buch_seiten
 from backend.app.core.auth import verify_token
 from backend.app.core.database import db
 from backend.app.services import googlebooks, openlibrary, wikipedia
@@ -381,16 +381,15 @@ async def get_fulltext(
     in Seiten aufgeteilt.
     """
     book = await db.fetch_one(
-        "SELECT hash, page_count FROM books WHERE id = ?", (book_id,)
+        "SELECT hash, page_count, file_format FROM books WHERE id = ?", (book_id,)
     )
     if not book:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
 
-    fulltext = load_fulltext(book["hash"])
-    if not fulltext:
+    import asyncio
+    seiten, _gedruckt = await asyncio.to_thread(buch_seiten, book["hash"], book["file_format"], book["page_count"])
+    if not seiten:
         return {"volltext": "", "seiten_gesamt": 0, "seite_von": 1, "seite_bis": 1}
-
-    seiten = seiten_aus(fulltext, book["page_count"])
 
     seiten_gesamt = len(seiten)
     # Bereich begrenzen

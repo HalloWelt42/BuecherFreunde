@@ -7,7 +7,10 @@ fertigen Daten (Suchindex, fulltext.txt, Angaben), keine Rechnung; die Angaben b
 |---|---|
 | GET /api/v1/fundus/steckbrief | was der Anbieter kann |
 | GET /api/v1/fundus/suche?q=&n=&ab= | Treffer je Buch mit der besten Seite, Ausschnitt, Umschlag und Pfad in den Leser |
-| GET /api/v1/fundus/inhalt/{buch}?von=&bis= | Seiten des Volltexts (Seite N wie im Leser) |
+| GET /api/v1/fundus/inhalt/{buch}?von=&bis= | Seiten des Volltexts (Seite N wie im Leser) mit gedruckter Seite |
+
+Zwei Zählungen (Regel in `services/seiten.py`): `seite` ist die Dateiseite (für den Leser, ?page=N), `gedruckt` die
+Beschriftung im Buch für Menschen ("" wo unbekannt).
 | GET /api/v1/fundus/bestand?ab=&n= | Angaben aller Bücher seitenweise, mit Lesestand und Zahl der Notizen |
 | GET /api/v1/fundus/umschlag/{buch} | der Umschlag |
 | GET /api/v1/fundus/datei/{buch} | die Originaldatei (PDF, EPUB), damit Fundus und seine Apps das Original zeigen können |
@@ -31,8 +34,8 @@ from backend.app.core.auth import app_pruefen
 from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.services.search import search_books, search_count
-from backend.app.services.seiten import seiten_aus
-from backend.app.services.storage import get_sidecar_path, load_fulltext
+from backend.app.services.seiten import buch_seiten
+from backend.app.services.storage import get_sidecar_path
 
 router = APIRouter(prefix="/api/v1/fundus", tags=["Fundus"])
 
@@ -102,9 +105,9 @@ async def _buch(buch: int) -> dict:
     return dict(zeile)
 
 
-async def _seiten(zeile: dict) -> list[str]:
-    text = await asyncio.to_thread(load_fulltext, zeile["hash"])
-    return seiten_aus(text or "", zeile["page_count"])
+async def _seiten(zeile: dict) -> tuple[list[str], list[str]]:
+    """Text je Dateiseite und je Seite die gedruckte Seite ("" wo unbekannt)."""
+    return await asyncio.to_thread(buch_seiten, zeile["hash"], zeile["file_format"], zeile["page_count"])
 
 
 @router.get("/steckbrief")
@@ -142,13 +145,14 @@ async def suche(q: str = Query(..., min_length=1, max_length=500), n: int = Quer
     hoechste = max((r.relevance for r in ergebnisse), default=0.0) or 1.0
     for r in ergebnisse:
         zeile = await _buch(r.book_id)
-        seiten = await _seiten(zeile)
+        seiten, gedruckt = await _seiten(zeile)
         beste = _beste_seiten(seiten, woerter)
         seite, stelle = (beste[0][0], beste[0][2]) if beste else (None, 0)
         auszug = _auszug(seiten[seite - 1], stelle) if seite else _reiner(r.snippet)
         treffer.append({
             "kennung": f"{r.book_id}:{seite or 0}", "buch": r.book_id, "titel": r.title, "autor": r.author, "art": "buch",
-            "auszug": auszug, "seite": seite, "weitere_seiten": [b[0] for b in beste[1:]], "seiten_gesamt": len(seiten),
+            "auszug": auszug, "seite": seite, "gedruckt": gedruckt[seite - 1] if seite else "",
+            "weitere_seiten": [b[0] for b in beste[1:]], "seiten_gesamt": len(seiten),
             "wann": zeile["year"], "sprache": zeile["language"] or "", "format": zeile["file_format"],
             "wertung": round(r.relevance / hoechste, 4), "umschlag": f"/api/v1/fundus/umschlag/{r.book_id}",
             "verweise": [{"art": "app", "titel": f"Im Leser an Seite {seite} öffnen" if seite else "Im Leser öffnen",
@@ -164,10 +168,11 @@ async def inhalt(buch: int, von: int = Query(1, ge=1), bis: int | None = Query(N
                  _app: Konto = Depends(app_pruefen)):
     """Seiten von `von` bis `bis` (ohne `bis`: bis zum Ende). Seite N ist die N-te Seite der Datei."""
     zeile = await _buch(buch)
-    seiten = await _seiten(zeile)
+    seiten, gedruckt = await _seiten(zeile)
     ende = min(bis or len(seiten), len(seiten))
     return {"buch": buch, "titel": zeile["title"], "autor": zeile["author"], "seitenart": "dateiseiten",
-            "seiten_gesamt": len(seiten), "seiten": [{"seite": nr, "text": seiten[nr - 1]} for nr in range(von, ende + 1)]}
+            "seiten_gesamt": len(seiten),
+            "seiten": [{"seite": nr, "gedruckt": gedruckt[nr - 1], "text": seiten[nr - 1]} for nr in range(von, ende + 1)]}
 
 
 @router.get("/bestand")

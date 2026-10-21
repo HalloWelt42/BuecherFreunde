@@ -43,7 +43,8 @@ class PdfProcessor(BaseProcessor):
             for page in doc:
                 text = page.get_text("text")
                 page_texts.append(text or "")
-            result.fulltext = "\n".join(page_texts)
+            # je Dateiseite ein Teil, getrennt mit Seitenvorschub (Regel in services/seiten.py)
+            result.fulltext = "\f".join(t.replace("\f", "\n") for t in page_texts)
 
             # ISBN aus den ersten/letzten Seiten extrahieren
             isbn = extract_isbn_from_pages(page_texts)

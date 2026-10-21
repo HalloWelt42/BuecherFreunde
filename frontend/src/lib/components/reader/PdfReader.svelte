@@ -21,6 +21,7 @@
     initialAnsicht = "",
     initialPapier = "",
     initialZoom = 0,
+    fundstelle = "",
     onBack = () => {},
     onPositionChange = () => {},
   } = $props();
@@ -55,6 +56,18 @@
 
   // Highlights
   let highlights = $state([]);
+  // Vorübergehende Markierung der Fundstelle, wenn ein Verweis (etwa aus dem Assistenten) den Leser an einer Seite
+  // öffnet (?page=&stelle= bzw. q=): wie eine Markierung des Lesers gezeigt, aber nie gespeichert; sie verschwindet beim
+  // Schließen und sobald man die Seite verlässt.
+  const FUNDSTELLE = "fundstelle";
+  let fundstelleAktiv = $state(untrack(() => !!fundstelle));
+  let fundstelleGerollt = false;
+  $effect(() => {
+    if (fundstelleAktiv && Math.abs(currentPage - initialPage) > 1) {
+      fundstelleAktiv = false;
+      renderAllVisibleHighlights();
+    }
+  });
   let highlighterActive = $state(false);
   let highlightsReloadTrigger = $state(0);
 
@@ -227,6 +240,9 @@
     if (spans.length === 0) return;
 
     const pageHighlights = highlights.filter(h => h.cfi_range === `page:${pageNum}`);
+    if (fundstelleAktiv && pageNum === initialPage) {
+      fundstelleMarkieren(spans);
+    }
     if (pageHighlights.length === 0) return;
 
     for (const hl of pageHighlights) {
@@ -255,6 +271,36 @@
       } else {
         markSpansInRange(spans, spanTexts, matchIdx, matchIdx + normalSnippet.length, bgColor, hl.id);
       }
+    }
+  }
+
+  // Die Fundstelle auf der Seite: verglichen ohne Leerraum (Textebene und Volltext setzen ihn verschieden), vom Anfang
+  // der Stelle her, notfalls mit einem kürzeren Anfang; die erste markierte Zeile rollt einmal in die Mitte.
+  function fundstelleMarkieren(spans) {
+    const roh = fundstelle.replace(/\s+/g, "");
+    if (roh.length < 2) return;
+    const zeichen = [];
+    spans.forEach((s, i) => { for (const c of s.textContent || "") if (!/\s/.test(c)) zeichen.push(i); });
+    const kompakt = spans.map((s) => (s.textContent || "").replace(/\s+/g, "")).join("");
+    let laenge = roh.length;
+    let stelle = kompakt.indexOf(roh);
+    for (const kurz of [60, 30, 15]) {
+      if (stelle >= 0 || roh.length <= kurz) break;
+      stelle = kompakt.indexOf(roh.slice(0, kurz));
+      laenge = Math.min(roh.length, 160);
+    }
+    if (stelle < 0) return;
+    const getroffen = new Set(zeichen.slice(stelle, Math.min(stelle + laenge, zeichen.length)));
+    let erste = null;
+    for (const i of getroffen) {
+      spans[i].style.backgroundColor = "rgba(255, 152, 0, 0.45)";
+      spans[i].style.borderRadius = "2px";
+      spans[i].dataset.highlightId = FUNDSTELLE;
+      erste ??= spans[i];
+    }
+    if (erste && !fundstelleGerollt) {
+      fundstelleGerollt = true;
+      erste.scrollIntoView({ behavior: "auto", block: "center" });
     }
   }
 

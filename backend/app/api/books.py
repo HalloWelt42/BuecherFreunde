@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from backend.app.services.seiten import seiten_aus
+from backend.app.services.seiten import buch_seiten
 from backend.app.core.auth import verify_token, verify_token_query
 from backend.app.core.database import db
 from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate
@@ -1101,20 +1101,15 @@ async def fulltext_search_book(
     import re
 
     book = await db.fetch_one(
-        "SELECT id, hash, page_count FROM books WHERE id = ?", (book_id,)
+        "SELECT id, hash, page_count, file_format FROM books WHERE id = ?", (book_id,)
     )
     if not book:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
 
-    fulltext_path = get_sidecar_path(book["hash"], "fulltext.txt")
-    if not fulltext_path.exists():
+    import asyncio
+    seiten, _gedruckt = await asyncio.to_thread(buch_seiten, book["hash"], book["file_format"], book["page_count"])
+    if not seiten:
         return {"treffer": [], "gesamt": 0, "suchbegriff": q}
-
-    text = fulltext_path.read_text(encoding="utf-8", errors="ignore")
-    if not text:
-        return {"treffer": [], "gesamt": 0, "suchbegriff": q}
-
-    seiten = seiten_aus(text, book["page_count"])
 
     # Suchmuster erstellen
     try:

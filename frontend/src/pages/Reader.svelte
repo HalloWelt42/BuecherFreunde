@@ -29,6 +29,7 @@
       cfi: sp.get("cfi") || "",
       percent: Number(sp.get("percent")) || 0,
       q: sp.get("q") || "",
+      stelle: sp.get("stelle") || "",
       restart: sp.get("restart") === "1",
     };
   }
@@ -112,6 +113,7 @@
         {initialAnsicht}
         {initialPapier}
         {initialZoom}
+        fundstelle={urlParams.stelle || urlParams.q}
         onBack={goBack}
       />
     {:else if book.file_format === "epub" || book.file_format === "mobi"}

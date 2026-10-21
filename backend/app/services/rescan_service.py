@@ -368,16 +368,10 @@ def _extrahiere_volltext(original: Path, fmt: str) -> str | None:
 
     elif fmt == "pdf":
         try:
-            import fitz
-            doc = fitz.open(str(original))
-            parts = []
-            for page in doc:
-                text = page.get_text()
-                if text:
-                    parts.append(text)
-            doc.close()
-            if parts:
-                return "\n\n".join(parts)
+            from backend.app.services.seiten import pdf_volltext
+            text = pdf_volltext(original)
+            if text.strip():
+                return text
         except Exception:
             pass
 
