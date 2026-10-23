@@ -14,4 +14,4 @@ isbnlib==3.10.14
 Wikipedia-API==0.11.0
 requests>=2.31.0
 setuptools>=70.0.0
-appkern[web] @ https://github.com/HalloWelt42/appkern/archive/4e4ae1d8db7c01639d424034a136cb87a04743ef.tar.gz
+appkern[web] @ https://github.com/HalloWelt42/appkern/archive/7491405b0caa22f4cdde42e3388e7b9f4489e518.tar.gz
