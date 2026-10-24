@@ -1,7 +1,7 @@
 # Probelauf des Handbuchs (einrichten.sh --probe), zusätzlich zu docker-compose.yml: das Backend ohne Weg nach draußen.
 # Das Netz "abgeschottet" hat keinen Ausgang; nur die Oberfläche (nginx) hängt zusätzlich am üblichen Netz, damit ihr
 # Port auf diesem Rechner erreichbar ist. So erreicht der Probelauf keine echte Gegenstelle (Kellerwolke, Open Library,
-# LM Studio), gleich was in der .env steht.
+# LM Studio), gleich was in der .env steht. Der Port ist nur an 127.0.0.1 gebunden.
 networks:
   abgeschottet:
     internal: true
@@ -11,3 +11,5 @@ services:
     networks: [abgeschottet]
   frontend:
     networks: [abgeschottet, default]
+    ports: !override
+      - "127.0.0.1:${EXTERNAL_PORT:?}:80"

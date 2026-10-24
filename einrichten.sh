@@ -27,7 +27,7 @@ probe_aufbauen() {
 # Probelauf des Handbuchs: alle Ordner im Probeordner, keine Gegenstellen
 HOST=0.0.0.0
 PORT=8000
-EXTERNAL_PORT=127.0.0.1:$port
+EXTERNAL_PORT=$port
 KELLERWOLKE_URL=
 KELLERWOLKE_CA=
 KELLERWOLKE_SCHLUESSEL_DATEI=
@@ -41,7 +41,10 @@ LM_STUDIO_ENABLED=false
 LOG_LEVEL=info
 EOF
   cd "$ziel/docker"
-  docker compose "${PROBE_COMPOSE[@]}" up -d --build --force-recreate --quiet-pull
+  if ! docker compose "${PROBE_COMPOSE[@]}" up -d --build --force-recreate --quiet-pull; then
+    docker compose "${PROBE_COMPOSE[@]}" logs --tail 40 >&2 || true
+    return 1
+  fi
   local ende=$(( $(date +%s) + WARTEN_S ))
   while [ "$(date +%s)" -lt "$ende" ]; do
     if curl -sf "http://127.0.0.1:$port/api/health" >/dev/null; then

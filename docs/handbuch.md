@@ -12,7 +12,7 @@ schluessel_orte:
   - "Pi: `/home/pi/BuecherFreunde/zugang/kellerwolke.schluessel`, Modus 0600 (App-Zugang der Kellerwolke) und `zugang/hausstelle.pem`"
   - "Pi: `/home/pi/BuecherFreunde/.env` (Ordner, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
 einrichten: einrichten.sh
-stand: df46dae
+stand: 0d12e43
 ---
 
 # BücherFreunde
