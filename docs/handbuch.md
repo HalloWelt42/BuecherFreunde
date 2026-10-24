@@ -3,16 +3,16 @@ zweck: "Die Bücherverwaltung des Hauses: Bibliothek mit Lesern für PDF und EPU
 geraet: [pi]
 abhaengigkeiten: [kellerwolke]
 daten:
-  - "Pi: Datenbank `/home/pi/BuecherFreunde/docker/database/buecherfreunde.db` (rund 575 MB, Bücher, Volltext, Markierungen, Notizen, Einstellungen)"
-  - "Pi: Bücher-Speicher `/mnt/data/buecher` (rund 23 GB, je Buch ein Ordner mit Datei, Umschlag und Metadaten), Import-Ordner `docker/import`, Sammlung nur lesend `/mnt/data/calibre_sammlung`"
+  - "Pi: Datenbank `{{umgebung:DATABASE_DIR}}/buecherfreunde.db` (rund 575 MB, Bücher, Volltext, Markierungen, Notizen, Einstellungen)"
+  - "Pi: Bücher-Speicher `{{umgebung:STORAGE_DIR}}` (rund 23 GB, je Buch ein Ordner mit Datei, Umschlag und Metadaten), Import-Ordner `{{umgebung:IMPORT_DIR}}`, Sammlung nur lesend `{{umgebung:EXTERNAL_DIR}}`"
 sicherung:
   - "die Datenbank sichert nur `update.sh` vor einem Update nach `docker/database/backups`; seit dem 22.03.2026 ist dort nichts Neues entstanden (Stand 24.10.2026). Das Werkzeug Sicherungen holt den Ordner nach `~/Sicherungen/buecherfreunde/pi` und meldet ihn als veraltet"
   - "der Bücher-Speicher wird nicht gesichert (Stand 24.10.2026)"
 schluessel_orte:
-  - "Pi: `/home/pi/BuecherFreunde/zugang/kellerwolke.schluessel`, Modus 0600 (App-Zugang der Kellerwolke) und `zugang/hausstelle.pem`"
-  - "Pi: `/home/pi/BuecherFreunde/.env` (Ordner, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
+  - "Pi: `{{wurzel}}/zugang/kellerwolke.schluessel`, Modus 0600 (App-Zugang der Kellerwolke) und `zugang/hausstelle.pem`"
+  - "Pi: `{{wurzel}}/.env` (Ordner, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
 einrichten: einrichten.sh
-stand: 0d12e43
+stand: 396585d
 ---
 
 # BücherFreunde
@@ -30,7 +30,7 @@ Auf dem Pi laufen zwei Container aus `docker/docker-compose.yml`: das Backend (F
 
 ## Was sie braucht
 
-- Pi nach [[Grundlage Pi]] mit Docker und Platz für die Bücher unter `/mnt/data`.
+- Pi nach [[Grundlage Pi]] mit Docker und Platz für den Bücher-Speicher `{{umgebung:STORAGE_DIR}}`.
 - [[Kellerwolke]]: Konto zum Anmelden und ein App-Zugang für BücherFreunde, als Datei `zugang/kellerwolke.schluessel`
   mit der Hausstelle `zugang/hausstelle.pem`.
 - Ohne sie läuft sie weiter, ihr fehlt nur die Fähigkeit: LM Studio für die Einordnung nach Kategorien, Open Library und
@@ -45,23 +45,23 @@ liegen im Bücher-Speicher oder in der Sammlung).
 ### 1. Klon auf dem Pi
 
 ```
-git clone -b dev {{repo}} /home/pi/BuecherFreunde
+git clone -b dev {{repo}} {{wurzel}}
 ```
 
-Probe: `git -C /home/pi/BuecherFreunde branch --show-current` meldet `dev`.
+Probe: `git -C {{wurzel}} branch --show-current` meldet `dev`.
 
 ### 2. Zugang zur Kellerwolke
 
 Aus der Sicherung den Ordner `zugang/` zurückspielen. Frisch auf dem Rechner der [[Kellerwolke]] den App-Zugang
-anlegen (`tools/app_zugang.py --konto <konto> --app BücherFreunde --datei /home/pi/BuecherFreunde/zugang/kellerwolke.schluessel`
+anlegen (`tools/app_zugang.py --konto <konto> --app BücherFreunde --datei {{wurzel}}/zugang/kellerwolke.schluessel`
 im Klon der Kellerwolke) und die Hausstelle als `zugang/hausstelle.pem` daneben legen.
 
-Probe: `stat -c %a /home/pi/BuecherFreunde/zugang/kellerwolke.schluessel` meldet 600.
+Probe: `stat -c %a {{wurzel}}/zugang/kellerwolke.schluessel` meldet 600.
 
 ### 3. Einrichten und starten
 
-`./einrichten.sh` ruft `./install.sh`: fragt Bücher-Speicher (`/mnt/data/buecher`), Import-Ordner, Datenbank-Ordner,
-Sammlung (`/mnt/data/calibre_sammlung`), Port und Adresse der Kellerwolke ab und schreibt die `.env` (nur, wenn keine da
+`./einrichten.sh` ruft `./install.sh`: fragt Bücher-Speicher (`{{umgebung:STORAGE_DIR}}`), Import-Ordner, Datenbank-Ordner,
+Sammlung (`{{umgebung:EXTERNAL_DIR}}`), Port und Adresse der Kellerwolke ({{umgebung:KELLERWOLKE_URL}}) ab und schreibt die `.env` (nur, wenn keine da
 ist; aus der Sicherung die alte `.env` vorher zurücklegen), baut und startet die Container und bietet den systemd-Dienst
 `buecherfreunde` für den Start mit dem Pi an. Aus der Sicherung die Datenbank vor dem ersten Start in den
 Datenbank-Ordner legen.

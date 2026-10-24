@@ -63,7 +63,7 @@ if [ ! -f .env ]; then
     read -rp "Port für den Webzugriff [8160]: " PORT
     PORT="${PORT:-8160}"
 
-    read -rp "Adresse der Kellerwolke (etwa https://192.168.178.49:39280): " KELLERWOLKE
+    read -rp "Adresse der Kellerwolke (etwa https://192.168.1.20:39280): " KELLERWOLKE
 
     # LM Studio
     echo ""
