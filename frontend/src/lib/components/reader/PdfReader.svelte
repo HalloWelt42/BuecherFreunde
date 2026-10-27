@@ -592,12 +592,14 @@
     textEinstellungen = false;
     if (!textansicht.an) {
       // Die Originalseiten waren ausgeblendet: Seitenbreite neu bestimmen, dann an die gelesene Seite
+      // Ziel vorher merken: beim Neuzeichnen meldet der Beobachter kurz die oberste Seite der Fläche
+      const ziel = currentPage;
       requestAnimationFrame(async () => {
         if (ansicht === "breite") {
           scale = berechneAutoScale("breite");
           await reRenderAll();
         }
-        goToPage(currentPage);
+        goToPage(ziel);
       });
     }
   }
