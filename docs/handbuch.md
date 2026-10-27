@@ -12,7 +12,7 @@ schluessel_orte:
   - "Pi: `{{wurzel}}/zugang/kellerwolke.schluessel`, Modus 0600 (App-Zugang der Kellerwolke) und `zugang/hausstelle.pem`"
   - "Pi: `{{wurzel}}/.env` (Ordner, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
 einrichten: einrichten.sh
-stand: 396585d
+stand: 476af81
 ---
 
 # BücherFreunde
@@ -96,4 +96,8 @@ anhalten, Kopie als `buecherfreunde.db` ablegen (alte `-wal` und `-shm` entferne
 - Die Datenbank gehört root (der Container schreibt als root); Kopien und Rückspielen auf dem Pi mit `sudo`.
 - Anmelden geht nicht: der App-Zugang fehlt (`zugang/kellerwolke.schluessel`) oder die Adresse der Kellerwolke in der
   `.env` stimmt nicht; das Backend meldet beim Start "Kein App-Zugang der Kellerwolke".
-- Der Browser zeigt nach einem Update den alten Stand: die Startseite wird nie zwischengespeichert; einmal neu laden.
+- Nach einem Update lädt die Seite die neue Fassung von selbst (Vergleich mit `/api/config/version`; nie während
+  Vorlesen oder Hochladen). Dafür müssen Backend und Oberfläche zusammen neu gebaut werden, sonst meldet das Backend
+  die alte Fassung und die Seite zeigt nur das Band "Jetzt neu laden".
+- Das Symbol entsteht aus `frontend/public/symbol.svg`; nach einer Änderung `python3 tools/symbole.py` (braucht
+  cairosvg und Pillow auf dem Mac) und die erzeugten Bilder mit einchecken.

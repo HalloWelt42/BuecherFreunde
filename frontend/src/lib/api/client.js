@@ -214,13 +214,25 @@ export async function del(path) {
  * @param {FormData} formData
  * @returns {Promise<*>}
  */
+let laufendeUploads = 0;
+
+/** Läuft gerade ein Hochladen? (dann lädt die Seite für eine neue Fassung nicht neu) */
+export function hochladenLaeuft() {
+  return laufendeUploads > 0;
+}
+
 export async function upload(path, formData) {
-  const response = await baseFetch(path, {
-    method: "POST",
-    body: formData,
-    // Content-Type wird automatisch mit Boundary gesetzt
-  });
-  return response.json();
+  laufendeUploads++;
+  try {
+    const response = await baseFetch(path, {
+      method: "POST",
+      body: formData,
+      // Content-Type wird automatisch mit Boundary gesetzt
+    });
+    return response.json();
+  } finally {
+    laufendeUploads--;
+  }
 }
 
 /**

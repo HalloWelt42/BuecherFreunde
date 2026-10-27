@@ -9,6 +9,7 @@
   import Login from "./lib/components/auth/Login.svelte";
   import TelefonApp from "./lib/telefon/TelefonApp.svelte";
   import { geraet } from "./lib/stores/geraet.svelte.js";
+  import { fassung, fassungVerfolgen, vielleichtNeuLaden } from "./lib/fassung.svelte.js";
   import Toast from "./lib/components/ui/Toast.svelte";
 
   import Library from "./pages/Library.svelte";
@@ -22,6 +23,16 @@
   import Settings from "./pages/Settings.svelte";
 
   let showLogin = $state(!hasToken());
+
+  // Neue Fassung auf dem Server: von selbst neu laden (Start, Ortswechsel, Fenster wieder vorn)
+  $effect(() => fassungVerfolgen());
+  let letzterPfad = route.path;
+  $effect(() => {
+    if (route.path !== letzterPfad) {
+      letzterPfad = route.path;
+      vielleichtNeuLaden("ortswechsel");
+    }
+  });
 
   onAuthError(() => {
     showLogin = true;
@@ -115,7 +126,46 @@
 {/if}
 <Toast />
 
+{#if fassung.neu}
+  <div class="neue-fassung" role="status">
+    <span>Neue Fassung {fassung.neu} bereit</span>
+    <button onclick={() => location.reload()}>Jetzt neu laden</button>
+  </div>
+{/if}
+
 <style>
+  .neue-fassung {
+    position: fixed;
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    z-index: 10001;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: calc(100% - 2rem);
+    padding: 0.5rem 0.5rem 0.5rem 1rem;
+    border-radius: 12px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    font-size: 15px;
+    color: var(--color-text-primary);
+  }
+
+  .neue-fassung button {
+    flex-shrink: 0;
+    height: 40px;
+    padding: 0 0.875rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--color-accent);
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
   .app-layout {
     display: grid;
     grid-template-areas:

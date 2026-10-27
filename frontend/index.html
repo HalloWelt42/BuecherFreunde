@@ -3,9 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="BuecherFreunde - Buchverwaltung" />
-    <title>BuecherFreunde</title>
+    <meta name="description" content="BücherFreunde - Buchverwaltung" />
+    <title>BücherFreunde</title>
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Bücher" />
+    <!-- Symbolsatz aus public/symbol.svg (tools/symbole.py). apple-touch-icon und die Manifest-Symbole bettet der Bau
+         als data:-Adresse ein (vite.config.js), nur so zeigt das iPhone das Symbol auf dem Home-Bildschirm. -->
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
   </head>
   <body>
     <div id="app"></div>

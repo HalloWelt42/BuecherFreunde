@@ -5,6 +5,8 @@ WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ .
+# Fassung für den Vergleich mit dem Server (vite.config.js liest ../VERSION)
+COPY VERSION /VERSION
 RUN npm run build
 
 # Serve-Stage
