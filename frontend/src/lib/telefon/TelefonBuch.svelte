@@ -66,7 +66,7 @@
     </div>
 
     <a class="lesen" href="/book/{buch.id}/read">
-      <i class="fa-solid fa-book-open-reader"></i>
+      <i class="fa-solid fa-book-open"></i>
       {angefangen ? `Weiterlesen${prozent > 0 ? ` (${prozent} %)` : ""}` : "Lesen"}
     </a>
     {#if angefangen}
@@ -120,7 +120,7 @@
     min-height: 0;
     overflow-y: auto;
     overflow-x: clip;
-    padding: 1rem 1rem 2rem;
+    padding: 1rem max(1rem, calc((100% - var(--lesbreite)) / 2)) 2rem;
   }
 
   .meldung {

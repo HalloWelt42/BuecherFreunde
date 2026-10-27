@@ -1,6 +1,6 @@
 <script>
-  // Eigene Oberfläche fürs Telefon: Suche, Buch und Leser. Alles Weitere (Verwaltung, Import, Einstellungen) bleibt am
-  // Rechner; solche Adressen zeigen hier einen kurzen Hinweis.
+  // Eigene Oberfläche für Telefon und Tablet: Suche, Buch und Leser. Alles Weitere (Verwaltung, Import,
+  // Einstellungen) bleibt am Rechner; solche Adressen zeigen hier einen kurzen Hinweis.
   import { route, matchRoute } from "../router.svelte.js";
   import Reader from "../../pages/Reader.svelte";
   import TelefonSuche from "./TelefonSuche.svelte";
@@ -31,6 +31,7 @@
 
 <style>
   .telefon {
+    --lesbreite: 720px;
     height: 100vh;
     height: 100dvh;
     display: flex;

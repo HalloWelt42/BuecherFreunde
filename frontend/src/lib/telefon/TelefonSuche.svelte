@@ -138,7 +138,7 @@
                   <span class="fortschritt"><span style="width: {prozent}%"></span></span>
                 {/if}
               </div>
-              <i class="fa-solid fa-book-open-reader lesen-zeichen"></i>
+              <i class="fa-solid fa-book-open lesen-zeichen"></i>
             </a>
           </li>
         {/each}
@@ -167,7 +167,8 @@
 <style>
   .kopf {
     flex-shrink: 0;
-    padding: calc(0.75rem + env(safe-area-inset-top)) 1rem 0.75rem;
+    /* auf breiten Bildschirmen (Tablet, Telefon quer) mittig in lesbarer Breite */
+    padding: calc(0.75rem + env(safe-area-inset-top)) max(1rem, calc((100% - var(--lesbreite)) / 2)) 0.75rem;
     background: var(--color-bg-secondary);
     border-bottom: 1px solid var(--color-border);
   }
@@ -221,7 +222,7 @@
     min-height: 0;
     overflow-y: auto;
     overflow-x: clip;
-    padding: 0.5rem 1rem 2rem;
+    padding: 0.5rem max(1rem, calc((100% - var(--lesbreite)) / 2)) 2rem;
   }
 
   .abschnitt {
