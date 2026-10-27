@@ -207,6 +207,11 @@
 
   function injectCSS(doc) {
     if (!doc) return;
+    // Silbentrennung braucht die Sprache; fehlt sie im Kapitel, gilt die des Buchs (sonst Deutsch)
+    if (!doc.documentElement.lang) {
+      const sprache = view?.book?.metadata?.language;
+      doc.documentElement.lang = (Array.isArray(sprache) ? sprache[0] : sprache) || "de";
+    }
     let styleEl = doc.getElementById("bf-reader-styles");
     if (!styleEl) {
       styleEl = doc.createElement("style");
@@ -243,6 +248,7 @@
       ${transparentRules}
       a { color: ${fgColor} !important; text-decoration: underline !important; }
       img, svg, video, canvas { max-width: 100% !important; height: auto !important; }
+      p, li, blockquote { hyphens: auto; -webkit-hyphens: auto; }
     `;
   }
 
