@@ -373,12 +373,10 @@
           }
         }
 
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .map((e) => Number(e.target.dataset.page))
-          .sort((a, b) => a - b);
-        if (visible.length > 0 && visible[0] !== currentPage) {
-          currentPage = visible[0];
+        // Aktuell ist die oberste wirklich sichtbare Seite, nicht die erste im Vorlade-Saum (rootMargin)
+        const oberste = obersteSichtbareSeite();
+        if (oberste && oberste !== currentPage) {
+          currentPage = oberste;
           savePosition();
         }
       },
@@ -389,6 +387,16 @@
     for (const w of wrappers) {
       observer.observe(w);
     }
+  }
+
+  function obersteSichtbareSeite() {
+    const flaeche = scrollContainer.getBoundingClientRect();
+    if (flaeche.height === 0) return null;
+    for (const w of scrollContainer.querySelectorAll(".page-wrapper")) {
+      const r = w.getBoundingClientRect();
+      if (r.bottom > flaeche.top + 1) return r.top < flaeche.bottom ? Number(w.dataset.page) : null;
+    }
+    return null;
   }
 
   async function renderPageIfNeeded(pageNum) {
