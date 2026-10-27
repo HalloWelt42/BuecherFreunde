@@ -171,6 +171,9 @@
     for (const { doc } of contents) {
       injectCSS(doc);
     }
+    // Die Blätterkomponente malt die Seitenränder mit dem beim Laden gemerkten Hintergrund; setStyles lässt sie
+    // ihn neu aus --theme-bg-color nehmen
+    view.renderer.setStyles?.("");
     // Container-Hintergrund (Rand)
     if (containerEl) {
       containerEl.style.backgroundColor = effektiverRandBg;
@@ -210,7 +213,10 @@
       styleEl.id = "bf-reader-styles";
       doc.head.appendChild(styleEl);
     }
-    const fontDecl = fontFamily ? `font-family: ${fontFamily} !important;` : "";
+    // Die gewählte Schrift gilt für allen Text, auch wo das Buch eigene Schriften setzt; Code bleibt, wie er ist
+    const fontRule = fontFamily ? `
+      body, body *:not(pre):not(code):not(kbd):not(samp):not(pre *) { font-family: ${fontFamily} !important; }
+    ` : "";
     // Blatthintergrund: transparent oder gewählte Farbe
     const blattBg = effektiverBlattBg;
     // Bei transparentem Blatt: alle Container-Hintergründe im EPUB entfernen
@@ -222,13 +228,14 @@
     ` : "";
     styleEl.textContent = `
       ${leseschriftenCss()}
+      html { --theme-bg-color: ${blattBg}; }
       html, body {
         color: ${fgColor} !important;
         background-color: ${blattBg} !important;
         font-size: ${fontSize}% !important;
         line-height: ${lineHeight} !important;
-        ${fontDecl}
       }
+      ${fontRule}
       * {
         color: inherit !important;
         border-color: ${fgColor}33 !important;
