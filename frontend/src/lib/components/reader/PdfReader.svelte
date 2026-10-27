@@ -14,6 +14,8 @@
   import ReaderNotes from "./ReaderNotes.svelte";
   import Vorlesen from "./Vorlesen.svelte";
   import TelefonLeseleiste from "../../telefon/TelefonLeseleiste.svelte";
+  import PdfTextansicht from "../../telefon/PdfTextansicht.svelte";
+  import { textansicht } from "../../telefon/textansicht.svelte.js";
 
   let {
     bookId,
@@ -514,6 +516,11 @@
   }
 
   function zoomOut() {
+    // Telefon: beim Verkleinern rastet die Seitenbreite ein, statt darunter weiterzugehen
+    if (telefon && naechsterZoom(-1) <= berechneAutoScale("breite")) {
+      setAnsicht("breite");
+      return;
+    }
     ansicht = "scroll";
     scale = naechsterZoom(-1);
     reRenderAll();
@@ -573,6 +580,19 @@
     } else {
       goToPage(currentPage + 1);
     }
+  }
+
+  // Telefon: zwischen Originalseiten und Fließtext wechseln; zurück im Original an derselben Seite
+  let textModus = $derived(telefon && textansicht.an);
+
+  function textUmschalten() {
+    textansicht.umschalten();
+    if (!textansicht.an) requestAnimationFrame(() => goToPage(currentPage));
+  }
+
+  function textSeiteGelesen(nr) {
+    currentPage = nr;
+    savePosition();
   }
 
   function togglePapierModus() {
@@ -745,6 +765,7 @@
     class:modus-einzeln={ansicht === "einzeln"}
     class:modus-doppel={ansicht === "doppel"}
     class:telefon
+    class:verborgen={textModus}
     bind:this={scrollContainer}
   >
     {#if ansicht === "einzeln" || ansicht === "doppel"}
@@ -942,25 +963,42 @@
     {#if telefon}
       <TelefonLeseleiste titel={title} stand="Seite {currentPage} von {totalPages}" {onBack}>
         {#snippet werkzeuge()}
-          <button onclick={prevPage} disabled={currentPage <= 1} aria-label="Vorherige Seite">
-            <i class="fa-solid fa-chevron-left"></i>
+          <button class="umschalter" class:aktiv={textModus} onclick={textUmschalten}
+            aria-label={textModus ? "Originalseiten zeigen" : "Als Fließtext lesen"}>
+            <i class="fa-solid {textModus ? 'fa-file-pdf' : 'fa-align-left'}"></i>
+            <span>{textModus ? "Original" : "Text"}</span>
           </button>
-          <button onclick={zoomOut} disabled={scale <= 0.5} aria-label="Verkleinern">
-            <i class="fa-solid fa-magnifying-glass-minus"></i>
-          </button>
-          <button class:aktiv={ansicht === "breite"} onclick={() => setAnsicht("breite")} aria-label="Seitenbreite">
-            <i class="fa-solid fa-arrows-left-right"></i>
-          </button>
-          <button onclick={zoomIn} disabled={scale >= 3.0} aria-label="Vergrößern">
-            <i class="fa-solid fa-magnifying-glass-plus"></i>
-          </button>
-          <button class:aktiv={papierModus !== "normal"} onclick={togglePapierModus} aria-label="Papier wechseln">
-            <i class="fa-solid fa-circle-half-stroke"></i>
-          </button>
-          <button onclick={nextPage} disabled={currentPage >= totalPages} aria-label="Nächste Seite">
-            <i class="fa-solid fa-chevron-right"></i>
-          </button>
+          {#if textModus}
+            <button onclick={() => textansicht.kleiner()} disabled={!textansicht.kannKleiner} aria-label="Schrift kleiner">
+              <i class="fa-solid fa-font" style="font-size: 0.8em"></i>
+            </button>
+            <button onclick={() => textansicht.groesser()} disabled={!textansicht.kannGroesser} aria-label="Schrift größer">
+              <i class="fa-solid fa-font" style="font-size: 1.2em"></i>
+            </button>
+            <button onclick={() => textansicht.naechstesThema()} aria-label="Farbthema wechseln">
+              <i class="fa-solid {textansicht.thema.icon}"></i>
+            </button>
+          {:else}
+            <button onclick={prevPage} disabled={currentPage <= 1} aria-label="Vorherige Seite">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button onclick={zoomOut} disabled={ansicht === "breite"} aria-label="Verkleinern">
+              <i class="fa-solid fa-magnifying-glass-minus"></i>
+            </button>
+            <button onclick={zoomIn} disabled={scale >= 3.0} aria-label="Vergrößern">
+              <i class="fa-solid fa-magnifying-glass-plus"></i>
+            </button>
+            <button class:aktiv={papierModus !== "normal"} onclick={togglePapierModus} aria-label="Papier wechseln">
+              <i class="fa-solid fa-circle-half-stroke"></i>
+            </button>
+            <button onclick={nextPage} disabled={currentPage >= totalPages} aria-label="Nächste Seite">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          {/if}
         {/snippet}
+        {#if textModus}
+          <PdfTextansicht {bookId} startSeite={currentPage} onSeite={textSeiteGelesen} onOriginal={textUmschalten} />
+        {/if}
         {@render seiten()}
       </TelefonLeseleiste>
     {:else}
@@ -1211,6 +1249,10 @@
   }
 
   /* Telefon: schmaler Rand, damit die Seite die Breite nutzt; "safe" hält vergrößerte Seiten links erreichbar */
+  .scroll-container.verborgen {
+    display: none;
+  }
+
   .scroll-container.telefon {
     padding: 4px;
     gap: 4px;

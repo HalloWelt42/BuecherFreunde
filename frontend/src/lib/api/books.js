@@ -72,6 +72,17 @@ export function bulkAction(bookIds, aktion, wert) {
 }
 
 /**
+ * Seiten eines Buchs als Fließtext (Textansicht eines PDF).
+ * @param {number} id
+ * @param {number} ab - erste Dateiseite
+ * @param {number} anzahl
+ * @returns {Promise<{gesamt: number, seiten: {nr: number, gedruckt: string, absaetze: string[]}[]}>}
+ */
+export function textSeiten(id, ab, anzahl) {
+  return get(`/api/books/${id}/textseiten`, { ab, anzahl });
+}
+
+/**
  * Cover-URL für ein Buch.
  * @param {number} id
  * @returns {string}

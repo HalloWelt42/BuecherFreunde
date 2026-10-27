@@ -14,6 +14,8 @@ from backend.app.services.seiten import buch_seiten
 from backend.app.core.auth import verify_token, verify_token_query
 from backend.app.core.database import db
 from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate
+from backend.app.models.textansicht import TextSeite, TextSeitenAntwort
+from backend.app.services.textansicht import absaetze, wiederkehrende_randzeilen
 from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover, save_fulltext
 
 router = APIRouter(prefix="/api/books", tags=["Bücher"])
@@ -1082,6 +1084,27 @@ async def rescan_kategorien(
     from backend.app.services import rescan_service
     typ_liste = [t.strip() for t in typen.split(",") if t.strip()]
     return await rescan_service.vorschau_kategorien(typ_liste, manuell_einschliessen)
+
+
+@router.get("/{book_id}/textseiten", response_model=TextSeitenAntwort)
+async def text_seiten(
+    book_id: int,
+    ab: int = Query(1, ge=1, description="Erste Dateiseite"),
+    anzahl: int = Query(10, ge=1, le=50),
+    _token: str = Depends(verify_token),
+):
+    """Seiten eines Buchs als Fließtext für die Textansicht (feste Zeilen zu Absätzen, ohne Kopf- und Fußzeilen)."""
+    book = await db.fetch_one("SELECT hash, page_count, file_format FROM books WHERE id = ?", (book_id,))
+    if not book:
+        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+    seiten, gedruckt = await asyncio.to_thread(buch_seiten, book["hash"], book["file_format"], book["page_count"])
+    wiederkehrend = await asyncio.to_thread(wiederkehrende_randzeilen, seiten)
+    ausschnitt = range(ab, min(ab + anzahl, len(seiten) + 1))
+    return TextSeitenAntwort(
+        gesamt=len(seiten),
+        seiten=[TextSeite(nr=nr, gedruckt=gedruckt[nr - 1], absaetze=absaetze(seiten[nr - 1], wiederkehrend))
+                for nr in ausschnitt],
+    )
 
 
 @router.get("/{book_id}/volltext-suche")

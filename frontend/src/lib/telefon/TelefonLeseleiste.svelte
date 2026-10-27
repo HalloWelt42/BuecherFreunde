@@ -154,6 +154,13 @@
     font-size: 1.0625rem;
   }
 
+  .unten :global(button.umschalter) {
+    padding: 0 0.75rem;
+    font-size: 15px;
+    font-weight: 600;
+    border: 1px solid var(--color-border);
+  }
+
   .unten :global(button:disabled) {
     opacity: 0.35;
   }
