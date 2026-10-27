@@ -96,7 +96,7 @@
   <button class="abbildung" onclick={() => (lupe = { quelle: textBildUrl(bookId, seite.nr, b.bild), beschreibung })}
     aria-label="Abbildung vergrößern">
     <img src={textBildUrl(bookId, seite.nr, b.bild)} alt={beschreibung} loading="lazy"
-      style:aspect-ratio={b.verhaeltnis || "auto"} />
+      style:aspect-ratio={b.verhaeltnis || "auto"} style:width={b.breite_em ? `${b.breite_em}em` : null} />
   </button>
 {/snippet}
 
@@ -220,6 +220,7 @@
     cursor: zoom-in;
   }
 
+  /* Breite in em: wächst mit der eingestellten Schriftgröße, höchstens bis zur Spaltenbreite */
   .abbildung img {
     display: block;
     max-width: 100%;

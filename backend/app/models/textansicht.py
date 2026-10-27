@@ -8,8 +8,9 @@ from pydantic import BaseModel, Field
 
 
 class TextBaustein(BaseModel):
-    """Ein Baustein einer Seite. Abbildungen tragen ihre Nummer auf der Seite (Bild-Endpunkt) und das Seitenverhältnis,
-    damit die Oberfläche den Platz freihält, bevor das Bild geladen ist."""
+    """Ein Baustein einer Seite. Abbildungen tragen ihre Nummer auf der Seite (Bild-Endpunkt), das Seitenverhältnis
+    (damit die Oberfläche den Platz freihält, bevor das Bild geladen ist) und ihre Breite im Verhältnis zur Schrift des
+    Fließtexts, damit Formeln und Abbildungen mit der eingestellten Schriftgröße mitwachsen."""
 
     art: Literal["absatz", "ueberschrift", "unterschrift", "kasten", "bild"]
     text: str = ""
@@ -17,6 +18,7 @@ class TextBaustein(BaseModel):
     inhalt: list[TextBaustein] = Field(default_factory=list)
     bild: int | None = None
     verhaeltnis: float | None = None
+    breite_em: float | None = None
 
 
 class TextSeite(BaseModel):

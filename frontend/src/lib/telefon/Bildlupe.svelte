@@ -150,7 +150,7 @@
     z-index: 10000;
     display: flex;
     flex-direction: column;
-    background: rgba(0, 0, 0, 0.92);
+    background: #000;
   }
 
   .flaeche {

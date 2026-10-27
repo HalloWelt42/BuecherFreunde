@@ -1089,7 +1089,7 @@ async def rescan_kategorien(
 def _baustein(b: Baustein) -> TextBaustein:
     verhaeltnis = round(b.rechteck.width / b.rechteck.height, 4) if b.rechteck and b.rechteck.height else None
     return TextBaustein(art=b.art, text=b.text, titel=b.titel, inhalt=[_baustein(t) for t in b.inhalt],
-                        bild=b.bild, verhaeltnis=verhaeltnis)
+                        bild=b.bild, verhaeltnis=verhaeltnis, breite_em=b.breite_em)
 
 
 async def _pdf_zum_lesen(book_id: int) -> tuple[dict, Path]:

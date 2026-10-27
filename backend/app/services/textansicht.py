@@ -72,6 +72,7 @@ class Baustein:
     inhalt: list[Baustein] = field(default_factory=list)   # Absätze und Bilder eines Kastens
     rechteck: fitz.Rect | None = None
     bild: int | None = None     # Nummer der Abbildung auf der Seite (Bild-Endpunkt)
+    breite_em: float | None = None  # Breite einer Abbildung in Schriftgrößen des Fließtexts
 
 
 @dataclass
@@ -303,6 +304,7 @@ def seitenaufbau(seite: fitz.Page) -> list[Baustein]:
         for teil in [b, *b.inhalt]:
             if teil.art == "bild":
                 teil.bild = nummer
+                teil.breite_em = round(teil.rechteck.width / fliesstext, 2) if fliesstext else None
                 nummer += 1
     return bausteine
 
