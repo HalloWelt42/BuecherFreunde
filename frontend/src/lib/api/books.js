@@ -72,14 +72,25 @@ export function bulkAction(bookIds, aktion, wert) {
 }
 
 /**
- * Seiten eines Buchs als Fließtext (Textansicht eines PDF).
+ * Seiten eines PDF als Bausteine der Textansicht (Absätze, Überschriften, Kästen, Abbildungen).
  * @param {number} id
  * @param {number} ab - erste Dateiseite
  * @param {number} anzahl
- * @returns {Promise<{gesamt: number, seiten: {nr: number, gedruckt: string, absaetze: string[]}[]}>}
+ * @returns {Promise<{gesamt: number, seiten: {nr: number, gedruckt: string, bausteine: object[]}[]}>}
  */
 export function textSeiten(id, ab, anzahl) {
   return get(`/api/books/${id}/textseiten`, { ab, anzahl });
+}
+
+/**
+ * Adresse einer Abbildung der Textansicht (Ausschnitt der Originalseite als PNG).
+ * @param {number} id
+ * @param {number} seite - Dateiseite
+ * @param {number} nr - Nummer der Abbildung auf der Seite
+ * @returns {string}
+ */
+export function textBildUrl(id, seite, nr) {
+  return `/api/books/${id}/textseiten/${seite}/bild/${nr}?token=${encodeURIComponent(getToken())}`;
 }
 
 /**

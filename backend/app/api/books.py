@@ -14,8 +14,8 @@ from backend.app.services.seiten import buch_seiten
 from backend.app.core.auth import verify_token, verify_token_query
 from backend.app.core.database import db
 from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate
-from backend.app.models.textansicht import TextSeite, TextSeitenAntwort
-from backend.app.services.textansicht import absaetze, wiederkehrende_randzeilen
+from backend.app.models.textansicht import TextBaustein, TextSeite, TextSeitenAntwort
+from backend.app.services.textansicht import Baustein, abbildung_png, seiten_lesen
 from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover, save_fulltext
 
 router = APIRouter(prefix="/api/books", tags=["Bücher"])
@@ -1086,25 +1086,52 @@ async def rescan_kategorien(
     return await rescan_service.vorschau_kategorien(typ_liste, manuell_einschliessen)
 
 
+def _baustein(b: Baustein) -> TextBaustein:
+    verhaeltnis = round(b.rechteck.width / b.rechteck.height, 4) if b.rechteck and b.rechteck.height else None
+    return TextBaustein(art=b.art, text=b.text, titel=b.titel, inhalt=[_baustein(t) for t in b.inhalt],
+                        bild=b.bild, verhaeltnis=verhaeltnis)
+
+
+async def _pdf_zum_lesen(book_id: int) -> tuple[dict, Path]:
+    book = await db.fetch_one("SELECT hash, page_count, file_format FROM books WHERE id = ?", (book_id,))
+    if not book:
+        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+    if (book["file_format"] or "").lower() != "pdf":
+        raise HTTPException(status_code=422, detail="Die Textansicht gibt es nur für PDF")
+    pfad = get_original_file(book["hash"])
+    if pfad is None:
+        raise HTTPException(status_code=404, detail="Datei nicht gefunden")
+    return dict(book), pfad
+
+
 @router.get("/{book_id}/textseiten", response_model=TextSeitenAntwort)
 async def text_seiten(
     book_id: int,
     ab: int = Query(1, ge=1, description="Erste Dateiseite"),
-    anzahl: int = Query(10, ge=1, le=50),
+    anzahl: int = Query(6, ge=1, le=30),
     _token: str = Depends(verify_token),
 ):
-    """Seiten eines Buchs als Fließtext für die Textansicht (feste Zeilen zu Absätzen, ohne Kopf- und Fußzeilen)."""
-    book = await db.fetch_one("SELECT hash, page_count, file_format FROM books WHERE id = ?", (book_id,))
-    if not book:
-        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
-    seiten, gedruckt = await asyncio.to_thread(buch_seiten, book["hash"], book["file_format"], book["page_count"])
-    wiederkehrend = await asyncio.to_thread(wiederkehrende_randzeilen, seiten)
-    ausschnitt = range(ab, min(ab + anzahl, len(seiten) + 1))
+    """Seiten eines PDF als Bausteine für die Textansicht: umfließende Absätze, Überschriften, Kästen und Abbildungen
+    (über den Bild-Endpunkt), ohne Kopf- und Fußzeilen."""
+    book, pfad = await _pdf_zum_lesen(book_id)
+    gesamt, seiten = await asyncio.to_thread(seiten_lesen, pfad, ab, anzahl)
+    _texte, gedruckt = await asyncio.to_thread(buch_seiten, book["hash"], book["file_format"], book["page_count"])
     return TextSeitenAntwort(
-        gesamt=len(seiten),
-        seiten=[TextSeite(nr=nr, gedruckt=gedruckt[nr - 1], absaetze=absaetze(seiten[nr - 1], wiederkehrend))
-                for nr in ausschnitt],
+        gesamt=gesamt,
+        seiten=[TextSeite(nr=nr, gedruckt=gedruckt[nr - 1] if nr <= len(gedruckt) else "",
+                          bausteine=[_baustein(b) for b in bausteine])
+                for nr, bausteine in seiten],
     )
+
+
+@router.get("/{book_id}/textseiten/{seite}/bild/{nr}")
+async def text_seiten_bild(book_id: int, seite: int, nr: int, _token: str = Depends(verify_token_query)):
+    """Abbildung `nr` einer Seite der Textansicht als PNG (Ausschnitt der Originalseite)."""
+    _book, pfad = await _pdf_zum_lesen(book_id)
+    png = await asyncio.to_thread(abbildung_png, pfad, seite, nr)
+    if png is None:
+        raise HTTPException(status_code=404, detail="Abbildung nicht gefunden")
+    return Response(content=png, media_type="image/png", headers={"Cache-Control": "private, max-age=604800"})
 
 
 @router.get("/{book_id}/volltext-suche")

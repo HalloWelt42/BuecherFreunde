@@ -23,7 +23,9 @@ BücherFreunde verwaltet die Bücher des Hauses: Bibliothek mit Filtern, Kategor
 Textschicht und Markierungen), EPUB und Markdown, Volltextsuche, Notizen mit Seitenangabe, Metadaten aus offenen
 Quellen und Import gemeinfreier Bücher. Auf Telefon und Tablet (hoch und quer, am Rechner im Fenster bis 700 px) zeigt sie eine eigene, schlanke Ansicht:
 Suche mit Weiterlesen und Suchverlauf, Buchseite und Leser mit Vollansicht, für PDFs eine Textansicht (feste Zeilen als
-umfließende Absätze, ohne Kopf- und Fußzeilen; Schrift und Farbthema je Gerät gemerkt); Verwaltung, Import und Einstellungen bleiben
+umfließender Text mit Überschriften und Kästen, Abbildungen und abgesetzte Formeln als Ausschnitt der
+Originalseite, antippen vergrößert; ohne Kopf- und Fußzeilen; Größe, Schriftart, Zeilenabstand und Farbe je Gerät
+gemerkt); Verwaltung, Import und Einstellungen bleiben
 am Rechner. Angemeldet wird mit dem Konto der [[Kellerwolke]]. Für [[Fundus]] ist sie die
 Quelle der Bücher: Fundus holt sich Volltexte mit Dateiseite und gedruckter Seite und verweist zurück an die
 Fundstelle im Leser.

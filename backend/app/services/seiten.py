@@ -6,8 +6,8 @@ Zwei Zählungen, überall gleich benannt:
   (PageLabels), sonst aus den Zahlen am Rand der Seiten erkannt (Kopf- und Fußzeilen), sonst leer.
 
 fulltext.txt trennt Seiten mit Seitenvorschub (\\f), je Dateiseite genau ein Teil, auch leere Seiten. Ältere Volltexte
-eines PDF ohne Seitenvorschub (früher mit Zeilenumbruch verbunden) werden beim ersten Lesen aus der Originaldatei neu
-ausgelesen (Befund 21.10.2026: die gleichmäßige Teilung nach Zeichen traf Seiten um bis zu ein Dutzend daneben). Nur
+eines PDF ohne Seitenvorschub (früher mit Zeilenumbruch verbunden) oder mit einer anderen Zahl an Seiten als die Datei
+werden beim ersten Lesen aus der Originaldatei neu ausgelesen (Befund 21.10.2026: die gleichmäßige Teilung nach Zeichen traf Seiten um bis zu ein Dutzend daneben). Nur
 Formate ohne Seiten (EPUB, Text) werden gleichmäßig geteilt (mindestens 500 Zeichen je Seite).
 
 Die gedruckten Seiten liegen als Begleiter seiten.json neben dem Volltext (einmal berechnet)."""
@@ -45,6 +45,13 @@ def pdf_seitentexte(pfad: Path) -> list[str]:
 
     with fitz.open(str(pfad)) as doc:
         return [(seite.get_text("text") or "") for seite in doc]
+
+
+def pdf_seitenzahl(pfad: Path) -> int:
+    import fitz
+
+    with fitz.open(str(pfad)) as doc:
+        return doc.page_count
 
 
 def pdf_volltext(pfad: Path) -> str:
@@ -101,13 +108,27 @@ def _gedruckt_berechnen(original: Path | None, fmt: str, texte: list[str]) -> tu
     return ("rand", erkannt) if any(erkannt) else ("", [])
 
 
+def _neu_auslesen(text: str, page_count: int | None, original: Path) -> bool:
+    """Ein PDF-Volltext ohne Seitenvorschub, oder mit anderer Zahl an Teilen als die Datei Seiten hat (Befund
+    27.10.2026: 68 Teile bei 625 Seiten), wird aus der Originaldatei neu ausgelesen."""
+    if SEITENTRENNER not in text:
+        return True
+    teile = text.count(SEITENTRENNER) + 1
+    if page_count and teile == page_count:
+        return False
+    try:
+        return teile != pdf_seitenzahl(original)
+    except Exception:  # noqa: BLE001 - unlesbare Datei: der alte Volltext gilt weiter
+        return False
+
+
 def buch_seiten(file_hash: str, fmt: str | None, page_count: int | None) -> tuple[list[str], list[str]]:
     """Die Seiten eines Buchs (Text je Dateiseite) und je Seite die gedruckte Seite ("" wo unbekannt). Ein PDF-Volltext
     ohne Seitenvorschub wird dabei einmal aus der Originaldatei neu ausgelesen und gespeichert."""
     fmt = (fmt or "").lower()
     text = load_fulltext(file_hash) or ""
     original = get_original_file(file_hash)
-    if fmt == "pdf" and original is not None and SEITENTRENNER not in text:
+    if fmt == "pdf" and original is not None and _neu_auslesen(text, page_count, original):
         try:
             neu = pdf_volltext(original)
             if neu.strip():

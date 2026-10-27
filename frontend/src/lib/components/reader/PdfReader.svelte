@@ -584,9 +584,11 @@
 
   // Telefon: zwischen Originalseiten und Fließtext wechseln; zurück im Original an derselben Seite
   let textModus = $derived(telefon && textansicht.an);
+  let textEinstellungen = $state(false);
 
   function textUmschalten() {
     textansicht.umschalten();
+    textEinstellungen = false;
     if (!textansicht.an) requestAnimationFrame(() => goToPage(currentPage));
   }
 
@@ -969,14 +971,9 @@
             <span>{textModus ? "Original" : "Text"}</span>
           </button>
           {#if textModus}
-            <button onclick={() => textansicht.kleiner()} disabled={!textansicht.kannKleiner} aria-label="Schrift kleiner">
-              <i class="fa-solid fa-font" style="font-size: 0.8em"></i>
-            </button>
-            <button onclick={() => textansicht.groesser()} disabled={!textansicht.kannGroesser} aria-label="Schrift größer">
-              <i class="fa-solid fa-font" style="font-size: 1.2em"></i>
-            </button>
-            <button onclick={() => textansicht.naechstesThema()} aria-label="Farbthema wechseln">
-              <i class="fa-solid {textansicht.thema.icon}"></i>
+            <button class="umschalter" class:aktiv={textEinstellungen} onclick={() => (textEinstellungen = !textEinstellungen)}
+              aria-label="Schrift, Größe und Farbe">
+              <span style="font-family: Georgia, serif; font-size: 1.1em">Aa</span>
             </button>
           {:else}
             <button onclick={prevPage} disabled={currentPage <= 1} aria-label="Vorherige Seite">
@@ -997,7 +994,8 @@
           {/if}
         {/snippet}
         {#if textModus}
-          <PdfTextansicht {bookId} startSeite={currentPage} onSeite={textSeiteGelesen} onOriginal={textUmschalten} />
+          <PdfTextansicht {bookId} startSeite={currentPage} bind:einstellungenOffen={textEinstellungen}
+            onSeite={textSeiteGelesen} onOriginal={textUmschalten} />
         {/if}
         {@render seiten()}
       </TelefonLeseleiste>
