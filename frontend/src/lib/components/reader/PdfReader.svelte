@@ -467,6 +467,8 @@
   // Bei Scale-Aenderung alle Seiten neu rendern
   async function reRenderAll() {
     if (!pdfDoc || !scrollContainer) return;
+    // Neue Größe verschiebt alle Seiten: die gelesene Seite vorher merken und danach wieder oben zeigen
+    const ziel = currentPage;
     renderedPages = new Set();
     renderQueue = new Set();
 
@@ -481,6 +483,10 @@
       wrapper.querySelector(".textLayer")?.remove();
     }
     platzhalterGroessen();
+    if (scrollContainer.clientHeight > 0) {
+      scrollContainer.querySelector(`[data-page="${ziel}"]`)?.scrollIntoView({ behavior: "auto", block: "start" });
+      currentPage = ziel;
+    }
     setupObserver();
   }
 
