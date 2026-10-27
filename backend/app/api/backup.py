@@ -1,7 +1,7 @@
 """API-Endpunkte für Backup und Wiederherstellung."""
 
+import asyncio
 import logging
-import shutil
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 
 from backend.app.core.auth import verify_token, verify_token_query
 from backend.app.core.config import settings
+from backend.app.services import sicherung
 
 logger = logging.getLogger("buecherfreunde")
 router = APIRouter(prefix="/api/backup", tags=["Backup"])
@@ -26,50 +27,21 @@ def _backup_dir() -> Path:
 
 @router.post("/create")
 async def erstelle_backup(_: str = Depends(verify_token)):
-    """Erstellt ein vollständiges Backup als ZIP."""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    zip_name = f"buecherfreunde_backup_{timestamp}.zip"
-    zip_path = _backup_dir() / zip_name
-
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        # Datenbank
-        db_path = settings.database_path
-        if db_path.exists():
-            zf.write(db_path, "database/buecherfreunde.db")
-
-        # VERSION
-        version_path = Path(__file__).resolve().parents[3] / "VERSION"
-        if version_path.exists():
-            zf.write(version_path, "VERSION")
-
-        # Metadaten aus Storage (metadata.json pro Buch)
-        storage = settings.storage_dir
-        if storage.exists():
-            for meta_file in storage.rglob("metadata.json"):
-                rel = meta_file.relative_to(storage)
-                zf.write(meta_file, f"metadata/{rel}")
-
-    size = zip_path.stat().st_size
-    logger.info("Backup erstellt: %s (%d Bytes)", zip_name, size)
-
-    # Alte Backups aufräumen -- nur die letzten 5 behalten
-    alle_backups = sorted(_backup_dir().glob("*.zip"), reverse=True)
-    for altes_backup in alle_backups[5:]:
-        altes_backup.unlink()
-        logger.info("Altes Backup gelöscht: %s", altes_backup.name)
-
+    """Sichert von Hand nach der Sicherungsregel: sofort, aber nie ohne Änderung seit der jüngsten Sicherung."""
+    lauf = await asyncio.to_thread(sicherung.sichern, sicherung.Anlass.HAND)
     return {
-        "message": "Backup erstellt",
-        "filename": zip_name,
-        "size": size,
+        "message": "Backup erstellt" if lauf.neu else f"Keine neue Sicherung nötig: {lauf.grund}",
+        "filename": lauf.datei.name,
+        "size": lauf.datei.stat().st_size,
+        "neu": lauf.neu,
     }
 
 
 @router.get("/list")
 async def liste_backups(_: str = Depends(verify_token)):
-    """Alle vorhandenen Backups auflisten."""
+    """Alle vorhandenen Backups auflisten, jüngstes zuerst."""
     backups = []
-    for f in sorted(_backup_dir().glob("*.zip"), reverse=True):
+    for f in sicherung.staende():
         backups.append({
             "filename": f.name,
             "size": f.stat().st_size,
@@ -87,7 +59,7 @@ async def download_backup(
     """Backup-Datei herunterladen."""
     if not filename:
         # Neuestes Backup
-        backups = sorted(_backup_dir().glob("*.zip"), reverse=True)
+        backups = sicherung.staende()
         if not backups:
             raise HTTPException(status_code=404, detail="Kein Backup vorhanden")
         path = backups[0]

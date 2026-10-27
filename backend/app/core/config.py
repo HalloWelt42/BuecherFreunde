@@ -1,6 +1,8 @@
 """Zentrale Konfiguration - alle Werte aus .env oder Umgebungsvariablen."""
 
 from pathlib import Path
+
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -60,6 +62,13 @@ class Settings(BaseSettings):
     kellerwolke_schluessel_datei: str = ""   # eigener App-Zugang der Kellerwolke (Datei, Modus 0600)
     anmeldung_konten: str = ""        # weitere Konten der Kellerwolke, die die App nutzen dürfen (kommagetrennt)
     fundus_apps: str = "Fundus"       # Kommagetrennte Namen der Apps, die den Bestand lesen dürfen
+
+    # Sicherungsregel (backend/app/services/sicherung.py): regelmäßig nur, wenn die jüngste älter ist als
+    # sicherung_abstand_tage, vor dem Aktualisieren nur, wenn sie älter ist als sicherung_vor_ausrollen_ab_stunden; nie
+    # ohne Änderung; es bleiben höchstens sicherung_behalten Stände.
+    sicherung_abstand_tage: int = 7
+    sicherung_vor_ausrollen_ab_stunden: int = 24
+    sicherung_behalten: int = Field(default=3, ge=1)
 
     # Logging
     log_level: str = "info"

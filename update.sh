@@ -24,12 +24,13 @@ if ! git diff --quiet 2>/dev/null; then
     git stash
 fi
 
-# Updates holen
-echo "Hole Updates von GitHub..."
-git pull --ff-only origin main
+# Updates holen, für den Zweig, auf dem der Klon steht
+ZWEIG="$(git branch --show-current)"
+echo "Hole Updates von GitHub ($ZWEIG)..."
+git pull --ff-only origin "$ZWEIG"
 if [ $? -ne 0 ]; then
     echo "FEHLER: git pull fehlgeschlagen. Möglicherweise Konflikte."
-    echo "Manuelle Lösung: git fetch origin && git reset --hard origin/main"
+    echo "Manuelle Lösung: git fetch origin && git reset --hard origin/$ZWEIG"
     exit 1
 fi
 
@@ -45,24 +46,21 @@ if [ "$ALTE_VERSION" = "$NEUE_VERSION" ]; then
     fi
 fi
 
-# Backup vor Update
-if command -v sqlite3 &>/dev/null; then
-    source .env 2>/dev/null || true
-    DB_PATH="${DATABASE_DIR:-./database}/buecherfreunde.db"
-    if [ -f "$DB_PATH" ]; then
-        BACKUP_DIR="${DATABASE_DIR:-./database}/backups"
-        mkdir -p "$BACKUP_DIR"
-        BACKUP_FILE="$BACKUP_DIR/pre-update-${ALTE_VERSION}-$(date +%Y%m%d_%H%M%S).db"
-        echo "Erstelle Datenbank-Backup: $BACKUP_FILE"
-        sqlite3 "$DB_PATH" ".backup '$BACKUP_FILE'"
-    fi
-fi
-
-# Container neu bauen
+# Container bauen; die laufenden arbeiten dabei weiter
 echo ""
-echo "Baue und starte Container neu..."
+echo "Baue Container..."
 cd docker
-docker compose --env-file ../.env up -d --build --force-recreate
+docker compose --env-file ../.env build
+
+# Sicherung vor dem Update nach der Sicherungsregel der App (backend/app/services/sicherung.py, Werte in den
+# Einstellungen): neu nur, wenn die jüngste älter ist als SICHERUNG_VOR_AUSROLLEN_AB_STUNDEN und sich die Datenbank
+# seitdem geändert hat. Sie läuft mit dem neuen Abbild auf derselben Datenbank, bevor die neue Fassung startet;
+# scheitert sie, bricht das Update ab und die laufende Fassung bleibt.
+echo "Sicherung vor dem Update..."
+docker compose --env-file ../.env run --rm --no-deps -T backend python -m backend.app.services.sicherung aktualisieren
+
+echo "Starte Container neu..."
+docker compose --env-file ../.env up -d --force-recreate
 
 echo ""
 echo "=== Update abgeschlossen ==="

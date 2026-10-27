@@ -26,7 +26,8 @@
     meldung = "";
     try {
       const result = await post("/api/backup/create");
-      meldung = `Backup "${result.filename}" erstellt (${formatSize(result.size)})`;
+      // Ohne Änderung seit der jüngsten Sicherung entsteht keine neue; die Antwort sagt dann warum.
+      meldung = result.neu ? `Backup "${result.filename}" erstellt (${formatSize(result.size)})` : result.message;
       await ladeBackups();
     } catch (e) {
       meldung = `Fehler: ${e.message}`;

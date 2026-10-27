@@ -119,26 +119,28 @@ cd ~/BuecherFreunde
 ```
 
 Das Skript:
-1. Erstellt ein Datenbank-Backup
-2. Holt den neuen Code von GitHub (`git pull`)
-3. Baut die Docker-Container neu
-4. DB-Schema-Migrationen laufen automatisch beim Start
+1. Holt den neuen Code von GitHub (`git pull` des Zweigs, auf dem der Klon steht)
+2. Baut die Docker-Container neu
+3. Sichert die Datenbank, wenn die jüngste Sicherung älter als 24 Stunden ist und sich seitdem etwas geändert hat
+4. Startet neu; DB-Schema-Migrationen laufen automatisch beim Start
 
 ### Was passiert mit den Daten?
 
 | Daten | Beim Update | Sicher? |
 |-------|-------------|---------|
 | Bücher (Storage) | Unverändert (Volume) | Ja |
-| Datenbank | Auto-Migration + Backup vorher | Ja |
+| Datenbank | Auto-Migration + Sicherung vorher (nach der Sicherungsregel) | Ja |
 | Notizen, Markierungen | In der DB, migriert mit | Ja |
 | .env Konfiguration | Unverändert | Ja |
 
 ### Rollback
 
 ```bash
-# DB-Backup wiederherstellen
-cp database/backups/pre-update-*.db database/buecherfreunde.db
-cd docker && docker compose restart backend
+# Datenbank aus der jüngsten Sicherung zurückspielen (im Ordner docker; gehören die Dateien root, mit sudo)
+cd docker && docker compose --env-file ../.env stop backend
+unzip -o -j "$(ls -t database/backups/buecherfreunde_backup_*.zip | head -1)" database/buecherfreunde.db -d database
+rm -f database/buecherfreunde.db-wal database/buecherfreunde.db-shm
+docker compose --env-file ../.env start backend
 ```
 
 ## Datensicherheit
@@ -155,9 +157,13 @@ Docker startet den Container automatisch neu (`restart: unless-stopped`), sobald
 
 ### Backup
 
-**Anwendungsdaten** (DB, Metadaten, Notizen):
-- Über die Einstellungen-Seite oder API: `POST /api/backup/create`
-- Automatisches Backup vor jedem Update
+**Anwendungsdaten** (DB, Metadaten, Notizen) als ZIP in `DATABASE_DIR/backups`, nach der Sicherungsregel
+(`SICHERUNG_ABSTAND_TAGE=7`, `SICHERUNG_VOR_AUSROLLEN_AB_STUNDEN=24`, `SICHERUNG_BEHALTEN=3`, in der `.env` änderbar):
+- Regelmäßig: `python -m backend.app.services.sicherung regelmaessig` im Backend-Container, etwa täglich per cron;
+  neu nur, wenn die jüngste älter als 7 Tage ist
+- Vor jedem Update (`update.sh`): neu nur, wenn die jüngste älter als 24 Stunden ist
+- Über die Einstellungen-Seite oder API: `POST /api/backup/create`, sofort
+- Nie ohne Änderung der Datenbank; es bleiben höchstens drei
 
 **Buchmaterial** (die Dateien selbst):
 ```bash

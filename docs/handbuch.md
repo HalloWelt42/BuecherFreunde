@@ -6,13 +6,13 @@ daten:
   - "Pi: Datenbank `{{umgebung:DATABASE_DIR}}/buecherfreunde.db` (rund 575 MB, Bücher, Volltext, Markierungen, Notizen, Einstellungen)"
   - "Pi: Bücher-Speicher `{{umgebung:STORAGE_DIR}}` (rund 23 GB, je Buch ein Ordner mit Datei, Umschlag und Metadaten), Import-Ordner `{{umgebung:IMPORT_DIR}}`, Sammlung nur lesend `{{umgebung:EXTERNAL_DIR}}`"
 sicherung:
-  - "die Datenbank sichert nur `update.sh` vor einem Update nach `docker/database/backups`; seit dem 22.03.2026 ist dort nichts Neues entstanden (Stand 24.10.2026). Das Werkzeug Sicherungen holt den Ordner nach `~/Sicherungen/buecherfreunde/pi` und meldet ihn als veraltet"
+  - "die Datenbank als ZIP nach `docker/database/backups`, nach der Sicherungsregel: regelmäßig wöchentlich über eine cron-Zeile (Stand 27.10.2026 noch nicht eingetragen), vor `update.sh` nur, wenn die jüngste älter als 24 Stunden ist, von Hand in den Einstellungen; nie ohne Änderung, höchstens drei Stände. Das Werkzeug Sicherungen holt den Ordner nach `~/Sicherungen/buecherfreunde/pi`"
   - "der Bücher-Speicher wird nicht gesichert (Stand 24.10.2026)"
 schluessel_orte:
   - "Pi: `{{wurzel}}/zugang/kellerwolke.schluessel`, Modus 0600 (App-Zugang der Kellerwolke) und `zugang/hausstelle.pem`"
   - "Pi: `{{wurzel}}/.env` (Ordner, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
 einrichten: einrichten.sh
-stand: 476af81
+stand: 78bc0c1
 ---
 
 # BücherFreunde
@@ -83,19 +83,35 @@ Probe: in Fundus erscheint die Quelle Bücher, und eine Suche nennt Treffer mit 
 
 ## Sicherung und Rückspielen
 
-Eine regelmäßige Sicherung gibt es nicht (Stand 24.10.2026). `update.sh` legt vor einem Update eine Kopie der Datenbank
-nach `docker/database/backups`; die jüngste dort stammt vom 22.03.2026. Das Werkzeug Sicherungen holt den Ordner
-täglich nach `~/Sicherungen/buecherfreunde/pi` und führt ihn in `~/Sicherungen/LIESMICH.md` als veraltet. Der
-Bücher-Speicher (rund 23 GB) wird nicht gesichert; die Sammlung ist nur gelesen und gehört nicht der App.
+`backend/app/services/sicherung.py` sichert die Datenbank als `buecherfreunde_backup_JJJJMMTT_HHMMSS.zip` nach
+`docker/database/backups`: eine geschlossene Kopie über die Sicherung von SQLite (vollständig auch mit WAL, ohne die App
+anzuhalten), dazu die Fassung und die `metadata.json` je Buch. Es gilt die Sicherungsregel; die Werte stehen nur in den
+Einstellungen (`backend/app/core/config.py`) und lassen sich in der `.env` überschreiben:
 
-Von Hand: Container anhalten (`cd docker && docker compose --env-file ../.env stop backend`), die Datenbank kopieren
-(`sqlite3 database/buecherfreunde.db ".backup '<ziel>'"` im Ordner `docker`), wieder starten. Zurückspielen umgekehrt:
-anhalten, Kopie als `buecherfreunde.db` ablegen (alte `-wal` und `-shm` entfernen), starten; Probe wie in Schritt 3.
+- regelmäßig nur, wenn die jüngste älter ist als `SICHERUNG_ABSTAND_TAGE` (7). Die App hat keinen eigenen Zeitgeber;
+  dafür gehört diese Zeile in die crontab von `pi` (`crontab -e`; Stand 27.10.2026 noch nicht eingetragen). Sie ruft
+  täglich, ob es fällig ist, entscheidet die Regel:
+  `15 3 * * * cd {{wurzel}}/docker && docker compose --env-file ../.env exec -T backend python -m backend.app.services.sicherung regelmaessig 2>&1 | logger -t buecherfreunde-sicherung`
+- vor dem Update: `update.sh` baut erst und sichert dann mit dem neuen Abbild auf derselben Datenbank, nur wenn die
+  jüngste älter ist als `SICHERUNG_VOR_AUSROLLEN_AB_STUNDEN` (24); scheitert die Sicherung, bricht das Update ab und
+  die laufende Fassung bleibt.
+- von Hand: Einstellungen, "Backup erstellen", sofort.
+- nie ohne Änderung: sind Datenbankdatei und `-wal` beide älter als die jüngste Sicherung, entsteht keine neue. Die
+  Änderungszeit einer Sicherung ist der Beginn ihrer Kopie.
+- es bleiben höchstens `SICHERUNG_BEHALTEN` (3) Stände; aufgeräumt wird bei jedem Lauf, auch ohne neue Sicherung,
+  angefasst werden nur Dateien nach dem Muster `buecherfreunde_backup_*.zip`.
+
+Das Werkzeug Sicherungen holt den Ordner täglich nach `~/Sicherungen/buecherfreunde/pi`. Der Bücher-Speicher (rund 23
+GB) wird nicht gesichert; die Sammlung ist nur gelesen und gehört nicht der App.
+
+Zurückspielen: Backend anhalten (`cd docker && docker compose --env-file ../.env stop backend`), aus dem ZIP
+`database/buecherfreunde.db` als `docker/database/buecherfreunde.db` ablegen (alte `-wal` und `-shm` entfernen), starten;
+Probe wie in Schritt 3.
 
 ## Wenn etwas klemmt
 
-- `update.sh` holt den Zweig `main`, gearbeitet wird aber auf `dev`. Auf dem Pi deshalb von Hand:
-  `git pull --ff-only origin dev && cd docker && docker compose --env-file ../.env up -d --build --force-recreate`.
+- Aktualisieren auf dem Pi mit `./update.sh`: holt den Zweig, auf dem der Klon steht (`dev`), baut, sichert nach der
+  Regel und startet neu.
 - Die Datenbank gehört root (der Container schreibt als root); Kopien und Rückspielen auf dem Pi mit `sudo`.
 - Anmelden geht nicht: der App-Zugang fehlt (`zugang/kellerwolke.schluessel`) oder die Adresse der Kellerwolke in der
   `.env` stimmt nicht; das Backend meldet beim Start "Kein App-Zugang der Kellerwolke".
