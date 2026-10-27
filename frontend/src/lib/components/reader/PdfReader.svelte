@@ -475,22 +475,26 @@
       return;
     }
 
-    // Scroll-Modus: Wrapper-Groessen aktualisieren
-    for (let i = 1; i <= totalPages; i++) {
-      const wrapper = scrollContainer.querySelector(`[data-page="${i}"]`);
-      if (wrapper) {
-        const page = await pdfDoc.getPage(i);
-        const viewport = page.getViewport({ scale });
-        wrapper.style.width = viewport.width + "px";
-        wrapper.style.height = viewport.height + "px";
-        const canvas = wrapper.querySelector("canvas");
-        if (canvas) canvas.remove();
-        const textLayer = wrapper.querySelector(".textLayer");
-        if (textLayer) textLayer.remove();
-      }
+    // Scroll-Modus: Inhalte entfernen, Platzhalter auf die neue Größe; gezeichnet wird, was sichtbar wird
+    for (const wrapper of scrollContainer.querySelectorAll(".page-wrapper")) {
+      wrapper.querySelector("canvas")?.remove();
+      wrapper.querySelector(".textLayer")?.remove();
     }
-
+    platzhalterGroessen();
     setupObserver();
+  }
+
+  // Platzhalter aller Seiten im Format der ersten Seite, sofort und ohne jede Seite einzeln zu laden (bei großen
+  // Büchern dauerte das zuvor Sekunden bis Minuten); weicht eine Seite ab, setzt das Zeichnen ihre echte Größe.
+  function platzhalterGroessen() {
+    if (!_baseViewport || !scrollContainer) return;
+    const breite = _baseViewport.width * scale + "px";
+    const hoehe = _baseViewport.height * scale + "px";
+    for (const wrapper of scrollContainer.querySelectorAll(".page-wrapper")) {
+      if (renderedPages.has(Number(wrapper.dataset.page))) continue;
+      wrapper.style.width = breite;
+      wrapper.style.height = hoehe;
+    }
   }
 
   // Einzelseiten/Doppelseiten rendern
@@ -711,6 +715,7 @@
         if (ansicht === "einzeln" || ansicht === "doppel") {
           renderEinzelSeiten();
         } else {
+          platzhalterGroessen();
           setupObserver();
         }
         if (initialPage > 1) {
