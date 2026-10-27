@@ -98,7 +98,8 @@
 
   // Scale berechnen fuer Breite/Seite einpassen
   function berechneAutoScale(modus) {
-    if (!_baseViewport || !scrollContainer) return 1.0;
+    // Ausgeblendet (Textansicht) hat die Fläche keine Breite: dann nichts neu berechnen
+    if (!_baseViewport || !scrollContainer || scrollContainer.clientWidth === 0) return scale;
     const stil = getComputedStyle(scrollContainer);
     const containerW = scrollContainer.clientWidth - parseFloat(stil.paddingLeft) - parseFloat(stil.paddingRight);
     const containerH = scrollContainer.clientHeight - parseFloat(stil.paddingTop) - parseFloat(stil.paddingBottom);
@@ -589,7 +590,16 @@
   function textUmschalten() {
     textansicht.umschalten();
     textEinstellungen = false;
-    if (!textansicht.an) requestAnimationFrame(() => goToPage(currentPage));
+    if (!textansicht.an) {
+      // Die Originalseiten waren ausgeblendet: Seitenbreite neu bestimmen, dann an die gelesene Seite
+      requestAnimationFrame(async () => {
+        if (ansicht === "breite") {
+          scale = berechneAutoScale("breite");
+          await reRenderAll();
+        }
+        goToPage(currentPage);
+      });
+    }
   }
 
   function textSeiteGelesen(nr) {
