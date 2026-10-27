@@ -7,6 +7,8 @@
   import Footer from "./lib/components/layout/Footer.svelte";
   import ScratchPad from "./lib/components/shared/ScratchPad.svelte";
   import Login from "./lib/components/auth/Login.svelte";
+  import TelefonApp from "./lib/telefon/TelefonApp.svelte";
+  import { geraet } from "./lib/stores/geraet.svelte.js";
   import Toast from "./lib/components/ui/Toast.svelte";
 
   import Library from "./pages/Library.svelte";
@@ -77,6 +79,9 @@
 
 <svelte:document onclick={handleLinkClick} />
 
+{#if geraet.telefon}
+  <TelefonApp />
+{:else}
 <div class="app-layout" class:sidebar-collapsed={!ui.sidebarOpen} class:reader-fullscreen={ui.readerFullscreen} class:has-bg={bgUrl}>
   {#if bgUrl}
     <div class="app-bg" style="background-image: url({bgUrl})"></div>
@@ -107,6 +112,7 @@
 </div>
 
 <ScratchPad visible={ui.scratchPadOpen} onClose={() => ui.scratchPadOpen = false} />
+{/if}
 <Toast />
 
 <style>

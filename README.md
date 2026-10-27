@@ -15,6 +15,7 @@ Selbst gehostete Buchverwaltung für 50.000+ Bücher. Läuft per Docker auf Rasp
 - **KI**: Kategorisierung über LM Studio (optional, lokal)
 - **Backup**: DB + Metadaten als ZIP, Buchmaterial per rsync
 - **Dark Mode**: Vier Papier-Modi im Reader (Normal, Sepia, Dunkel, Kontrast)
+- **Telefon**: Eigene Ansicht zum Suchen und Lesen mit Vollansicht
 
 ## Voraussetzungen
 

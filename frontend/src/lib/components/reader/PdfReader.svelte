@@ -13,6 +13,7 @@
   import ReaderHighlights from "./ReaderHighlights.svelte";
   import ReaderNotes from "./ReaderNotes.svelte";
   import Vorlesen from "./Vorlesen.svelte";
+  import TelefonLeseleiste from "../../telefon/TelefonLeseleiste.svelte";
 
   let {
     bookId,
@@ -22,6 +23,7 @@
     initialPapier = "",
     initialZoom = 0,
     fundstelle = "",
+    telefon = false,
     onBack = () => {},
     onPositionChange = () => {},
   } = $props();
@@ -43,8 +45,9 @@
 
   // Ansichtsmodus: "scroll", "breite", "seite", "doppel", "einzeln"
   const gueltigeAnsichten = ["scroll", "breite", "seite", "doppel", "einzeln"];
+  // Am Telefon immer Seitenbreite; die gespeicherte Ansicht des Rechners bleibt dabei unangetastet (siehe savePosition)
   let ansicht = $state(untrack(() =>
-    gueltigeAnsichten.includes(initialAnsicht) ? initialAnsicht : "scroll"
+    telefon ? "breite" : gueltigeAnsichten.includes(initialAnsicht) ? initialAnsicht : "scroll"
   ));
 
   // Seiten-Canvases
@@ -94,8 +97,9 @@
   // Scale berechnen fuer Breite/Seite einpassen
   function berechneAutoScale(modus) {
     if (!_baseViewport || !scrollContainer) return 1.0;
-    const containerW = scrollContainer.clientWidth - 24;
-    const containerH = scrollContainer.clientHeight - 24;
+    const stil = getComputedStyle(scrollContainer);
+    const containerW = scrollContainer.clientWidth - parseFloat(stil.paddingLeft) - parseFloat(stil.paddingRight);
+    const containerH = scrollContainer.clientHeight - parseFloat(stil.paddingTop) - parseFloat(stil.paddingBottom);
     const pageW = _baseViewport.width;
     const pageH = _baseViewport.height;
 
@@ -615,8 +619,8 @@
     saveTimeout = setTimeout(async () => {
       const settings = {
         page: currentPage,
-        ansicht,
-        zoom: Math.round(scale * 100),
+        ansicht: telefon ? initialAnsicht || "scroll" : ansicht,
+        zoom: telefon ? initialZoom || 100 : Math.round(scale * 100),
         papier: papierModus,
       };
       const pos = `pdf:${JSON.stringify(settings)}`;
@@ -731,8 +735,42 @@
 
 <svelte:window onkeydown={handleKeydown} onresize={handleResize} />
 
+{#snippet seiten()}
+  <!-- Scroll-Container -->
+  <div
+    class="scroll-container"
+    class:papier-sepia={papierModus === "sepia"}
+    class:papier-dunkel={papierModus === "dunkel"}
+    class:papier-kontrast={papierModus === "kontrast"}
+    class:modus-einzeln={ansicht === "einzeln"}
+    class:modus-doppel={ansicht === "doppel"}
+    class:telefon
+    bind:this={scrollContainer}
+  >
+    {#if ansicht === "einzeln" || ansicht === "doppel"}
+      <div class="page-spread" class:doppel={ansicht === "doppel"}>
+        {#each sichtbareSeiten as pageNum (pageNum)}
+          <div class="page-wrapper" data-page={pageNum}>
+            <div class="page-loading">
+              <span class="page-number">{pageNum}</span>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {:else}
+      {#each Array(totalPages) as _, i}
+        <div class="page-wrapper" data-page={i + 1}>
+          <div class="page-loading">
+            <span class="page-number">{i + 1}</span>
+          </div>
+        </div>
+      {/each}
+    {/if}
+  </div>
+{/snippet}
+
 <div class="pdf-reader">
-  {#if ui.readerFullscreen}
+  {#if ui.readerFullscreen && !telefon}
     <button class="fullscreen-close-btn" onclick={() => ui.toggleReaderFullscreen()} title="Vollbild verlassen">
       <i class="fa-solid fa-compress"></i>
     </button>
@@ -771,6 +809,7 @@
     </div>
   {:else}
     <!-- Toolbar -->
+    {#if !telefon}
     <div class="pdf-toolbar">
       <!-- Links: Zurueck + Titel -->
       <button class="tool-btn back-btn" onclick={onBack} title="Zurueck">
@@ -898,37 +937,35 @@
         <i class="fa-solid fa-download"></i>
       </button>
     </div>
+    {/if}
 
-    <!-- Scroll-Container -->
-    <div
-      class="scroll-container"
-      class:papier-sepia={papierModus === "sepia"}
-      class:papier-dunkel={papierModus === "dunkel"}
-      class:papier-kontrast={papierModus === "kontrast"}
-      class:modus-einzeln={ansicht === "einzeln"}
-      class:modus-doppel={ansicht === "doppel"}
-      bind:this={scrollContainer}
-    >
-      {#if ansicht === "einzeln" || ansicht === "doppel"}
-        <div class="page-spread" class:doppel={ansicht === "doppel"}>
-          {#each sichtbareSeiten as pageNum (pageNum)}
-            <div class="page-wrapper" data-page={pageNum}>
-              <div class="page-loading">
-                <span class="page-number">{pageNum}</span>
-              </div>
-            </div>
-          {/each}
-        </div>
-      {:else}
-        {#each Array(totalPages) as _, i}
-          <div class="page-wrapper" data-page={i + 1}>
-            <div class="page-loading">
-              <span class="page-number">{i + 1}</span>
-            </div>
-          </div>
-        {/each}
-      {/if}
-    </div>
+    {#if telefon}
+      <TelefonLeseleiste titel={title} stand="Seite {currentPage} von {totalPages}" {onBack}>
+        {#snippet werkzeuge()}
+          <button onclick={prevPage} disabled={currentPage <= 1} aria-label="Vorherige Seite">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <button onclick={zoomOut} disabled={scale <= 0.5} aria-label="Verkleinern">
+            <i class="fa-solid fa-magnifying-glass-minus"></i>
+          </button>
+          <button class:aktiv={ansicht === "breite"} onclick={() => setAnsicht("breite")} aria-label="Seitenbreite">
+            <i class="fa-solid fa-arrows-left-right"></i>
+          </button>
+          <button onclick={zoomIn} disabled={scale >= 3.0} aria-label="Vergrößern">
+            <i class="fa-solid fa-magnifying-glass-plus"></i>
+          </button>
+          <button class:aktiv={papierModus !== "normal"} onclick={togglePapierModus} aria-label="Papier wechseln">
+            <i class="fa-solid fa-circle-half-stroke"></i>
+          </button>
+          <button onclick={nextPage} disabled={currentPage >= totalPages} aria-label="Nächste Seite">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        {/snippet}
+        {@render seiten()}
+      </TelefonLeseleiste>
+    {:else}
+      {@render seiten()}
+    {/if}
 
     <!-- TextSelectionMenu (arbeitet mit window.getSelection auf TextLayer) -->
     <TextSelectionMenu
@@ -1171,6 +1208,13 @@
     gap: 8px;
     padding: 12px;
     background-color: #525659;
+  }
+
+  /* Telefon: schmaler Rand, damit die Seite die Breite nutzt; "safe" hält vergrößerte Seiten links erreichbar */
+  .scroll-container.telefon {
+    padding: 4px;
+    gap: 4px;
+    align-items: safe center;
   }
 
   :global(:root.dark) .scroll-container {

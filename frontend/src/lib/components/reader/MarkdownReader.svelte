@@ -7,6 +7,7 @@
   import SvelteMarkdown from "@humanspeak/svelte-markdown";
   import { markedMermaid, MermaidRenderer } from "@humanspeak/svelte-markdown/extensions";
   import Vorlesen from "./Vorlesen.svelte";
+  import TelefonLeseleiste from "../../telefon/TelefonLeseleiste.svelte";
   import AlertBlock from "./AlertBlock.svelte";
   import { readerFarbThemen, readerSchriften } from "../../constants/themes.js";
   import TextSelectionMenu from "./TextSelectionMenu.svelte";
@@ -25,6 +26,7 @@
     initialFgColor = "",
     initialBgColor = "",
     initialBlattTransparent = false,
+    telefon = false,
     onBack = () => {},
     onPositionChange = () => {},
   } = $props();
@@ -291,6 +293,11 @@
     }
   }
 
+  // Telefon: reihum durch die Farbthemen
+  function naechstesThema() {
+    setzeThema(farbThemen[(activeThemeIndex + 1) % farbThemen.length]);
+  }
+
   function changeFontSize(delta) {
     fontSize = Math.max(50, Math.min(200, fontSize + delta));
     triggerSave();
@@ -352,8 +359,27 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
+{#snippet textflaeche()}
+<div
+  class="text-content"
+  class:ist-dunkel={istDunkel}
+  class:telefon
+  bind:this={scrollContainer}
+  onscroll={handleScroll}
+  style="background-color: {effektiverBg}; color: {fgColor};"
+>
+  {#if istMarkdown}
+    <div class="markdown-body" style="font-size: {fontSize}%; max-width: {maxBreite}; font-family: {fontFamily || 'inherit'}">
+      <SvelteMarkdown source={content} extensions={mdExtensions} renderers={mdRenderers} />
+    </div>
+  {:else}
+    <pre class="text-pre" style="font-size: {fontSize}%; max-width: {maxBreite}; font-family: {fontFamily || 'var(--font-sans)'}">{content}</pre>
+  {/if}
+</div>
+{/snippet}
+
 <div class="md-reader">
-  {#if ui.readerFullscreen}
+  {#if ui.readerFullscreen && !telefon}
     <button class="fullscreen-close-btn" onclick={() => ui.toggleReaderFullscreen()} title="Vollbild verlassen">
       <i class="fa-solid fa-compress"></i>
     </button>
@@ -369,6 +395,22 @@
       <span>{fehler}</span>
     </div>
   {:else}
+    {#if telefon}
+      <TelefonLeseleiste titel={title} stand="ca. Seite {aktuelleSeite} von {geschaetzteSeiten} · {fortschritt} %" {onBack}>
+        {#snippet werkzeuge()}
+          <button onclick={() => changeFontSize(-10)} disabled={fontSize <= 50} aria-label="Schrift kleiner">
+            <i class="fa-solid fa-font" style="font-size: 0.8em"></i>
+          </button>
+          <button onclick={() => changeFontSize(10)} disabled={fontSize >= 200} aria-label="Schrift größer">
+            <i class="fa-solid fa-font" style="font-size: 1.2em"></i>
+          </button>
+          <button onclick={naechstesThema} aria-label="Farbthema wechseln">
+            <i class="fa-solid {farbThemen[activeThemeIndex]?.icon || 'fa-palette'}"></i>
+          </button>
+        {/snippet}
+        {@render textflaeche()}
+      </TelefonLeseleiste>
+    {:else}
     <div class="md-toolbar">
       <button class="tool-btn" onclick={onBack} title="Zurück">
         <i class="fa-solid fa-arrow-left"></i>
@@ -501,21 +543,8 @@
       </div>
     {/if}
 
-    <div
-      class="text-content"
-      class:ist-dunkel={istDunkel}
-      bind:this={scrollContainer}
-      onscroll={handleScroll}
-      style="background-color: {effektiverBg}; color: {fgColor};"
-    >
-      {#if istMarkdown}
-        <div class="markdown-body" style="font-size: {fontSize}%; max-width: {maxBreite}; font-family: {fontFamily || 'inherit'}">
-          <SvelteMarkdown source={content} extensions={mdExtensions} renderers={mdRenderers} />
-        </div>
-      {:else}
-        <pre class="text-pre" style="font-size: {fontSize}%; max-width: {maxBreite}; font-family: {fontFamily || 'var(--font-sans)'}">{content}</pre>
-      {/if}
-    </div>
+    {@render textflaeche()}
+    {/if}
 
     <TextSelectionMenu
       {bookId}
@@ -776,6 +805,11 @@
     flex: 1;
     overflow: auto;
     padding: 2rem;
+  }
+
+  .text-content.telefon {
+    padding: 1rem;
+    overflow-x: clip;
   }
 
   /* Plaintext */

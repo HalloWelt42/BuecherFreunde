@@ -7,7 +7,8 @@
   import EpubReader from "../lib/components/reader/EpubReader.svelte";
   import MarkdownReader from "../lib/components/reader/MarkdownReader.svelte";
 
-  let { params } = $props();
+  // telefon: Leser in der Telefonansicht (eigene Leisten, kein Rahmen der Desktop-Oberfläche)
+  let { params, telefon = false } = $props();
 
   // Beim Verlassen des Readers Fullscreen deaktivieren
   onDestroy(() => {
@@ -91,12 +92,14 @@
   // Wenn percent in URL -> CFI ignorieren (Volltextsuche-Navigation)
   let initialCfi = $derived(urlParams.percent > 0 ? "" : (urlParams.cfi || saved.cfi || ""));
 
+  // Am Telefon zurück, woher man kam (Suche, Weiterlesen oder Buchseite), sonst zur Buchseite
   function goBack() {
-    navigate(`/book/${params.id}`);
+    if (telefon && history.length > 1) history.back();
+    else navigate(`/book/${params.id}`);
   }
 </script>
 
-<div class="reader-page">
+<div class="reader-page" class:telefon>
   {#if laden}
     <div class="status">Buch wird geladen...</div>
   {:else if fehler}
@@ -108,6 +111,7 @@
     {#if book.file_format === "pdf"}
       <PdfReader
         bookId={book.id}
+        {telefon}
         title={book.title}
         {initialPage}
         {initialAnsicht}
@@ -119,6 +123,7 @@
     {:else if book.file_format === "epub" || book.file_format === "mobi"}
       <EpubReader
         bookId={book.id}
+        {telefon}
         title={book.title}
         {initialCfi}
         initialPercent={urlParams.percent}
@@ -139,6 +144,7 @@
     {:else if book.file_format === "txt" || book.file_format === "md"}
       <MarkdownReader
         bookId={book.id}
+        {telefon}
         title={book.title}
         format={book.file_format}
         {initialPapier}
@@ -168,6 +174,13 @@
        Footer wird scheinbar nach unten verschoben. */
     height: calc(100% + 3rem);
     margin: -1.5rem;
+  }
+
+  .reader-page.telefon {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    margin: 0;
   }
 
   .status {

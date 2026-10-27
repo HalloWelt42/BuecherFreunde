@@ -15,7 +15,8 @@ export default defineConfig({
     },
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        // API_ZIEL: anderes Backend für die Entwicklung, etwa der Pi (http://<pi>:8160)
+        target: process.env.API_ZIEL || "http://localhost:8000",
         changeOrigin: true,
       },
     },

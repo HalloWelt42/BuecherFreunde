@@ -12,6 +12,7 @@
   import ReaderHighlights from "./ReaderHighlights.svelte";
   import ReaderNotes from "./ReaderNotes.svelte";
   import Vorlesen from "./Vorlesen.svelte";
+  import TelefonLeseleiste from "../../telefon/TelefonLeseleiste.svelte";
   import { highlightsFuerBuch, erstelleHighlight, aktualisiereHighlight, loescheHighlight } from "../../api/highlights.js";
 
   let {
@@ -31,6 +32,7 @@
     initialRandTransparent = false,
     initialBlattTransparent = false,
     initialSearchQuery = "",
+    telefon = false,
     onBack = () => {},
     onPositionChange = () => {},
   } = $props();
@@ -109,6 +111,17 @@
     applyStyles();
     savePosition();
   }
+
+  // Telefon: reihum durch die festen Farbthemen ("Individuell" wird übersprungen)
+  function naechstesFarbThema() {
+    const feste = farbThemen.filter((t) => t.fg);
+    const jetzt = feste.findIndex((t) => t.fg === fgColor && t.bg === bgColor);
+    setFarbThema(feste[(jetzt + 1) % feste.length]);
+  }
+
+  let kapitelStand = $derived(
+    [currentLocation?.tocItem?.label, `${fortschritt} %`].filter(Boolean).join(" · ")
+  );
 
   function changeFontSize(delta) {
     fontSize = Math.max(50, Math.min(250, fontSize + delta));
@@ -579,12 +592,58 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
+{#snippet behaelter()}
+<!-- Reader-Container -->
+<div
+  class="reader-container"
+  class:single-page={singlePage}
+  style="--reader-max-width: {activeMaxWidth}px"
+  bind:this={containerEl}
+></div>
+{/snippet}
+
 <div class="epub-reader">
-  {#if ui.readerFullscreen}
+  {#if ui.readerFullscreen && !telefon}
     <button class="fullscreen-close-btn" onclick={() => ui.toggleReaderFullscreen()} title="Vollbild verlassen">
       <i class="fa-solid fa-compress"></i>
     </button>
   {/if}
+  {#if telefon}
+    <TelefonLeseleiste titel={title} stand={kapitelStand} {onBack}>
+      {#snippet werkzeuge()}
+        <button onclick={prevPage} disabled={laden || !!fehler} aria-label="Vorherige Seite">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <button class:aktiv={showToc} onclick={() => { showToc = !showToc; }} disabled={tocItems.length === 0} aria-label="Inhaltsverzeichnis">
+          <i class="fa-solid fa-list"></i>
+        </button>
+        <button onclick={() => changeFontSize(-10)} disabled={fontSize <= 50} aria-label="Schrift kleiner">
+          <i class="fa-solid fa-font" style="font-size: 0.8em"></i>
+        </button>
+        <button onclick={() => changeFontSize(10)} disabled={fontSize >= 250} aria-label="Schrift größer">
+          <i class="fa-solid fa-font" style="font-size: 1.2em"></i>
+        </button>
+        <button onclick={naechstesFarbThema} aria-label="Farbthema wechseln">
+          <i class="fa-solid {farbThemen[activeThemeIndex].icon}"></i>
+        </button>
+        <button onclick={nextPage} disabled={laden || !!fehler} aria-label="Nächste Seite">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      {/snippet}
+      {#if laden}
+        <div class="status">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          <span>EPUB wird geladen...</span>
+        </div>
+      {:else if fehler}
+        <div class="status error">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>{fehler}</span>
+        </div>
+      {/if}
+      {@render behaelter()}
+    </TelefonLeseleiste>
+  {:else}
   {#if laden}
     <div class="status">
       <i class="fa-solid fa-spinner fa-spin"></i>
@@ -728,13 +787,8 @@
     </div>
   {/if}
 
-  <!-- Reader-Container -->
-  <div
-    class="reader-container"
-    class:single-page={singlePage}
-    style="--reader-max-width: {activeMaxWidth}px"
-    bind:this={containerEl}
-  ></div>
+    {@render behaelter()}
+  {/if}
 
   <!-- Inhaltsverzeichnis Overlay -->
   {#if showToc && tocItems.length > 0}

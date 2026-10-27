@@ -21,7 +21,9 @@ stand: 396585d
 
 BücherFreunde verwaltet die Bücher des Hauses: Bibliothek mit Filtern, Kategorien und Sammlungen, Leser für PDF (mit
 Textschicht und Markierungen), EPUB und Markdown, Volltextsuche, Notizen mit Seitenangabe, Metadaten aus offenen
-Quellen und Import gemeinfreier Bücher. Angemeldet wird mit dem Konto der [[Kellerwolke]]. Für [[Fundus]] ist sie die
+Quellen und Import gemeinfreier Bücher. Am Telefon (Fenster bis 700 px breit) zeigt sie eine eigene, schlanke Ansicht:
+Suche mit Weiterlesen und Suchverlauf, Buchseite und Leser mit Vollansicht; Verwaltung, Import und Einstellungen bleiben
+am Rechner. Angemeldet wird mit dem Konto der [[Kellerwolke]]. Für [[Fundus]] ist sie die
 Quelle der Bücher: Fundus holt sich Volltexte mit Dateiseite und gedruckter Seite und verweist zurück an die
 Fundstelle im Leser.
 

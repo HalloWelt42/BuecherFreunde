@@ -1,9 +1,7 @@
 <script>
   import { navigate } from "../../router.svelte.js";
   import { vorschlaege } from "../../api/search.js";
-
-  const MAX_HISTORY = 50;
-  const STORAGE_KEY = "search_history";
+  import { ladeVerlauf, merkeBegriff, vergissBegriff, leereVerlauf } from "../../utils/suchverlauf.js";
 
   let query = $state("");
   let suggestions = $state([]);
@@ -13,40 +11,20 @@
   let showHistory = $state(false);
   let showSyntaxHelp = $state(false);
 
-  // Suchhistorie aus localStorage laden
-  let history = $state(ladeHistorie());
-
-  function ladeHistorie() {
-    try {
-      const h = localStorage.getItem(STORAGE_KEY);
-      return h ? JSON.parse(h) : [];
-    } catch { return []; }
-  }
-
-  function speichereHistorie() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-    } catch { /* QuotaExceeded */ }
-  }
+  let history = $state(ladeVerlauf());
 
   function addToHistory(term) {
-    const clean = term.trim();
-    if (!clean || clean.length < 2) return;
-    // Duplikat entfernen, vorne einfügen
-    history = [clean, ...history.filter(h => h !== clean)].slice(0, MAX_HISTORY);
-    speichereHistorie();
+    history = merkeBegriff(history, term);
   }
 
   function entferneAusHistorie(term, event) {
     event.stopPropagation();
     event.preventDefault();
-    history = history.filter(h => h !== term);
-    speichereHistorie();
+    history = vergissBegriff(history, term);
   }
 
   function loescheHistorie() {
-    history = [];
-    speichereHistorie();
+    history = leereVerlauf();
     showHistory = false;
   }
 
