@@ -165,7 +165,7 @@
 </div>
 
 {#if einstellungenOffen}
-  <TextEinstellungen onSchliessen={() => (einstellungenOffen = false)} />
+  <TextEinstellungen darstellung={textansicht} onSchliessen={() => (einstellungenOffen = false)} />
 {/if}
 
 {#if lupe}

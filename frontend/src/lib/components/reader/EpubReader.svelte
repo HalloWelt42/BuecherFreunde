@@ -13,6 +13,9 @@
   import ReaderNotes from "./ReaderNotes.svelte";
   import Vorlesen from "./Vorlesen.svelte";
   import TelefonLeseleiste from "../../telefon/TelefonLeseleiste.svelte";
+  import TextEinstellungen from "../../telefon/TextEinstellungen.svelte";
+  import { SCHRIFTARTEN, SCHRIFTGROESSE, ZEILENABSTAND, klemme } from "../../telefon/lesedarstellung.js";
+  import { leseschriftenCss } from "../../telefon/leseschriften.js";
   import { highlightsFuerBuch, erstelleHighlight, aktualisiereHighlight, loescheHighlight } from "../../api/highlights.js";
 
   let {
@@ -112,12 +115,28 @@
     savePosition();
   }
 
-  // Telefon: reihum durch die festen Farbthemen ("Individuell" wird übersprungen)
-  function naechstesFarbThema() {
-    const feste = farbThemen.filter((t) => t.fg);
-    const jetzt = feste.findIndex((t) => t.fg === fgColor && t.bg === bgColor);
-    setFarbThema(feste[(jetzt + 1) % feste.length]);
-  }
+  // Telefon: Darstellung für das Einstellfeld "Aa"; gespeichert wird wie bisher mit der Leseposition
+  const telefonSchriftarten = [{ kennung: "buch", name: "Wie im Buch", familie: "" }, ...SCHRIFTARTEN];
+  let einstellungenOffen = $state(false);
+  const darstellung = {
+    get groesse() { return fontSize; },
+    get zeilenabstand() { return lineHeight; },
+    get schriftart() { return telefonSchriftarten.find((s) => s.familie === fontFamily)?.kennung ?? "buch"; },
+    get themaIndex() { return readerFarbThemen.findIndex((t) => t.fg === fgColor && t.bg === bgColor); },
+    schriftarten: telefonSchriftarten,
+    setzeGroesse(wert) {
+      fontSize = klemme(Math.round(wert), SCHRIFTGROESSE);
+      applyStyles();
+      savePosition();
+    },
+    setzeZeilenabstand(wert) {
+      lineHeight = Math.round(klemme(wert, ZEILENABSTAND) * 10) / 10;
+      applyStyles();
+      savePosition();
+    },
+    setzeSchriftart(kennung) { setFontFamily(telefonSchriftarten.find((s) => s.kennung === kennung).familie); },
+    setzeThema(index) { setFarbThema(readerFarbThemen[index]); },
+  };
 
   let kapitelStand = $derived(
     [currentLocation?.tocItem?.label, `${fortschritt} %`].filter(Boolean).join(" · ")
@@ -202,6 +221,7 @@
       }
     ` : "";
     styleEl.textContent = `
+      ${leseschriftenCss()}
       html, body {
         color: ${fgColor} !important;
         background-color: ${blattBg} !important;
@@ -617,14 +637,9 @@
         <button class:aktiv={showToc} onclick={() => { showToc = !showToc; }} disabled={tocItems.length === 0} aria-label="Inhaltsverzeichnis">
           <i class="fa-solid fa-list"></i>
         </button>
-        <button onclick={() => changeFontSize(-10)} disabled={fontSize <= 50} aria-label="Schrift kleiner">
-          <i class="fa-solid fa-font" style="font-size: 0.8em"></i>
-        </button>
-        <button onclick={() => changeFontSize(10)} disabled={fontSize >= 250} aria-label="Schrift größer">
-          <i class="fa-solid fa-font" style="font-size: 1.2em"></i>
-        </button>
-        <button onclick={naechstesFarbThema} aria-label="Farbthema wechseln">
-          <i class="fa-solid {farbThemen[activeThemeIndex].icon}"></i>
+        <button class="umschalter" class:aktiv={einstellungenOffen} onclick={() => (einstellungenOffen = !einstellungenOffen)}
+          disabled={laden || !!fehler} aria-label="Schrift, Größe und Farbe">
+          <span style="font-family: Georgia, serif; font-size: 1.1em">Aa</span>
         </button>
         <button onclick={nextPage} disabled={laden || !!fehler} aria-label="Nächste Seite">
           <i class="fa-solid fa-chevron-right"></i>
@@ -643,6 +658,9 @@
       {/if}
       {@render behaelter()}
     </TelefonLeseleiste>
+    {#if einstellungenOffen}
+      <TextEinstellungen {darstellung} onSchliessen={() => (einstellungenOffen = false)} />
+    {/if}
   {:else}
   {#if laden}
     <div class="status">

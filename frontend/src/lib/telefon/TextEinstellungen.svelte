@@ -1,10 +1,13 @@
 <script>
-  // Einstellfeld der Textansicht (Knopf "Aa"): Schriftgröße in feinen Stufen, Schriftart, Zeilenabstand, Farbthema.
-  // Jede Änderung wirkt sofort auf den Text dahinter.
+  // Einstellfeld der Leser am Telefon (Knopf "Aa"): Schriftgröße in feinen Stufen, Schriftart, Zeilenabstand,
+  // Farbthema. Jede Änderung wirkt sofort auf den Text dahinter. Was eingestellt und wo es gemerkt wird, liefert die
+  // Darstellung des jeweiligen Lesers:
+  //   groesse, zeilenabstand, schriftart (Kennung), themaIndex (-1: eigene Farben), schriftarten [{kennung, name,
+  //   familie}], setzeGroesse(n), setzeZeilenabstand(n), setzeSchriftart(kennung), setzeThema(index)
   import { readerFarbThemen } from "../constants/themes.js";
-  import { textansicht, SCHRIFTGROESSE, ZEILENABSTAND, SCHRIFTARTEN } from "./textansicht.svelte.js";
+  import { SCHRIFTGROESSE, ZEILENABSTAND } from "./lesedarstellung.js";
 
-  let { onSchliessen = () => {} } = $props();
+  let { darstellung, onSchliessen = () => {} } = $props();
 </script>
 
 <button class="hintergrund" aria-label="Einstellungen schließen" onclick={onSchliessen}></button>
@@ -17,23 +20,23 @@
   <div class="zeile">
     <span class="etikett">Größe</span>
     <div class="regler">
-      <button onclick={() => textansicht.kleiner()} disabled={textansicht.groesse <= SCHRIFTGROESSE.min}
+      <button onclick={() => darstellung.setzeGroesse(darstellung.groesse - SCHRIFTGROESSE.schritt)} disabled={darstellung.groesse <= SCHRIFTGROESSE.min}
         aria-label="Schrift kleiner"><i class="fa-solid fa-font" style="font-size: 0.75em"></i></button>
       <input type="range" min={SCHRIFTGROESSE.min} max={SCHRIFTGROESSE.max} step={SCHRIFTGROESSE.schritt}
-        value={textansicht.groesse} oninput={(e) => textansicht.setzeGroesse(Number(e.currentTarget.value))}
+        value={darstellung.groesse} oninput={(e) => darstellung.setzeGroesse(Number(e.currentTarget.value))}
         aria-label="Schriftgröße" />
-      <button onclick={() => textansicht.groesser()} disabled={textansicht.groesse >= SCHRIFTGROESSE.max}
+      <button onclick={() => darstellung.setzeGroesse(darstellung.groesse + SCHRIFTGROESSE.schritt)} disabled={darstellung.groesse >= SCHRIFTGROESSE.max}
         aria-label="Schrift größer"><i class="fa-solid fa-font" style="font-size: 1.25em"></i></button>
-      <span class="wert">{textansicht.groesse} %</span>
+      <span class="wert">{darstellung.groesse} %</span>
     </div>
   </div>
 
   <div class="zeile">
     <span class="etikett">Schrift</span>
     <div class="auswahl">
-      {#each SCHRIFTARTEN as s (s.kennung)}
-        <button class="chip" class:aktiv={textansicht.schriftart === s.kennung} style:font-family={s.familie}
-          onclick={() => textansicht.setzeSchriftart(s.kennung)}>{s.name}</button>
+      {#each darstellung.schriftarten as s (s.kennung)}
+        <button class="chip" class:aktiv={darstellung.schriftart === s.kennung} style:font-family={s.familie}
+          onclick={() => darstellung.setzeSchriftart(s.kennung)}>{s.name}</button>
       {/each}
     </div>
   </div>
@@ -41,16 +44,16 @@
   <div class="zeile">
     <span class="etikett">Zeilen</span>
     <div class="regler">
-      <button onclick={() => textansicht.setzeZeilenabstand(textansicht.zeilenabstand - ZEILENABSTAND.schritt)}
-        disabled={textansicht.zeilenabstand <= ZEILENABSTAND.min} aria-label="Zeilen enger">
+      <button onclick={() => darstellung.setzeZeilenabstand(darstellung.zeilenabstand - ZEILENABSTAND.schritt)}
+        disabled={darstellung.zeilenabstand <= ZEILENABSTAND.min} aria-label="Zeilen enger">
         <i class="fa-solid fa-minus"></i></button>
       <input type="range" min={ZEILENABSTAND.min} max={ZEILENABSTAND.max} step={ZEILENABSTAND.schritt}
-        value={textansicht.zeilenabstand} oninput={(e) => textansicht.setzeZeilenabstand(Number(e.currentTarget.value))}
+        value={darstellung.zeilenabstand} oninput={(e) => darstellung.setzeZeilenabstand(Number(e.currentTarget.value))}
         aria-label="Zeilenabstand" />
-      <button onclick={() => textansicht.setzeZeilenabstand(textansicht.zeilenabstand + ZEILENABSTAND.schritt)}
-        disabled={textansicht.zeilenabstand >= ZEILENABSTAND.max} aria-label="Zeilen weiter">
+      <button onclick={() => darstellung.setzeZeilenabstand(darstellung.zeilenabstand + ZEILENABSTAND.schritt)}
+        disabled={darstellung.zeilenabstand >= ZEILENABSTAND.max} aria-label="Zeilen weiter">
         <i class="fa-solid fa-plus"></i></button>
-      <span class="wert">{textansicht.zeilenabstand.toFixed(1)}</span>
+      <span class="wert">{darstellung.zeilenabstand.toFixed(1)}</span>
     </div>
   </div>
 
@@ -58,8 +61,8 @@
     <span class="etikett">Farbe</span>
     <div class="auswahl">
       {#each readerFarbThemen as t, i (t.name)}
-        <button class="thema" class:aktiv={textansicht.themaIndex === i} style:background-color={t.bg}
-          style:color={t.fg} onclick={() => textansicht.setzeThema(i)} aria-label="Farbthema {t.name}">Aa</button>
+        <button class="thema" class:aktiv={darstellung.themaIndex === i} style:background-color={t.bg}
+          style:color={t.fg} onclick={() => darstellung.setzeThema(i)} aria-label="Farbthema {t.name}">Aa</button>
       {/each}
     </div>
   </div>

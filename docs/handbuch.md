@@ -25,7 +25,7 @@ Quellen und Import gemeinfreier Bücher. Auf Telefon und Tablet (hoch und quer, 
 Suche mit Weiterlesen und Suchverlauf, Buchseite und Leser mit Vollansicht, für PDFs eine Textansicht (feste Zeilen als
 umfließender Text mit Überschriften und Kästen, Abbildungen und abgesetzte Formeln als Ausschnitt der
 Originalseite, antippen vergrößert; ohne Kopf- und Fußzeilen; Größe, Schriftart, Zeilenabstand und Farbe je Gerät
-gemerkt); Verwaltung, Import und Einstellungen bleiben
+gemerkt). Der EPUB-Leser hat am Telefon dasselbe Einstellfeld "Aa" (gespeichert mit der Leseposition); Verwaltung, Import und Einstellungen bleiben
 am Rechner. Angemeldet wird mit dem Konto der [[Kellerwolke]]. Für [[Fundus]] ist sie die
 Quelle der Bücher: Fundus holt sich Volltexte mit Dateiseite und gedruckter Seite und verweist zurück an die
 Fundstelle im Leser.

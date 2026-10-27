@@ -3,20 +3,9 @@
  * weiten Bereich), Schriftart, Zeilenabstand und Farbthema. Die Farbthemen sind dieselben wie im EPUB-Leser.
  */
 import { readerFarbThemen } from "../constants/themes.js";
+import { SCHRIFTGROESSE, ZEILENABSTAND, SCHRIFTARTEN, klemme } from "./lesedarstellung.js";
 
 const SCHLUESSEL = "textansicht";
-
-export const SCHRIFTGROESSE = { min: 60, max: 300, schritt: 5, vorgabe: 110 };
-export const ZEILENABSTAND = { min: 1.2, max: 2.4, schritt: 0.1, vorgabe: 1.6 };
-
-// Schriftnamen sind technische Bezeichner der gebündelten Schriften
-export const SCHRIFTARTEN = [
-  { kennung: "literata", name: "Literata", familie: '"Literata", Georgia, serif' },
-  { kennung: "atkinson", name: "Atkinson Hyperlegible", familie: '"Atkinson Hyperlegible", system-ui, sans-serif' },
-  { kennung: "georgia", name: "Georgia", familie: 'Georgia, "Times New Roman", serif' },
-  { kennung: "barlow", name: "Barlow", familie: "Barlow, system-ui, sans-serif" },
-  { kennung: "system", name: "System", familie: "system-ui, -apple-system, sans-serif" },
-];
 
 function lade() {
   try {
@@ -46,12 +35,12 @@ function erzeuge() {
   }
 
   function setzeGroesse(wert) {
-    groesse = Math.min(SCHRIFTGROESSE.max, Math.max(SCHRIFTGROESSE.min, Math.round(wert)));
+    groesse = klemme(Math.round(wert), SCHRIFTGROESSE);
     merke();
   }
 
   function setzeZeilenabstand(wert) {
-    zeilenabstand = Math.round(Math.min(ZEILENABSTAND.max, Math.max(ZEILENABSTAND.min, wert)) * 10) / 10;
+    zeilenabstand = Math.round(klemme(wert, ZEILENABSTAND) * 10) / 10;
     merke();
   }
 
@@ -62,11 +51,10 @@ function erzeuge() {
     get schriftart() { return schriftart; },
     get familie() { return SCHRIFTARTEN.find((s) => s.kennung === schriftart).familie; },
     get themaIndex() { return themaIndex; },
+    schriftarten: SCHRIFTARTEN,
     get thema() { return readerFarbThemen[themaIndex]; },
     umschalten() { an = !an; merke(); },
     setzeGroesse,
-    kleiner() { setzeGroesse(groesse - SCHRIFTGROESSE.schritt); },
-    groesser() { setzeGroesse(groesse + SCHRIFTGROESSE.schritt); },
     setzeZeilenabstand,
     setzeSchriftart(kennung) { schriftart = kennung; merke(); },
     setzeThema(index) { themaIndex = index; merke(); },
