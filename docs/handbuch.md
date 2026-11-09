@@ -12,7 +12,7 @@ schluessel_orte:
   - "Pi: `{{wurzel}}/zugang/kellerwolke.schluessel`, Modus 0600 (App-Zugang der Kellerwolke) und `zugang/hausstelle.pem`"
   - "Pi: `{{wurzel}}/.env` (Ordner, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
 einrichten: einrichten.sh
-stand: 78bc0c1
+stand: 6c5c5e8
 ---
 
 # BücherFreunde
@@ -31,7 +31,9 @@ Quelle der Bücher: Fundus holt sich Volltexte mit Dateiseite und gedruckter Sei
 Fundstelle im Leser.
 
 Auf dem Pi laufen zwei Container aus `docker/docker-compose.yml`: das Backend (FastAPI) und die Oberfläche (nginx, Port
-{{port:frontend}}), die `/api/` ans Backend reicht. Gearbeitet wird auf dem Zweig `dev`, auch auf dem Pi.
+{{port:frontend}}, nur am Pi selbst), die `/api/` ans Backend reicht. Im Heimnetz erreicht man sie nur über den
+[[Vorbau]] des Pi (HTTPS, Anmeldung mit dem Konto der [[Kellerwolke]], Programme wie [[Fundus]] mit ihrem App-Schlüssel);
+die frühere http-Adresse leitet dorthin um. Gearbeitet wird auf dem Zweig `dev`, auch auf dem Pi.
 
 ## Was sie braucht
 

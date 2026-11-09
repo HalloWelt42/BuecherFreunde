@@ -44,8 +44,9 @@ services:
       context: ..
       dockerfile: frontend/Dockerfile
     restart: unless-stopped
+    # nur am Pi selbst (HELF-169): im Heimnetz über den Vorbau des Pi (HTTPS), die frühere Adresse leitet dorthin um
     ports:
-      - "${EXTERNAL_PORT:-8160}:80"
+      - "127.0.0.1:${EXTERNAL_PORT:-8160}:80"
     depends_on:
       backend:
         condition: service_healthy
