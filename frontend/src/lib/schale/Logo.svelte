@@ -1,6 +1,6 @@
 <!-- Das Zeichen der App, wie symbole/tab.svg -->
 <svg aria-hidden="true" viewBox="0 0 64 64">
-<defs><linearGradient id="zeichen-s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5fe3a0"/><stop offset=".5" stop-color="#1dae61"/><stop offset="1" stop-color="#077039"/></linearGradient><linearGradient id="zeichen-b" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffe9b4"/><stop offset=".5" stop-color="#fffdf6"/><stop offset="1" stop-color="#ffe9b4"/></linearGradient><linearGradient id="zeichen-m" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b87a12"/><stop offset=".4" stop-color="#ffe694"/><stop offset="1" stop-color="#d1931f"/></linearGradient></defs>
+<defs><linearGradient id="zeichen-s" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5fe3a0"/><stop offset=".5" stop-color="#1dae61"/><stop offset="1" stop-color="#077039"/></linearGradient><linearGradient id="zeichen-b" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffe9b4"/><stop offset=".5" stop-color="#fffdf6"/><stop offset="1" stop-color="#ffe9b4"/></linearGradient><linearGradient id="zeichen-m" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b87a12"/><stop offset=".4" stop-color="#ffe694"/><stop offset="1" stop-color="#d1931f"/></linearGradient></defs>
 <g stroke="#2a1d10" stroke-width="3.4" stroke-linejoin="round">
 <path d="M29 29H35V50H29Z" fill="url(#zeichen-m)"/>
 <path d="M27 4H37V11H27Z" fill="url(#zeichen-m)"/>
