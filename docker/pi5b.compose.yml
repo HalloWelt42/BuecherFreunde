@@ -1,0 +1,66 @@
+# Betrieb des Neubaus (BF-7). Fünf getrennte Orte, jeder über die .env einstellbar und einzeln umziehbar, etwa auf eine
+# zweite Platte: Bestand (Datenbank), Suche (Suchindex, jederzeit neu zu bauen), Texte (Volltext je Buch), Umschläge und der
+# Zwischenspeicher für Originale (Arbeitsspeicher). Die Originale selbst liegen in der Kellerwolke.
+name: buecherfreunde
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    image: buecherfreunde-backend:aktuell
+    container_name: buecherfreunde-backend
+    restart: unless-stopped
+    user: "1000:1000"
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_DIR: /app/bestand
+      SUCHE_DIR: /app/suche
+      STORAGE_DIR: /app/texte
+      UMSCHLAEGE_DIR: /app/umschlaege
+      ZWISCHEN_DIR: /app/zwischen
+      IMPORT_DIR: /app/zwischen/eingang
+      EXTERNAL_DIR: /app/extern
+    volumes:
+      - ${ORT_BESTAND:-../daten/bestand}:/app/bestand
+      - ${ORT_SUCHE:-../daten/suche}:/app/suche
+      - ${ORT_TEXTE:-../daten/texte}:/app/texte
+      - ${ORT_UMSCHLAEGE:-../daten/umschlaege}:/app/umschlaege
+      - ../zugang:/app/zugang:ro
+      - /etc/localtime:/etc/localtime:ro
+    tmpfs:
+      # Originale kommen aus der Kellerwolke in den Arbeitsspeicher; die SD-Karte sieht sie nie
+      - /app/zwischen:mode=1777,size=${ZWISCHEN_GROESSE:-1200m}
+      - /tmp:mode=1777,size=256m
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+    image: buecherfreunde-oberflaeche:aktuell
+    container_name: buecherfreunde-oberflaeche
+    restart: unless-stopped
+    # nur am Rechner selbst; im Heimnetz über den Vorbau (HTTPS, unter dem Namen der App)
+    ports:
+      - "127.0.0.1:${EXTERNAL_PORT:-8607}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

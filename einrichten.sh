@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Einrichten von BücherFreunde. Schritte und Proben der Neueinrichtung stehen in docs/handbuch.md.
 #
-#   ./einrichten.sh                                       wie ./install.sh auf dem Zielrechner: fragt Ordner, Port und
-#                                                         Kellerwolke ab (schreibt .env, nur wenn keine da ist), baut und
-#                                                         startet die Container, bietet den systemd-Dienst an
+#   ./einrichten.sh                                       auf dem Zielrechner: legt die Orte aus der .env an, baut und
+#                                                         startet die Container (docker/pi5b.compose.yml)
 #   ./einrichten.sh --probe --ziel DIR --port-versatz N   Probelauf des Handbuchs: .env ohne Fragen mit allen Ordnern in
 #                                                         DIR, ohne Kellerwolke, ohne Open Library und LM Studio, Port um
 #                                                         N verschoben und nur an 127.0.0.1; bauen und starten wie
@@ -77,7 +76,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ "$probe" = 0 ]; then
-  exec "$HIER/install.sh"
+  exec "$HIER/tools/starten.sh"
 elif [ -z "$ziel" ] || [ ! -d "$ziel" ]; then
   echo "--probe braucht --ziel mit einem vorhandenen Ordner" >&2; exit 2
 elif [ "$abbauen" = 1 ]; then
