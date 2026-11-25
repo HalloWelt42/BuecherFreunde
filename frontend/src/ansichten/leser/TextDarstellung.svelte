@@ -17,9 +17,10 @@
 
 <script lang="ts">
   import { FARBTHEMEN, GROESSE, ZEILEN } from "../../lib/leser/darstellung";
+  import { schale } from "../../lib/stand/schale.svelte";
   import Haekchen from "../../lib/teile/Haekchen.svelte";
   import Segment from "../../lib/teile/Segment.svelte";
-  import Eigenfarbe from "./Eigenfarbe.svelte";
+  import Randregler from "./Randregler.svelte";
   import Schriftwahl from "./Schriftwahl.svelte";
   import Stufenregler from "./Stufenregler.svelte";
   import Themenwahl from "./Themenwahl.svelte";
@@ -28,12 +29,9 @@
 
 <Stufenregler name="Größe" wert={d.groesse} bereich={GROESSE} sprung={10} anzeige="{d.groesse} %" onwahl={(groesse) => onwahl({ groesse })} />
 <Stufenregler name="Zeilenabstand" wert={d.zeilen} bereich={ZEILEN} anzeige={d.zeilen.toFixed(1).replace(".", ",")} onwahl={(zeilen) => onwahl({ zeilen })} />
-<div class="feld">Breite<Segment name="Breite" werte={BREITEN.map((b, n) => [String(n), b.name])} wert={String(d.breite)} onwahl={(n) => onwahl({ breite: Number(n) })} /></div>
+<!-- Am Telefon füllt der Text ohnehin die Breite -->
+{#if !schale.telefon}<div class="feld">Breite<Segment name="Breite" werte={BREITEN.map((b, n) => [String(n), b.name])} wert={String(d.breite)} onwahl={(n) => onwahl({ breite: Number(n) })} /></div>{/if}
+<Randregler />
 <div class="feld">Schrift<Schriftwahl wert={d.schrift} mitBuch onwahl={(schrift) => onwahl({ schrift })} /></div>
-<div class="feld">Papier<Themenwahl fg={d.fg} bg={d.bg} onwahl={(n) => onwahl({ fg: FARBTHEMEN[n].fg, bg: FARBTHEMEN[n].bg })} /></div>
-<div class="feld">
-  Eigene Farben
-  <Eigenfarbe name="Papier" wert={d.bg} onwahl={(bg) => onwahl({ bg })} />
-  <Eigenfarbe name="Text" wert={d.fg} onwahl={(fg) => onwahl({ fg })} />
-</div>
+<div class="feld">Papier<Themenwahl fg={d.fg} bg={d.bg} onwahl={(n) => onwahl({ fg: FARBTHEMEN[n].fg, bg: FARBTHEMEN[n].bg })} oneigen={onwahl} /></div>
 <div class="feld"><Haekchen text="Papier durchsichtig" an={d.durchsichtig} onwahl={(durchsichtig) => onwahl({ durchsichtig })} /></div>

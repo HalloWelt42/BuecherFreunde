@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Regler mit feinen Stufen links und rechts; der Wert in der Mitte setzt auf die Vorgabe zurück
+  // Regler mit feinen Stufen links und rechts, ganz rechts zurück auf die Vorgabe
   import { klemme, type Bereich } from "../../lib/leser/darstellung";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Regler from "../../lib/teile/Regler.svelte";
@@ -7,18 +7,29 @@
 </script>
 
 <div class="stufen">
+  <Knopf text="{name} kleiner" symbol="minus" nur klein gesperrt={wert <= bereich.min} onclick={() => onwahl(klemme(wert - sprung, bereich))} />
   <Regler {name} {wert} von={bereich.min} bis={bereich.max} schritt={bereich.schritt} {anzeige} onwahl={(w) => onwahl(klemme(w, bereich))} />
-  <div class="reihe">
-    <Knopf text="{name} kleiner" symbol="minus" nur klein gesperrt={wert <= bereich.min} onclick={() => onwahl(klemme(wert - sprung, bereich))} />
-    <Knopf text="{name} größer" symbol="plus" nur klein gesperrt={wert >= bereich.max} onclick={() => onwahl(klemme(wert + sprung, bereich))} />
-    <Knopf text="Vorgabe" symbol="rotate-left" klein frei gesperrt={wert === bereich.vorgabe} titel="{name} zurücksetzen" onclick={() => onwahl(bereich.vorgabe)} />
-  </div>
+  <Knopf text="{name} größer" symbol="plus" nur klein gesperrt={wert >= bereich.max} onclick={() => onwahl(klemme(wert + sprung, bereich))} />
+  <Knopf text="{name} zurücksetzen" symbol="rotate-left" nur klein frei gesperrt={wert === bereich.vorgabe} onclick={() => onwahl(bereich.vorgabe)} />
 </div>
 
 <style>
   .stufen {
     display: grid;
-    gap: 0.25rem;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: end;
+    gap: 0.375rem;
     width: 100%;
+  }
+  /* Der Name steht über der ganzen Reihe, der Regler mittig zwischen den Tasten */
+  .stufen :global(.regler) {
+    display: contents;
+  }
+  .stufen :global(.regler-kopf) {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .stufen :global(.regler input) {
+    align-self: center;
   }
 </style>

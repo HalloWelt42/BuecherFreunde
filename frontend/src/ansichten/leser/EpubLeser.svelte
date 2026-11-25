@@ -5,8 +5,9 @@
   import { dateiUrl } from "../../lib/api/books";
   import { blaettertaste } from "../../lib/leser/blaettertasten";
   import { nimmAuswahl } from "../../lib/leser/auswahl";
+  import { blattrand } from "../../lib/leser/blattrand.svelte";
   import { BREITE_EINS, BREITE_ZWEI, GROESSE, klemme, oderVorgabe, vorgabeThema, ZEILEN } from "../../lib/leser/darstellung";
-  import { EpubAnzeige, type Epubstand } from "../../lib/leser/epub/anzeige";
+  import { EpubAnzeige, type Epubstand, type Seitenmass } from "../../lib/leser/epub/anzeige";
   import { breite, randfarbe, type Epubdarstellung } from "../../lib/leser/epub/stile";
   import { leseart } from "../../lib/leser/leseart.svelte";
   import { Positionsspeicher } from "../../lib/leser/position";
@@ -16,6 +17,7 @@
   import { lesewerte, type Lesewerte } from "../../lib/lesestand";
   import { darstellung as app } from "../../lib/stand/darstellung.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
+  import { schale } from "../../lib/stand/schale.svelte";
   import type { BuchEinzeln } from "../../lib/typen";
   import EpubDarstellung from "./EpubDarstellung.svelte";
   import Fussleiste from "./Fussleiste.svelte";
@@ -40,6 +42,7 @@
   let d = $derived<Epubdarstellung>({ ...w, fg: eigeneFarben ? w.fg : thema.fg, bg: eigeneFarben ? w.bg : thema.bg });
 
   let art = $derived(leseart.buch.art);
+  let mass = $derived<Seitenmass>({ art, rand: blattrand.wert, oben: blattrand.oben(schale.vollbild) });
 
   let flaeche: HTMLElement | undefined = $state();
   let bereit = $state(false);
@@ -55,7 +58,7 @@
     if (!flaeche) return;
     fehler = null;
     anzeige?.schliesse();
-    anzeige = new EpubAnzeige(flaeche, d, art, {
+    anzeige = new EpubAnzeige(flaeche, d, mass, {
       beiStand: gerueckt, beiTaste: taste, mitte: () => sitzung.tippeMitte(), belegt: () => sitzung.belegt(),
       beiAuswahl: (a) => nimmAuswahl(sitzung, a && { ...a, ort: schreibweise.prozent(prozent) }) && abwahl(),
     });
@@ -123,8 +126,8 @@
     if (bereit) anzeige?.stile(neu);
   });
   $effect(() => {
-    const [neu, a] = [{ ...d }, art];
-    if (bereit) untrack(() => anzeige?.mass(neu, a));
+    const [neu, m] = [{ ...d }, mass];
+    if (bereit) untrack(() => anzeige?.mass(neu, m));
   });
 
   const vor = () => void anzeige?.vor();

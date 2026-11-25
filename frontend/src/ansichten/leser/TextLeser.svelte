@@ -8,6 +8,7 @@
   import { beobachteAuswahl, nimmAuswahl } from "../../lib/leser/auswahl";
   import { blaettergesten } from "../../lib/leser/blaettergesten";
   import { blaettertaste } from "../../lib/leser/blaettertasten";
+  import { blattrand } from "../../lib/leser/blattrand.svelte";
   import { GROESSE, istDunkel, klemme, oderVorgabe, vorgabeThema, ZEILEN } from "../../lib/leser/darstellung";
   import { Textfluss } from "../../lib/leser/fluss/textfluss";
   import { ladefehler, type Ladefehler } from "../../lib/leser/ladefehler";
@@ -20,6 +21,7 @@
   import { gemerkt, nenntStelle, type Leseziel } from "../../lib/leser/ziel";
   import { lesewerte, type Lesewerte } from "../../lib/lesestand";
   import { darstellung as app } from "../../lib/stand/darstellung.svelte";
+  import { schale } from "../../lib/stand/schale.svelte";
   import type { BuchEinzeln } from "../../lib/typen";
   import Fussleiste from "./Fussleiste.svelte";
   import Ladehinweis from "./Ladehinweis.svelte";
@@ -139,6 +141,12 @@
     untrack(() => fluss?.setzeArt(neu));
   });
 
+  // Anderer Rand: dieselbe Stelle bleibt
+  $effect(() => {
+    void [blattrand.wert, schale.vollbild];
+    untrack(() => void fluss?.halte(tick));
+  });
+
   const vor = () => void fluss?.vor();
   const zurueck = () => void fluss?.zurueck();
   const abwahl = () => getSelection()?.removeAllRanges();
@@ -207,7 +215,7 @@
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div class="seiten lesetext textbuch rollen" tabindex="0" role="document" aria-label="Text" style:--lesebreite={BREITEN[d.breite].breite} bind:this={flaeche}>
       <article class="blatt" class:ohne-grund={d.durchsichtig} class:dunkel={istDunkel(d.bg)} class:markdown={istMarkdown} lang={buch.language || "de"} bind:this={blatt}
-        style:--blattgrund={d.bg} style:--blatttinte={d.fg} style:--lesegroesse="{(1.125 * d.groesse) / 100}rem" style:font-family={d.schrift || undefined} style:line-height={d.zeilen}>
+        style:--blattgrund={d.durchsichtig ? "transparent" : d.bg} style:--blatttinte={d.fg} style:--lesegroesse="{(1.125 * d.groesse) / 100}rem" style:font-family={d.schrift || undefined} style:line-height={d.zeilen}>
         <div class="satz" bind:this={satz}>
           {#if istMarkdown}<Markdown quelle={inhalt} onsteht={steht} />{:else}<Schlichttext text={inhalt} onsteht={steht} />{/if}
         </div>

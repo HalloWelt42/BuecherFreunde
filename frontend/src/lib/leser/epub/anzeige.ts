@@ -20,6 +20,14 @@ export interface Epubstand {
   gedruckt: string;
 }
 
+/** Was den Umbruch bestimmt und nicht zum Buch, sondern zum Gerät gehört */
+export interface Seitenmass {
+  art: Leseart;
+  /** Rand links und rechts, und oben und unten */
+  rand: number;
+  oben: number;
+}
+
 export interface Epubgriffe {
   beiStand(stand: Epubstand): void;
   beiAuswahl(a: { text: string; cfi: string; x: number; oben: number; unten: number } | null): void;
@@ -29,7 +37,6 @@ export interface Epubgriffe {
   belegt(): boolean;
 }
 
-const RAND = "32px";
 const RUHE_AUSWAHL_MS = 350;
 /** So weit rückt ein Pfeil hoch oder runter beim Scrollen */
 const ZEILEN_PX = 80;
@@ -47,9 +54,12 @@ export class EpubAnzeige {
   #uhr: ReturnType<typeof setTimeout> | undefined;
 
   #gesten: () => void;
+  // Der Rand hängt an der Breite der Fläche (Drehen, Vollbild)
+  #groesse = new ResizeObserver(() => this.#seitenmass());
 
-  constructor(private flaeche: HTMLElement, private darstellung: Epubdarstellung, private art: Leseart, private griffe: Epubgriffe) {
+  constructor(private flaeche: HTMLElement, private darstellung: Epubdarstellung, private seite: Seitenmass, private griffe: Epubgriffe) {
     this.#gesten = this.#hoere(flaeche);
+    this.#groesse.observe(flaeche);
   }
 
   async oeffne(id: number, cfi: string): Promise<void> {
@@ -75,6 +85,7 @@ export class EpubAnzeige {
   schliesse(): void {
     clearTimeout(this.#uhr);
     this.#gesten();
+    this.#groesse.disconnect();
     this.#view?.close();
     this.#view?.remove();
     this.#view = null;
@@ -103,9 +114,9 @@ export class EpubAnzeige {
   // Finger, Rad und Maus: auf der Fläche und in jedem Kapitelrahmen gleich
   #hoere(ort: HTMLElement | Document): () => void {
     const versatz = () => ("defaultView" in ort ? (ort.defaultView?.frameElement?.getBoundingClientRect().left ?? 0) : 0);
-    const griffe: Blaettergriffe = { gilt: () => this.art === "blaettern", vor: this.vor, zurueck: this.zurueck, mitte: () => this.griffe.mitte(), belegt: () => this.griffe.belegt() };
+    const griffe: Blaettergriffe = { gilt: () => this.seite.art === "blaettern", vor: this.vor, zurueck: this.zurueck, mitte: () => this.griffe.mitte(), belegt: () => this.griffe.belegt() };
     const blaettern = blaettergesten(ort, { rahmen: () => this.flaeche.getBoundingClientRect(), versatz }, griffe);
-    const rand = kapitelrand(ort, { gilt: () => this.art === "scrollen", amRand: (r) => this.#amRand(r), weiter: (r) => void (r > 0 ? this.vor() : this.zurueck()) });
+    const rand = kapitelrand(ort, { gilt: () => this.seite.art === "scrollen", amRand: (r) => this.#amRand(r), weiter: (r) => void (r > 0 ? this.vor() : this.zurueck()) });
     return () => {
       blaettern();
       rand();
@@ -147,8 +158,14 @@ export class EpubAnzeige {
     const r = this.#view?.renderer;
     if (!r) return;
     const d = this.darstellung;
-    const eins = einspaltig(d, this.art);
-    const werte = { margin: RAND, flow: this.art === "scrollen" ? "scrolled" : "paginated", "max-column-count": eins ? "1" : "2", "max-inline-size": `${eins ? breite(d, this.art) : Math.round(breite(d, this.art) / 2)}px` };
+    const { art, rand, oben } = this.seite;
+    const [eins, scrollt, weite] = [einspaltig(d, art), art === "scrollen", this.flaeche.clientWidth || 1];
+    const werte = {
+      margin: `${oben}px`,
+      // Die Bibliothek nimmt den Rand als Anteil der Breite, gescrollt der Breite ohne ihn
+      gap: `${((rand / (scrollt ? weite + rand : weite)) * 100).toFixed(3)}%`,
+      flow: scrollt ? "scrolled" : "paginated", "max-column-count": eins ? "1" : "2", "max-inline-size": `${eins ? breite(d, art) : Math.round(breite(d, art) / 2)}px`,
+    };
     // Jedes Setzen bricht das Kapitel neu um, darum nur, was sich ändert
     for (const [name, wert] of Object.entries(werte)) if (r.getAttribute(name) !== wert) r.setAttribute(name, wert);
   }
@@ -167,9 +184,9 @@ export class EpubAnzeige {
     r.setStyles?.("");
   }
 
-  mass(d: Epubdarstellung, art: Leseart): void {
+  mass(d: Epubdarstellung, seite: Seitenmass): void {
     this.darstellung = d;
-    this.art = art;
+    this.seite = seite;
     this.#seitenmass();
   }
 

@@ -167,9 +167,11 @@
   $effect(() => {
     const f = flaeche;
     if (!f) return;
-    let zuvor = f.clientWidth + f.clientHeight;
+    // Der freie Platz zählt: im Vollbild fällt nur der Rand weg, die Fläche selbst kann gleich bleiben
+    const mass = () => frei().breite + frei().hoehe;
+    let zuvor = mass();
     const beobachter = new ResizeObserver(() => {
-      const jetzt = f.clientWidth + f.clientHeight;
+      const jetzt = mass();
       if (jetzt === zuvor || f.clientWidth === 0) return;
       zuvor = jetzt;
       if (zoom === null) void rechne();

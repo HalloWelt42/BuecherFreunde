@@ -5,6 +5,7 @@
   import { textBildUrl } from "../../lib/api/books";
   import { beobachteAuswahl, nimmAuswahl } from "../../lib/leser/auswahl";
   import { blaettergesten } from "../../lib/leser/blaettergesten";
+  import { blattrand } from "../../lib/leser/blattrand.svelte";
   import type { Leseart } from "../../lib/leser/fluss/fluss";
   import { Textfluss } from "../../lib/leser/fluss/textfluss";
   import { Textseiten, type Baustein } from "../../lib/leser/pdf/textseiten.svelte";
@@ -12,6 +13,7 @@
   import { zeichneMarkierungen, zeichneWortlaut } from "../../lib/leser/text/markierung";
   import { textansicht } from "../../lib/leser/textansicht.svelte";
   import { schreibweise } from "../../lib/leser/typen";
+  import { schale } from "../../lib/stand/schale.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Bildlupe from "./Bildlupe.svelte";
 
@@ -113,7 +115,7 @@
 
   // Schrift, Zeilen, Rand: dieselbe Stelle bleibt
   $effect(() => {
-    void [textansicht.groesse, textansicht.zeilen, textansicht.familie];
+    void [textansicht.groesse, textansicht.zeilen, textansicht.familie, blattrand.wert, schale.vollbild];
     untrack(() => void fluss?.halte(tick));
   });
 

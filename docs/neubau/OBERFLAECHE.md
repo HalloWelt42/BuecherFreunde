@@ -128,7 +128,9 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 | Fundstelle aus ?q und ?stelle, nie gespeichert | Textebene | ?q ja, ?stelle nein |
 | Auswahlmenü: markieren (16 Farben), Kopieren, Vorlesen, Schnellnotiz, Buchnotiz neu, anhängen, ersetzen; schließt beim Abwählen (23) | `Auswahlmenue` | ja bis auf Vorlesen, Kopieren, Ersetzen |
 | Vorlesen Seite, Kapitel, ganzes Buch, Stopp | Menü oben, am Telefon im Feld | nein (Erweiterung fehlt) |
-| Vollbild, mit Ersatz ohne Browservollbild | Leiste oder Feld | Zustand ja, echtes Vollbild nein |
+| Vollbild, mit Ersatz ohne Browservollbild: Blatt bis an alle Kanten, auch hinter Kerbe und Home-Balken, `theme-color` in Blattfarbe; nur das Zeichen zum Verlassen schwebt, 18 von links und 5 von oben, Tippfläche 44 (BF-21) | `Leserahmen`, `stand/blattgrund`, `stil/leser.css` | alle Formate, hell und dunkel, 390, 844 quer, 834, 1440; echtes Vollbild des Browsers nein |
+| Innerer Rand 0 bis 120, je Gerät gemerkt, in PDF als Text, MD, TXT, EPUB und MOBI (BF-21) | `leser/blattrand`, `Randregler` | ja |
+| Tasten einer Gruppe gleich breit und gleich hoch (BF-21) | `.tastenraster` in `stil/leser.css` | gemessen 360, 390, 1440, sehr groß |
 | Herunterladen, im Browser öffnen, Hinweis nach 4 Sekunden | Feld, `Ladehinweis` | nein |
 | Stand merken, beim Verlassen sofort (19), Adresse geht mit, Telefon getrennt vom Rechner (20) | `leser/position` | ja |
 | EPUB: blättern, Prozent, Kapitel, Verzeichnis, Themen, Schriften, ein- und zweispaltig (22), Suchtreffer (17), ?cfi, ?percent | `EpubLeser` | ja, Wischen und Transparenz nein |

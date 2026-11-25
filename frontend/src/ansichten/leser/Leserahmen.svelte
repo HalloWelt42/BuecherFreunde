@@ -4,10 +4,12 @@
   import { beiEsc } from "../../lib/flucht";
   import type { Leseart } from "../../lib/leser/fluss/fluss";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
-  import { geraet } from "../../lib/stand/geraet.svelte";
+  import { blattrand } from "../../lib/leser/blattrand.svelte";
+  import { zeigeBlattgrund } from "../../lib/stand/blattgrund";
   import { schale } from "../../lib/stand/schale.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Menue from "../../lib/teile/Menue.svelte";
+  import Symbol from "../../lib/teile/Symbol.svelte";
   import Auswahlmenue from "./Auswahlmenue.svelte";
   import Leseartwahl from "./Leseartwahl.svelte";
   import Leserwerkzeuge from "./Leserwerkzeuge.svelte";
@@ -37,8 +39,6 @@
   let rahmen: HTMLElement | undefined = $state();
   let vorleseKnopf = $state<HTMLElement | null>(null);
   let vorlesenOffen = $state(false);
-  // Mit dem Finger gehört der Bildschirm im Vollbild ganz dem Text
-  let ohneLeisten = $derived(schale.vollbild && (schale.telefon || geraet.telefon));
 
   $effect(() => {
     if (sitzung.feld) return beiEsc(() => (sitzung.feld = ""));
@@ -46,13 +46,20 @@
   $effect(() => {
     if (schale.vollbild) return beiEsc(() => void schale.vollbildUmschalten());
   });
+  // Im Vollbild gehört der ganze Bildschirm dem Blatt
+  $effect(() => {
+    if (schale.vollbild) sitzung.feld = "";
+  });
+  $effect(() => {
+    if (schale.vollbild) return zeigeBlattgrund(grund);
+  });
 </script>
 
-<div class="leser" class:mit-treffer={!!treffer && !ohneLeisten} class:ohne-leisten={ohneLeisten} data-papier={papier} style:--leserand-grund={grund} style:--leserand-tinte={tinte} bind:this={rahmen}>
+<div class="leser" class:mit-treffer={!!treffer && !schale.vollbild} class:randlos={schale.vollbild} data-papier={papier} style:--randgrund={grund} style:--randtinte={tinte} style:--blattrand="{blattrand.wert}px" style:--blattrand-oben="{blattrand.oben(schale.vollbild)}px" bind:this={rahmen}>
   {@render children()}
 
-  {#if ohneLeisten}
-    <div class="leseleiste leisten-her glas klar"><Knopf text="Leisten zeigen" symbol="compress" nur frei klein onclick={() => void schale.vollbildUmschalten()} /></div>
+  {#if schale.vollbild}
+    <button type="button" class="schwebezeichen links" aria-label="Vollbild verlassen" title="Vollbild verlassen" onclick={() => void schale.vollbildUmschalten()}><Symbol name="compress" /></button>
   {:else}
     <div class="leseleiste oben glas klar">
       <Knopf text="Zurück" symbol="arrow-left" nur frei klein onclick={onzurueck} />
@@ -61,7 +68,7 @@
       <Knopf text="Notizen und Markierungen" symbol="highlighter" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "stellen"} onclick={() => sitzung.schalteFeld("stellen")} />
       <span class="nur-breit reihe">
         <Knopf text="Vorlesen" symbol="volume-high" nur frei klein gesperrt={!bereit} gedrueckt={vorlesen.aktiv} aufgeklappt={vorlesenOffen} bind:element={vorleseKnopf} onclick={() => (vorlesenOffen = !vorlesenOffen)} />
-        <Knopf text={schale.vollbild ? "Vollbild verlassen" : "Vollbild"} symbol={schale.vollbild ? "compress" : "expand"} nur frei klein gedrueckt={schale.vollbild} onclick={() => void schale.vollbildUmschalten()} />
+        <Knopf text="Vollbild" symbol="expand" nur frei klein onclick={() => void schale.vollbildUmschalten()} />
       </span>
       <Knopf text="Schrift, Papier, Ansicht" symbol="font" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "darstellung"} onclick={() => sitzung.schalteFeld("darstellung")} />
     </div>
@@ -82,8 +89,8 @@
     </aside>
   {/if}
 
-  {#if treffer && !ohneLeisten}<div class="leseleiste treffer unten glas klar">{@render treffer()}</div>{/if}
-  {#if bereit && !ohneLeisten}<div class="leseleiste unten glas klar">{@render fuss()}</div>{/if}
+  {#if treffer && !schale.vollbild}<div class="leseleiste treffer unten glas klar">{@render treffer()}</div>{/if}
+  {#if bereit && !schale.vollbild}<div class="leseleiste unten glas klar">{@render fuss()}</div>{/if}
   {#if sitzung.auswahl && rahmen}<Auswahlmenue {sitzung} {rahmen} {onabwahl} />{/if}
 </div>
 

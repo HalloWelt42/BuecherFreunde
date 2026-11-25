@@ -5,6 +5,7 @@
   import { darstellung } from "../../lib/stand/darstellung.svelte";
   import Chip from "../../lib/teile/Chip.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
+  import Randregler from "./Randregler.svelte";
   import Schriftwahl from "./Schriftwahl.svelte";
   import Stufenregler from "./Stufenregler.svelte";
   import Themenwahl from "./Themenwahl.svelte";
@@ -27,20 +28,30 @@
 {#if nurText}
   <Stufenregler name="Größe" wert={textansicht.groesse} bereich={{ ...GROESSE, vorgabe: 110 }} anzeige="{textansicht.groesse} %" onwahl={(w) => (textansicht.groesse = w)} />
   <Stufenregler name="Zeilenabstand" wert={textansicht.zeilen} bereich={ZEILEN} anzeige={textansicht.zeilen.toFixed(1).replace(".", ",")} onwahl={(w) => (textansicht.zeilen = w)} />
+  <Randregler />
   <div class="feld">Schrift<Schriftwahl wert={textansicht.familie} onwahl={(f) => (textansicht.familie = f)} /></div>
-  <div class="feld">Farbe<Themenwahl fg={thema.fg} bg={thema.bg} onwahl={(n) => textansicht.setzeThema(n)} /></div>
+  <div class="feld">Papier<Themenwahl fg={thema.fg} bg={thema.bg} onwahl={(n) => textansicht.setzeThema(n)} /></div>
 {:else}
   <div class="feld">
     Größe
-    <div class="reihe">
+    <div class="zoom">
       <Knopf text="Kleiner" symbol="minus" nur klein gesperrt={mass <= stufen[0] + 0.005} onclick={() => onzoom(-1)} />
       <Knopf text="{Math.round(mass * 100)} %" klein titel="Auf 100 % setzen" onclick={onoriginalgroesse} />
       <Knopf text="Größer" symbol="plus" nur klein gesperrt={mass >= stufen[stufen.length - 1] - 0.005} onclick={() => onzoom(1)} />
     </div>
   </div>
-  <div class="feld">Papier<div class="reihe">{#each PAPIERE as [w, t] (w)}<Chip text={t} gedrueckt={papier === w} onclick={() => onpapier(w)} />{/each}</div></div>
+  <div class="feld">Papier<div class="tastenraster" style:--spalten="4">{#each PAPIERE as [w, t] (w)}<Chip text={t} gedrueckt={papier === w} onclick={() => onpapier(w)} />{/each}</div></div>
 {/if}
 <div class="feld">
   Ansicht
-  <div class="reihe">{#each ANSICHTEN as [w, t] (w)}<Chip text={t} gedrueckt={nurText ? w === "text" : w === ansicht} onclick={() => onansicht(w)} />{/each}</div>
+  <div class="tastenraster">{#each ANSICHTEN as [w, t] (w)}<Chip text={t} gedrueckt={nurText ? w === "text" : w === ansicht} onclick={() => onansicht(w)} />{/each}</div>
 </div>
+
+<style>
+  .zoom {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.375rem;
+    width: 100%;
+  }
+</style>

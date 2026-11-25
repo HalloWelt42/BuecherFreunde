@@ -6,19 +6,14 @@
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Vorlesen from "./Vorlesen.svelte";
   let { sitzung }: { sitzung: Lesesitzung } = $props();
-
-  async function vollbild() {
-    sitzung.feld = "";
-    await schale.vollbildUmschalten();
-  }
 </script>
 
 <div class="feld werkzeuge">
   Werkzeuge
-  <div class="reihe">
-    <Knopf text={schale.vollbild ? "Vollbild verlassen" : "Vollbild"} symbol={schale.vollbild ? "compress" : "expand"} klein onclick={vollbild} />
-    <Knopf text="Herunterladen" symbol="download" klein href={dateiUrl(sitzung.buch.id)} download={sitzung.buch.file_name || sitzung.buch.title} />
-    <Knopf text="Im Browser öffnen" symbol="up-right-from-square" klein extern href={dateiUrl(sitzung.buch.id)} />
+  <div class="tastenraster">
+    <Knopf klasse="kachel" text="Vollbild" symbol="expand" onclick={() => void schale.vollbildUmschalten()} />
+    <Knopf klasse="kachel" text="Herunterladen" symbol="download" href={dateiUrl(sitzung.buch.id)} download={sitzung.buch.file_name || sitzung.buch.title} />
+    <Knopf klasse="kachel" text="Im Browser" titel="Im Browser öffnen" symbol="up-right-from-square" extern href={dateiUrl(sitzung.buch.id)} />
   </div>
   {#if schale.telefon}<Vorlesen {sitzung} />{/if}
 </div>

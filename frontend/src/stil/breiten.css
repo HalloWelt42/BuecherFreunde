@@ -78,7 +78,7 @@
   .schwebefenster > .griff { display: none; }
   .schwebe, .schwebe.menue { left: var(--rand-seite); right: var(--rand-seite); width: auto; }
   .meldungen { bottom: 4.75rem; }
-  .auswahl select, .auswahl.klein select, .eingabe, .feld input, .feld textarea { font-size: 1rem; min-height: 2.75rem; }
+  .auswahl select, .auswahl.klein select, .eingabe, .feld input:not([type="checkbox"]), .feld textarea { font-size: 1rem; min-height: 2.75rem; }
   .haekchen { min-height: 2.75rem; }
   .buehne .suchfeld-mobil { display: flex; }
 }
