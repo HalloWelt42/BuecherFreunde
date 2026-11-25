@@ -57,6 +57,16 @@ export function zeichneMarkierungen(flaeche: HTMLElement, markierungen: Markieru
   }
 }
 
+const FARBE_TREFFER = "rgba(255, 152, 0, 0.45)";
+
+/** Ein Wortlaut, auch über mehrere Textknoten; liefert sein erstes Stück */
+export function zeichneWortlaut(flaeche: HTMLElement, wortlaut: string): HTMLElement | null {
+  leere(flaeche, "treffer");
+  const knoten = textknoten(flaeche);
+  const ort = findeZeichen(knoten, wortlaut.replace(/^"|"$/g, ""), null);
+  return ort && umhuelle(knoten, ort.von, ort.bis, () => huelle("treffer", FARBE_TREFFER, "treffer"));
+}
+
 /** Alle Stellen eines Suchworts (höchstens so viele), in Lesefolge */
 export function zeichneTreffer(flaeche: HTMLElement, wort: string, hoechstens = 500): HTMLElement[] {
   leere(flaeche, "treffer");
@@ -69,7 +79,7 @@ export function zeichneTreffer(flaeche: HTMLElement, wort: string, hoechstens = 
     for (let i = klein.indexOf(gesucht); i >= 0 && aus.length + stellen.length < hoechstens; i = klein.indexOf(gesucht, i + gesucht.length)) stellen.push(i);
     const eigene: HTMLElement[] = [];
     for (const i of stellen.reverse()) {
-      const h = umhuelle([k], { knoten: k, versatz: i }, { knoten: k, versatz: i + gesucht.length }, () => huelle("treffer", "rgba(255, 152, 0, 0.45)", "treffer"));
+      const h = umhuelle([k], { knoten: k, versatz: i }, { knoten: k, versatz: i + gesucht.length }, () => huelle("treffer", FARBE_TREFFER, "treffer"));
       if (h) eigene.unshift(h);
     }
     aus.push(...eigene);
@@ -78,13 +88,15 @@ export function zeichneTreffer(flaeche: HTMLElement, wort: string, hoechstens = 
 }
 
 /** Überschriften als Verzeichnis: im Markdown aus dem Dokument, im Text aus Zeilen, die wie Überschriften aussehen */
-export function textkapitel(zeilen: string[]): { titel: string; zeile: number }[] {
+export function textkapitel(zeilen: string[]): { titel: string; anteil: number }[] {
   const muster = /^(?:(?:kapitel|teil|abschnitt|buch|akt|szene|chapter|part)\b.{0,60}|\d{1,3}(?:\.\d{1,3}){0,3}\.?\s+\S.{2,70})$/i;
-  const aus: { titel: string; zeile: number }[] = [];
+  const aus: { titel: string; zeichen: number }[] = [];
+  let zeichen = 0;
   zeilen.forEach((z, n) => {
     const t = z.trim();
     const frei = !zeilen[n - 1]?.trim() && !zeilen[n + 1]?.trim();
-    if (t && frei && muster.test(t)) aus.push({ titel: t, zeile: n });
+    if (t && frei && muster.test(t)) aus.push({ titel: t, zeichen });
+    zeichen += z.length + 1;
   });
-  return aus.length >= 2 && aus.length <= 300 ? aus : [];
+  return aus.length >= 2 && aus.length <= 300 ? aus.map((k) => ({ titel: k.titel, anteil: k.zeichen / zeichen })) : [];
 }

@@ -21,14 +21,23 @@ declare module "foliate-js/view.js" {
   }
   export class View extends HTMLElement {
     book?: { toc?: FoliateKapitel[]; metadata?: { language?: string | string[] }; sections: unknown[] };
-    renderer?: HTMLElement & { getContents(): FoliateInhalt[]; setStyles?(css: string): void };
+    renderer?: HTMLElement & {
+      getContents(): FoliateInhalt[];
+      setStyles?(css: string): void;
+      /** Im Umbruch der Bibliothek; Bücher mit festen Seiten haben das nicht */
+      readonly scrolled?: boolean;
+      readonly start?: number;
+      readonly end?: number;
+      readonly viewSize?: number;
+      readonly atEnd?: boolean;
+    };
     open(datei: File): Promise<void>;
     close(): void;
     init(o: { lastLocation?: string }): Promise<void>;
     goTo(ziel: string | number): Promise<unknown>;
     goToFraction(anteil: number): Promise<void>;
-    next(): Promise<void>;
-    prev(): Promise<void>;
+    next(weite?: number): Promise<void>;
+    prev(weite?: number): Promise<void>;
     getCFI(index: number, bereich?: Range): string;
     resolveCFI(cfi: string): { index: number };
     getSectionFractions(): number[];

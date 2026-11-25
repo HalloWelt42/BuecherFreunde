@@ -41,8 +41,10 @@
 /* PDF */
 .leser .seiten.pdf { display: flex; flex-direction: column; align-items: safe center; justify-content: flex-start; gap: .625rem; grid-template-columns: none; }
 .leser .seiten.pdf.blaettert { justify-content: safe center; }
-.leser .seiten.pdf.verborgen { display: none; }
-.bogen { display: flex; align-items: center; justify-content: center; gap: .375rem; }
+.leser .seiten.pdf.blaettert { touch-action: pan-x pan-y pinch-zoom; overscroll-behavior: contain; }
+.bogen { display: flex; align-items: center; justify-content: center; gap: .375rem; flex: none; }
+/* Nachbarn stehen fertig gezeichnet bereit, ohne Platz und ungesehen */
+.bogen.wartet { position: absolute; width: 0; height: 0; overflow: hidden; visibility: hidden; }
 .pdfseite { position: relative; flex: none; min-width: 6rem; min-height: 8rem; background: var(--papier); border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgb(0 0 0 / .14), 0 18px 40px -18px rgb(0 0 0 / .6); }
 .pdfseite > .nummer { position: absolute; inset: 0; display: grid; place-items: center; font-size: .875rem; color: var(--papier-tinte); opacity: .45; }
 .pdfseite canvas { position: relative; display: block; }
@@ -54,6 +56,8 @@
 .textLayer :is(span, br) { position: absolute; color: transparent; white-space: pre; cursor: text; transform-origin: 0% 0%; }
 .textLayer > :not(.markedContent), .textLayer .markedContent span:not(.markedContent) { z-index: 1; --font-height: 0; font-size: calc(var(--text-scale-factor) * var(--font-height)); --scale-x: 1; --rotate: 0deg; transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv)); }
 .textLayer .markedContent { display: contents; }
+/* Die Fundstelle nie unter den Leisten */
+.textLayer [data-markierung] { scroll-margin-block: 6rem; }
 .textLayer ::selection { background: rgb(0 100 255 / .4); }
 /* EPUB */
 .epubflaeche { position: absolute; inset: 4.25rem var(--rand-seite); max-width: var(--lesebreite); margin-inline: auto; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgb(0 0 0 / .14), 0 18px 40px -18px rgb(0 0 0 / .6); }
@@ -76,14 +80,25 @@
   .leseleiste.oben { width: calc(100% - 1.25rem); }
   .leseleiste.oben b { flex: 1; text-align: center; }
   .leser .seiten.pdf { padding-inline: .375rem; }
-  .leser .seiten.textbuch { padding-inline: .375rem; }
+  .leser .seiten.lesetext { padding-inline: .375rem; }
   .epubflaeche { inset-inline: .375rem; }
   .leser.mit-treffer .epubflaeche { bottom: 8.5rem; }
   .seitenzahl { width: 3.5rem; height: 2.25rem; font-size: 1rem; }
   .sprung { height: 2.75rem; }
   .farbreihe button { width: 2.25rem; height: 2.25rem; }
   .leseleiste.treffer { bottom: 4.75rem; }
+  .leser.mit-treffer .seiten.schirmweise { padding-bottom: 8.5rem; }
+  .leseleiste.unten .sprung { flex: 1 1 0; min-width: 0; }
   .seitenfeld { top: 4.5rem; max-height: calc(100% - 9.25rem); }
+}
+/* Telefon quer: die Höhe gehört dem Buch */
+@media (max-height: 30rem) {
+  .schale.ohne-leiste.ohne-vorschau:has(.leser) { grid-template: minmax(0, 1fr) / minmax(0, 1fr); gap: 0; padding: 0; }
+  .schale:has(.leser) > :is(.kopf, .tafel) { display: none; }
+  .schale.ohne-leiste:has(.leser) > .buehne { grid-area: 1 / 1; border-radius: 0; }
+  .leser .seiten { padding-block: 3.75rem; }
+  .epubflaeche { inset-block: 3.75rem; }
+  .seitenfeld { top: 3.5rem; max-height: calc(100% - 4.125rem); z-index: 7; }
 }
 /* Sehr große Schrift am Telefon: der Stand bricht um, die Pfeile bleiben */
 @container app (max-width: 22rem) { .leseleiste.unten .stand, .leseleiste.unten .stand > span { white-space: normal; line-height: 1.15; } .leseleiste b { display: none; } .leseleiste.oben { justify-content: space-between; } }

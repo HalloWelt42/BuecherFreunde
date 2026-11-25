@@ -1,5 +1,7 @@
 // CSS für die Kapitelrahmen eines EPUB. Die Wahl im Leser soll über den Stilen des Buchs stehen, darum hier (und nur
 // hier) !important.
+import type { Leseart } from "../fluss/fluss";
+
 export interface Epubdarstellung {
   groesse: number;
   schrift: string;
@@ -15,7 +17,9 @@ export interface Epubdarstellung {
 
 export const randfarbe = (d: Epubdarstellung) => (d.randTransparent ? "transparent" : d.bg);
 export const blattfarbe = (d: Epubdarstellung) => (d.blattTransparent ? "transparent" : d.bg);
-export const breite = (d: Epubdarstellung) => (d.einseitig ? d.breiteEins : d.breiteZwei);
+/** Gescrollt steht immer nur eine Spalte */
+export const einspaltig = (d: Epubdarstellung, art: Leseart) => d.einseitig || art === "scrollen";
+export const breite = (d: Epubdarstellung, art: Leseart) => (einspaltig(d, art) ? d.breiteEins : d.breiteZwei);
 
 export function epubCss(d: Epubdarstellung, schriften: string): string {
   // Die gewählte Schrift gilt für allen Text, auch wo das Buch eigene Schriften setzt; Code bleibt, wie er ist

@@ -1,13 +1,15 @@
 <script lang="ts">
-  import type { Snippet } from "svelte";
+  import { getContext, type Snippet } from "svelte";
   import { sichereAdresse } from "../../lib/leser/text/markdown";
   let { href = "", title = undefined, children = undefined }: { href?: string; title?: string; children?: Snippet } = $props();
   let adresse = $derived(sichereAdresse(href));
 
-  // Sprungmarken im Text: auf die Überschrift rollen, die Adresse bleibt
+  const sprung = getContext<((kennung: string) => void) | undefined>("lesesprung");
+
+  // Sprungmarken im Text: zur Überschrift, die Adresse bleibt
   function springe(e: MouseEvent) {
     e.preventDefault();
-    document.getElementById(decodeURIComponent(adresse.slice(1)))?.scrollIntoView({ block: "start" });
+    sprung?.(decodeURIComponent(adresse.slice(1)));
   }
 </script>
 

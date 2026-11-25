@@ -3,10 +3,13 @@ import type { FoliateKapitel, FoliateStand, View } from "foliate-js/view.js";
 import { dateiUrl } from "../../api/books";
 import { anfrage } from "../../api/client";
 import type { Markierung } from "../../typen";
+import { blaettergesten, type Blaettergriffe } from "../blaettergesten";
 import { VORGABE_STIFT } from "../farben";
+import type { Leseart } from "../fluss/fluss";
 import type { Kapitel } from "../typen";
+import { kapitelrand } from "./kapitelrand";
 import { leseschriftenCss } from "./schriften";
-import { breite, epubCss, randfarbe, setzeStil, type Epubdarstellung } from "./stile";
+import { breite, einspaltig, epubCss, randfarbe, setzeStil, type Epubdarstellung } from "./stile";
 
 export interface Epubstand {
   anteil: number;
@@ -21,10 +24,15 @@ export interface Epubgriffe {
   beiStand(stand: Epubstand): void;
   beiAuswahl(a: { text: string; cfi: string; x: number; oben: number; unten: number } | null): void;
   beiTaste(e: KeyboardEvent): void;
+  /** Tippen in die Mitte, und was vor dem Tippen kommt */
+  mitte(): void;
+  belegt(): boolean;
 }
 
 const RAND = "32px";
 const RUHE_AUSWAHL_MS = 350;
+/** So weit rückt ein Pfeil hoch oder runter beim Scrollen */
+const ZEILEN_PX = 80;
 
 function flach(toc: FoliateKapitel[], tiefe = 0): Kapitel[] {
   return toc.flatMap((k) => [{ titel: k.label?.trim() || "Ohne Titel", tiefe, ziel: k.href }, ...flach(k.subitems ?? [], tiefe + 1)]);
@@ -38,7 +46,11 @@ export class EpubAnzeige {
   #schriften = leseschriftenCss();
   #uhr: ReturnType<typeof setTimeout> | undefined;
 
-  constructor(private flaeche: HTMLElement, private darstellung: Epubdarstellung, private griffe: Epubgriffe) {}
+  #gesten: () => void;
+
+  constructor(private flaeche: HTMLElement, private darstellung: Epubdarstellung, private art: Leseart, private griffe: Epubgriffe) {
+    this.#gesten = this.#hoere(flaeche);
+  }
 
   async oeffne(id: number, cfi: string): Promise<void> {
     const [{ View }, { Overlayer }, antwort] = await Promise.all([import("foliate-js/view.js"), import("foliate-js/overlayer.js"), anfrage(dateiUrl(id))]);
@@ -62,6 +74,7 @@ export class EpubAnzeige {
 
   schliesse(): void {
     clearTimeout(this.#uhr);
+    this.#gesten();
     this.#view?.close();
     this.#view?.remove();
     this.#view = null;
@@ -84,6 +97,24 @@ export class EpubAnzeige {
       this.#uhr = setTimeout(auswerten, RUHE_AUSWAHL_MS);
     });
     doc.addEventListener("keydown", (e) => this.griffe.beiTaste(e));
+    this.#hoere(doc);
+  }
+
+  // Finger, Rad und Maus: auf der Fläche und in jedem Kapitelrahmen gleich
+  #hoere(ort: HTMLElement | Document): () => void {
+    const versatz = () => ("defaultView" in ort ? (ort.defaultView?.frameElement?.getBoundingClientRect().left ?? 0) : 0);
+    const griffe: Blaettergriffe = { gilt: () => this.art === "blaettern", vor: this.vor, zurueck: this.zurueck, mitte: () => this.griffe.mitte(), belegt: () => this.griffe.belegt() };
+    const blaettern = blaettergesten(ort, { rahmen: () => this.flaeche.getBoundingClientRect(), versatz }, griffe);
+    const rand = kapitelrand(ort, { gilt: () => this.art === "scrollen", amRand: (r) => this.#amRand(r), weiter: (r) => void (r > 0 ? this.vor() : this.zurueck()) });
+    return () => {
+      blaettern();
+      rand();
+    };
+  }
+
+  #amRand(richtung: 1 | -1): boolean {
+    const r = this.#view?.renderer;
+    return richtung > 0 ? (r?.viewSize ?? 0) - (r?.end ?? 0) <= 2 : (r?.start ?? 0) <= 1;
   }
 
   #auswahl(doc: Document, index: number): void {
@@ -105,7 +136,10 @@ export class EpubAnzeige {
 
   #gerueckt(s: FoliateStand): void {
     const nr = this.kapitel.findIndex((k) => k.ziel === s.tocItem?.href);
-    this.griffe.beiStand({ anteil: s.fraction ?? 0, cfi: s.cfi ?? "", kapitel: s.tocItem?.label?.trim() ?? "", kapitelNr: nr, gedruckt: s.pageItem?.label?.trim() ?? "" });
+    // Gescrollt zählt die Bibliothek nur, was über dem Bild liegt: am Ende des Buchs fehlte sonst der letzte Schirm
+    const r = this.#view?.renderer;
+    const zuEnde = !!r?.scrolled && !!r.atEnd && this.#amRand(1);
+    this.griffe.beiStand({ anteil: zuEnde ? 1 : (s.fraction ?? 0), cfi: s.cfi ?? "", kapitel: s.tocItem?.label?.trim() ?? "", kapitelNr: nr, gedruckt: s.pageItem?.label?.trim() ?? "" });
   }
 
   // Einseitig heißt eine Spalte, auch wenn zwei nebeneinander passten
@@ -113,9 +147,10 @@ export class EpubAnzeige {
     const r = this.#view?.renderer;
     if (!r) return;
     const d = this.darstellung;
-    r.setAttribute("margin", RAND);
-    r.setAttribute("max-column-count", d.einseitig ? "1" : "2");
-    r.setAttribute("max-inline-size", `${d.einseitig ? breite(d) : Math.round(breite(d) / 2)}px`);
+    const eins = einspaltig(d, this.art);
+    const werte = { margin: RAND, flow: this.art === "scrollen" ? "scrolled" : "paginated", "max-column-count": eins ? "1" : "2", "max-inline-size": `${eins ? breite(d, this.art) : Math.round(breite(d, this.art) / 2)}px` };
+    // Jedes Setzen bricht das Kapitel neu um, darum nur, was sich ändert
+    for (const [name, wert] of Object.entries(werte)) if (r.getAttribute(name) !== wert) r.setAttribute(name, wert);
   }
 
   stile(d: Epubdarstellung): void {
@@ -132,13 +167,16 @@ export class EpubAnzeige {
     r.setStyles?.("");
   }
 
-  mass(d: Epubdarstellung): void {
+  mass(d: Epubdarstellung, art: Leseart): void {
     this.darstellung = d;
+    this.art = art;
     this.#seitenmass();
   }
 
-  vor = () => this.#view?.next();
-  zurueck = () => this.#view?.prev();
+  vor = (): void => void this.#view?.next();
+  zurueck = (): void => void this.#view?.prev();
+  zeileVor = (): void => void this.#view?.next(ZEILEN_PX);
+  zeileZurueck = (): void => void this.#view?.prev(ZEILEN_PX);
 
   async zuAnteil(anteil: number): Promise<void> {
     await this.#view?.goToFraction(Math.min(0.9999, Math.max(0, anteil)));

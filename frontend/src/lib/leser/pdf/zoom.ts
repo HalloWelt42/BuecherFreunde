@@ -1,4 +1,6 @@
 // Zoomstufen und Einpassen der PDF-Seiten
+import type { Leseart } from "../fluss/fluss";
+
 export const STUFEN = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
 
 export type Ansicht = "scroll" | "breite" | "seite" | "doppel" | "einzeln";
@@ -20,24 +22,41 @@ export interface Mass {
   hoehe: number;
 }
 
+/** Lässt sich die geblätterte Seite selbst noch schieben (vergrößert, Querformat)? */
+export interface Seitenrest {
+  oben: boolean;
+  unten: boolean;
+}
+
 const FUGE_DOPPEL = 16;
+/** Darunter ist eine ganze Seite unlesbar klein (Telefon quer): dann gilt die Breite, geblättert wird in Abschnitten */
+const NIEDRIG = 480;
 
 /** Maß, mit dem eine Seite in die freie Fläche passt; null, wenn die Fläche gerade verborgen ist */
 export function einpassen(ansicht: Ansicht, seite: Mass, flaeche: Mass): number | null {
   if (flaeche.breite <= 0 || flaeche.hoehe <= 0) return null;
   const hoch = flaeche.hoehe / seite.hoehe;
+  const breit = flaeche.breite / seite.breite;
   switch (ansicht) {
     case "breite":
-      return flaeche.breite / seite.breite;
-    case "seite":
+      return breit;
     case "einzeln":
-      return Math.min(flaeche.breite / seite.breite, hoch);
+      return flaeche.hoehe < NIEDRIG && flaeche.breite > flaeche.hoehe ? breit : Math.min(breit, hoch);
+    case "seite":
+      return Math.min(breit, hoch);
     case "doppel":
       return Math.min((flaeche.breite - FUGE_DOPPEL) / (seite.breite * 2), hoch);
     default:
       return null;
   }
 }
+
+export const geblaettert = (a: Ansicht) => a === "einzeln" || a === "doppel";
+
+export const artVon = (a: Ansicht): Leseart => (geblaettert(a) ? "blaettern" : "scrollen");
+
+/** Womit ein Buch ohne eigene Ansicht beginnt */
+export const ansichtFuer = (art: Leseart, telefon: boolean): Ansicht => (art === "blaettern" ? "einzeln" : telefon ? "breite" : "scroll");
 
 /** Seiten, die in Einzel- und Doppelansicht zu sehen sind */
 export function sichtbareSeiten(ansicht: Ansicht, seite: number, gesamt: number): number[] {
@@ -46,4 +65,9 @@ export function sichtbareSeiten(ansicht: Ansicht, seite: number, gesamt: number)
   return [links, links + 1].filter((n) => n >= 1 && n <= gesamt);
 }
 
-export const geblaettert = (a: Ansicht) => a === "einzeln" || a === "doppel";
+/** Der Bogen danach und davor, ohne den sichtbaren */
+export function nachbarn(ansicht: Ansicht, seite: number, gesamt: number): number[][] {
+  const schritt = ansicht === "doppel" ? 2 : 1;
+  const erste = sichtbareSeiten(ansicht, seite, gesamt)[0] ?? seite;
+  return [erste + schritt, erste - schritt].filter((n) => n >= 1 && n <= gesamt).map((n) => sichtbareSeiten(ansicht, n, gesamt));
+}

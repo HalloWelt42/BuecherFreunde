@@ -1,10 +1,18 @@
-/* Text und Markdown auf dem Blatt */
-.textbuch .blatt { width: 100%; justify-self: center; background: var(--blattgrund); color: var(--blatttinte); overflow-wrap: break-word; }
-.textbuch .blatt.ohne-grund { box-shadow: none; }
-.leser .seiten.textbuch { grid-template-columns: minmax(0, var(--lesebreite)); }
+/* Text auf dem Blatt: Text, Markdown, Seiten eines PDF als Text */
+.lesetext .blatt { width: 100%; justify-self: center; background: var(--blattgrund); color: var(--blatttinte); overflow-wrap: break-word; }
+.lesetext .blatt.ohne-grund { box-shadow: none; }
+.leser .seiten.lesetext { grid-template-columns: minmax(0, var(--lesebreite, 44rem)); }
+/* Schirmweise: das Blatt füllt die Fläche, der Satz läuft in Spalten dahinter, zu sehen ist immer ein Schirm */
+.leser .seiten.schirmweise { overflow: clip; touch-action: pinch-zoom; align-content: stretch; grid-template-rows: minmax(0, 1fr); }
+.schirmweise .blatt { height: 100%; overflow: clip; }
+.schirmweise .satz { column-fill: auto; orphans: 2; widows: 2; }
+.schirmweise .satz :is(h1, h2, h3, h4, h5, h6, .seitenmarke) { break-after: avoid; }
+.schirmweise .satz :is(img, figure, pre, table, tr, li, blockquote, .abbildung, .kasten, .hinweis) { break-inside: avoid; }
+.schirmweise .satz img { max-height: calc(var(--satzhoehe) - 5em); object-fit: contain; }
+.leser.mit-treffer .seiten.schirmweise { padding-bottom: 7.75rem; }
 .schlichttext { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
 .blatt mark { color: inherit; border-radius: 2px; box-shadow: none; }
-.markdown > :first-child { margin-top: 0; }
+.markdown .satz > :first-child { margin-top: 0; }
 .markdown :is(h1, h2, h3, h4, h5, h6) { font-family: inherit; font-weight: 600; line-height: 1.25; margin: 1.4em 0 .6em; }
 .markdown h1 { font-size: 1.8em; }
 .markdown h2 { font-size: 1.45em; }

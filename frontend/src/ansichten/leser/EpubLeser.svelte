@@ -3,15 +3,15 @@
   import { ladefehler, type Ladefehler } from "../../lib/leser/ladefehler";
   import { onDestroy, onMount, untrack } from "svelte";
   import { dateiUrl } from "../../lib/api/books";
-  import { schreibtGerade } from "../../lib/flucht";
+  import { blaettertaste } from "../../lib/leser/blaettertasten";
   import { nimmAuswahl } from "../../lib/leser/auswahl";
   import { BREITE_EINS, BREITE_ZWEI, GROESSE, klemme, oderVorgabe, vorgabeThema, ZEILEN } from "../../lib/leser/darstellung";
   import { EpubAnzeige, type Epubstand } from "../../lib/leser/epub/anzeige";
   import { breite, randfarbe, type Epubdarstellung } from "../../lib/leser/epub/stile";
+  import { leseart } from "../../lib/leser/leseart.svelte";
   import { Positionsspeicher } from "../../lib/leser/position";
   import type { Lesegriffe, Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { schreibweise } from "../../lib/leser/typen";
-  import { wischen } from "../../lib/leser/wischen";
   import { gemerkt, nenntStelle, type Leseziel } from "../../lib/leser/ziel";
   import { lesewerte, type Lesewerte } from "../../lib/lesestand";
   import { darstellung as app } from "../../lib/stand/darstellung.svelte";
@@ -39,6 +39,8 @@
   let thema = $derived(vorgabeThema(app.dunkel));
   let d = $derived<Epubdarstellung>({ ...w, fg: eigeneFarben ? w.fg : thema.fg, bg: eigeneFarben ? w.bg : thema.bg });
 
+  let art = $derived(leseart.buch.art);
+
   let flaeche: HTMLElement | undefined = $state();
   let bereit = $state(false);
   let fehler = $state<Ladefehler | null>(null);
@@ -53,7 +55,10 @@
     if (!flaeche) return;
     fehler = null;
     anzeige?.schliesse();
-    anzeige = new EpubAnzeige(flaeche, d, { beiStand: gerueckt, beiAuswahl: (a) => nimmAuswahl(sitzung, a && { ...a, ort: schreibweise.prozent(prozent) }) && abwahl(), beiTaste: taste });
+    anzeige = new EpubAnzeige(flaeche, d, art, {
+      beiStand: gerueckt, beiTaste: taste, mitte: () => sitzung.tippeMitte(), belegt: () => sitzung.belegt(),
+      beiAuswahl: (a) => nimmAuswahl(sitzung, a && { ...a, ort: schreibweise.prozent(prozent) }) && abwahl(),
+    });
     try {
       const cfi = nenntStelle(start) ? start.cfi : (alt.cfi ?? "");
       const gedacht = nenntStelle(start) ? start.prozent : cfi ? 0 : (alt.percent ?? 0);
@@ -118,27 +123,21 @@
     if (bereit) anzeige?.stile(neu);
   });
   $effect(() => {
-    const neu = { ...d };
-    void [neu.einseitig, neu.breiteEins, neu.breiteZwei];
-    if (bereit) untrack(() => anzeige?.mass(neu));
+    const [neu, a] = [{ ...d }, art];
+    if (bereit) untrack(() => anzeige?.mass(neu, a));
   });
 
   const vor = () => void anzeige?.vor();
   const zurueck = () => void anzeige?.zurueck();
   const abwahl = () => anzeige?.waehleAb();
 
+  const groesser = (schritt: number) => setze({ groesse: klemme(w.groesse + schritt, GROESSE) });
+  const tasten = { vor, zurueck, zeileVor: () => anzeige?.zeileVor(), zeileZurueck: () => anzeige?.zeileZurueck(), anfang: () => void anzeige?.zuAnteil(0), ende: () => void anzeige?.zuAnteil(1), groesser: () => groesser(10), kleiner: () => groesser(-10) };
+
   function taste(e: KeyboardEvent) {
-    if (schreibtGerade(e) || e.metaKey || e.ctrlKey || e.altKey || document.querySelector("dialog[open]")) return;
-    const groesser = (schritt: number) => setze({ groesse: klemme(w.groesse + schritt, GROESSE) });
-    const griff: Record<string, () => void> = { ArrowRight: vor, PageDown: vor, ArrowLeft: zurueck, PageUp: zurueck, "+": () => groesser(10), "=": () => groesser(10), "-": () => groesser(-10) };
-    const tun = griff[e.key];
-    if (!tun) {
-      // Esc im Kapitelrahmen soll dieselben Felder schließen wie außerhalb
-      if (e.key === "Escape" && e.view !== window) document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
-      return;
-    }
-    e.preventDefault();
-    tun();
+    if (blaettertaste(e, art, tasten)) return;
+    // Esc im Kapitelrahmen soll dieselben Felder schließen wie außerhalb
+    if (e.key === "Escape" && e.view !== window) document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
   }
 
   const griffe: Lesegriffe = {
@@ -160,10 +159,6 @@
   };
   untrack(() => (sitzung.griffe = griffe));
 
-  $effect(() => {
-    if (flaeche) return wischen(flaeche, { links: vor, rechts: zurueck });
-  });
-
   onMount(() => void lade());
   const aufraeumen = speicher.starte();
   onDestroy(() => {
@@ -175,11 +170,11 @@
 
 <svelte:window onkeydown={taste} />
 
-<Leserahmen {sitzung} {bereit} {onzurueck} onabwahl={abwahl} treffer={treffer ? trefferleiste : undefined}>
-  <div class="epubflaeche" class:ohne-grund={d.randTransparent && d.blattTransparent} style:--lesebreite="{breite(d)}px" style:background={randfarbe(d)} bind:this={flaeche}></div>
+<Leserahmen {sitzung} {art} onart={(a) => leseart.buch.setze(a)} grund={d.bg} tinte={d.fg} {bereit} {onzurueck} onabwahl={abwahl} treffer={treffer ? trefferleiste : undefined}>
+  <div class="epubflaeche" class:ohne-grund={d.randTransparent && d.blattTransparent} style:--lesebreite="{breite(d, art)}px" style:background={randfarbe(d)} bind:this={flaeche}></div>
   {#if !bereit}<Ladehinweis {fehler} adresse={dateiUrl(buch.id)} name={buch.file_name || buch.title} onerneut={() => void lade()} />{/if}
 
-  {#snippet darstellung()}<EpubDarstellung {d} onwahl={setze} />{/snippet}
+  {#snippet darstellung()}<EpubDarstellung {d} {art} onwahl={setze} />{/snippet}
 
   {#snippet fuss()}
     <Fussleiste anteil={stand.anteil} onzurueck={zurueck} onvor={vor} onanteil={(a) => void anzeige?.zuAnteil(a)}>

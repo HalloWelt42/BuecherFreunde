@@ -33,6 +33,14 @@ export function istDunkel(bg: string): boolean {
 export type Papier = "normal" | "sepia" | "dunkel" | "kontrast";
 export const PAPIERE: [Papier, string][] = [["normal", "Hell"], ["sepia", "Sepia"], ["dunkel", "Dunkel"], ["kontrast", "Kontrast"]];
 
+/** Farben des Blatts unter dem Bild einer PDF-Seite, so wie die Papiere sie färben */
+export const PAPIERFARBEN: Record<Papier, Pick<Farbthema, "fg" | "bg">> = {
+  normal: { fg: "#1a1a1a", bg: "#ffffff" },
+  sepia: { fg: "#3c2c16", bg: "#f2f2ee" },
+  dunkel: { fg: "#d7d8d0", bg: "#222222" },
+  kontrast: { fg: "#ffffff", bg: "#000000" },
+};
+
 export function papierOder(wert: string | undefined, dunkel: boolean): Papier {
   return PAPIERE.some(([p]) => p === wert) ? (wert as Papier) : dunkel ? "dunkel" : "normal";
 }

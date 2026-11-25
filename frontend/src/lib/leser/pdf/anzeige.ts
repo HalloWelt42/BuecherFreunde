@@ -1,7 +1,7 @@
 // Zeichnet die Seiten eines PDF in ihre Rahmen ([data-seite]): nur, was sichtbar ist oder gleich wird; was weit weg ist,
 // wird wieder freigegeben. Ohne Svelte, der Leser steuert über Maß und Ansicht.
 import type { PdfBuch } from "./dokument";
-import { geblaettert, sichtbareSeiten, type Ansicht } from "./zoom";
+import { geblaettert, nachbarn, sichtbareSeiten, type Ansicht } from "./zoom";
 
 /** So viele Seiten um die gelesene bleiben gezeichnet */
 const VORRAT = 8;
@@ -42,12 +42,23 @@ export class PdfAnzeige {
     this.#laeuft.clear();
     for (const r of this.flaeche.querySelectorAll<HTMLElement>("[data-seite]")) this.#leere(r);
     if (geblaettert(this.ansicht)) {
-      await Promise.all(sichtbareSeiten(this.ansicht, this.seite, this.buch.seiten).map((n) => this.#zeichne(n)));
+      await this.blaettere(this.seite);
       return;
     }
     this.#platzhalter();
     this.zeige(this.seite);
     this.#beobachte();
+  }
+
+  /** Geblättert: die Seite zeigen und die Nachbarn vorab zeichnen, damit der nächste Schritt sofort steht */
+  async blaettere(nr: number): Promise<void> {
+    this.seite = nr;
+    // Rahmen, die nicht mehr da sind, zählen nicht mehr als gezeichnet
+    for (const n of [...this.#fertig]) if (!this.rahmen(n)?.querySelector("canvas")) this.#fertig.delete(n);
+    this.#platzhalter();
+    await Promise.all(sichtbareSeiten(this.ansicht, nr, this.buch.seiten).map((n) => this.#zeichne(n)));
+    if (nr !== this.seite) return;
+    for (const n of nachbarn(this.ansicht, nr, this.buch.seiten).flat()) await this.#zeichne(n);
   }
 
   /** Seite nach oben rollen (fortlaufend) */
@@ -81,6 +92,7 @@ export class PdfAnzeige {
     const b = `${this.buch.mass.breite * this.mass}px`;
     const h = `${this.buch.mass.hoehe * this.mass}px`;
     for (const r of this.flaeche.querySelectorAll<HTMLElement>("[data-seite]")) {
+      if (r.querySelector("canvas")) continue;
       r.style.width = b;
       r.style.height = h;
     }
@@ -98,7 +110,7 @@ export class PdfAnzeige {
     for (const r of this.flaeche.querySelectorAll("[data-seite]")) this.#beobachter.observe(r);
   }
 
-  /** Beim Rollen gerufen: die oberste wirklich sichtbare Seite, nicht die erste im Vorlade-Saum */
+  /** Beim Scrollen gerufen: die oberste wirklich sichtbare Seite, nicht die erste im Vorlade-Saum */
   gerollt(): void {
     if (!geblaettert(this.ansicht)) this.#meldeOberste();
   }
@@ -135,8 +147,7 @@ export class PdfAnzeige {
     this.#laeuft.add(nr);
     try {
       const seite = await this.buch.doc.getPage(nr);
-      const r = this.rahmen(nr);
-      if (!r || runde !== this.#runde) return;
+      if (!this.rahmen(nr) || runde !== this.#runde) return;
       const blick = seite.getViewport({ scale: this.mass });
       const dichte = Math.min(window.devicePixelRatio || 1, 3);
       const bild = document.createElement("canvas");
@@ -145,7 +156,9 @@ export class PdfAnzeige {
       bild.style.width = `${blick.width}px`;
       bild.style.height = `${blick.height}px`;
       await seite.render({ canvas: bild, canvasContext: bild.getContext("2d")!, viewport: blick, transform: [dichte, 0, 0, dichte, 0, 0] }).promise;
-      if (runde !== this.#runde) return;
+      // Beim Blättern kann der Rahmen inzwischen ein anderer sein: erst jetzt nehmen, was gilt
+      const r = this.rahmen(nr);
+      if (!r || runde !== this.#runde) return;
       this.#leere(r);
       r.style.width = `${blick.width}px`;
       r.style.height = `${blick.height}px`;

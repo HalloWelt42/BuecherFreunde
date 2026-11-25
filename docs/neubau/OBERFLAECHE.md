@@ -140,6 +140,23 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 | Markierungen und Buchnotizen im Leser: springen, Farbe, Name, Notiz, Text, kopieren, Schnellnotiz, löschen mit Rückfrage | Feld rechts statt verschiebbarer Fenster, wie im Entwurf | ja, Kopieren nein |
 | "Von vorn" verwirft nur die Stelle (18) | `leser/ziel` | ja (Test) |
 
+### Blättern oder Scrollen (BF-16)
+
+Wahl oben im Feld "Schrift und Papier", in allen Formaten derselbe Baustein (`Leseartwahl`), je Gerät gemerkt (`leser/leseart`): einmal für
+Blätter (PDF, MD, TXT, Vorgabe Scrollen), einmal für Bücher mit eigenem Umbruch (EPUB, MOBI, Vorgabe Blättern).
+
+| Teil | Ort | Geprüft |
+|---|---|---|
+| Gemeinsame Schicht für fließenden Text: Schnittstelle `Lesefluss`, darunter `Blaetterfluss` (CSS-Spalten, ein Schirm) und `Scrollfluss`; die Stelle ist ein Zeichen im Text, kein Bildpunkt | `lib/leser/fluss` | Tests (Schirme, Anker, Nachladen vorn und hinten), Bedienwege |
+| Keine halbe Zeile, Bilder, Tabellen und Kästen ungeteilt, wenn sie auf einen Schirm passen | `stil/lesetext.css` | ja, jede Zeile gemessen |
+| Stelle bleibt beim Drehen, bei Schrift und Zeilen, beim Wechsel der Art, beim Nachladen | `Textfluss` | ja (MD, TXT, PDF als Text) |
+| Wischen, Tippen am Rand (Mitte: Leisten aus und ein), Rad ein Schritt je Dreh, Pfeile, Bild- und Leertaste; Auswahl, Links und Felder gehen vor | `leser/blaettergesten`, `leser/blaettertasten` | ja |
+| PDF als Text: Seiten vorn und hinten nachgeladen, Markieren und Fundstelle auch hier | `Textansicht`, `pdf/textseiten` | ja |
+| PDF Original: eine Seite je Schirm, Nachbarn vorab gezeichnet; vergrößert erst schieben, dann blättern; Telefon quer in Abschnitten | `PdfSeiten`, `pdf/anzeige` | ja (390, 844 quer, 834, 1440) |
+| EPUB und MOBI: scrollen, am Kapitelende weiterziehen | `epub/anzeige`, `epub/kapitelrand` | ja |
+| Ansicht eines PDF, die für dieses Buch gewählt wurde, geht vor der Wahl des Geräts | `PdfLeser` | ja |
+| Großer Text (2,7 MB) | `Schlichttext`, `text/bloecke` | steht nach 1,5 s, 15 ms je Schritt |
+
 ## 15 und 16 Hinzufügen
 
 | Funktion | Neu | Geprüft |
@@ -184,7 +201,7 @@ Vorschläge, Suchsprache, Markieren, Notizen, Vorlesen.
 |---|---|---|
 | Suche mit Auszügen, Weiterlesen (8), zuletzt gesucht (12) | /search | ja |
 | Buch mit Lesen, von vorn, Herunterladen, Beschreibung | Buchseite | ja |
-| Leser mit Original, nur Text, Zoom, Papier, Blättern, Verzeichnis | Leser | ja |
+| Leser mit Original, nur Text, Zoom, Papier, Blättern, Verzeichnis; im Querformat gehört die Höhe dem Buch | Leser | ja |
 | Tippziele 44, Eingaben ab 16, nichts unter 12 | `stil/breiten.css` | ja |
 
 ## Prüfstand

@@ -7,6 +7,7 @@ import { bestand } from "../stand/bestand.svelte";
 import { melde } from "../stand/meldungen.svelte";
 import { notizblock } from "../stand/notizblock.svelte";
 import { frage } from "../stand/rueckfrage.svelte";
+import { schale } from "../stand/schale.svelte";
 import type { BuchEinzeln, Etikett, Markierung, Notiz } from "../typen";
 import { VORGABE_STIFT } from "./farben";
 import type { Feldname, Kapitel, Textauswahl } from "./typen";
@@ -51,6 +52,18 @@ export class Lesesitzung {
 
   schalteFeld(feld: Feldname): void {
     this.feld = this.feld === feld ? "" : feld;
+  }
+
+  /** Tippen in die Mitte: Leisten aus und wieder ein, ohne das Vollbild des Browsers */
+  tippeMitte(): void {
+    schale.vollbild = !schale.vollbild;
+  }
+
+  /** Ein Tippen schließt erst das offene Feld; eine Auswahl im Text geht ebenso vor */
+  belegt(): boolean {
+    if (!this.feld) return this.auswahl !== null;
+    this.feld = "";
+    return true;
   }
 
   /** Ausstehende Änderungen sofort schicken */

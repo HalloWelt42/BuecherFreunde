@@ -2,11 +2,14 @@
   // Rahmen aller Leser: Leiste oben, Feld rechts, Leiste unten, Auswahlmenü. Das Format liefert Fläche, Fuß und Darstellung.
   import type { Snippet } from "svelte";
   import { beiEsc } from "../../lib/flucht";
+  import type { Leseart } from "../../lib/leser/fluss/fluss";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
+  import { geraet } from "../../lib/stand/geraet.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Menue from "../../lib/teile/Menue.svelte";
   import Auswahlmenue from "./Auswahlmenue.svelte";
+  import Leseartwahl from "./Leseartwahl.svelte";
   import Leserwerkzeuge from "./Leserwerkzeuge.svelte";
   import Stellenfeld from "./Stellenfeld.svelte";
   import Verzeichnis from "./Verzeichnis.svelte";
@@ -16,6 +19,11 @@
   interface Eigenschaften {
     sitzung: Lesesitzung;
     papier?: string;
+    /** Farben des Blatts, für alles, was darüber schwebt */
+    grund: string;
+    tinte: string;
+    art: Leseart;
+    onart: (art: Leseart) => void;
     bereit: boolean;
     onzurueck: () => void;
     onabwahl: () => void;
@@ -24,13 +32,13 @@
     treffer?: Snippet;
     children: Snippet;
   }
-  let { sitzung, papier = "normal", bereit, onzurueck, onabwahl, darstellung, fuss, treffer = undefined, children }: Eigenschaften = $props();
+  let { sitzung, papier = "normal", grund, tinte, art, onart, bereit, onzurueck, onabwahl, darstellung, fuss, treffer = undefined, children }: Eigenschaften = $props();
 
   let rahmen: HTMLElement | undefined = $state();
   let vorleseKnopf = $state<HTMLElement | null>(null);
   let vorlesenOffen = $state(false);
-  // Am Telefon gehört der Bildschirm im Vollbild ganz dem Text
-  let ohneLeisten = $derived(schale.vollbild && schale.telefon);
+  // Mit dem Finger gehört der Bildschirm im Vollbild ganz dem Text
+  let ohneLeisten = $derived(schale.vollbild && (schale.telefon || geraet.telefon));
 
   $effect(() => {
     if (sitzung.feld) return beiEsc(() => (sitzung.feld = ""));
@@ -40,7 +48,7 @@
   });
 </script>
 
-<div class="leser" class:mit-treffer={!!treffer && !ohneLeisten} data-papier={papier} bind:this={rahmen}>
+<div class="leser" class:mit-treffer={!!treffer && !ohneLeisten} class:ohne-leisten={ohneLeisten} data-papier={papier} style:--leserand-grund={grund} style:--leserand-tinte={tinte} bind:this={rahmen}>
   {@render children()}
 
   {#if ohneLeisten}
@@ -67,6 +75,7 @@
         <Stellenfeld {sitzung} />
       {:else}
         <h2>Schrift und Papier</h2>
+        <Leseartwahl {art} {onart} />
         {@render darstellung()}
         <Leserwerkzeuge {sitzung} />
       {/if}

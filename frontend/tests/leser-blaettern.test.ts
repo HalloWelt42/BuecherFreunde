@@ -1,0 +1,214 @@
+// Blättern: Gesten, Rad, Tasten, Textstücke
+import { blaettergesten, radschritt, type Blaettergriffe } from "../src/lib/leser/blaettergesten";
+import { blaettertaste } from "../src/lib/leser/blaettertasten";
+import { kapitelrand } from "../src/lib/leser/epub/kapitelrand";
+import { Textseiten, type Textantwort } from "../src/lib/leser/pdf/textseiten.svelte";
+import { ansichtFuer, artVon, einpassen, nachbarn } from "../src/lib/leser/pdf/zoom";
+import { inBloecke } from "../src/lib/leser/text/bloecke";
+
+const griffe = (mehr: Partial<Pick<Blaettergriffe, "gilt" | "belegt" | "schiebt">> = {}) => ({ gilt: () => true, vor: vi.fn(), zurueck: vi.fn(), mitte: vi.fn(), belegt: () => false, ...mehr });
+
+function finger(ziel: EventTarget, art: string, x: number, y: number) {
+  const e = new Event(art, { bubbles: true, cancelable: true }) as Event & Record<string, unknown>;
+  const p = { clientX: x, clientY: y };
+  Object.assign(e, { touches: art === "touchend" ? [] : [p], changedTouches: [p] });
+  ziel.dispatchEvent(e);
+  return e;
+}
+function zug(ziel: EventTarget, von: [number, number], bis: [number, number]) {
+  finger(ziel, "touchstart", ...von);
+  finger(ziel, "touchmove", ...bis);
+  finger(ziel, "touchend", ...bis);
+}
+const flaeche = (html = "") => {
+  const f = document.createElement("div");
+  f.innerHTML = html;
+  document.body.replaceChildren(f);
+  return f;
+};
+const RAHMEN = { rahmen: () => ({ left: 100, width: 400 }) };
+
+describe("Blättern mit dem Finger", () => {
+  it("wischt vor und zurück, senkrecht nicht", () => {
+    const [f, tun] = [flaeche(), griffe()];
+    blaettergesten(f, RAHMEN, tun);
+    zug(f, [300, 100], [200, 110]);
+    zug(f, [200, 100], [300, 90]);
+    zug(f, [300, 300], [290, 100]);
+    expect([tun.vor.mock.calls.length, tun.zurueck.mock.calls.length, tun.mitte.mock.calls.length]).toEqual([1, 1, 0]);
+  });
+
+  it("tippt an den Rändern und in der Mitte, auch aus einem verschobenen Rahmen", () => {
+    const [f, tun] = [flaeche(), griffe()];
+    blaettergesten(f, { ...RAHMEN, versatz: () => -1000 }, tun);
+    for (const x of [1120, 1300, 1480]) zug(f, [x, 50], [x, 50]);
+    expect([tun.zurueck.mock.calls.length, tun.mitte.mock.calls.length, tun.vor.mock.calls.length]).toEqual([1, 1, 1]);
+  });
+
+  it("lässt Tasten und Links und ein offenes Feld vor", () => {
+    const belegt = vi.fn(() => true);
+    const [f, tun] = [flaeche('<a href="#x"><b>hin</b></a>'), griffe({ belegt })];
+    blaettergesten(f, RAHMEN, tun);
+    zug(f.querySelector("b")!, [480, 50], [480, 50]);
+    expect(belegt).not.toHaveBeenCalled();
+    zug(f, [480, 50], [480, 50]);
+    expect(belegt).toHaveBeenCalledOnce();
+    expect(tun.vor).not.toHaveBeenCalled();
+  });
+
+  it("schiebt eine vergrößerte Seite, statt zu blättern", () => {
+    const [f, tun] = [flaeche(), griffe({ schiebt: (_achse, richtung) => richtung > 0 })];
+    blaettergesten(f, RAHMEN, tun);
+    zug(f, [300, 100], [100, 100]);
+    zug(f, [100, 100], [300, 100]);
+    expect([tun.vor.mock.calls.length, tun.zurueck.mock.calls.length]).toEqual([0, 1]);
+  });
+
+  it("rührt beim Scrollen nichts an", () => {
+    const [f, tun] = [flaeche(), griffe({ gilt: () => false })];
+    blaettergesten(f, RAHMEN, tun);
+    expect(finger(f, "touchmove", 10, 10).defaultPrevented).toBe(false);
+    zug(f, [300, 100], [100, 100]);
+    expect(tun.vor).not.toHaveBeenCalled();
+  });
+});
+
+const rad = (dy: number, zeit: number, dx = 0) => {
+  const e = new WheelEvent("wheel", { deltaY: dy, deltaX: dx, cancelable: true });
+  Object.defineProperty(e, "timeStamp", { value: zeit });
+  return e;
+};
+
+describe("Rad", () => {
+  it("macht einen Schritt je Dreh, der Nachlauf zählt nicht", () => {
+    const tun = griffe();
+    const dreh = radschritt(tun);
+    for (let n = 0; n < 12; n++) dreh(rad(60 - n * 4, n * 30));
+    expect(tun.vor).toHaveBeenCalledTimes(1);
+    dreh(rad(40, 900));
+    dreh(rad(-40, 1200));
+    expect([tun.vor.mock.calls.length, tun.zurueck.mock.calls.length]).toEqual([2, 1]);
+  });
+
+  it("ein kräftiger neuer Schub im Nachlauf zählt", () => {
+    const tun = griffe();
+    const dreh = radschritt(tun);
+    for (let n = 0; n < 15; n++) dreh(rad(60 - n * 4, n * 30));
+    dreh(rad(80, 460));
+    expect(tun.vor).toHaveBeenCalledTimes(2);
+  });
+
+  it("lässt die Fläche erst selbst schieben und blättert nicht im selben Schwung", () => {
+    let platz = true;
+    const tun = griffe({ schiebt: () => platz });
+    const dreh = radschritt(tun);
+    const e = rad(50, 0);
+    dreh(e);
+    expect(e.defaultPrevented).toBe(false);
+    platz = false;
+    dreh(rad(45, 30));
+    expect(tun.vor).not.toHaveBeenCalled();
+    dreh(rad(45, 400));
+    expect(tun.vor).toHaveBeenCalledOnce();
+  });
+});
+
+describe("Kapitelende beim Scrollen", () => {
+  it("geht nur weiter, wer schon am Rand steht", () => {
+    const f = flaeche();
+    const weiter = vi.fn();
+    let unten = false;
+    kapitelrand(f, { gilt: () => true, amRand: (r) => r > 0 && unten, weiter });
+    zug(f, [10, 400], [10, 200]);
+    expect(weiter).not.toHaveBeenCalled();
+    unten = true;
+    zug(f, [10, 400], [10, 200]);
+    expect(weiter).toHaveBeenCalledWith(1);
+  });
+});
+
+describe("Tasten", () => {
+  const druecke = (key: string, art: "blaettern" | "scrollen", mehr: object = {}, o: KeyboardEventInit = {}) => {
+    const tun = { vor: vi.fn(), zurueck: vi.fn(), anfang: vi.fn(), ende: vi.fn(), ...mehr };
+    const e = new KeyboardEvent("keydown", { key, cancelable: true, ...o });
+    const hat = blaettertaste(e, art, tun);
+    const gerufen = Object.entries(tun).filter(([, f]) => (f as ReturnType<typeof vi.fn>)?.mock?.calls.length).map(([n]) => n);
+    return [hat, e.defaultPrevented, ...gerufen];
+  };
+
+  it("blättert mit Pfeilen, Bild- und Leertaste", () => {
+    for (const k of ["ArrowRight", "ArrowDown", "PageDown", " "]) expect(druecke(k, "blaettern")).toEqual([true, true, "vor"]);
+    for (const k of ["ArrowLeft", "ArrowUp", "PageUp"]) expect(druecke(k, "blaettern")).toEqual([true, true, "zurueck"]);
+    expect(druecke(" ", "blaettern", {}, { shiftKey: true })).toEqual([true, true, "zurueck"]);
+    expect(druecke("End", "blaettern")).toEqual([true, true, "ende"]);
+  });
+
+  it("lässt beim Scrollen der Fläche, was sie selbst kann", () => {
+    for (const k of ["ArrowDown", "ArrowUp", " "]) expect(druecke(k, "scrollen")).toEqual([false, false]);
+    expect(druecke("ArrowDown", "scrollen", { zeileVor: vi.fn() })).toEqual([true, true, "zeileVor"]);
+    expect(druecke("PageDown", "scrollen")).toEqual([true, true, "vor"]);
+  });
+
+  it("rührt Tastenkürzel des Browsers und Tasten ohne Griff nicht an", () => {
+    expect(druecke("ArrowLeft", "blaettern", {}, { altKey: true })).toEqual([false, false]);
+    expect(druecke("+", "blaettern")).toEqual([false, false]);
+  });
+});
+
+describe("Textblöcke", () => {
+  it("verlieren kein Zeichen und enden nie mit einer Leerzeile", () => {
+    const text = Array.from({ length: 900 }, (_, n) => (n % 7 === 6 ? "" : `Zeile ${n}`)).join("\n");
+    const bloecke = inBloecke(text);
+    expect(bloecke.length).toBeGreaterThan(10);
+    expect(bloecke.join("\n")).toBe(text);
+    for (const b of bloecke.slice(0, -1)) expect(b.split("\n").at(-1)!.trim()).not.toBe("");
+  });
+
+  it("teilen auch Text ohne jede Leerzeile", () => {
+    const text = Array.from({ length: 1300 }, (_, n) => `Zeile ${n}`).join("\n");
+    expect(inBloecke(text).length).toBe(4);
+    expect(inBloecke("kurz")).toEqual(["kurz"]);
+  });
+});
+
+describe("Textseiten", () => {
+  const antwort = (ab: number, anzahl: number): Textantwort => ({ gesamt: 20, seiten: Array.from({ length: anzahl }, (_, n) => ab + n).filter((n) => n <= 20).map((nr) => ({ nr, gedruckt: "", bausteine: [{ art: "absatz", text: "x", titel: "", inhalt: [], bild: null, verhaeltnis: null, breite_em: null }] })) });
+
+  it("holen hinten und vorn nach, ohne eine Seite doppelt zu zeigen", async () => {
+    const t = new Textseiten(1, async (tun) => void tun(), async (_b, ab, n) => antwort(ab, n));
+    await t.neu(10);
+    expect([t.erste, t.letzte, t.mitVorn, t.mitHinten]).toEqual([10, 15, true, true]);
+    await t.oben();
+    await t.unten();
+    expect(t.seiten.map((s) => s.nr)).toEqual(Array.from({ length: 17 }, (_, n) => n + 4));
+    await t.oben();
+    expect([t.erste, t.letzte, t.mitVorn, t.mitHinten]).toEqual([1, 20, false, false]);
+    expect(await t.unten()).toBe(false);
+  });
+
+  it("melden einen Fehler und lassen den Text stehen", async () => {
+    const t = new Textseiten(1, async (tun) => void tun(), async (_b, ab, n) => (ab > 10 ? Promise.reject(new Error("weg")) : antwort(ab, n)));
+    await t.neu(5);
+    expect(await t.unten()).toBe(false);
+    expect([t.fehler, t.letzte]).toEqual(["weg", 10]);
+  });
+});
+
+describe("Ansichten eines PDF", () => {
+  it("gehören zu einer Art und haben ihre Vorgabe", () => {
+    expect([artVon("doppel"), artVon("breite")]).toEqual(["blaettern", "scrollen"]);
+    expect([ansichtFuer("blaettern", true), ansichtFuer("scrollen", true), ansichtFuer("scrollen", false)]).toEqual(["einzeln", "breite", "scroll"]);
+  });
+
+  it("zeichnen die Nachbarbögen vor", () => {
+    expect(nachbarn("einzeln", 1, 3)).toEqual([[2]]);
+    expect(nachbarn("doppel", 4, 9)).toEqual([[5, 6], [1, 2]]);
+    expect(nachbarn("doppel", 9, 9)).toEqual([[7, 8]]);
+  });
+
+  it("füllen im Querformat am Telefon die Breite", () => {
+    const seite = { breite: 500, hoehe: 700 };
+    expect(einpassen("einzeln", seite, { breite: 800, hoehe: 300 })).toBe(1.6);
+    expect(einpassen("einzeln", seite, { breite: 800, hoehe: 700 })).toBe(1);
+  });
+});
