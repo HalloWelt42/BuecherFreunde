@@ -1,0 +1,163 @@
+{
+ "status": "ok",
+ "message-type": "work-list",
+ "message-version": "1.0.0",
+ "message": {
+  "facets": {},
+  "total-results": 371229,
+  "items": [
+   {
+    "publisher": "Beltz Verlagsgruppe GmbH & Co. KG",
+    "issue": "9",
+    "abstract": "<jats:title>Zusammenfassung</jats:title><jats:p>Worum es geht.</jats:p><jats:p>Was dabei herauskam.</jats:p>",
+    "DOI": "10.3262/paed2609057",
+    "type": "journal-article",
+    "page": "57-57",
+    "title": [
+     "Künstliche Intelligenz im Unterricht"
+    ],
+    "author": [
+     {
+      "given": "Sonja",
+      "family": "Hensel",
+      "sequence": "first",
+      "affiliation": [],
+      "role": [
+       {
+        "vocabulary": "crossref",
+        "role": "author"
+       }
+      ]
+     }
+    ],
+    "container-title": [
+     "Pädagogik"
+    ],
+    "issued": {
+     "date-parts": [
+      [
+       2026,
+       9,
+       2
+      ]
+     ]
+    },
+    "URL": "https://doi.org/10.3262/paed2609057",
+    "ISSN": [
+     "0933-422X"
+    ]
+   },
+   {
+    "publisher": "Universidad Autonoma del Estado de Hidalgo",
+    "issue": "10",
+    "abstract": "<jats:title>Zusammenfassung</jats:title><jats:p>Worum es geht.</jats:p><jats:p>Was dabei herauskam.</jats:p>",
+    "DOI": "10.29057/lc.v5i10.12218",
+    "type": "journal-article",
+    "page": "50-55",
+    "title": [
+     "Künstliche Intelligenz im DaF-Unterricht. Mediation mit KI-Anwendungen fördern."
+    ],
+    "volume": "5",
+    "author": [
+     {
+      "ORCID": "https://orcid.org/0009-0009-5348-6693",
+      "authenticated-orcid": false,
+      "given": "Daniela",
+      "family": "Hartmann",
+      "sequence": "first",
+      "affiliation": [],
+      "role": [
+       {
+        "vocabulary": "crossref",
+        "role": "author"
+       }
+      ]
+     }
+    ],
+    "container-title": [
+     "Revista Lengua y Cultura"
+    ],
+    "issued": {
+     "date-parts": [
+      [
+       2024,
+       5,
+       5
+      ]
+     ]
+    },
+    "URL": "https://doi.org/10.29057/lc.v5i10.12218",
+    "ISSN": [
+     "2683-2321"
+    ]
+   },
+   {
+    "publisher": "Konstantin Preslavsky University of Shumen",
+    "abstract": "<jats:title>Zusammenfassung</jats:title><jats:p>Worum es geht.</jats:p><jats:p>Was dabei herauskam.</jats:p>",
+    "DOI": "10.46687/ypvu1787",
+    "type": "journal-article",
+    "page": "92",
+    "title": [
+     "ZWISCHEN THEORIE UND PRAXIS: KÜNSTLICHE INTELLIGENZ IM DAF-UNTERRICHT AUF DEM PRÜFSTAND"
+    ],
+    "volume": "VI",
+    "author": [
+     {
+      "given": "Yildirim",
+      "family": "Tuğlu",
+      "sequence": "first",
+      "affiliation": [
+       {
+        "name": "Trakya University"
+       }
+      ],
+      "role": [
+       {
+        "vocabulary": "crossref",
+        "role": "author"
+       }
+      ]
+     },
+     {
+      "given": "Pinar",
+      "family": "Pekdemir",
+      "sequence": "additional",
+      "affiliation": [
+       {
+        "name": "Trakya University"
+       }
+      ],
+      "role": [
+       {
+        "vocabulary": "crossref",
+        "role": "author"
+       }
+      ]
+     }
+    ],
+    "container-title": [
+     "Filologičeski rakursi"
+    ],
+    "issued": {
+     "date-parts": [
+      [
+       2026,
+       1,
+       11
+      ]
+     ]
+    },
+    "URL": "https://doi.org/10.46687/ypvu1787",
+    "ISSN": [
+     "2367-8348",
+     "2603-4298"
+    ]
+   }
+  ],
+  "items-per-page": 3,
+  "query": {
+   "start-index": 0,
+   "search-terms": null
+  }
+ }
+}

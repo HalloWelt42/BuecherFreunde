@@ -1,0 +1,146 @@
+<?xml version='1.0' encoding='utf-8'?>
+<searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/" xmlns:m="http://www.loc.gov/MARC21/slim" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><version>1.1</version><numberOfRecords>1</numberOfRecords><records><record><recordSchema>MARC21-xml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record type="Bibliographic">
+    <m:leader>00000pam a2200000 cc4500</m:leader>
+    <m:controlfield tag="001">105235985X</m:controlfield>
+    <m:controlfield tag="003">DE-101</m:controlfield>
+    <m:controlfield tag="005">20171201223807.0</m:controlfield>
+    <m:controlfield tag="007">tu</m:controlfield>
+    <m:controlfield tag="008">140620s2014    gw ||||| |||| 00||||ger  </m:controlfield>
+    <m:datafield tag="020" ind1=" " ind2=" ">
+      <m:subfield code="a">9783658056193</m:subfield>
+      <m:subfield code="c">kart. : EUR 29.99 (DE), EUR 30.83 (AT), sfr 37.50 (freier Pr.)</m:subfield>
+      <m:subfield code="9">978-3-658-05619-3</m:subfield>
+    </m:datafield>
+    <m:datafield tag="020" ind1=" " ind2=" ">
+      <m:subfield code="a">3658056193</m:subfield>
+      <m:subfield code="9">3-658-05619-3</m:subfield>
+    </m:datafield>
+    <m:datafield tag="024" ind1="3" ind2=" ">
+      <m:subfield code="a">9783658056193</m:subfield>
+    </m:datafield>
+    <m:datafield tag="028" ind1="5" ind2="2">
+      <m:subfield code="a">Best.-Nr.: 86244817</m:subfield>
+    </m:datafield>
+    <m:datafield tag="041" ind1=" " ind2=" ">
+      <m:subfield code="a">ger</m:subfield>
+    </m:datafield>
+    <m:datafield tag="082" ind1="7" ind2="4">
+      <m:subfield code="a">510</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="2">23sdnb</m:subfield>
+    </m:datafield>
+    <m:datafield tag="090" ind1=" " ind2=" ">
+      <m:subfield code="a">b</m:subfield>
+    </m:datafield>
+    <m:datafield tag="100" ind1="1" ind2=" ">
+      <m:subfield code="0">(DE-588)106931628</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/106931628</m:subfield>
+      <m:subfield code="0">(DE-101)106931628</m:subfield>
+      <m:subfield code="a">Papula, Lothar</m:subfield>
+      <m:subfield code="d">1941-</m:subfield>
+      <m:subfield code="e">Verfasser</m:subfield>
+      <m:subfield code="4">aut</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="245" ind1="1" ind2="0">
+      <m:subfield code="a">Mathematik für Ingenieure und Naturwissenschaftler</m:subfield>
+      <m:subfield code="n">Bd. 1.</m:subfield>
+      <m:subfield code="p">Mit 352 Übungsaufgaben mit ausführlichen Lösungen</m:subfield>
+      <m:subfield code="c">Lothar Papula</m:subfield>
+    </m:datafield>
+    <m:datafield tag="250" ind1=" " ind2=" ">
+      <m:subfield code="a">14., überarb. und erw. Aufl.</m:subfield>
+    </m:datafield>
+    <m:datafield tag="264" ind1="3" ind2="1">
+      <m:subfield code="a">Wiesbaden</m:subfield>
+      <m:subfield code="b">Vieweg + Teubner</m:subfield>
+      <m:subfield code="c">2014</m:subfield>
+    </m:datafield>
+    <m:datafield tag="300" ind1=" " ind2=" ">
+      <m:subfield code="a">XXIV, 854 S.</m:subfield>
+      <m:subfield code="b">graph. Darst.</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Produktform)Paperback / softback</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Zielgruppe)Fachpublikum/ Wissenschaft</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Zielgruppe)Upper undergraduate</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BIC Subject Heading)THR</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Integralrechnung</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Normale</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">unendliche Reihe</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Tangente</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Differentialrechnung</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Funktion</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Geometrie</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">reelle Zahl</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Produktregel</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Taylor-Reihe</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Gleichung</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Koordinatentransformation</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Kurve</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Kurvendiskussion</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(VLB-WN)1681: Hardcover, Softcover / Technik/Allgemeines, Lexika</m:subfield>
+    </m:datafield>
+    <m:datafield tag="773" ind1="0" ind2="8">
+      <m:subfield code="q">11</m:subfield>
+      <m:subfield code="w">(DE-101)942146425</m:subfield>
+    </m:datafield>
+    <m:datafield tag="776" ind1="0" ind2="8">
+      <m:subfield code="i">Erscheint auch als</m:subfield>
+      <m:subfield code="n">Online-Ausgabe</m:subfield>
+      <m:subfield code="z">9783658056209</m:subfield>
+    </m:datafield>
+    <m:datafield tag="780" ind1="0" ind2="0">
+      <m:subfield code="i">Fortsetzung von</m:subfield>
+      <m:subfield code="n">Vorgänger</m:subfield>
+      <m:subfield code="z">9783834817495</m:subfield>
+    </m:datafield>
+    <m:datafield tag="856" ind1="4" ind2="2">
+      <m:subfield code="m">X:MVB</m:subfield>
+      <m:subfield code="q">text/html</m:subfield>
+      <m:subfield code="u">https://services.dnb.de/plus/idn/105235985X/blurb/</m:subfield>
+      <m:subfield code="3">Inhaltstext</m:subfield>
+    </m:datafield>
+    <m:datafield tag="856" ind1="4" ind2="2">
+      <m:subfield code="m">B:DE-101</m:subfield>
+      <m:subfield code="q">application/pdf</m:subfield>
+      <m:subfield code="u">https://d-nb.info/105235985X/04</m:subfield>
+      <m:subfield code="3">Inhaltsverzeichnis</m:subfield>
+    </m:datafield>
+    </m:record></recordData><recordPosition>1</recordPosition></record></records><echoedSearchRetrieveRequest><version>1.1</version><query>NUM=9783658056193</query><xQuery xsi:nil="true" /><maximumRecords>3</maximumRecords><recordSchema>MARC21-xml</recordSchema></echoedSearchRetrieveRequest></searchRetrieveResponse>

@@ -2,6 +2,8 @@
 
 from pydantic import BaseModel, Field
 
+from backend.app.services.autoren_uebernahme import Verweis
+
 
 class AuthorListItem(BaseModel):
     """Autor in der Listendarstellung (kompakt)."""
@@ -37,6 +39,7 @@ class AuthorResponse(BaseModel):
     score: int = 0
     books: list[dict] = Field(default_factory=list)
     werke: list[dict] = Field(default_factory=list)
+    verweise: list[Verweis] = Field(default_factory=list)
     created_at: str = ""
     updated_at: str = ""
 

@@ -1,0 +1,420 @@
+{
+ "totalItems": 308,
+ "member": [
+  {
+   "gndIdentifier": "1343576210",
+   "preferredName": "Müller, Thomas",
+   "professionOrOccupation": [
+    {
+     "id": "https://d-nb.info/gnd/4195382-4",
+     "label": "Kinderarzt"
+    }
+   ],
+   "biographicalOrHistoricalInformation": [
+    "tätig and der Klinik für Kinderheilkunde und Jugendmedizin, Cottbus"
+   ],
+   "geographicAreaCode": [
+    {
+     "id": "https://d-nb.info/standards/vocab/gnd/geographic-area-code#XA-DE",
+     "label": "Deutschland"
+    }
+   ],
+   "publication": [
+    "Neugeborenes mit chondroektodermaler Dysplasie und perizentrischer Inversion am Chromosom 4"
+   ],
+   "sameAs": [
+    {
+     "id": "https://d-nb.info/gnd/1343576210/about"
+    }
+   ],
+   "type": [
+    "Person",
+    "DifferentiatedPerson",
+    "AuthorityResource"
+   ]
+  },
+  {
+   "gndIdentifier": "1020625279",
+   "preferredName": "Müller, Thomas",
+   "dateOfBirth": [
+    "1976"
+   ],
+   "placeOfBirth": [
+    {
+     "id": "https://d-nb.info/gnd/4015240-6",
+     "label": "Erfurt"
+    }
+   ],
+   "professionOrOccupation": [
+    {
+     "id": "https://d-nb.info/gnd/4025243-7",
+     "label": "Hochschullehrer"
+    },
+    {
+     "id": "https://d-nb.info/gnd/4048755-6",
+     "label": "Rechtsanwalt"
+    }
+   ],
+   "biographicalOrHistoricalInformation": [
+    "Promotion 2011, am Lehrstuhl für Bürgerliches Recht, Handels- und Wirtschaftsrecht, Rechtsvergleichung, Multimedia- und Tele-kommunikationsrecht, Georg-August-Universität Göttingen",
+    "Seit 08/2004 Sozius in der Anwaltssozietät Dr. Müller & Lotz in Göttingen"
+   ],
+   "geographicAreaCode": [
+    {
+     "id": "https://d-nb.info/standards/vocab/gnd/geographic-area-code#XA-DE",
+     "label": "Deutschland"
+    }
+   ],
+   "publication": [
+    "Rechtsnatur und Wirkung so genannter \"atypischer Beherrschungsverträge\""
+   ],
+   "homepage": [
+    {
+     "id": "http://www.hochschule-calw.de/de/unsere-hochschule/professoren/detailansicht/team/thomas-mueller",
+     "label": "http://www.hochschule-calw.de/de/unsere-hochschule/professoren/detailansicht/team/thomas-mueller"
+    }
+   ],
+   "sameAs": [
+    {
+     "id": "http://id.loc.gov/rwo/agents/n2012040334"
+    },
+    {
+     "id": "http://viaf.org/viaf/431146997396918892419"
+    },
+    {
+     "id": "http://www.wikidata.org/entity/Q137307041"
+    },
+    {
+     "id": "https://d-nb.info/gnd/1020625279/about"
+    },
+    {
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1020625279"
+    }
+   ],
+   "type": [
+    "AuthorityResource",
+    "DifferentiatedPerson",
+    "Person"
+   ]
+  },
+  {
+   "gndIdentifier": "1027201091",
+   "preferredName": "Müller, Thomas",
+   "variantName": [
+    "Müller, Th."
+   ],
+   "professionOrOccupation": [
+    {
+     "id": "https://d-nb.info/gnd/4171587-1",
+     "label": "Neurologe"
+    },
+    {
+     "id": "https://d-nb.info/gnd/4047666-2",
+     "label": "Psychiater"
+    }
+   ],
+   "biographicalOrHistoricalInformation": [
+    "Facharzt für Neurologie, Psychiatrie und Psychotherapie; Department of Neurology, Department of Neurology, Huntington Centre NRW, St. Josef Hospital, Ruhr-University, Bochum; tätig am Alexianer St. Joseph-Krankenhaus Berlin-Weißensee: Behandlungsfokus: Multiple Sklerose, Morbus Parkinson, Schmerzerkrankungen, Wirbelsäulenbeschwerden, Demenzerkrankungen, Restless-Legs-Syndrom (RLS)"
+   ],
+   "geographicAreaCode": [
+    {
+     "id": "https://d-nb.info/standards/vocab/gnd/geographic-area-code#XA-DE",
+     "label": "Deutschland"
+    }
+   ],
+   "publication": [
+    "Vitamin D rise enhances blood perfusion in patients with multiple sclerosis"
+   ],
+   "sameAs": [
+    {
+     "id": "http://viaf.org/viaf/2046150203815803250000"
+    },
+    {
+     "id": "http://www.wikidata.org/entity/Q89485636"
+    },
+    {
+     "id": "https://d-nb.info/gnd/1027201091/about"
+    },
+    {
+     "id": "https://orcid.org/0000-0002-6799-0753"
+    },
+    {
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1027201091"
+    }
+   ],
+   "type": [
+    "Person",
+    "DifferentiatedPerson",
+    "AuthorityResource"
+   ]
+  },
+  {
+   "gndIdentifier": "1036150933",
+   "preferredName": "Müller, Thomas",
+   "professionOrOccupation": [
+    {
+     "id": "https://d-nb.info/gnd/4066533-1",
+     "label": "Wirtschaftswissenschaftler"
+    }
+   ],
+   "geographicAreaCode": [
+    {
+     "id": "https://d-nb.info/standards/vocab/gnd/geographic-area-code#XA-DE",
+     "label": "Deutschland"
+    }
+   ],
+   "publication": [
+    "Güterverkehr und Energieverbrauch"
+   ],
+   "sameAs": [
+    {
+     "id": "http://viaf.org/viaf/304716979"
+    },
+    {
+     "id": "https://d-nb.info/gnd/1036150933/about"
+    }
+   ],
+   "type": [
+    "Person",
+    "AuthorityResource",
+    "DifferentiatedPerson"
+   ]
+  },
+  {
+   "gndIdentifier": "1036155226",
+   "preferredName": "Müller, Thomas",
+   "variantName": [
+    "Müller, Th."
+   ],
+   "professionOrOccupation": [
+    {
+     "id": "https://d-nb.info/gnd/4009836-9",
+     "label": "Chemiker"
+    }
+   ],
+   "biographicalOrHistoricalInformation": [
+    "tätig am Fraunhofer-Institut für Solare Energiesysteme; zuvor Doktorand an der Technischen Universität Chemnitz; Master von der Albert-Ludwigs-Universität Freiburg im Breisgau"
+   ],
+   "geographicAreaCode": [
+    {
+     "id": "https://d-nb.info/standards/vocab/gnd/geographic-area-code#XA-DE",
+     "label": "Deutschland"
+    }
+   ],
+   "publication": [
+    "Friedrich, Rainer: Energie und Umwelt"
+   ],
+   "sameAs": [
+    {
+     "id": "http://viaf.org/viaf/304331244"
+    },
+    {
+     "id": "http://www.wikidata.org/entity/Q122802583"
+    },
+    {
+     "id": "https://d-nb.info/gnd/1036155226/about"
+    },
+    {
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1036155226"
+    }
+   ],
+   "type": [
+    "AuthorityResource",
+    "DifferentiatedPerson",
+    "Person"
+   ]
+  },
+  {
+   "gndIdentifier": "1334534039",
+   "preferredName": "Müller, Thomas",
+   "dateOfBirth": [
+    "1983"
+   ],
+   "placeOfBirth": [
+    {
+     "id": "https://d-nb.info/gnd/4107568-7",
+     "label": "Waren (Müritz)"
+    }
+   ],
+   "professionOrOccupation": [
+    {
+     "id": "https://d-nb.info/gnd/4003157-3",
+     "label": "Arzt"
+    }
+   ],
+   "geographicAreaCode": [
+    {
+     "id": "https://d-nb.info/standards/vocab/gnd/geographic-area-code#XA-DE",
+     "label": "Deutschland"
+    }
+   ],
+   "publication": [
+    "Mikrobielle Belastung in einem OP ohne raumlufttechnische Anlage im Vergleich zwischen aseptischen und septischen Operationen"
+   ],
+   "sameAs": [
+    {
+     "id": "https://d-nb.info/gnd/1334534039/about"
+    },
+    {
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1334534039"
+    }
+   ],
+   "type": [
+    "DifferentiatedPerson",
+    "Person",
+    "AuthorityResource"
+   ]
+  },
+  {
+   "gndIdentifier": "1331580919",
+   "preferredName": "Müller, Thomas",
+   "professionOrOccupation": [
+    {
+     "id": "https://d-nb.info/gnd/4009836-9",
+     "label": "Chemiker"
+    }
+   ],
+   "biographicalOrHistoricalInformation": [
+    "tätig am Institut für Organische Chemie, Universität Innsbruck"
+   ],
+   "geographicAreaCode": [
+    {
+     "id": "https://d-nb.info/standards/vocab/gnd/geographic-area-code#ZZ",
+     "label": "Land unbekannt"
+    }
+   ],
+   "publication": [
+    "Clathrochelate Complexes Containing Axial Cymantrene and Tromancenium Moieties"
+   ],
+   "sameAs": [
+    {
+     "id": "https://d-nb.info/gnd/1331580919/about"
+    },
+    {
+     "id": "https://d-nb.info/gnd/1332362788"
+    },
+    {
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1331580919"
+    }
+   ],
+   "type": [
+    "AuthorityResource",
+    "DifferentiatedPerson",
+    "Person"
+   ]
+  },
+  {
+   "gndIdentifier": "1332045448",
+   "preferredName": "Müller, Thomas",
+   "professionOrOccupation": [
+    {
+     "id": "https://d-nb.info/gnd/4039199-1",
+     "label": "Mikrobiologe"
+    },
+    {
+     "id": "https://d-nb.info/gnd/4131826-2",
+     "label": "Biologe"
+    },
+    {
+     "id": "https://d-nb.info/gnd/4203194-1",
+     "label": "Agrarwissenschaftler"
+    }
+   ],
+   "biographicalOrHistoricalInformation": [
+    "tätig am ZALF, AG Pilzliche Interaktion"
+   ],
+   "geographicAreaCode": [
+    {
+     "id": "https://d-nb.info/standards/vocab/gnd/geographic-area-code#XA-DE",
+     "label": "Deutschland"
+    }
+   ],
+   "publication": [
+    "Pseudomonas simiae effects on the mycotoxin formation by fusaria and alternaria in vitro and in a wheat field"
+   ],
+   "sameAs": [
+    {
+     "id": "https://d-nb.info/gnd/1332045448/about"
+    },
+    {
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1332045448"
+    }
+   ],
+   "type": [
+    "AuthorityResource",
+    "Person",
+    "DifferentiatedPerson"
+   ]
+  },
+  {
+   "gndIdentifier": "1335497749",
+   "preferredName": "Müller, Thomas",
+   "dateOfBirth": [
+    "1985"
+   ],
+   "professionOrOccupation": [
+    {
+     "id": "https://d-nb.info/gnd/4131826-2",
+     "label": "Biologe"
+    }
+   ],
+   "geographicAreaCode": [
+    {
+     "id": "https://d-nb.info/standards/vocab/gnd/geographic-area-code#XA-DE",
+     "label": "Deutschland"
+    }
+   ],
+   "publication": [
+    "Mesophases in molecular and granular systems: from liquid crystalline polymers to granular rods"
+   ],
+   "sameAs": [
+    {
+     "id": "https://d-nb.info/gnd/1335497749/about"
+    },
+    {
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1335497749"
+    }
+   ],
+   "type": [
+    "DifferentiatedPerson",
+    "Person",
+    "AuthorityResource"
+   ]
+  },
+  {
+   "gndIdentifier": "1330851684",
+   "preferredName": "Müller, Thomas",
+   "professionOrOccupation": [
+    {
+     "id": "https://d-nb.info/gnd/4209056-8",
+     "label": "Entwickler"
+    }
+   ],
+   "biographicalOrHistoricalInformation": [
+    "Thomas Müller ist gemeinsam mit Christian Pretzsch als Chief Product Owner für SAP Conversational AI tätig und arbeitet seit über 20 Jahren für die SAP SE. Nach seinem Studium der Informationstechnik wirkte er unter anderem als Entwickler und Architekt in den SAP Labs in Montreal am Web-Client-UI-Framework mit. Außerdem arbeitete er als Architekt bei SAP Design und war als Schulungsreferent und Redner bei externen und internen SAP-Veranstaltungen aktiv."
+   ],
+   "geographicAreaCode": [
+    {
+     "id": "https://d-nb.info/standards/vocab/gnd/geographic-area-code#ZZ",
+     "label": "Land unbekannt"
+    }
+   ],
+   "publication": [
+    "SAP Conversational Al"
+   ],
+   "sameAs": [
+    {
+     "id": "https://d-nb.info/gnd/1330851684/about"
+    },
+    {
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1330851684"
+    }
+   ],
+   "type": [
+    "AuthorityResource",
+    "Person",
+    "DifferentiatedPerson"
+   ]
+  }
+ ]
+}

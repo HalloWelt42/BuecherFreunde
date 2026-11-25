@@ -1,0 +1,347 @@
+<?xml version='1.0' encoding='utf-8'?>
+<searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/" xmlns:m="http://www.loc.gov/MARC21/slim"><version>1.1</version><numberOfRecords>5</numberOfRecords><records><record><recordSchema>marcxml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record>
+  <m:leader>     cam a22      cc4500</m:leader>
+  <m:controlfield tag="001">1935704370</m:controlfield>
+  <m:controlfield tag="003">DE-627</m:controlfield>
+  <m:controlfield tag="005">20261115231003.0</m:controlfield>
+  <m:controlfield tag="007">tu</m:controlfield>
+  <m:controlfield tag="008">250912s2014    xx |||||      00| ||ger c</m:controlfield>
+  <m:datafield tag="020" ind1=" " ind2=" ">
+    <m:subfield code="a">3658056193</m:subfield>
+    <m:subfield code="9">3-658-05619-3</m:subfield>
+  </m:datafield>
+  <m:datafield tag="020" ind1=" " ind2=" ">
+    <m:subfield code="a">9783658056193</m:subfield>
+    <m:subfield code="q">Pb. : EUR 29.99 (DE), EUR 30.83 (AT), sfr 37.50 (freier Pr.)</m:subfield>
+    <m:subfield code="9">978-3-658-05619-3</m:subfield>
+  </m:datafield>
+  <m:datafield tag="024" ind1="3" ind2=" ">
+    <m:subfield code="a">9783658056193</m:subfield>
+  </m:datafield>
+  <m:datafield tag="028" ind1="5" ind2="2">
+    <m:subfield code="a">86244817</m:subfield>
+  </m:datafield>
+  <m:datafield tag="041" ind1=" " ind2=" ">
+    <m:subfield code="a">ger</m:subfield>
+  </m:datafield>
+  <m:datafield tag="082" ind1="0" ind2="4">
+    <m:subfield code="a">510</m:subfield>
+  </m:datafield>
+  <m:datafield tag="084" ind1=" " ind2=" ">
+    <m:subfield code="a">SK 110</m:subfield>
+    <m:subfield code="2">rvk</m:subfield>
+    <m:subfield code="0">(DE-625)rvk/143215:</m:subfield>
+  </m:datafield>
+  <m:datafield tag="084" ind1=" " ind2=" ">
+    <m:subfield code="a">SK 950</m:subfield>
+    <m:subfield code="2">rvk</m:subfield>
+    <m:subfield code="0">(DE-625)rvk/143273:</m:subfield>
+  </m:datafield>
+  <m:datafield tag="100" ind1="1" ind2=" ">
+    <m:subfield code="a">Papula, Lothar</m:subfield>
+    <m:subfield code="d">1941-</m:subfield>
+    <m:subfield code="e">VerfasserIn</m:subfield>
+    <m:subfield code="0">(DE-588)106931628</m:subfield>
+    <m:subfield code="0">(DE-627)477580653</m:subfield>
+    <m:subfield code="0">(DE-576)162481756</m:subfield>
+    <m:subfield code="4">aut</m:subfield>
+  </m:datafield>
+  <m:datafield tag="245" ind1="1" ind2="0">
+    <m:subfield code="a">Mathematik für Ingenieure und Naturwissenschaftler</m:subfield>
+    <m:subfield code="b">ein Lehr- und Arbeitsbuch für das Grundstudium</m:subfield>
+    <m:subfield code="n">1</m:subfield>
+    <m:subfield code="c">Lothar Papula</m:subfield>
+  </m:datafield>
+  <m:datafield tag="250" ind1=" " ind2=" ">
+    <m:subfield code="a">14., überarbeitete und erweiterte Auflage</m:subfield>
+  </m:datafield>
+  <m:datafield tag="263" ind1=" " ind2=" ">
+    <m:subfield code="a">201409</m:subfield>
+  </m:datafield>
+  <m:datafield tag="264" ind1=" " ind2="1">
+    <m:subfield code="a">Wiesbaden</m:subfield>
+    <m:subfield code="b">Springer Vieweg</m:subfield>
+    <m:subfield code="c">[2014]</m:subfield>
+  </m:datafield>
+  <m:datafield tag="264" ind1=" " ind2="4">
+    <m:subfield code="c">© 2014</m:subfield>
+  </m:datafield>
+  <m:datafield tag="300" ind1=" " ind2=" ">
+    <m:subfield code="a">XXIV, 854 Seiten</m:subfield>
+    <m:subfield code="b">Diagramme</m:subfield>
+    <m:subfield code="c">240 mm x 168 mm</m:subfield>
+  </m:datafield>
+  <m:datafield tag="490" ind1="0" ind2=" ">
+    <m:subfield code="a">Lehrbuch</m:subfield>
+  </m:datafield>
+  <m:datafield tag="500" ind1=" " ind2=" ">
+    <m:subfield code="a">Literaturverzeichnis: Seite 835</m:subfield>
+  </m:datafield>
+  <m:datafield tag="650" ind1=" " ind2="4">
+    <m:subfield code="a">Sinusfunktion, Integralrechnung, Addition, Potenzreihe, Algebra, Bewegungsgleichung, Differentialrechnung, Differentiation, Matrizenrechnung, Multiplikation, Kosinus, binomischer Lehrsatz, Kotangens, Subtraktion, Geometrie</m:subfield>
+  </m:datafield>
+  <m:datafield tag="773" ind1="1" ind2="8">
+    <m:subfield code="w">(DE-627)1111982694</m:subfield>
+    <m:subfield code="w">(DE-576)04198269X</m:subfield>
+    <m:subfield code="g">1</m:subfield>
+    <m:subfield code="q">1</m:subfield>
+    <m:subfield code="7">nnam</m:subfield>
+  </m:datafield>
+  <m:datafield tag="776" ind1="1" ind2=" ">
+    <m:subfield code="z">9783658056209</m:subfield>
+    <m:subfield code="c">(eBook)</m:subfield>
+  </m:datafield>
+  <m:datafield tag="856" ind1="4" ind2="2">
+    <m:subfield code="u">https://services.dnb.de/plus/idn/105235985X/blurb/</m:subfield>
+    <m:subfield code="m">X:MVB</m:subfield>
+    <m:subfield code="q">text/html</m:subfield>
+    <m:subfield code="v">2026-11-01</m:subfield>
+    <m:subfield code="x">Verlag</m:subfield>
+    <m:subfield code="3">Inhaltstext</m:subfield>
+    <m:subfield code="7">1</m:subfield>
+  </m:datafield>
+  <m:datafield tag="856" ind1="4" ind2="2">
+    <m:subfield code="u">http://scans.hebis.de/HEBCGI/show.pl?35001510_toc.pdf</m:subfield>
+    <m:subfield code="m">V:DE-603;B:DE-17</m:subfield>
+    <m:subfield code="q">application/pdf</m:subfield>
+    <m:subfield code="3">Inhaltsverzeichnis</m:subfield>
+    <m:subfield code="7">1</m:subfield>
+  </m:datafield>
+  </m:record></recordData><recordPosition>1</recordPosition></record><record><recordSchema>marcxml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record>
+  <m:leader>     cam a22     2cc4500</m:leader>
+  <m:controlfield tag="001">1841473634</m:controlfield>
+  <m:controlfield tag="003">DE-627</m:controlfield>
+  <m:controlfield tag="005">20240613024659.0</m:controlfield>
+  <m:controlfield tag="007">tu</m:controlfield>
+  <m:controlfield tag="008">230405s2014    gw |||||      00| ||ger c</m:controlfield>
+  <m:datafield tag="020" ind1=" " ind2=" ">
+    <m:subfield code="a">9783658056193</m:subfield>
+    <m:subfield code="q"> : kt. : EUR 29.99</m:subfield>
+    <m:subfield code="9">978-3-658-05619-3</m:subfield>
+  </m:datafield>
+  <m:datafield tag="041" ind1=" " ind2=" ">
+    <m:subfield code="a">ger</m:subfield>
+  </m:datafield>
+  <m:datafield tag="100" ind1="1" ind2=" ">
+    <m:subfield code="a">Papula, Lothar</m:subfield>
+    <m:subfield code="e">VerfasserIn</m:subfield>
+    <m:subfield code="4">aut</m:subfield>
+  </m:datafield>
+  <m:datafield tag="245" ind1="1" ind2="0">
+    <m:subfield code="a">Mathematik für Ingenieure und Naturwissenschaftler</m:subfield>
+    <m:subfield code="n">1</m:subfield>
+    <m:subfield code="p">Ein Lehr- und Arbeitsbuch für das Grundstudium : mit ... 500 Beispielen aus Naturwissenschaft und Technik sowie 352 Übungsaufgaben mit ausführlichen Lösungen</m:subfield>
+    <m:subfield code="c">Lothar Papula</m:subfield>
+  </m:datafield>
+  <m:datafield tag="250" ind1=" " ind2=" ">
+    <m:subfield code="a">14., überarb. und erw. Aufl</m:subfield>
+  </m:datafield>
+  <m:datafield tag="264" ind1=" " ind2="1">
+    <m:subfield code="a">[Erscheinungsort nicht ermittelbar]</m:subfield>
+    <m:subfield code="c">2014</m:subfield>
+  </m:datafield>
+  <m:datafield tag="300" ind1=" " ind2=" ">
+    <m:subfield code="a">XXIV, 854 S</m:subfield>
+    <m:subfield code="b">zahlr. graph. Darst</m:subfield>
+    <m:subfield code="c">24 cm</m:subfield>
+  </m:datafield>
+  <m:datafield tag="773" ind1="1" ind2="8">
+    <m:subfield code="w">(DE-627)1758638990</m:subfield>
+    <m:subfield code="g">1</m:subfield>
+    <m:subfield code="q">1</m:subfield>
+    <m:subfield code="7">nnam</m:subfield>
+  </m:datafield>
+  </m:record></recordData><recordPosition>2</recordPosition></record><record><recordSchema>marcxml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record>
+  <m:leader>     cam a22     2c 4500</m:leader>
+  <m:controlfield tag="001">1657883884</m:controlfield>
+  <m:controlfield tag="003">DE-627</m:controlfield>
+  <m:controlfield tag="005">20251225212815.0</m:controlfield>
+  <m:controlfield tag="007">cr uuu---uuuuu</m:controlfield>
+  <m:controlfield tag="008">140604s2014    gw |||||o     00| ||ger c</m:controlfield>
+  <m:datafield tag="020" ind1=" " ind2=" ">
+    <m:subfield code="a">9783658056209</m:subfield>
+    <m:subfield code="9">978-3-658-05620-9</m:subfield>
+  </m:datafield>
+  <m:datafield tag="024" ind1="7" ind2=" ">
+    <m:subfield code="a">10.1007/978-3-658-05620-9</m:subfield>
+    <m:subfield code="2">doi</m:subfield>
+  </m:datafield>
+  <m:datafield tag="041" ind1=" " ind2=" ">
+    <m:subfield code="a">ger</m:subfield>
+  </m:datafield>
+  <m:datafield tag="050" ind1=" " ind2="0">
+    <m:subfield code="a">TA329-348</m:subfield>
+    <m:subfield code="a">TA640-643</m:subfield>
+  </m:datafield>
+  <m:datafield tag="050" ind1=" " ind2="0">
+    <m:subfield code="a">TA329-348</m:subfield>
+  </m:datafield>
+  <m:datafield tag="050" ind1=" " ind2="0">
+    <m:subfield code="a">TA640-643</m:subfield>
+  </m:datafield>
+  <m:datafield tag="072" ind1=" " ind2="7">
+    <m:subfield code="a">MAT003000</m:subfield>
+    <m:subfield code="2">bisacsh</m:subfield>
+  </m:datafield>
+  <m:datafield tag="072" ind1=" " ind2="7">
+    <m:subfield code="a">TBJ</m:subfield>
+    <m:subfield code="2">bicssc</m:subfield>
+  </m:datafield>
+  <m:datafield tag="072" ind1=" " ind2="7">
+    <m:subfield code="a">TEC009000</m:subfield>
+    <m:subfield code="2">bisacsh</m:subfield>
+  </m:datafield>
+  <m:datafield tag="082" ind1="0" ind2=" ">
+    <m:subfield code="a">519</m:subfield>
+  </m:datafield>
+  <m:datafield tag="084" ind1=" " ind2=" ">
+    <m:subfield code="a">SK 110</m:subfield>
+    <m:subfield code="2">rvk</m:subfield>
+    <m:subfield code="0">(DE-625)rvk/143215:</m:subfield>
+  </m:datafield>
+  <m:datafield tag="084" ind1=" " ind2=" ">
+    <m:subfield code="a">SK 950</m:subfield>
+    <m:subfield code="2">rvk</m:subfield>
+    <m:subfield code="0">(DE-625)rvk/143273:</m:subfield>
+  </m:datafield>
+  <m:datafield tag="084" ind1=" " ind2=" ">
+    <m:subfield code="a">31.25</m:subfield>
+    <m:subfield code="2">bkl</m:subfield>
+  </m:datafield>
+  <m:datafield tag="084" ind1=" " ind2=" ">
+    <m:subfield code="a">31.41</m:subfield>
+    <m:subfield code="2">bkl</m:subfield>
+  </m:datafield>
+  <m:datafield tag="084" ind1=" " ind2=" ">
+    <m:subfield code="a">31.24</m:subfield>
+    <m:subfield code="2">bkl</m:subfield>
+  </m:datafield>
+  <m:datafield tag="084" ind1=" " ind2=" ">
+    <m:subfield code="a">31.42</m:subfield>
+    <m:subfield code="2">bkl</m:subfield>
+  </m:datafield>
+  <m:datafield tag="100" ind1="1" ind2=" ">
+    <m:subfield code="a">Papula, Lothar</m:subfield>
+    <m:subfield code="d">1941-</m:subfield>
+    <m:subfield code="0">(DE-588)106931628</m:subfield>
+    <m:subfield code="0">(DE-627)477580653</m:subfield>
+    <m:subfield code="0">(DE-576)162481756</m:subfield>
+    <m:subfield code="4">aut</m:subfield>
+  </m:datafield>
+  <m:datafield tag="245" ind1="1" ind2="0">
+    <m:subfield code="a">Mathematik für Ingenieure und Naturwissenschaftler Band 1</m:subfield>
+    <m:subfield code="b">Ein Lehr- und Arbeitsbuch für das Grundstudium</m:subfield>
+    <m:subfield code="c">von Lothar Papula</m:subfield>
+  </m:datafield>
+  <m:datafield tag="250" ind1=" " ind2=" ">
+    <m:subfield code="a">14., überarb. u. erw. Aufl. 2014</m:subfield>
+  </m:datafield>
+  <m:datafield tag="264" ind1=" " ind2="1">
+    <m:subfield code="a">Wiesbaden</m:subfield>
+    <m:subfield code="b">Springer Vieweg</m:subfield>
+    <m:subfield code="c">2014</m:subfield>
+  </m:datafield>
+  <m:datafield tag="300" ind1=" " ind2=" ">
+    <m:subfield code="a">Online-Ressource (XXIV, 854 S. 643 Abb, online resource)</m:subfield>
+  </m:datafield>
+  <m:datafield tag="490" ind1="0" ind2=" ">
+    <m:subfield code="a">SpringerLink</m:subfield>
+    <m:subfield code="a">Bücher</m:subfield>
+  </m:datafield>
+  <m:datafield tag="505" ind1="8" ind2=" ">
+    <m:subfield code="a">Allgemeine GrundlagenVektoralgebra -- Funktionen und Kurven -- Differentialrechnung -- Integralrechnung -- Potenzreihenentwicklungen -- Komplexe Zahlen und Funktionen -- Übungsaufgaben am Kapitelende mit ausführlichen Lösungen.</m:subfield>
+  </m:datafield>
+  <m:datafield tag="520" ind1=" " ind2=" ">
+    <m:subfield code="a">Grundlagen -- Vektoren -- Funktionen -- Reihen -- Integrale</m:subfield>
+  </m:datafield>
+  <m:datafield tag="520" ind1=" " ind2=" ">
+    <m:subfield code="a">Eine Inhaltsangabe in ganzen Sätzen, lang genug, um etwas zu sagen.</m:subfield>
+  </m:datafield>
+  <m:datafield tag="650" ind1=" " ind2="0">
+    <m:subfield code="a">Engineering</m:subfield>
+  </m:datafield>
+  <m:datafield tag="650" ind1=" " ind2="0">
+    <m:subfield code="a">Mathematics</m:subfield>
+  </m:datafield>
+  <m:datafield tag="650" ind1=" " ind2="0">
+    <m:subfield code="a">Computer engineering</m:subfield>
+  </m:datafield>
+  <m:datafield tag="650" ind1=" " ind2="0">
+    <m:subfield code="a">Applied mathematics.</m:subfield>
+  </m:datafield>
+  <m:datafield tag="650" ind1=" " ind2="0">
+    <m:subfield code="a">Electrical engineering.</m:subfield>
+  </m:datafield>
+  <m:datafield tag="650" ind1=" " ind2="0">
+    <m:subfield code="a">Engineering mathematics</m:subfield>
+  </m:datafield>
+  <m:datafield tag="655" ind1=" " ind2="7">
+    <m:subfield code="a">Lehrbuch</m:subfield>
+    <m:subfield code="0">(DE-588)4123623-3</m:subfield>
+    <m:subfield code="0">(DE-627)104270187</m:subfield>
+    <m:subfield code="0">(DE-576)209561262</m:subfield>
+    <m:subfield code="2">gnd-content</m:subfield>
+  </m:datafield>
+  <m:datafield tag="776" ind1="1" ind2=" ">
+    <m:subfield code="z">9783658056193</m:subfield>
+  </m:datafield>
+  <m:datafield tag="776" ind1="0" ind2="8">
+    <m:subfield code="i">Erscheint auch als</m:subfield>
+    <m:subfield code="n">Druck-Ausgabe</m:subfield>
+    <m:subfield code="a">Papula, Lothar, 1941 - </m:subfield>
+    <m:subfield code="t">Mathematik für Ingenieure und Naturwissenschaftler ; 1: Mit ... 500 Beispielen aus Naturwissenschaft und Technik sowie 352 Übungsaufgaben mit ausführlichen Lösungen</m:subfield>
+    <m:subfield code="b">14., überarb. und erw. Aufl.</m:subfield>
+    <m:subfield code="d">Wiesbaden : Springer Vieweg, 2014</m:subfield>
+    <m:subfield code="h">XXIV, 854 S.</m:subfield>
+    <m:subfield code="w">(DE-627)1479621889</m:subfield>
+    <m:subfield code="w">(DE-576)409621889</m:subfield>
+    <m:subfield code="z">9783658056193</m:subfield>
+    <m:subfield code="z">3658056193</m:subfield>
+  </m:datafield>
+  <m:datafield tag="776" ind1="0" ind2="8">
+    <m:subfield code="i">Erscheint auch als</m:subfield>
+    <m:subfield code="n">Druck-Ausgabe</m:subfield>
+    <m:subfield code="a">Papula, Lothar, 1941 - </m:subfield>
+    <m:subfield code="t">Mathematik für Ingenieure und Naturwissenschaftler ; Band 1: Mit 643 Abbildungen, 500 Beispielen aus Naturwissenschaft und Technik sowie 352 Übungsaufgaben mit ausführlichen Lösungen</m:subfield>
+    <m:subfield code="b">14., überarbeitete und erweiterte Auflage</m:subfield>
+    <m:subfield code="d">Wiesbaden : Springer Vieweg, 2014</m:subfield>
+    <m:subfield code="h">XXIV, 854 Seiten</m:subfield>
+    <m:subfield code="w">(DE-627)789483920</m:subfield>
+    <m:subfield code="z">3658056193</m:subfield>
+    <m:subfield code="z">9783658056193</m:subfield>
+  </m:datafield>
+  <m:datafield tag="856" ind1="4" ind2="0">
+    <m:subfield code="u">https://doi.org/10.1007/978-3-658-05620-9</m:subfield>
+    <m:subfield code="m">X:SPRINGER</m:subfield>
+    <m:subfield code="x">Resolving-System</m:subfield>
+    <m:subfield code="z">lizenzpflichtig</m:subfield>
+    <m:subfield code="7">1</m:subfield>
+  </m:datafield>
+  <m:datafield tag="856" ind1="4" ind2="0">
+    <m:subfield code="u">http://dx.doi.org/10.1007/978-3-658-05620-9</m:subfield>
+    <m:subfield code="x">Resolving-System</m:subfield>
+    <m:subfield code="z">lizenzpflichtig</m:subfield>
+    <m:subfield code="3">Volltext</m:subfield>
+    <m:subfield code="7">1</m:subfield>
+  </m:datafield>
+  <m:datafield tag="856" ind1="4" ind2="2">
+    <m:subfield code="u">https://swbplus.bsz-bw.de/bsz407551514cov.jpg</m:subfield>
+    <m:subfield code="m">V:DE-576</m:subfield>
+    <m:subfield code="m">X:springer</m:subfield>
+    <m:subfield code="q">image/jpeg</m:subfield>
+    <m:subfield code="v">20150303113651</m:subfield>
+    <m:subfield code="3">Cover</m:subfield>
+    <m:subfield code="7">1</m:subfield>
+  </m:datafield>
+  <m:datafield tag="856" ind1="4" ind2="2">
+    <m:subfield code="u">https://swbplus.bsz-bw.de/bsz409621889inh.htm</m:subfield>
+    <m:subfield code="m">V:DE-576;B:DE-Mit1</m:subfield>
+    <m:subfield code="q">application/pdf</m:subfield>
+    <m:subfield code="v">20151102164535</m:subfield>
+    <m:subfield code="3">Inhaltsverzeichnis</m:subfield>
+    <m:subfield code="7">1</m:subfield>
+  </m:datafield>
+  <m:datafield tag="889" ind1=" " ind2=" ">
+    <m:subfield code="w">(DE-627)786992336</m:subfield>
+  </m:datafield>
+  </m:record></recordData><recordPosition>3</recordPosition></record></records><echoedSearchRetrieveRequest><version>1.1</version><query>pica.isb=9783658056193</query><maximumRecords>3</maximumRecords><recordPacking>xml</recordPacking><recordSchema>marcxml</recordSchema></echoedSearchRetrieveRequest></searchRetrieveResponse>

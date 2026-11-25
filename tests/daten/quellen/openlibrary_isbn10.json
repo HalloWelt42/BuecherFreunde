@@ -1,0 +1,127 @@
+{
+ "ISBN:3257228007": {
+  "url": "http://openlibrary.org/books/OL31997645M/Das_Parfum",
+  "key": "/books/OL31997645M",
+  "title": "Das Parfum",
+  "subtitle": "Die Geschichte eines Mörders",
+  "authors": [
+   {
+    "url": "http://openlibrary.org/authors/OL276700A/Patrick_Süskind",
+    "name": "Patrick Süskind"
+   }
+  ],
+  "number_of_pages": 319,
+  "identifiers": {
+   "bookbrainz": [
+    "341956fa-f92b-44f0-97ff-63fec5c5dc14"
+   ],
+   "isbn_13": [
+    "9783257228007"
+   ],
+   "openlibrary": [
+    "OL31997645M"
+   ]
+  },
+  "publishers": [
+   {
+    "name": "Diogenes"
+   }
+  ],
+  "publish_date": "2006",
+  "subjects": [
+   {
+    "name": "Historical fiction",
+    "url": "https://openlibrary.org/subjects/historical_fiction"
+   },
+   {
+    "name": "psychological thriller",
+    "url": "https://openlibrary.org/subjects/psychological_thriller"
+   },
+   {
+    "name": "dark fantasy",
+    "url": "https://openlibrary.org/subjects/dark_fantasy"
+   },
+   {
+    "name": "coming-of-age",
+    "url": "https://openlibrary.org/subjects/coming-of-age"
+   },
+   {
+    "name": "murder mystery",
+    "url": "https://openlibrary.org/subjects/murder_mystery"
+   },
+   {
+    "name": "obsession",
+    "url": "https://openlibrary.org/subjects/obsession"
+   },
+   {
+    "name": "perfume",
+    "url": "https://openlibrary.org/subjects/perfume"
+   },
+   {
+    "name": "scent",
+    "url": "https://openlibrary.org/subjects/scent"
+   },
+   {
+    "name": "olfactory",
+    "url": "https://openlibrary.org/subjects/olfactory"
+   },
+   {
+    "name": "senses",
+    "url": "https://openlibrary.org/subjects/senses"
+   },
+   {
+    "name": "18th century France",
+    "url": "https://openlibrary.org/subjects/18th_century_france"
+   },
+   {
+    "name": "Fiction, suspense",
+    "url": "https://openlibrary.org/subjects/fiction,_suspense"
+   },
+   {
+    "name": "France, fiction",
+    "url": "https://openlibrary.org/subjects/france,_fiction"
+   },
+   {
+    "name": "Fiction, historical, general",
+    "url": "https://openlibrary.org/subjects/fiction,_historical,_general"
+   },
+   {
+    "name": "Perfumes",
+    "url": "https://openlibrary.org/subjects/perfumes"
+   },
+   {
+    "name": "Odors",
+    "url": "https://openlibrary.org/subjects/odors"
+   },
+   {
+    "name": "Murderers",
+    "url": "https://openlibrary.org/subjects/murderers"
+   },
+   {
+    "name": "Fiction",
+    "url": "https://openlibrary.org/subjects/fiction"
+   },
+   {
+    "name": "Parfum (Motion picture)",
+    "url": "https://openlibrary.org/subjects/parfum_(motion_picture)"
+   },
+   {
+    "name": "Identity",
+    "url": "https://openlibrary.org/subjects/identity"
+   },
+   {
+    "name": "Loneliness",
+    "url": "https://openlibrary.org/subjects/loneliness"
+   },
+   {
+    "name": "Love",
+    "url": "https://openlibrary.org/subjects/love"
+   }
+  ],
+  "cover": {
+   "small": "https://covers.openlibrary.org/b/id/10668278-S.jpg",
+   "medium": "https://covers.openlibrary.org/b/id/10668278-M.jpg",
+   "large": "https://covers.openlibrary.org/b/id/10668278-L.jpg"
+  }
+ }
+}

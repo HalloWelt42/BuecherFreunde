@@ -1,0 +1,202 @@
+{
+ "ISBN:9783257229530": {
+  "url": "http://openlibrary.org/books/OL31761782M/Der_Vorleser",
+  "key": "/books/OL31761782M",
+  "title": "Der Vorleser",
+  "authors": [
+   {
+    "url": "http://openlibrary.org/authors/OL24809A/Bernhard_Schlink",
+    "name": "Bernhard Schlink"
+   }
+  ],
+  "number_of_pages": 206,
+  "identifiers": {
+   "bookbrainz": [
+    "f49aa32d-fdf3-4538-b790-1fcb2f71fa27"
+   ],
+   "isbn_10": [
+    "3257229534"
+   ],
+   "openlibrary": [
+    "OL31761782M"
+   ]
+  },
+  "publishers": [
+   {
+    "name": "Diogenes"
+   }
+  ],
+  "publish_date": "2000",
+  "subjects": [
+   {
+    "name": "Fiction",
+    "url": "https://openlibrary.org/subjects/fiction"
+   },
+   {
+    "name": "Romance",
+    "url": "https://openlibrary.org/subjects/romance"
+   },
+   {
+    "name": "Germany",
+    "url": "https://openlibrary.org/subjects/germany"
+   },
+   {
+    "name": "Holocaust",
+    "url": "https://openlibrary.org/subjects/holocaust"
+   },
+   {
+    "name": "war crimes",
+    "url": "https://openlibrary.org/subjects/war_crimes"
+   },
+   {
+    "name": "Atrocities",
+    "url": "https://openlibrary.org/subjects/atrocities"
+   },
+   {
+    "name": "World War, 1939-1945",
+    "url": "https://openlibrary.org/subjects/world_war,_1939-1945"
+   },
+   {
+    "name": "War crime trials",
+    "url": "https://openlibrary.org/subjects/war_crime_trials"
+   },
+   {
+    "name": "History",
+    "url": "https://openlibrary.org/subjects/history"
+   },
+   {
+    "name": "Man-woman relationship",
+    "url": "https://openlibrary.org/subjects/man-woman_relationship"
+   },
+   {
+    "name": "Nazis",
+    "url": "https://openlibrary.org/subjects/nazis"
+   },
+   {
+    "name": "Fiction, psychological",
+    "url": "https://openlibrary.org/subjects/fiction,_psychological"
+   },
+   {
+    "name": "Fiction, historical",
+    "url": "https://openlibrary.org/subjects/fiction,_historical"
+   },
+   {
+    "name": "Germany, fiction",
+    "url": "https://openlibrary.org/subjects/germany,_fiction"
+   },
+   {
+    "name": "World war, 1939-1945, fiction",
+    "url": "https://openlibrary.org/subjects/world_war,_1939-1945,_fiction"
+   },
+   {
+    "name": "Activities",
+    "url": "https://openlibrary.org/subjects/activities"
+   },
+   {
+    "name": "Large type books",
+    "url": "https://openlibrary.org/subjects/large_type_books"
+   },
+   {
+    "name": "nyt:trade-fiction-paperback=2008-12-21",
+    "url": "https://openlibrary.org/subjects/nyt:trade-fiction-paperback=2008-12-21"
+   },
+   {
+    "name": "New York Times bestseller",
+    "url": "https://openlibrary.org/subjects/new_york_times_bestseller"
+   },
+   {
+    "name": "Guilt",
+    "url": "https://openlibrary.org/subjects/guilt"
+   },
+   {
+    "name": "Holocaust, Jewish (1939-1945)",
+    "url": "https://openlibrary.org/subjects/holocaust,_jewish_(1939-1945)"
+   },
+   {
+    "name": "Germans",
+    "url": "https://openlibrary.org/subjects/germans"
+   },
+   {
+    "name": "Psychology",
+    "url": "https://openlibrary.org/subjects/psychology"
+   },
+   {
+    "name": "German language materials",
+    "url": "https://openlibrary.org/subjects/german_language_materials"
+   },
+   {
+    "name": "Love stories",
+    "url": "https://openlibrary.org/subjects/love_stories"
+   },
+   {
+    "name": "Psychological fiction",
+    "url": "https://openlibrary.org/subjects/psychological_fiction"
+   },
+   {
+    "name": "Fiction, historical, general",
+    "url": "https://openlibrary.org/subjects/fiction,_historical,_general"
+   },
+   {
+    "name": "Guerra Mundial II, 1939-1945",
+    "url": "https://openlibrary.org/subjects/guerra_mundial_ii,_1939-1945"
+   },
+   {
+    "name": "Procesos por crimenes de guerra",
+    "url": "https://openlibrary.org/subjects/procesos_por_crimenes_de_guerra"
+   },
+   {
+    "name": "World War (1939-1945) fast (OCoLC)fst01180924",
+    "url": "https://openlibrary.org/subjects/world_war_(1939-1945)_fast_(ocolc)fst01180924"
+   }
+  ],
+  "subject_places": [
+   {
+    "name": "West Germany",
+    "url": "https://openlibrary.org/subjects/place:west_germany"
+   },
+   {
+    "name": "Auschwitz",
+    "url": "https://openlibrary.org/subjects/place:auschwitz"
+   },
+   {
+    "name": "Germany",
+    "url": "https://openlibrary.org/subjects/place:germany"
+   },
+   {
+    "name": "Deutschland",
+    "url": "https://openlibrary.org/subjects/place:deutschland"
+   }
+  ],
+  "subject_times": [
+   {
+    "name": "1950s - 1980s",
+    "url": "https://openlibrary.org/subjects/time:1950s_-_1980s"
+   }
+  ],
+  "excerpts": [
+   {
+    "text": "Ein Auszug.",
+    "comment": ""
+   }
+  ],
+  "links": [
+   {
+    "title": "Wikipedia",
+    "url": "https://en.wikipedia.org/wiki/The_Reader"
+   },
+   {
+    "title": "VIAF ID: 197681426",
+    "url": "https://viaf.org/viaf/197681426/"
+   },
+   {
+    "title": "inventaire.io",
+    "url": "https://inventaire.io/entity/wd:Q311449"
+   }
+  ],
+  "cover": {
+   "small": "https://covers.openlibrary.org/b/id/10527919-S.jpg",
+   "medium": "https://covers.openlibrary.org/b/id/10527919-M.jpg",
+   "large": "https://covers.openlibrary.org/b/id/10527919-L.jpg"
+  }
+ }
+}

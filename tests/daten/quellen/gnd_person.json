@@ -1,0 +1,71 @@
+{
+ "totalItems": 1,
+ "member": [
+  {
+   "gndIdentifier": "106931628",
+   "preferredName": "Papula, Lothar",
+   "variantName": [
+    "Papula, L."
+   ],
+   "dateOfBirth": [
+    "1941"
+   ],
+   "professionOrOccupation": [
+    {
+     "id": "https://d-nb.info/gnd/4037945-0",
+     "label": "Mathematiker"
+    },
+    {
+     "id": "https://d-nb.info/gnd/4025243-7",
+     "label": "Hochschullehrer"
+    }
+   ],
+   "biographicalOrHistoricalInformation": [
+    "Professor für Mathematik an der Fachhochschule Wiesbaden (1979-2008); früher Dozent an der Universität Frankfurt am Main; Promotion 1969, Univ. Frankfurt/Main"
+   ],
+   "geographicAreaCode": [
+    {
+     "id": "https://d-nb.info/standards/vocab/gnd/geographic-area-code#XA-DE",
+     "label": "Deutschland"
+    }
+   ],
+   "publication": [
+    "Mathematische Formelsammlung"
+   ],
+   "wikipedia": [
+    {
+     "id": "https://de.wikipedia.org/wiki/Lothar_Papula",
+     "label": "https://de.wikipedia.org/wiki/Lothar_Papula"
+    }
+   ],
+   "sameAs": [
+    {
+     "id": "http://viaf.org/viaf/22643857"
+    },
+    {
+     "id": "http://www.wikidata.org/entity/Q1758510"
+    },
+    {
+     "id": "https://d-nb.info/gnd/106931628/about"
+    },
+    {
+     "id": "https://d-nb.info/gnd/172301173"
+    },
+    {
+     "id": "https://de.wikipedia.org/wiki/Lothar_Papula"
+    },
+    {
+     "id": "https://isni.org/isni/0000000121240597"
+    },
+    {
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/106931628"
+    }
+   ],
+   "type": [
+    "DifferentiatedPerson",
+    "AuthorityResource",
+    "Person"
+   ]
+  }
+ ]
+}

@@ -11,7 +11,6 @@ openai==1.61.0
 pydantic-settings==2.7.1
 beautifulsoup4==4.12.3
 isbnlib==3.10.14
-Wikipedia-API==0.11.0
-requests>=2.31.0
+requests>=2.31.0                # Abruf der Quellen (backend/app/quellen/versand.py)
 setuptools>=70.0.0
 appkern[web] @ https://github.com/HalloWelt42/appkern/archive/7491405b0caa22f4cdde42e3388e7b9f4489e518.tar.gz

@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><version>1.1</version><numberOfRecords>0</numberOfRecords><records /><echoedSearchRetrieveRequest><version>1.1</version><query>NUM=9783999999996</query><xQuery xsi:nil="true" /><maximumRecords>3</maximumRecords><recordSchema>MARC21-xml</recordSchema></echoedSearchRetrieveRequest></searchRetrieveResponse>

@@ -7,7 +7,6 @@ von Project Gutenberg über die Gutendex-API.
 import asyncio
 import json
 import logging
-from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -15,11 +14,13 @@ from pydantic import BaseModel
 
 from backend.app.core.auth import verify_token, verify_token_inhalt
 from backend.app.core.database import db
-from backend.app.services.gutenberg import download_buch, download_cover, suche
+from backend.app.quellen import stand
+from backend.app.quellen.fehler import QuelleFehler
+from backend.app.quellen.gutenberg import Fundliste, download_buch, download_cover, suche
+from backend.app.quellen.regeln import GUTENBERG
 from backend.app.services.import_service import (
     create_import_task,
     import_single_file,
-    update_task_status,
 )
 from backend.app.services.storage import compute_hash, save_cover
 
@@ -53,22 +54,9 @@ def _reset_status():
 
 @router.get("/status")
 async def gutenberg_status(_token: str = Depends(verify_token)) -> dict:
-    """Prüft ob die Gutendex-API erreichbar ist."""
-    import httpx
-    try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
-            resp = await client.get("https://gutendex.com/books/?page=1&search=test")
-            return {
-                "erreichbar": resp.status_code == 200,
-                "url": "https://gutendex.com",
-                "info": f"HTTP {resp.status_code}",
-            }
-    except Exception as e:
-        return {
-            "erreichbar": False,
-            "url": "https://gutendex.com",
-            "info": str(e),
-        }
+    """Der gemerkte Stand der Gutendex-API; gefragt wird sie dabei nicht."""
+    s = await stand.einer(GUTENBERG.kennung)
+    return {"erreichbar": s.erreichbar, "url": s.adresse, "info": s.grund or s.wort}
 
 
 @router.get("/suche")
@@ -78,14 +66,12 @@ async def gutenberg_suche(
     topic: str = Query("", description="Thema/Kategorie"),
     seite: int = Query(1, ge=1, description="Seitennummer"),
     _token: str = Depends(verify_token),
-) -> dict:
+) -> Fundliste:
     """Sucht Bücher auf Project Gutenberg."""
     try:
-        ergebnis = await suche(query=q, sprache=sprache, topic=topic, seite=seite)
-        return ergebnis
-    except Exception as e:
-        logger.error("Gutenberg-Suche fehlgeschlagen: %s", e)
-        raise HTTPException(status_code=502, detail=f"Gutendex nicht erreichbar: {e}")
+        return await suche(query=q, sprache=sprache, topic=topic, seite=seite)
+    except QuelleFehler as f:
+        raise HTTPException(status_code=502, detail=f.grund) from f
 
 
 class GutenbergImportRequest(BaseModel):
@@ -164,7 +150,7 @@ async def _import_buecher(buecher: list[dict]):
     """Importiert eine Liste von Gutenberg-Büchern sequentiell."""
     kat_id = await _get_or_create_gutenberg_kategorie()
 
-    for i, buch in enumerate(buecher):
+    for buch in buecher:
         gutenberg_id = buch.get("gutenberg_id", 0)
         titel = buch.get("titel", f"Gutenberg #{gutenberg_id}")
         _gutenberg_status["aktuell"] = titel
@@ -199,9 +185,10 @@ async def _import_buecher(buecher: list[dict]):
                 _gutenberg_status["fertig"] += 1
                 continue
 
-            temp_path = await download_buch(gutenberg_id, download_url)
-            if not temp_path:
-                ergebnis["detail"] = "Download fehlgeschlagen"
+            try:
+                temp_path = await download_buch(gutenberg_id, download_url)
+            except QuelleFehler as f:
+                ergebnis["detail"] = f.grund
                 _gutenberg_status["fehler"] += 1
                 _gutenberg_status["ergebnisse"].append(ergebnis)
                 _gutenberg_status["fertig"] += 1
@@ -215,7 +202,7 @@ async def _import_buecher(buecher: list[dict]):
                 )
                 if existing_hash:
                     ergebnis["status"] = "duplikat"
-                    ergebnis["detail"] = f"Datei-Duplikat (Hash)"
+                    ergebnis["detail"] = "Datei-Duplikat (Hash)"
                     if existing_hash:
                         ergebnis["book_id"] = existing_hash["id"]
                     _gutenberg_status["duplikate"] += 1
@@ -230,7 +217,7 @@ async def _import_buecher(buecher: list[dict]):
                 )
 
                 # Importieren
-                result = await import_single_file(temp_path, task_id)
+                result = await import_single_file(temp_path, task_id, enrich=False)      # die Angaben stehen im Buch; eine ISBN hat es nicht
 
                 if result["status"] == "ok":
                     book_id = result["book_id"]
@@ -287,9 +274,6 @@ async def _import_buecher(buecher: list[dict]):
 
         _gutenberg_status["ergebnisse"].append(ergebnis)
         _gutenberg_status["fertig"] += 1
-
-        # Kurze Pause zwischen Downloads (Rate-Limiting)
-        await asyncio.sleep(0.5)
 
 
 @router.get("/import/status")

@@ -88,9 +88,19 @@ EXTERNAL_DIR=/pfad/zum/scannen  # Scan-Ordner (read-only, kann leer sein)
 IMPORT_DIR=/pfad/zum/import     # Upload-Ziel
 DATABASE_DIR=/pfad/zur/db       # SQLite + Backups
 
-# Open Library
-OPENLIBRARY_ENABLED=true        # Metadaten-Anreicherung
+# Quellen für Angaben (alle freiwillig, ohne Schlüssel; jede einzeln abschaltbar)
+DNB_ENABLED=true                # Deutsche Nationalbibliothek
+K10PLUS_ENABLED=true            # Verbundkatalog K10plus
+OPENLIBRARY_ENABLED=true        # Open Library
 OPENLIBRARY_RATE_LIMIT=1        # Anfragen pro Sekunde
+CROSSREF_ENABLED=true           # Fachartikel und Fachbücher mit DOI
+WIKIPEDIA_ENABLED=true          # Wikipedia und Wikidata
+GND_ENABLED=true                # Gemeinsame Normdatei (Autoren)
+GUTENBERG_ENABLED=true          # gemeinfreie Bücher
+GOOGLE_BOOKS_API_KEY=           # ohne eigenen Schlüssel wird Google Books nie gefragt
+QUELLEN_KONTAKT=                # freiwillig: Seite oder Mail im Ausweis der App; Wikimedia und Open Library erlauben damit mehr
+QUELLEN_HINTERGRUND_TAG=500     # höchstens so viele Anfragen je Quelle und Tag in Hintergrundläufen
+QUELLEN_VORRAT_MB=32            # gemerkte Antworten in der Datenbank
 
 # LM Studio (optional)
 LM_STUDIO_ENABLED=false         # KI-Kategorisierung
@@ -110,7 +120,7 @@ Alles hier ist freiwillig. Fehlt ein Anschluss, fehlt nur seine Fähigkeit, und 
 | Nachschlag (Lexika, Handbücher) | `NACHSCHLAG_URL` | kein Nachschlagen im Leser |
 | Sprechdienst | `VORLESEN_URL` | vorgelesen wird mit den Stimmen des Geräts |
 | KI | `LM_STUDIO_ENABLED`, `LM_STUDIO_URL`, `LM_STUDIO_MODEL`, auf Wunsch `KI_SCHLUESSEL_DATEI` | Einordnen von Hand |
-| Verzeichnisse und Lexikon | `OPENLIBRARY_ENABLED`, `GOOGLE_BOOKS_ENABLED`, `WIKIPEDIA_ENABLED` | Angaben aus den Dateien |
+| Verzeichnisse, Lexikon, Normdatei | `DNB_ENABLED`, `K10PLUS_ENABLED`, `OPENLIBRARY_ENABLED`, `CROSSREF_ENABLED`, `WIKIPEDIA_ENABLED`, `GND_ENABLED`, `GOOGLE_BOOKS_API_KEY` | Angaben aus den Dateien |
 
 Der Port ist im Heimnetz offen (`BINDUNG=0.0.0.0`). Von außen erreichbar macht man die App nur hinter einem Vorbau mit HTTPS
 (dann `BINDUNG=127.0.0.1`).
@@ -230,8 +240,8 @@ BücherFreunde/
 | EPUB/MOBI | foliate-js |
 | Backend | Python FastAPI + Uvicorn |
 | Datenbank | SQLite + FTS5 |
-| Metadaten | Open Library, Google Books |
-| Gutenberg | Gutendex-API (gutendex.com) |
+| Metadaten | Deutsche Nationalbibliothek, K10plus, Open Library, Crossref, Wikidata und Wikipedia, GND (lobid.org), Google Books mit eigenem Schlüssel; ein gemeinsamer Abruf mit Takt, Vorrat und Pausen (`backend/app/quellen`) |
+| Gutenberg | Gutendex-API (gutendex.com), Dateien von den Spiegeln |
 | KI | LM Studio (lokal, optional) |
 | Container | Docker Compose (python:3.12-slim, nginx:alpine) |
 

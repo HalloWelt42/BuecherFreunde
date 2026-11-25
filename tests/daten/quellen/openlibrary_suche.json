@@ -1,0 +1,131 @@
+{
+ "numFound": 2,
+ "start": 0,
+ "numFoundExact": true,
+ "num_found": 2,
+ "documentation_url": "https://openlibrary.org/dev/docs/api/search",
+ "q": "",
+ "offset": null,
+ "docs": [
+  {
+   "author_key": [
+    "OL91826A"
+   ],
+   "author_name": [
+    "Daniel Kehlmann"
+   ],
+   "cover_i": 1165201,
+   "first_publish_year": 2005,
+   "key": "/works/OL991411W",
+   "language": [
+    "fre",
+    "tur",
+    "vie",
+    "spa",
+    "ger",
+    "eng",
+    "chi"
+   ],
+   "title": "Die Vermessung der Welt",
+   "subject": [
+    "Fiction",
+    "Long Now Manual for Civilization",
+    "New York Times reviewed",
+    "Fiction, historical, general",
+    "Scientists, fiction",
+    "Fiction, biographical",
+    "German fiction",
+    "OUR Brockhaus selection",
+    "German language materials",
+    "18.09 German literature",
+    "Romans, nouvelles",
+    "Duan pian xiao shuo",
+    "Fiction, historical",
+    "Biographical fiction",
+    "Intellectual life",
+    "Belletristische Darstellung",
+    "Gauß, Carl Friedrich",
+    "Mathematicians",
+    "Explorers",
+    "German Historical fiction"
+   ],
+   "editions": {
+    "numFound": 7,
+    "start": 0,
+    "numFoundExact": true,
+    "docs": [
+     {
+      "key": "/books/OL40205584M",
+      "title": "Die Vermessung der Welt",
+      "subtitle": "Roman",
+      "cover_i": 12958418,
+      "language": [
+       "ger"
+      ],
+      "publisher": [
+       "Rowohlt-Taschenbuch-Verl."
+      ],
+      "publish_date": [
+       "2009"
+      ],
+      "isbn": [
+       "9783499332708",
+       "3499332701"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "author_key": [
+    "OL91826A"
+   ],
+   "author_name": [
+    "Daniel Kehlmann"
+   ],
+   "cover_i": 1013562,
+   "first_publish_year": 2012,
+   "key": "/works/OL991402W",
+   "language": [
+    "ger"
+   ],
+   "title": "Die Vermessung der Welt - Das Buch zum Film",
+   "subject": [
+    "Fiction",
+    "OUR Brockhaus selection",
+    "German Motion picture plays",
+    "History and criticism",
+    "Vermessung der Welt (Motion picture)",
+    "German fiction"
+   ],
+   "editions": {
+    "numFound": 1,
+    "start": 0,
+    "numFoundExact": true,
+    "docs": [
+     {
+      "key": "/books/OL30749128M",
+      "title": "Die Vermessung der Welt",
+      "subtitle": "das Buch zum Film",
+      "cover_i": 14121543,
+      "language": [
+       "ger"
+      ],
+      "publisher": [
+       "Rowohlt Taschenbuch",
+       "Rowohlt Taschenbuch Verlag GmbH",
+       "Reinbek : Rowohlt Taschenbuch Verlag, 2012"
+      ],
+      "publish_date": [
+       "2012"
+      ],
+      "isbn": [
+       "9783499253270",
+       "3499253275"
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

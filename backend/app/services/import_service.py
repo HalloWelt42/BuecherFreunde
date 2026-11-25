@@ -14,7 +14,7 @@ from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.ablage.namen import sauber
 from backend.app.ablage.wolke import wolke
-from backend.app.annahme import auswertung
+from backend.app.annahme import angaben, auswertung
 from backend.app.annahme.eintragen import ablegen, eintragen
 from backend.app.services.storage import SUPPORTED_FORMATS, compute_hash, get_storage_path, sanitize_filename
 
@@ -107,12 +107,9 @@ async def _do_import(
         result["fehler"] = e.grund
         await melde("fehler", 0, "", e.grund)
         return result
-    if enrich and settings.openlibrary_enabled:
+    if enrich:
         await melde("verarbeite", 60, "Angaben werden ergänzt")
-        try:
-            await _enrich_from_openlibrary(e, file_path, task_id)
-        except Exception as f:
-            logger.warning("Ergänzen der Angaben fehlgeschlagen: %s", f)
+        await angaben.ergaenzen(e, file_path.stem)
     if task_id and await is_task_cancelled(task_id):
         result["status"] = "abgebrochen"
         return result
@@ -134,48 +131,6 @@ async def _do_import(
     await melde("fertig", 100, "In der Bibliothek", "", buch)
     logger.info("Aufgenommen: '%s' (Nummer %d)", e.title, buch)
     return result | {"status": "ok", "book_id": buch, "titel": e.title, "hash": file_hash}
-
-
-async def _enrich_from_openlibrary(proc_result, file_path, task_id):
-    """Reichert Metadaten via Open Library an."""
-    if proc_result.isbn:
-        if task_id and await is_task_cancelled(task_id):
-            return
-        if task_id:
-            await update_task_status(task_id, "verarbeite", 65, "Open Library (ISBN)")
-        from backend.app.services.openlibrary import lookup_isbn
-        ol_data = await asyncio.wait_for(lookup_isbn(proc_result.isbn), timeout=15.0)
-        if ol_data:
-            if not proc_result.author and ol_data.get("autor"):
-                proc_result.author = ol_data["autor"]
-            if not proc_result.publisher and ol_data.get("verlag"):
-                proc_result.publisher = ol_data["verlag"]
-            if not proc_result.year and ol_data.get("jahr"):
-                proc_result.year = ol_data["jahr"]
-            if not proc_result.language and ol_data.get("sprache"):
-                proc_result.language = ol_data["sprache"]
-            if not proc_result.description and ol_data.get("beschreibung"):
-                proc_result.description = ol_data["beschreibung"]
-            if ol_data.get("titel") and proc_result.title == file_path.stem.replace("_", " ").replace("-", " "):
-                proc_result.title = ol_data["titel"]
-            logger.info("Metadaten angereichert via ISBN %s", proc_result.isbn)
-    elif proc_result.title:
-        if task_id and await is_task_cancelled(task_id):
-            return
-        if task_id:
-            await update_task_status(task_id, "verarbeite", 65, "Open Library (Titelsuche)")
-        from backend.app.services.openlibrary import search_books
-        query = f"{proc_result.title} {proc_result.author}".strip()
-        results = await asyncio.wait_for(search_books(query, limit=1), timeout=15.0)
-        if results:
-            ol_data = results[0]
-            if ol_data.get("isbn"):
-                proc_result.isbn = ol_data["isbn"]
-            if not proc_result.author and ol_data.get("autor"):
-                proc_result.author = ol_data["autor"]
-            if not proc_result.year and ol_data.get("jahr"):
-                proc_result.year = ol_data["jahr"]
-            logger.info("Metadaten via Titelsuche: %s", proc_result.title)
 
 
 async def scan_directory(directory: Path) -> list[dict]:

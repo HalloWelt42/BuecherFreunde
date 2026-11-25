@@ -46,16 +46,21 @@ class Settings(BaseSettings):
     nachschlag_url: str = ""           # Nachschlagen in Lexika und Handbüchern; leer: die Fähigkeit fehlt
     vorlesen_url: str = ""             # Sprechdienst (Vertonung); leer: vorgelesen wird mit den Stimmen des Geräts
 
-    # Google Books (Primärquelle)
+    # Quellen für Angaben zu Büchern und Autoren (backend/app/quellen), jede freiwillig und ohne Schlüssel.
+    # Google Books antwortet seit 2026 nur noch mit eigenem Schlüssel
     google_books_enabled: bool = True
     google_books_api_key: str = ""
-
-    # Open Library (Fallback)
     openlibrary_enabled: bool = True
-    openlibrary_rate_limit: int = 1
-
-    # Wikipedia/Wikidata
-    wikipedia_enabled: bool = True
+    openlibrary_rate_limit: int = 1    # Anfragen je Sekunde
+    wikipedia_enabled: bool = True     # Wikipedia und Wikidata
+    dnb_enabled: bool = True           # Deutsche Nationalbibliothek
+    k10plus_enabled: bool = True       # Verbundkatalog K10plus
+    crossref_enabled: bool = True      # Fachartikel und Fachbücher mit DOI
+    gnd_enabled: bool = True           # Gemeinsame Normdatei (Autoren)
+    gutenberg_enabled: bool = True     # gemeinfreie Bücher
+    quellen_kontakt: str = ""          # freiwillig: Adresse einer Seite oder Mail im Ausweis der App, manche Quellen erlauben damit mehr
+    quellen_hintergrund_tag: int = Field(default=500, ge=1)   # höchstens so viele Anfragen je Quelle und Tag in Hintergrundläufen
+    quellen_vorrat_mb: int = Field(default=32, ge=1)          # so viel dürfen gemerkte Antworten in der Datenbank belegen
 
     # LM Studio
     lm_studio_enabled: bool = False
@@ -130,6 +135,15 @@ class Settings(BaseSettings):
             },
             "wikipedia": {
                 "aktiviert": self.wikipedia_enabled,
+            },
+            "quellen": {
+                "dnb": self.dnb_enabled,
+                "k10plus": self.k10plus_enabled,
+                "crossref": self.crossref_enabled,
+                "gnd": self.gnd_enabled,
+                "gutenberg": self.gutenberg_enabled,
+                "kontakt": bool(self.quellen_kontakt),
+                "hintergrund_tag": self.quellen_hintergrund_tag,
             },
             "lm_studio": {
                 "aktiviert": self.lm_studio_enabled,

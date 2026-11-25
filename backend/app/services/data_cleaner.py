@@ -160,7 +160,10 @@ def bereinige_text(text: str, max_laenge: int = 0) -> str:
     if not text or not isinstance(text, str):
         return ""
 
-    # Steuerzeichen entfernen (ausser Newlines in Beschreibungen)
+    # Umlaute als ein Zeichen; manche Quellen liefern Buchstabe und Punkte getrennt
+    text = unicodedata.normalize("NFC", text)
+
+    # Steuerzeichen entfernen (außer Newlines in Beschreibungen)
     text = "".join(
         ch for ch in text
         if unicodedata.category(ch)[0] != "C" or ch in ("\n", "\r", "\t")

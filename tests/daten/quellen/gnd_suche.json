@@ -1,0 +1,111 @@
+{
+ "totalItems": 1,
+ "member": [
+  {
+   "gndIdentifier": "115673784",
+   "preferredName": "Schlink, Bernhard",
+   "variantName": [
+    "Šlink, Bernard",
+    "Šilīng, Birnhārd",
+    "Bo en ha de Shi lin ke",
+    "Shi-Lin-Ke, Ben-Ha-De",
+    "Beleunhaleuteu-Syullingkeu",
+    "Xulinke"
+   ],
+   "dateOfBirth": [
+    "1944-07-06"
+   ],
+   "placeOfBirth": [
+    {
+     "id": "https://d-nb.info/gnd/4006510-8",
+     "label": "Bielefeld"
+    }
+   ],
+   "professionOrOccupation": [
+    {
+     "id": "https://d-nb.info/gnd/4029050-5",
+     "label": "Jurist"
+    },
+    {
+     "id": "https://d-nb.info/gnd/4049923-6",
+     "label": "Richter"
+    },
+    {
+     "id": "https://d-nb.info/gnd/4053309-8",
+     "label": "Schriftsteller"
+    }
+   ],
+   "biographicalOrHistoricalInformation": [
+    "lebt in Deutschland und den USA"
+   ],
+   "geographicAreaCode": [
+    {
+     "id": "https://d-nb.info/standards/vocab/gnd/geographic-area-code#XD-US",
+     "label": "USA"
+    },
+    {
+     "id": "https://d-nb.info/standards/vocab/gnd/geographic-area-code#XA-DE",
+     "label": "Deutschland"
+    }
+   ],
+   "wikipedia": [
+    {
+     "id": "https://de.wikipedia.org/wiki/Bernhard_Schlink",
+     "label": "https://de.wikipedia.org/wiki/Bernhard_Schlink"
+    }
+   ],
+   "sameAs": [
+    {
+     "id": "http://catalogue.bnf.fr/ark:/12148/cb123426227"
+    },
+    {
+     "id": "http://id.loc.gov/rwo/agents/n83031289"
+    },
+    {
+     "id": "http://viaf.org/viaf/59157273"
+    },
+    {
+     "id": "http://www.wikidata.org/entity/Q76699"
+    },
+    {
+     "id": "https://d-nb.info/gnd/1022194135"
+    },
+    {
+     "id": "https://d-nb.info/gnd/115673784/about"
+    },
+    {
+     "id": "https://data.judaicalink.org/data/gnd/115673784"
+    },
+    {
+     "id": "https://dbpedia.org/resource/Bernhard_Schlink"
+    },
+    {
+     "id": "https://de.wikipedia.org/wiki/Bernhard_Schlink"
+    },
+    {
+     "id": "https://en.wikipedia.org/wiki/Bernhard_Schlink"
+    },
+    {
+     "id": "https://isni.org/isni/0000000121349656"
+    },
+    {
+     "id": "https://kalliope-verbund.info/gnd/115673784"
+    },
+    {
+     "id": "https://www.archivportal-d.de/person/gnd/115673784"
+    },
+    {
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/115673784"
+    },
+    {
+     "id": "https://www.filmportal.de/F714B027548A49C79AA6733E3F8E207A"
+    }
+   ],
+   "type": [
+    "AuthorityResource",
+    "Person",
+    "DifferentiatedPerson"
+   ]
+  }
+ ]
+}

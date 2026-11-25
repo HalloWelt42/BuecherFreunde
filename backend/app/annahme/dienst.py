@@ -14,7 +14,7 @@ from pathlib import Path
 from backend.app.ablage import originale
 from backend.app.ablage.namen import sauber
 from backend.app.ablage.wolke import WolkeFehler, wolke
-from backend.app.annahme import auswertung
+from backend.app.annahme import angaben, auswertung
 from backend.app.annahme.eintragen import ablegen, eintragen
 from backend.app.core.anschluesse import anschluesse
 from backend.app.core.config import settings
@@ -288,12 +288,8 @@ class Annahme:
             await self._setze(nr, stand="kaputt", schritt=0, text=e.grund + ". Nicht eingetragen.")
             return
         await self._setze(nr, stand="angaben", schritt=3, text="Angaben werden ergänzt")
-        if z["anreichern"] and settings.openlibrary_enabled:
-            try:
-                from backend.app.services.import_service import _enrich_from_openlibrary
-                await _enrich_from_openlibrary(e, pfad, None)
-            except Exception as f:                         # noqa: BLE001 - ohne Ergänzung bleibt, was in der Datei steht
-                logger.info("Angaben zu %s nicht ergänzt: %s", name, f)
+        if z["anreichern"]:
+            await angaben.ergaenzen(e, pfad.stem)
         await self._setze(nr, stand="regal", schritt=4, text="Kommt ins Regal")
         buch = await eintragen(summe, name, z["groesse"], e)
         if z["knoten"]:

@@ -15,6 +15,7 @@ from backend.app.annahme.auswertung import Ergebnis
 from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.core.suchindex import SUCHTEXT_ZEICHEN
+from backend.app.services.autorennamen import zerlegen
 from backend.app.services.storage import get_sidecar_path, get_storage_path, save_cover, save_fulltext, save_metadata
 
 logger = logging.getLogger("buecherfreunde.eintragen")
@@ -23,7 +24,7 @@ logger = logging.getLogger("buecherfreunde.eintragen")
 async def autoren_verknuepfen(buch: int, autor: str) -> None:
     """Autoren eines Buchs aus dem Autorenfeld: fehlende anlegen, Verknüpfung genau so wie das Feld."""
     await db.execute("DELETE FROM book_authors WHERE book_id = ?", (buch,))
-    namen = [n.strip() for n in re.split(r"\s*[,;]\s*|\s+und\s+|\s+&\s+", autor or "") if len(n.strip()) > 1]
+    namen = [n for n in zerlegen(autor) if len(n) > 1]
     for stelle, name in enumerate(namen):
         slug = re.sub(r"[-\s]+", "-", re.sub(r"[^\w\s-]", "", name.lower())).strip("-")
         if not slug:

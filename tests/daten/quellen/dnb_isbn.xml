@@ -1,0 +1,234 @@
+<?xml version='1.0' encoding='utf-8'?>
+<searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/" xmlns:m="http://www.loc.gov/MARC21/slim" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><version>1.1</version><numberOfRecords>1</numberOfRecords><records><record><recordSchema>MARC21-xml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record type="Bibliographic">
+    <m:leader>00000nam a2200000 c 4500</m:leader>
+    <m:controlfield tag="001">950347590</m:controlfield>
+    <m:controlfield tag="003">DE-101</m:controlfield>
+    <m:controlfield tag="005">20171203020433.0</m:controlfield>
+    <m:controlfield tag="007">tu</m:controlfield>
+    <m:controlfield tag="008">970429s1997    sz ||||| |||| 00||||ger  </m:controlfield>
+    <m:datafield tag="020" ind1=" " ind2=" ">
+      <m:subfield code="a">9783257229530</m:subfield>
+      <m:subfield code="c">kart. : DM 14.90, S 109.00, sfr 14.90</m:subfield>
+      <m:subfield code="9">978-3-257-22953-0</m:subfield>
+    </m:datafield>
+    <m:datafield tag="020" ind1=" " ind2=" ">
+      <m:subfield code="a">3257229534</m:subfield>
+      <m:subfield code="c">kart. : DM 14.90, S 109.00, sfr 14.90</m:subfield>
+      <m:subfield code="9">3-257-22953-4</m:subfield>
+    </m:datafield>
+    <m:datafield tag="041" ind1=" " ind2=" ">
+      <m:subfield code="a">ger</m:subfield>
+    </m:datafield>
+    <m:datafield tag="084" ind1=" " ind2=" ">
+      <m:subfield code="a">59</m:subfield>
+      <m:subfield code="a">810</m:subfield>
+      <m:subfield code="a">820</m:subfield>
+      <m:subfield code="a">830</m:subfield>
+      <m:subfield code="a">839</m:subfield>
+      <m:subfield code="a">840</m:subfield>
+      <m:subfield code="a">850</m:subfield>
+      <m:subfield code="a">860</m:subfield>
+      <m:subfield code="a">870</m:subfield>
+      <m:subfield code="a">880</m:subfield>
+      <m:subfield code="a">890</m:subfield>
+      <m:subfield code="a">B</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="2">sdnb</m:subfield>
+    </m:datafield>
+    <m:datafield tag="084" ind1=" " ind2=" ">
+      <m:subfield code="a">5.2</m:subfield>
+      <m:subfield code="a">16.5</m:subfield>
+      <m:subfield code="a">7.2c</m:subfield>
+      <m:subfield code="a">8.2a</m:subfield>
+      <m:subfield code="a">9.3c</m:subfield>
+      <m:subfield code="a">7.8a</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="2">sswd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="090" ind1=" " ind2=" ">
+      <m:subfield code="a">b</m:subfield>
+    </m:datafield>
+    <m:datafield tag="100" ind1="1" ind2=" ">
+      <m:subfield code="0">(DE-588)115673784</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/115673784</m:subfield>
+      <m:subfield code="0">(DE-101)115673784</m:subfield>
+      <m:subfield code="a">Schlink, Bernhard</m:subfield>
+      <m:subfield code="d">1944-</m:subfield>
+      <m:subfield code="e">Verfasser</m:subfield>
+      <m:subfield code="4">aut</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="245" ind1="1" ind2="0">
+      <m:subfield code="a">Der Vorleser</m:subfield>
+      <m:subfield code="b">Roman</m:subfield>
+      <m:subfield code="c">Bernhard Schlink</m:subfield>
+    </m:datafield>
+    <m:datafield tag="264" ind1=" " ind2="1">
+      <m:subfield code="a">Zürich</m:subfield>
+      <m:subfield code="b">Diogenes</m:subfield>
+      <m:subfield code="c">1997</m:subfield>
+    </m:datafield>
+    <m:datafield tag="300" ind1=" " ind2=" ">
+      <m:subfield code="a">206 S.</m:subfield>
+      <m:subfield code="c">18 cm</m:subfield>
+    </m:datafield>
+    <m:datafield tag="490" ind1="1" ind2=" ">
+      <m:subfield code="a">Diogenes-Taschenbuch</m:subfield>
+      <m:subfield code="v">22953</m:subfield>
+    </m:datafield>
+    <m:datafield tag="650" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4018202-2</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4018202-2</m:subfield>
+      <m:subfield code="0">(DE-101)040182029</m:subfield>
+      <m:subfield code="a">Frau</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="650" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4167616-6</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4167616-6</m:subfield>
+      <m:subfield code="0">(DE-101)041676165</m:subfield>
+      <m:subfield code="a">Liebesbeziehung</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="650" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4072431-1</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4072431-1</m:subfield>
+      <m:subfield code="0">(DE-101)04072431X</m:subfield>
+      <m:subfield code="a">Heranwachsender</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="650" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4032352-3</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4032352-3</m:subfield>
+      <m:subfield code="0">(DE-101)040323528</m:subfield>
+      <m:subfield code="a">Konzentrationslager</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="650" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4342624-4</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4342624-4</m:subfield>
+      <m:subfield code="0">(DE-101)941420132</m:subfield>
+      <m:subfield code="a">Aufseherin</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="650" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4057803-3</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4057803-3</m:subfield>
+      <m:subfield code="0">(DE-101)040578038</m:subfield>
+      <m:subfield code="a">Strafverfolgung</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="651" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4011889-7</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4011889-7</m:subfield>
+      <m:subfield code="0">(DE-101)040118894</m:subfield>
+      <m:subfield code="a">Deutschland</m:subfield>
+      <m:subfield code="g">Bundesrepublik</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BISAC Subject Heading)FIC019000</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Produktform (spezifisch))MP3 format</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BISAC Subject Heading)FIC019000</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Konzentrationslager</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Gerichtssaal</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Analphabetismus</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Holocaust</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Straßenbahn</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Deutsche Geschichte</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Schuld</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Schullektüre</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Verbrechen</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Prozess</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Geheimnis</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Heidelberg</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Vergangenheit</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Nationalsozialismus</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Bestseller</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Liebe</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Schaffnerin</m:subfield>
+    </m:datafield>
+    <m:datafield tag="655" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)1071854844</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/1071854844</m:subfield>
+      <m:subfield code="0">(DE-101)1071854844</m:subfield>
+      <m:subfield code="a">Fiktionale Darstellung</m:subfield>
+      <m:subfield code="2">gnd-content</m:subfield>
+    </m:datafield>
+    <m:datafield tag="655" ind1=" " ind2="7">
+      <m:subfield code="a">Belletristische Darstellung</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="655" ind1=" " ind2="7">
+      <m:subfield code="a">Belletristische Darstellung</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="655" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-101)1010008188</m:subfield>
+      <m:subfield code="a">Erzählende Literatur: Gegenwartsliteratur ab 1945</m:subfield>
+      <m:subfield code="2">gatbeg</m:subfield>
+    </m:datafield>
+    <m:datafield tag="776" ind1="0" ind2="8">
+      <m:subfield code="i">Erscheint auch als</m:subfield>
+      <m:subfield code="n">Online-Ausgabe</m:subfield>
+      <m:subfield code="a">Schlink, Bernhard, 1944-</m:subfield>
+      <m:subfield code="t">Der Vorleser</m:subfield>
+      <m:subfield code="d">Zürich : Diogenes Verlag AG, 2012</m:subfield>
+      <m:subfield code="h">Online-Ressource</m:subfield>
+      <m:subfield code="w">(DE-101)1113883103</m:subfield>
+      <m:subfield code="b">1. Auflage</m:subfield>
+    </m:datafield>
+    <m:datafield tag="856" ind1="4" ind2="2">
+      <m:subfield code="m">X:MVB</m:subfield>
+      <m:subfield code="q">text/html</m:subfield>
+      <m:subfield code="u">https://services.dnb.de/plus/idn/950347590/blurb/</m:subfield>
+      <m:subfield code="3">Inhaltstext</m:subfield>
+    </m:datafield>
+    </m:record></recordData><recordPosition>1</recordPosition></record></records><echoedSearchRetrieveRequest><version>1.1</version><query>NUM=9783257229530</query><xQuery xsi:nil="true" /><maximumRecords>3</maximumRecords><recordSchema>MARC21-xml</recordSchema></echoedSearchRetrieveRequest></searchRetrieveResponse>

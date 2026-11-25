@@ -1,0 +1,863 @@
+<?xml version='1.0' encoding='utf-8'?>
+<searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/" xmlns:m="http://www.loc.gov/MARC21/slim" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><version>1.1</version><numberOfRecords>75</numberOfRecords><records><record><recordSchema>MARC21-xml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record type="Bibliographic">
+    <m:leader>00000pam a2200000 c 4500</m:leader>
+    <m:controlfield tag="001">1255720379</m:controlfield>
+    <m:controlfield tag="003">DE-101</m:controlfield>
+    <m:controlfield tag="005">20240209223014.0</m:controlfield>
+    <m:controlfield tag="007">tu</m:controlfield>
+    <m:controlfield tag="008">220420s2022    gw ||||| |||| 00||||ger  </m:controlfield>
+    <m:datafield tag="020" ind1=" " ind2=" ">
+      <m:subfield code="a">9783658378370</m:subfield>
+      <m:subfield code="c">Broschur : circa EUR 37.99 (DE), circa EUR 39.06 (AT), circa CHF 42.00 (freier Preis), circa EUR 35.51</m:subfield>
+      <m:subfield code="9">978-3-658-37837-0</m:subfield>
+    </m:datafield>
+    <m:datafield tag="020" ind1=" " ind2=" ">
+      <m:subfield code="a">3658378379</m:subfield>
+      <m:subfield code="9">3-658-37837-9</m:subfield>
+    </m:datafield>
+    <m:datafield tag="024" ind1="3" ind2=" ">
+      <m:subfield code="a">9783658378370</m:subfield>
+    </m:datafield>
+    <m:datafield tag="028" ind1="5" ind2="2">
+      <m:subfield code="a">Bestellnummer: 978-3-658-37837-0</m:subfield>
+    </m:datafield>
+    <m:datafield tag="028" ind1="5" ind2="2">
+      <m:subfield code="a">Bestellnummer: 86954770</m:subfield>
+    </m:datafield>
+    <m:datafield tag="041" ind1=" " ind2=" ">
+      <m:subfield code="a">ger</m:subfield>
+    </m:datafield>
+    <m:datafield tag="082" ind1="7" ind2="4">
+      <m:subfield code="8">3\p</m:subfield>
+      <m:subfield code="a">004</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="2">23sdnb</m:subfield>
+    </m:datafield>
+    <m:datafield tag="100" ind1="1" ind2=" ">
+      <m:subfield code="8">1\p</m:subfield>
+      <m:subfield code="0">(DE-588)1247040992</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/1247040992</m:subfield>
+      <m:subfield code="0">(DE-101)1247040992</m:subfield>
+      <m:subfield code="a">Küppers, Bastian</m:subfield>
+      <m:subfield code="e">Verfasser</m:subfield>
+      <m:subfield code="4">aut</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="245" ind1="1" ind2="0">
+      <m:subfield code="a">Einführung in die Informatik</m:subfield>
+      <m:subfield code="b">theoretische und praktische Grundlagen</m:subfield>
+      <m:subfield code="c">Bastian Küppers</m:subfield>
+    </m:datafield>
+    <m:datafield tag="264" ind1=" " ind2="1">
+      <m:subfield code="a">Wiesbaden, Germany</m:subfield>
+      <m:subfield code="b">Springer Vieweg</m:subfield>
+      <m:subfield code="c">[2022]</m:subfield>
+    </m:datafield>
+    <m:datafield tag="300" ind1=" " ind2=" ">
+      <m:subfield code="a">xi, 215 Seiten</m:subfield>
+      <m:subfield code="b">Illustrationen</m:subfield>
+      <m:subfield code="c">24 cm, 393 g</m:subfield>
+    </m:datafield>
+    <m:datafield tag="490" ind1="0" ind2=" ">
+      <m:subfield code="a">Studienbücher Informatik</m:subfield>
+    </m:datafield>
+    <m:datafield tag="490" ind1="0" ind2=" ">
+      <m:subfield code="a">Lehrbuch</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Produktform)Paperback / softback</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BISAC Subject Heading)COM051230</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BISAC Subject Heading)UMZ</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BISAC Subject Heading)COM043000</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BISAC Subject Heading)COM032000</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BIC subject category)UT</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BIC subject category)UNH</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">IT-Grundlagen</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Grundlagen der Informatik</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">IT-Systeme</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Parallenprogrammierung</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Codierung</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Rechnerarchitekturen</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Betriebssysteme</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Multithreading</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Komplexitätstheorie</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Quantencomputer</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Virtualisierung</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Security</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Springer Nature Marketing Classification)A</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Springer Nature Subject Code)SCI14002: Software Engineering/Programming and Operating Systems</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Springer Nature Subject Code)SCI13006: Computer Systems Organization and Communication Networks</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Springer Nature Subject Code)SCI18040: Information Systems Applications (incl. Internet)</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Springer Nature Taxonomy)5482: Software Engineering</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Springer Nature Taxonomy)4767: Computer Engineering and Networks</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Springer Nature Taxonomy)3121: Computer and Information Systems Applications</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Springer Nature Subject Collection)SUCO11645: Computer Science</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BISAC Subject Heading)COM051230</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BIC subject category)UMZ</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(VLB-WN)1632: Hardcover, Softcover / Informatik, EDV/Informatik</m:subfield>
+    </m:datafield>
+    <m:datafield tag="710" ind1="2" ind2=" ">
+      <m:subfield code="8">2\p</m:subfield>
+      <m:subfield code="0">(DE-588)1043386068</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/1043386068</m:subfield>
+      <m:subfield code="0">(DE-101)1043386068</m:subfield>
+      <m:subfield code="a">Springer Fachmedien Wiesbaden</m:subfield>
+      <m:subfield code="e">Verlag</m:subfield>
+      <m:subfield code="4">pbl</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="776" ind1="0" ind2="8">
+      <m:subfield code="i">Erscheint auch als</m:subfield>
+      <m:subfield code="n">Online-Ausgabe</m:subfield>
+      <m:subfield code="a">Küppers, Bastian</m:subfield>
+      <m:subfield code="t">Einführung in die Informatik</m:subfield>
+      <m:subfield code="d">Wiesbaden : Springer Fachmedien Wiesbaden, 2022</m:subfield>
+      <m:subfield code="h">Online-Ressource</m:subfield>
+      <m:subfield code="w">(DE-101)1274303303</m:subfield>
+      <m:subfield code="b">1. Auflage 2022</m:subfield>
+    </m:datafield>
+    <m:datafield tag="856" ind1="4" ind2="2">
+      <m:subfield code="m">X:MVB</m:subfield>
+      <m:subfield code="q">text/html</m:subfield>
+      <m:subfield code="u">https://services.dnb.de/plus/idn/1255720379/blurb/</m:subfield>
+      <m:subfield code="3">Inhaltstext</m:subfield>
+    </m:datafield>
+    <m:datafield tag="856" ind1="4" ind2="2">
+      <m:subfield code="m">X:MVB</m:subfield>
+      <m:subfield code="u">http://www.springer.com/</m:subfield>
+    </m:datafield>
+    <m:datafield tag="856" ind1="4" ind2="2">
+      <m:subfield code="m">B:DE-101</m:subfield>
+      <m:subfield code="q">application/pdf</m:subfield>
+      <m:subfield code="u">https://d-nb.info/1255720379/04</m:subfield>
+      <m:subfield code="3">Inhaltsverzeichnis</m:subfield>
+    </m:datafield>
+    <m:datafield tag="883" ind1="2" ind2=" ">
+      <m:subfield code="8">1\p</m:subfield>
+      <m:subfield code="a">dnb</m:subfield>
+      <m:subfield code="d">20230428</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="u">https://d-nb.info/provenance/plan#dnb</m:subfield>
+    </m:datafield>
+    <m:datafield tag="883" ind1="1" ind2=" ">
+      <m:subfield code="8">2\p</m:subfield>
+      <m:subfield code="a">adb</m:subfield>
+      <m:subfield code="d">20220420</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="u">https://d-nb.info/provenance/plan#adb</m:subfield>
+    </m:datafield>
+    <m:datafield tag="883" ind1="2" ind2=" ">
+      <m:subfield code="8">3\p</m:subfield>
+      <m:subfield code="a">dnb</m:subfield>
+      <m:subfield code="d">20240209</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="u">https://d-nb.info/provenance/plan#dnb</m:subfield>
+    </m:datafield>
+    </m:record></recordData><recordPosition>1</recordPosition></record><record><recordSchema>MARC21-xml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record type="Bibliographic">
+    <m:leader>00000nam a2200000 c 4500</m:leader>
+    <m:controlfield tag="001">1120529107</m:controlfield>
+    <m:controlfield tag="003">DE-101</m:controlfield>
+    <m:controlfield tag="005">20171207224535.0</m:controlfield>
+    <m:controlfield tag="007">tu</m:controlfield>
+    <m:controlfield tag="008">161130s2017    gw ||||| |||| 00||||ger  </m:controlfield>
+    <m:datafield tag="010" ind1=" " ind2=" ">
+      <m:subfield code="a">2016048965</m:subfield>
+    </m:datafield>
+    <m:datafield tag="020" ind1=" " ind2=" ">
+      <m:subfield code="a">9783110496864</m:subfield>
+      <m:subfield code="c">Broschur</m:subfield>
+      <m:subfield code="9">978-3-11-049686-4</m:subfield>
+    </m:datafield>
+    <m:datafield tag="020" ind1=" " ind2=" ">
+      <m:subfield code="a">3110496860</m:subfield>
+      <m:subfield code="c">Broschur</m:subfield>
+      <m:subfield code="9">3-11-049686-0</m:subfield>
+    </m:datafield>
+    <m:datafield tag="041" ind1=" " ind2=" ">
+      <m:subfield code="a">ger</m:subfield>
+    </m:datafield>
+    <m:datafield tag="082" ind1="0" ind2="4">
+      <m:subfield code="8">1\u</m:subfield>
+      <m:subfield code="a">005.133</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="2">22/ger</m:subfield>
+    </m:datafield>
+    <m:datafield tag="083" ind1="7" ind2=" ">
+      <m:subfield code="8">2\p</m:subfield>
+      <m:subfield code="a">004</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="2">23sdnb</m:subfield>
+    </m:datafield>
+    <m:datafield tag="084" ind1=" " ind2=" ">
+      <m:subfield code="a">QA76.28</m:subfield>
+      <m:subfield code="2">lcc</m:subfield>
+    </m:datafield>
+    <m:datafield tag="084" ind1=" " ind2=" ">
+      <m:subfield code="a">004</m:subfield>
+      <m:subfield code="2">ddc</m:subfield>
+    </m:datafield>
+    <m:datafield tag="085" ind1=" " ind2=" ">
+      <m:subfield code="8">1\u</m:subfield>
+      <m:subfield code="b">005.133</m:subfield>
+    </m:datafield>
+    <m:datafield tag="090" ind1=" " ind2=" ">
+      <m:subfield code="a">b</m:subfield>
+    </m:datafield>
+    <m:datafield tag="100" ind1="1" ind2=" ">
+      <m:subfield code="0">(DE-588)143902865</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/143902865</m:subfield>
+      <m:subfield code="0">(DE-101)143902865</m:subfield>
+      <m:subfield code="a">Häberlein, Tobias</m:subfield>
+      <m:subfield code="e">Verfasser</m:subfield>
+      <m:subfield code="4">aut</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="240" ind1="1" ind2="0">
+      <m:subfield code="0">(DE-588)1120601894</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/1120601894</m:subfield>
+      <m:subfield code="0">(DE-101)1120601894</m:subfield>
+      <m:subfield code="a">Eine praktische Einführung in die Informatik mit Bash und Python</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="245" ind1="1" ind2="0">
+      <m:subfield code="a">Informatik</m:subfield>
+      <m:subfield code="b">eine praktische Einführung mit Bash und Python</m:subfield>
+      <m:subfield code="c">Tobias Häberlein</m:subfield>
+    </m:datafield>
+    <m:datafield tag="250" ind1=" " ind2=" ">
+      <m:subfield code="a">2. Auflage</m:subfield>
+    </m:datafield>
+    <m:datafield tag="264" ind1=" " ind2="1">
+      <m:subfield code="a">Berlin</m:subfield>
+      <m:subfield code="b">De Gruyter Oldenbourg</m:subfield>
+      <m:subfield code="c">[2017]</m:subfield>
+    </m:datafield>
+    <m:datafield tag="300" ind1=" " ind2=" ">
+      <m:subfield code="a">XIV, 227 Seiten</m:subfield>
+      <m:subfield code="b">Illustrationen</m:subfield>
+      <m:subfield code="c">24 cm</m:subfield>
+    </m:datafield>
+    <m:datafield tag="490" ind1="0" ind2=" ">
+      <m:subfield code="a">Studium</m:subfield>
+    </m:datafield>
+    <m:datafield tag="650" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4492523-2</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4492523-2</m:subfield>
+      <m:subfield code="0">(DE-101)953144356</m:subfield>
+      <m:subfield code="a">bash</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="650" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4434275-5</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4434275-5</m:subfield>
+      <m:subfield code="0">(DE-101)949300403</m:subfield>
+      <m:subfield code="a">Python</m:subfield>
+      <m:subfield code="g">Programmiersprache</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(lcsh)Computer science--Textbooks.</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Zielgruppe)Fachhochschul-/Hochschulausbildung</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BISAC Subject Heading)COM000000</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BISAC Subject Heading)COM051000: COM051000 COMPUTERS / Programming / General</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BISAC Subject Heading)COM014000: COM014000 COMPUTERS / Computer Science</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Computer science; programming; Python; Bash</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">TB: Textbook</m:subfield>
+    </m:datafield>
+    <m:datafield tag="688" ind1=" " ind2="7">
+      <m:subfield code="0">(OCoLC)fst00872451</m:subfield>
+      <m:subfield code="a">Computer science.</m:subfield>
+      <m:subfield code="2">fast</m:subfield>
+    </m:datafield>
+    <m:datafield tag="688" ind1=" " ind2="7">
+      <m:subfield code="0">(OCoLC)fst01423863</m:subfield>
+      <m:subfield code="a">Textbooks.</m:subfield>
+      <m:subfield code="2">fast</m:subfield>
+    </m:datafield>
+    <m:datafield tag="776" ind1="0" ind2="8">
+      <m:subfield code="i">Erscheint auch als</m:subfield>
+      <m:subfield code="n">Online-Ausgabe</m:subfield>
+      <m:subfield code="a">Häberlein, Tobias</m:subfield>
+      <m:subfield code="t">Informatik</m:subfield>
+      <m:subfield code="d">Berlin : De Gruyter, 2017</m:subfield>
+      <m:subfield code="h">Online-Ressourcen, 241 Seiten</m:subfield>
+      <m:subfield code="w">(DE-101)1129321118</m:subfield>
+      <m:subfield code="b">2., korrigierte Auflage</m:subfield>
+    </m:datafield>
+    <m:datafield tag="856" ind1="4" ind2="2">
+      <m:subfield code="m">X:MVB</m:subfield>
+      <m:subfield code="q">text/html</m:subfield>
+      <m:subfield code="u">https://services.dnb.de/plus/idn/1120529107/blurb/</m:subfield>
+      <m:subfield code="3">Inhaltstext</m:subfield>
+    </m:datafield>
+    <m:datafield tag="856" ind1="4" ind2="2">
+      <m:subfield code="m">B:DE-101</m:subfield>
+      <m:subfield code="q">application/pdf</m:subfield>
+      <m:subfield code="u">https://d-nb.info/1120529107/04</m:subfield>
+      <m:subfield code="3">Inhaltsverzeichnis</m:subfield>
+    </m:datafield>
+    <m:datafield tag="883" ind1="2" ind2=" ">
+      <m:subfield code="8">2\p</m:subfield>
+      <m:subfield code="a">dnb</m:subfield>
+      <m:subfield code="d">20160229</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="u">https://d-nb.info/provenance/plan#dnb</m:subfield>
+    </m:datafield>
+    </m:record></recordData><recordPosition>2</recordPosition></record><record><recordSchema>MARC21-xml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record type="Bibliographic">
+    <m:leader>00000pam a2200000 c 4500</m:leader>
+    <m:controlfield tag="001">1026466318</m:controlfield>
+    <m:controlfield tag="003">DE-101</m:controlfield>
+    <m:controlfield tag="005">20250304170349.0</m:controlfield>
+    <m:controlfield tag="007">tu</m:controlfield>
+    <m:controlfield tag="008">121002s2013    gw ||||| |||| 00||||ger  </m:controlfield>
+    <m:datafield tag="020" ind1=" " ind2=" ">
+      <m:subfield code="a">9783486706413</m:subfield>
+      <m:subfield code="c">kart. : EUR 39.80 (DE), EUR 41.00 (AT)</m:subfield>
+      <m:subfield code="9">978-3-486-70641-3</m:subfield>
+    </m:datafield>
+    <m:datafield tag="020" ind1=" " ind2=" ">
+      <m:subfield code="a">3486706411</m:subfield>
+      <m:subfield code="9">3-486-70641-1</m:subfield>
+    </m:datafield>
+    <m:datafield tag="024" ind1="3" ind2=" ">
+      <m:subfield code="a">9783486706413</m:subfield>
+    </m:datafield>
+    <m:datafield tag="041" ind1=" " ind2=" ">
+      <m:subfield code="a">ger</m:subfield>
+    </m:datafield>
+    <m:datafield tag="082" ind1="0" ind2="4">
+      <m:subfield code="8">1\u</m:subfield>
+      <m:subfield code="a">004</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="2">22/ger</m:subfield>
+    </m:datafield>
+    <m:datafield tag="083" ind1="7" ind2=" ">
+      <m:subfield code="8">2\p</m:subfield>
+      <m:subfield code="a">004</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="2">22sdnb</m:subfield>
+    </m:datafield>
+    <m:datafield tag="085" ind1=" " ind2=" ">
+      <m:subfield code="8">1\u</m:subfield>
+      <m:subfield code="b">004</m:subfield>
+    </m:datafield>
+    <m:datafield tag="090" ind1=" " ind2=" ">
+      <m:subfield code="a">b</m:subfield>
+    </m:datafield>
+    <m:datafield tag="100" ind1="1" ind2=" ">
+      <m:subfield code="0">(DE-588)133986233</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/133986233</m:subfield>
+      <m:subfield code="0">(DE-101)133986233</m:subfield>
+      <m:subfield code="a">Gumm, Heinz-Peter</m:subfield>
+      <m:subfield code="d">1951-</m:subfield>
+      <m:subfield code="e">Verfasser</m:subfield>
+      <m:subfield code="4">aut</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="245" ind1="1" ind2="0">
+      <m:subfield code="a">Einführung in die Informatik</m:subfield>
+      <m:subfield code="c">von Heinz-Peter Gumm ; Manfred Sommer. Unter Mitw. von Wolfgang Hesse ...</m:subfield>
+    </m:datafield>
+    <m:datafield tag="250" ind1=" " ind2=" ">
+      <m:subfield code="a">10., vollst. überarb. Aufl.</m:subfield>
+    </m:datafield>
+    <m:datafield tag="264" ind1=" " ind2="1">
+      <m:subfield code="a">München</m:subfield>
+      <m:subfield code="b">Oldenbourg</m:subfield>
+      <m:subfield code="c">2013</m:subfield>
+    </m:datafield>
+    <m:datafield tag="300" ind1=" " ind2=" ">
+      <m:subfield code="a">XXIV, 888 S.</m:subfield>
+      <m:subfield code="b">Ill., graph. Darst.</m:subfield>
+      <m:subfield code="c">25 cm</m:subfield>
+    </m:datafield>
+    <m:datafield tag="500" ind1=" " ind2=" ">
+      <m:subfield code="a">Literaturangaben</m:subfield>
+    </m:datafield>
+    <m:datafield tag="650" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4026894-9</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4026894-9</m:subfield>
+      <m:subfield code="0">(DE-101)040268942</m:subfield>
+      <m:subfield code="a">Informatik</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Produktform)Paperback / softback</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Produktform (spezifisch))Plastic</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Algorithmen</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Datenstrukturen</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Betriebssysteme</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Datenbanksysteme</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Software Entwicklung</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Mathematik, Informatik</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Informatik</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Informatik allgemein</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(VLB-WN)1631: Hardcover, Softcover / Informatik, EDV/Allgemeines, Lexika</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Zielgruppe)Fachhochschul-/Hochschulausbildung</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BISAC Subject Heading)COM014000</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">EBK: eBook</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BISAC Subject Heading)COM000000: COM000000 COMPUTERS / General</m:subfield>
+    </m:datafield>
+    <m:datafield tag="655" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4123623-3</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4123623-3</m:subfield>
+      <m:subfield code="0">(DE-101)041236238</m:subfield>
+      <m:subfield code="a">Lehrbuch</m:subfield>
+      <m:subfield code="2">gnd-content</m:subfield>
+    </m:datafield>
+    <m:datafield tag="655" ind1=" " ind2="7">
+      <m:subfield code="a">Lehrbuch</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="700" ind1="1" ind2=" ">
+      <m:subfield code="0">(DE-588)129608246</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/129608246</m:subfield>
+      <m:subfield code="0">(DE-101)129608246</m:subfield>
+      <m:subfield code="a">Sommer, Manfred</m:subfield>
+      <m:subfield code="d">1945-</m:subfield>
+      <m:subfield code="e">Verfasser</m:subfield>
+      <m:subfield code="4">aut</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="776" ind1="0" ind2="8">
+      <m:subfield code="i">Erscheint auch als</m:subfield>
+      <m:subfield code="n">Online-Ausgabe</m:subfield>
+      <m:subfield code="a">Gumm, Heinz-Peter, 1951-</m:subfield>
+      <m:subfield code="t">Einführung in die Informatik</m:subfield>
+      <m:subfield code="d">Berlin/Boston : De Gruyter, 2013</m:subfield>
+      <m:subfield code="h">Online-Ressource</m:subfield>
+      <m:subfield code="w">(DE-101)110833721X</m:subfield>
+      <m:subfield code="b">10., vollständig überarb. Aufl.</m:subfield>
+    </m:datafield>
+    <m:datafield tag="856" ind1="4" ind2="2">
+      <m:subfield code="m">X:MVB</m:subfield>
+      <m:subfield code="q">text/html</m:subfield>
+      <m:subfield code="u">https://services.dnb.de/plus/idn/1026466318/blurb/</m:subfield>
+      <m:subfield code="3">Inhaltstext</m:subfield>
+    </m:datafield>
+    <m:datafield tag="856" ind1="4" ind2="2">
+      <m:subfield code="m">B:DE-101</m:subfield>
+      <m:subfield code="q">application/pdf</m:subfield>
+      <m:subfield code="u">https://d-nb.info/1026466318/04</m:subfield>
+      <m:subfield code="3">Inhaltsverzeichnis</m:subfield>
+    </m:datafield>
+    <m:datafield tag="883" ind1="2" ind2=" ">
+      <m:subfield code="8">2\p</m:subfield>
+      <m:subfield code="a">dnb</m:subfield>
+      <m:subfield code="d">20160229</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="u">https://d-nb.info/provenance/plan#dnb</m:subfield>
+    </m:datafield>
+    </m:record></recordData><recordPosition>3</recordPosition></record><record><recordSchema>MARC21-xml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record type="Bibliographic">
+    <m:leader>00000pam a2200000 c 4500</m:leader>
+    <m:controlfield tag="001">1029616493</m:controlfield>
+    <m:controlfield tag="003">DE-101</m:controlfield>
+    <m:controlfield tag="005">20210719171030.0</m:controlfield>
+    <m:controlfield tag="007">tu</m:controlfield>
+    <m:controlfield tag="008">130111s2013    gw ||||| |||| 00||||ger  </m:controlfield>
+    <m:datafield tag="020" ind1=" " ind2=" ">
+      <m:subfield code="a">9783844016611</m:subfield>
+      <m:subfield code="c">kart. : EUR 35.90 (DE), EUR 35.90 (AT), sfr 44.88 (freier Pr.)</m:subfield>
+      <m:subfield code="9">978-3-8440-1661-1</m:subfield>
+    </m:datafield>
+    <m:datafield tag="024" ind1="3" ind2=" ">
+      <m:subfield code="a">9783844016611</m:subfield>
+    </m:datafield>
+    <m:datafield tag="041" ind1=" " ind2=" ">
+      <m:subfield code="a">ger</m:subfield>
+    </m:datafield>
+    <m:datafield tag="082" ind1="0" ind2="4">
+      <m:subfield code="8">2\u</m:subfield>
+      <m:subfield code="a">004</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="2">22/ger</m:subfield>
+    </m:datafield>
+    <m:datafield tag="083" ind1="7" ind2=" ">
+      <m:subfield code="8">3\p</m:subfield>
+      <m:subfield code="a">004</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="2">23sdnb</m:subfield>
+    </m:datafield>
+    <m:datafield tag="085" ind1=" " ind2=" ">
+      <m:subfield code="8">2\u</m:subfield>
+      <m:subfield code="b">004</m:subfield>
+    </m:datafield>
+    <m:datafield tag="090" ind1=" " ind2=" ">
+      <m:subfield code="a">b</m:subfield>
+    </m:datafield>
+    <m:datafield tag="100" ind1="1" ind2=" ">
+      <m:subfield code="8">1\p</m:subfield>
+      <m:subfield code="0">(DE-588)1207039756</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/1207039756</m:subfield>
+      <m:subfield code="0">(DE-101)1207039756</m:subfield>
+      <m:subfield code="a">Stiege, Günther</m:subfield>
+      <m:subfield code="d">1935-2020</m:subfield>
+      <m:subfield code="e">Verfasser</m:subfield>
+      <m:subfield code="4">aut</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="245" ind1="1" ind2="0">
+      <m:subfield code="a">Einführung in die Informatik</m:subfield>
+      <m:subfield code="c">Günther Stiege</m:subfield>
+    </m:datafield>
+    <m:datafield tag="264" ind1=" " ind2="1">
+      <m:subfield code="a">Aachen</m:subfield>
+      <m:subfield code="b">Shaker</m:subfield>
+      <m:subfield code="c">2013</m:subfield>
+    </m:datafield>
+    <m:datafield tag="300" ind1=" " ind2=" ">
+      <m:subfield code="a">XVI, 776 S.</m:subfield>
+      <m:subfield code="b">graph. Darst.</m:subfield>
+      <m:subfield code="c">21 cm, 1188 g</m:subfield>
+    </m:datafield>
+    <m:datafield tag="490" ind1="0" ind2=" ">
+      <m:subfield code="a">Berichte aus der Informatik</m:subfield>
+    </m:datafield>
+    <m:datafield tag="500" ind1=" " ind2=" ">
+      <m:subfield code="a">Literaturangaben</m:subfield>
+    </m:datafield>
+    <m:datafield tag="650" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4026894-9</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4026894-9</m:subfield>
+      <m:subfield code="0">(DE-101)040268942</m:subfield>
+      <m:subfield code="a">Informatik</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Produktform)Book</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Zielgruppe)Fachpublikum/ Wissenschaft</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Zielgruppe)Fachhochschul-/Hochschulausbildung</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Produktform (spezifisch))Unsewn / adhesive bound</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Algorithmen</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Datenstrukturen</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Programmierung</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Graphen</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Parallelität</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(VLB-WN)1632: Hardcover, Softcover / Informatik, EDV/Informatik</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(DNB-Sachgruppen)004</m:subfield>
+    </m:datafield>
+    <m:datafield tag="655" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4123623-3</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4123623-3</m:subfield>
+      <m:subfield code="0">(DE-101)041236238</m:subfield>
+      <m:subfield code="a">Lehrbuch</m:subfield>
+      <m:subfield code="2">gnd-content</m:subfield>
+    </m:datafield>
+    <m:datafield tag="655" ind1=" " ind2="7">
+      <m:subfield code="a">Lehrbuch</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="776" ind1="0" ind2="8">
+      <m:subfield code="i">Erscheint auch als</m:subfield>
+      <m:subfield code="n">Online-Ausgabe</m:subfield>
+      <m:subfield code="a">Stiege, Günther, 1935-2020</m:subfield>
+      <m:subfield code="t">Einführung in die Informatik</m:subfield>
+      <m:subfield code="d">Aachen : Shaker, 2013</m:subfield>
+      <m:subfield code="h">Online-Ressource, 162 Ill.</m:subfield>
+      <m:subfield code="w">(DE-101)1051575303</m:subfield>
+      <m:subfield code="b">1. Aufl., neue Ausg.</m:subfield>
+    </m:datafield>
+    <m:datafield tag="856" ind1="4" ind2="2">
+      <m:subfield code="m">X:MVB</m:subfield>
+      <m:subfield code="q">text/html</m:subfield>
+      <m:subfield code="u">https://services.dnb.de/plus/idn/1029616493/blurb/</m:subfield>
+      <m:subfield code="3">Inhaltstext</m:subfield>
+    </m:datafield>
+    <m:datafield tag="856" ind1="4" ind2="2">
+      <m:subfield code="m">B:DE-101</m:subfield>
+      <m:subfield code="q">application/pdf</m:subfield>
+      <m:subfield code="u">https://d-nb.info/1029616493/04</m:subfield>
+      <m:subfield code="3">Inhaltsverzeichnis</m:subfield>
+    </m:datafield>
+    <m:datafield tag="883" ind1=" " ind2=" ">
+      <m:subfield code="8">1\p</m:subfield>
+      <m:subfield code="a">cgwrk</m:subfield>
+      <m:subfield code="d">20210314</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="u">https://d-nb.info/provenance/plan#cgwrk</m:subfield>
+    </m:datafield>
+    <m:datafield tag="883" ind1="2" ind2=" ">
+      <m:subfield code="8">3\p</m:subfield>
+      <m:subfield code="a">dnb</m:subfield>
+      <m:subfield code="d">20160229</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="u">https://d-nb.info/provenance/plan#dnb</m:subfield>
+    </m:datafield>
+    </m:record></recordData><recordPosition>4</recordPosition></record><record><recordSchema>MARC21-xml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record type="Bibliographic">
+    <m:leader>00000pam a2200000 c 4500</m:leader>
+    <m:controlfield tag="001">1036106497</m:controlfield>
+    <m:controlfield tag="003">DE-101</m:controlfield>
+    <m:controlfield tag="005">20171203111205.0</m:controlfield>
+    <m:controlfield tag="007">tu</m:controlfield>
+    <m:controlfield tag="008">130617s2013    gw ||||| |||| 00||||ger  </m:controlfield>
+    <m:datafield tag="020" ind1=" " ind2=" ">
+      <m:subfield code="a">9783486731804</m:subfield>
+      <m:subfield code="c">kart. : EUR 29.95</m:subfield>
+      <m:subfield code="9">978-3-486-73180-4</m:subfield>
+    </m:datafield>
+    <m:datafield tag="020" ind1=" " ind2=" ">
+      <m:subfield code="a">3486731807</m:subfield>
+      <m:subfield code="9">3-486-73180-7</m:subfield>
+    </m:datafield>
+    <m:datafield tag="024" ind1="3" ind2=" ">
+      <m:subfield code="a">9783486731804</m:subfield>
+    </m:datafield>
+    <m:datafield tag="041" ind1=" " ind2=" ">
+      <m:subfield code="a">ger</m:subfield>
+    </m:datafield>
+    <m:datafield tag="082" ind1="0" ind2="4">
+      <m:subfield code="8">1\u</m:subfield>
+      <m:subfield code="a">004.076</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="2">22/ger</m:subfield>
+    </m:datafield>
+    <m:datafield tag="083" ind1="7" ind2=" ">
+      <m:subfield code="8">2\p</m:subfield>
+      <m:subfield code="a">004</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="2">23sdnb</m:subfield>
+    </m:datafield>
+    <m:datafield tag="085" ind1=" " ind2=" ">
+      <m:subfield code="8">1\u</m:subfield>
+      <m:subfield code="b">004</m:subfield>
+    </m:datafield>
+    <m:datafield tag="085" ind1=" " ind2=" ">
+      <m:subfield code="8">1\u</m:subfield>
+      <m:subfield code="z">1</m:subfield>
+      <m:subfield code="s">076</m:subfield>
+    </m:datafield>
+    <m:datafield tag="090" ind1=" " ind2=" ">
+      <m:subfield code="a">b</m:subfield>
+    </m:datafield>
+    <m:datafield tag="100" ind1="1" ind2=" ">
+      <m:subfield code="0">(DE-588)1031174354</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/1031174354</m:subfield>
+      <m:subfield code="0">(DE-101)1031174354</m:subfield>
+      <m:subfield code="a">Grund, Nico</m:subfield>
+      <m:subfield code="d">1979-</m:subfield>
+      <m:subfield code="e">Verfasser</m:subfield>
+      <m:subfield code="4">aut</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="245" ind1="1" ind2="0">
+      <m:subfield code="a">Klausurvorbereitung zur Einführung in die Informatik</m:subfield>
+      <m:subfield code="b">Aufgaben zur praktischen und technischen Informatik</m:subfield>
+      <m:subfield code="c">von Nico Grund ; Manfred Sommer</m:subfield>
+    </m:datafield>
+    <m:datafield tag="264" ind1=" " ind2="1">
+      <m:subfield code="a">München</m:subfield>
+      <m:subfield code="b">Oldenbourg</m:subfield>
+      <m:subfield code="c">2013</m:subfield>
+    </m:datafield>
+    <m:datafield tag="300" ind1=" " ind2=" ">
+      <m:subfield code="a">IX, 238 S.</m:subfield>
+      <m:subfield code="b">graph. Darst.</m:subfield>
+      <m:subfield code="c">24 cm</m:subfield>
+    </m:datafield>
+    <m:datafield tag="650" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4026894-9</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4026894-9</m:subfield>
+      <m:subfield code="0">(DE-101)040268942</m:subfield>
+      <m:subfield code="a">Informatik</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Produktform)Paperback / softback</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Mathematik, Informatik</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Informatik</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">Informatik allgemein</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(VLB-WN)1632: Hardcover, Softcover / Informatik, EDV/Informatik</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(Zielgruppe)Fachhochschul-/Hochschulausbildung</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">(BISAC Subject Heading)COM014000</m:subfield>
+    </m:datafield>
+    <m:datafield tag="653" ind1=" " ind2=" ">
+      <m:subfield code="a">PN: Textbook/paperback</m:subfield>
+    </m:datafield>
+    <m:datafield tag="655" ind1=" " ind2="7">
+      <m:subfield code="0">(DE-588)4143389-0</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4143389-0</m:subfield>
+      <m:subfield code="0">(DE-101)041433890</m:subfield>
+      <m:subfield code="a">Aufgabensammlung</m:subfield>
+      <m:subfield code="2">gnd-content</m:subfield>
+    </m:datafield>
+    <m:datafield tag="655" ind1=" " ind2="7">
+      <m:subfield code="a">Aufgabensammlung</m:subfield>
+      <m:subfield code="9">rswk-swf</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="700" ind1="1" ind2=" ">
+      <m:subfield code="0">(DE-588)129608246</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/129608246</m:subfield>
+      <m:subfield code="0">(DE-101)129608246</m:subfield>
+      <m:subfield code="a">Sommer, Manfred</m:subfield>
+      <m:subfield code="d">1945-</m:subfield>
+      <m:subfield code="e">Verfasser</m:subfield>
+      <m:subfield code="4">aut</m:subfield>
+      <m:subfield code="2">gnd</m:subfield>
+    </m:datafield>
+    <m:datafield tag="776" ind1="0" ind2="8">
+      <m:subfield code="i">Erscheint auch als</m:subfield>
+      <m:subfield code="n">Online-Ausgabe</m:subfield>
+      <m:subfield code="a">Grund, Nico, 1979-</m:subfield>
+      <m:subfield code="t">Klausurvorbereitung zur Einführung in die Informatik</m:subfield>
+      <m:subfield code="d">Berlin/Boston : De Gruyter, 2013</m:subfield>
+      <m:subfield code="h">Online-Ressource</m:subfield>
+      <m:subfield code="w">(DE-101)1108355439</m:subfield>
+    </m:datafield>
+    <m:datafield tag="856" ind1="4" ind2="2">
+      <m:subfield code="m">X:MVB</m:subfield>
+      <m:subfield code="q">text/html</m:subfield>
+      <m:subfield code="u">https://services.dnb.de/plus/idn/1036106497/blurb/</m:subfield>
+      <m:subfield code="3">Inhaltstext</m:subfield>
+    </m:datafield>
+    <m:datafield tag="856" ind1="4" ind2="2">
+      <m:subfield code="m">B:DE-101</m:subfield>
+      <m:subfield code="q">application/pdf</m:subfield>
+      <m:subfield code="u">https://d-nb.info/1036106497/04</m:subfield>
+      <m:subfield code="3">Inhaltsverzeichnis</m:subfield>
+    </m:datafield>
+    <m:datafield tag="883" ind1="2" ind2=" ">
+      <m:subfield code="8">2\p</m:subfield>
+      <m:subfield code="a">dnb</m:subfield>
+      <m:subfield code="d">20160229</m:subfield>
+      <m:subfield code="q">DE-101</m:subfield>
+      <m:subfield code="u">https://d-nb.info/provenance/plan#dnb</m:subfield>
+    </m:datafield>
+    </m:record></recordData><recordPosition>5</recordPosition></record></records><nextRecordPosition>6</nextRecordPosition><echoedSearchRetrieveRequest><version>1.1</version><query>TIT="Einführung in die Informatik" and SPR=ger and MAT=books</query><xQuery xsi:nil="true" /><maximumRecords>5</maximumRecords><recordSchema>MARC21-xml</recordSchema></echoedSearchRetrieveRequest></searchRetrieveResponse>

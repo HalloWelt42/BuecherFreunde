@@ -8,9 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from backend.app.services.seiten import buch_seiten
 from backend.app.core.auth import verify_token
 from backend.app.core.database import db
-from backend.app.services import googlebooks, openlibrary, wikipedia
+from backend.app.quellen import auskunft, bilder, stand
+from backend.app.quellen.fehler import QuelleFehler
+from backend.app.quellen.regeln import REGELN
+from backend.app.quellen.stand import Quellenstand
+from backend.app.quellen.vorschlag import frage_aus, vorschlag
+from backend.app.services.autorennamen import zerlegen
 from backend.app.services.data_cleaner import bereinige_kategorien
-from backend.app.services.storage import save_cover, load_fulltext
+from backend.app.services.storage import save_cover
 
 logger = logging.getLogger("buecherfreunde.api.metadata")
 
@@ -25,86 +30,6 @@ def _slugify(text: str) -> str:
     return slug.strip("-")
 
 
-def _parse_author_string(author_str: str) -> list[str]:
-    """Zerlegt einen Autoren-String intelligent in einzelne Autorennamen.
-
-    Erkennt verschiedene Formate:
-    - "Vorname Nachname, Vorname Nachname" (Komma-getrennt, mehrere Autoren)
-    - "Nachname, Vorname" (einzelner Autor im Nachname-Vorname-Format)
-    - "Autor1; Autor2" (Semikolon-getrennt)
-    - "Autor1 und Autor2" / "Autor1 & Autor2"
-
-    Heuristik: Wenn ein Komma nur EIN Wort links hat (Nachname) und EIN Wort rechts (Vorname),
-    ist es wahrscheinlich "Nachname, Vorname". Wenn links und rechts je 2+ Worte stehen,
-    sind es vermutlich separate Autoren.
-    """
-    if not author_str or not author_str.strip():
-        return []
-
-    # Semikolon ist eindeutig ein Separator
-    if ";" in author_str:
-        parts = [p.strip() for p in author_str.split(";")]
-        result = []
-        for part in parts:
-            result.extend(_parse_author_string(part))
-        return result
-
-    # " und " / " & " sind eindeutig Separatoren
-    parts = re.split(r'\s+und\s+|\s+&\s+', author_str)
-    if len(parts) > 1:
-        result = []
-        for part in parts:
-            result.extend(_parse_author_string(part))
-        return result
-
-    # Komma-Logik
-    if "," in author_str:
-        comma_parts = [p.strip() for p in author_str.split(",")]
-
-        # Ein Komma mit genau 2 Teilen: Prüfe ob "Nachname, Vorname" oder "Autor1, Autor2"
-        if len(comma_parts) == 2:
-            left = comma_parts[0].strip()
-            right = comma_parts[1].strip()
-            left_words = left.split()
-            right_words = right.split()
-
-            # "Nachname, Vorname"-Heuristik:
-            # - links 1 Wort (oder 2 mit Kleinwort-Präfix wie "le", "de", "von")
-            # - rechts 1-2 Worte (Vorname + ggf. zweiter Vorname)
-            left_is_surname = (
-                len(left_words) == 1 or
-                (len(left_words) == 2 and left_words[0].lower() in (
-                    "le", "la", "de", "del", "di", "du", "von", "van", "der", "den",
-                    "el", "al", "bin", "ibn", "mc", "mac", "st", "saint", "o'",
-                ))
-            )
-            right_is_firstname = len(right_words) <= 2
-
-            if left_is_surname and right_is_firstname:
-                # "Nachname, Vorname" oder "le Carré, John" -> umkehren
-                return [f"{right} {left}"]
-            else:
-                # Wahrscheinlich zwei separate Autoren
-                return [left, right]
-
-        # Mehrere Kommas: Prüfe ob "Nachname1, Vorname1, Nachname2, Vorname2" oder separate Autoren
-        # Bei mehr als 2 Komma-Teilen: Wenn jeder Teil ein einzelnes Wort hat, ist es vermutlich
-        # abwechselnd Nachname/Vorname. Sonst sind es separate Autoren.
-        single_word_parts = all(len(p.split()) == 1 for p in comma_parts)
-        if single_word_parts and len(comma_parts) % 2 == 0:
-            # Paare bilden: "Nachname1, Vorname1, Nachname2, Vorname2"
-            result = []
-            for i in range(0, len(comma_parts), 2):
-                result.append(f"{comma_parts[i+1]} {comma_parts[i]}")
-            return result
-        else:
-            # Separate Autoren
-            return [p for p in comma_parts if p]
-
-    # Kein Separator -> einzelner Autor
-    return [author_str.strip()]
-
-
 async def _sync_book_authors(book_id: int, author_str: str) -> None:
     """Synchronisiert die authors/book_authors-Tabelle mit dem Autoren-String eines Buchs.
 
@@ -113,7 +38,7 @@ async def _sync_book_authors(book_id: int, author_str: str) -> None:
     if not author_str:
         return
 
-    namen = _parse_author_string(author_str)
+    namen = zerlegen(author_str)
 
     # Alte Verknüpfungen entfernen
     await db.execute("DELETE FROM book_authors WHERE book_id = ?", (book_id,))
@@ -191,17 +116,32 @@ async def _assign_categories(book_id: int, cat_ids: list[int]) -> None:
         )
 
 
+async def _kategorienamen(book_id: int) -> list[str]:
+    zeilen = await db.fetch_all("SELECT c.name FROM categories c JOIN book_categories bc ON bc.category_id = c.id WHERE bc.book_id = ?", (book_id,))
+    return [z["name"] for z in zeilen]
+
+
+def _kein_fund(quelle: str | None, hinweise: list[str]) -> str:
+    """Warum es keinen Vorschlag gibt: die Quelle antwortet nicht, oder dort steht nichts."""
+    if hinweise:
+        return ". ".join(hinweise)
+    if quelle in REGELN:
+        return f"{REGELN[quelle].name} kennt dieses Buch nicht."
+    return "Keine Quelle kennt dieses Buch."
+
+
 @router.post("/buch/{book_id}/anreichern")
 async def enrich_book(
     book_id: int,
-    quelle: str | None = Query(None, description="google_books oder open_library"),
+    quelle: str | None = Query(None, description="Kennung einer Quelle oder \"alle\"; ohne Angabe die erste, die etwas weiß"),
     _token: str = Depends(verify_token),
 ):
-    """Reichert ein Buch mit Metadaten an.
+    """Sucht Angaben zu einem Buch, als Vorschlag zum Vergleichen. Geändert wird nichts.
 
-    Ohne Quellangabe: Google Books zuerst, dann Open Library, dann Wikipedia.
-    Mit quelle=google_books/open_library/wikipedia: nur diese Quelle.
+    `alle` nimmt je Feld die beste Angabe, `vorschlag.herkunft` nennt die Quelle je Feld.
     """
+    if quelle not in (None, auskunft.ALLE, *auskunft.QUELLEN):
+        raise HTTPException(status_code=422, detail="Diese Quelle gibt es nicht")
     book = await db.fetch_one(
         "SELECT id, hash, isbn, title, author, publisher, year, language, "
         "description, page_count, cover_path FROM books WHERE id = ?",
@@ -210,66 +150,15 @@ async def enrich_book(
     if not book:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
 
-    # Bestehende Kategorien laden
-    cats = await db.fetch_all(
-        """SELECT c.name FROM categories c
-           JOIN book_categories bc ON bc.category_id = c.id
-           WHERE bc.book_id = ?""",
-        (book_id,),
-    )
-    aktuelle_kategorien = [c["name"] for c in cats]
-
-    result = None
-    quelle_name = ""
-
-    suche_google = quelle in (None, "google_books")
-    suche_ol = quelle in (None, "open_library")
-    suche_wiki = quelle in (None, "wikipedia")
-
-    # 1. Google Books
-    if suche_google:
-        if book["isbn"]:
-            result = await googlebooks.lookup_isbn(book["isbn"])
-        if not result and book["title"]:
-            query = f"{book['title']} {book['author']}".strip()
-            results = await googlebooks.search_books(query, limit=1)
-            if results:
-                result = results[0]
-        if result:
-            quelle_name = "google_books"
-
-    # 2. Open Library
-    if not result and suche_ol:
-        if book["isbn"]:
-            result = await openlibrary.lookup_isbn(book["isbn"])
-        if not result and book["title"]:
-            query = f"{book['title']} {book['author']}".strip()
-            results = await openlibrary.search_books(query, limit=1)
-            if results:
-                result = results[0]
-        if result:
-            quelle_name = "open_library"
-
-    # 3. Wikipedia/Wikidata
-    if not result and suche_wiki:
-        if book["isbn"]:
-            result = await wikipedia.lookup_isbn(book["isbn"])
-        if result:
-            quelle_name = "wikipedia"
-
-    if not result:
-        quelle_labels = {
-            "google_books": "Google Books",
-            "open_library": "Open Library",
-            "wikipedia": "Wikipedia/Wikidata",
-        }
-        quelle_text = quelle_labels.get(quelle, "allen Quellen")
-        return {"angereichert": False, "grund": f"Keine Metadaten in {quelle_text} gefunden"}
+    antwort = await auskunft.suche(frage_aus(book), quelle)
+    if antwort.angaben is None:
+        return {"angereichert": False, "grund": _kein_fund(quelle, antwort.hinweise), "hinweise": antwort.hinweise}
 
     return {
         "angereichert": True,
-        "quelle": quelle_name,
-        "vorschlag": result,
+        "quelle": antwort.angaben.quelle,
+        "vorschlag": vorschlag(antwort.angaben, book),
+        "hinweise": antwort.hinweise,
         "aktuell": {
             "titel": book["title"],
             "autor": book["author"],
@@ -280,9 +169,20 @@ async def enrich_book(
             "beschreibung": book["description"],
             "seiten": book["page_count"],
             "hat_cover": bool(book["cover_path"]),
-            "kategorien": aktuelle_kategorien,
+            "kategorien": await _kategorienamen(book_id),
         },
     }
+
+
+async def _umschlag_holen(adresse: str) -> tuple[bytes | None, str]:
+    """Das Bild und, wenn es keines gibt, warum."""
+    if not adresse:
+        return None, ""
+    try:
+        bild = await bilder.umschlag(adresse)
+    except QuelleFehler as f:
+        return None, f.grund
+    return bild, "" if bild else "Dort liegt kein brauchbares Bild"
 
 
 @router.post("/buch/{book_id}/uebernehmen")
@@ -299,6 +199,8 @@ async def apply_metadata(
     )
     if not book:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+
+    cover_data, hinweis = await _umschlag_holen(felder.get("cover_url", ""))      # vor dem Schreiben, es kann dauern
 
     # Buch-Felder aktualisieren
     allowed = {"title", "author", "isbn", "publisher", "year", "language", "description", "page_count"}
@@ -340,22 +242,12 @@ async def apply_metadata(
         cat_ids = await _ensure_categories(kategorien)
         await _assign_categories(book_id, cat_ids)
 
-    # Cover herunterladen und persistieren
-    cover_url = felder.get("cover_url", "")
-    cover_gespeichert = False
-    if cover_url:
-        quelle = felder.get("quelle", "")
-        if "google" in cover_url or quelle == "google_books":
-            cover_data = await googlebooks.download_cover(cover_url)
-        else:
-            cover_data = await openlibrary.download_cover(cover_url)
-        if cover_data:
-            save_cover(book["hash"], cover_data)
-            await db.execute(
-                "UPDATE books SET cover_path = 'cover.jpg', updated_at = datetime('now') WHERE id = ?",
-                (book_id,),
-            )
-            cover_gespeichert = True
+    if cover_data:
+        save_cover(book["hash"], cover_data)
+        await db.execute(
+            "UPDATE books SET cover_path = 'cover.jpg', updated_at = datetime('now') WHERE id = ?",
+            (book_id,),
+        )
 
     await db.commit()
 
@@ -363,7 +255,8 @@ async def apply_metadata(
         "uebernommen": True,
         "felder": list(updates.keys()),
         "kategorien_erstellt": len(kategorien),
-        "cover_gespeichert": cover_gespeichert,
+        "cover_gespeichert": cover_data is not None,
+        "hinweis": hinweis,
     }
 
 
@@ -406,14 +299,21 @@ async def get_fulltext(
     }
 
 
+@router.get("/quellen")
+async def quellen(_token: str = Depends(verify_token)) -> list[Quellenstand]:
+    """Alle Quellen mit ihrem gemerkten Stand; gefragt wird dabei keine."""
+    return await stand.alle()
+
+
+@router.post("/quellen/{kennung}/pruefen")
+async def quelle_pruefen(kennung: str, _token: str = Depends(verify_token)) -> Quellenstand:
+    """Eine echte Probe bei einer Quelle, höchstens einmal in der Minute; sonst der gemerkte Stand."""
+    if kennung not in REGELN:
+        raise HTTPException(status_code=404, detail="Diese Quelle gibt es nicht")
+    return await stand.pruefe(kennung)
+
+
 @router.get("/verbindungsstatus")
 async def connection_status(_token: str = Depends(verify_token)):
-    """Prüft die Verbindung zu den Metadaten-Diensten."""
-    gb = await googlebooks.check_connection()
-    ol = await openlibrary.check_connection()
-    wiki = await wikipedia.check_connection()
-    return {
-        "google_books": gb,
-        "open_library": ol,
-        "wikipedia": wiki,
-    }
+    """Der gemerkte Stand je Quelle in kurzer Form (erreichbar, Grund); gefragt wird dabei keine."""
+    return {s.kennung: {"erreichbar": s.erreichbar, "grund": ("Deaktiviert" if not s.aktiv else s.grund or ("" if s.erreichbar else s.wort))} for s in await stand.alle()}

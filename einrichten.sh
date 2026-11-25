@@ -4,7 +4,7 @@
 #   ./einrichten.sh                                       auf dem Zielrechner: legt die Orte aus der .env an, baut und
 #                                                         startet die Container (docker/pi5b.compose.yml)
 #   ./einrichten.sh --probe --ziel DIR --port-versatz N   Probelauf des Handbuchs: .env ohne Fragen mit allen Ordnern in
-#                                                         DIR, ohne Kellerwolke, ohne Open Library und LM Studio, Port um
+#                                                         DIR, ohne Kellerwolke, ohne Quellen für Angaben und LM Studio, Port um
 #                                                         N verschoben und nur an 127.0.0.1; bauen und starten wie
 #                                                         install.sh, das Backend abgeschottet (docker/probelauf.compose.yml)
 #   ./einrichten.sh --probe --ziel DIR --abbauen          entfernt Container, Netze und die gebauten Abbilder
@@ -37,6 +37,13 @@ EXTERNAL_DIR=$ziel/external
 IMPORT_DIR=$ziel/import
 DATABASE_DIR=$ziel/database
 OPENLIBRARY_ENABLED=false
+GOOGLE_BOOKS_ENABLED=false
+WIKIPEDIA_ENABLED=false
+DNB_ENABLED=false
+K10PLUS_ENABLED=false
+CROSSREF_ENABLED=false
+GND_ENABLED=false
+GUTENBERG_ENABLED=false
 LM_STUDIO_ENABLED=false
 LOG_LEVEL=info
 EOF

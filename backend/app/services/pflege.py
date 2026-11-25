@@ -1,5 +1,5 @@
-"""Pflege im Hintergrund: Wissensstand neuer Bücher, Sicherung nach der Regel (auch in die Kellerwolke) und Begleiter, deren
-Angaben sich geändert haben (Notizen, Markierungen, Lesestand, Titel)."""
+"""Pflege im Hintergrund: Wissensstand neuer Bücher, Sicherung nach der Regel (auch in die Kellerwolke), Begleiter, deren
+Angaben sich geändert haben (Notizen, Markierungen, Lesestand, Titel), und abgelaufene Antworten der Quellen."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from backend.app.annahme.dienst import annahme
 from backend.app.annahme.eintragen import auszug
 from backend.app.core.config import settings
 from backend.app.core.database import db
+from backend.app.quellen.abruf import abruf
 from backend.app.services import sicherung
 
 logger = logging.getLogger("buecherfreunde.pflege")
@@ -54,6 +55,7 @@ async def laufen() -> None:
             jetzt = datetime.now()
             if jetzt.hour in NACHTS and letzte_nacht != jetzt.date():
                 letzte_nacht = jetzt.date()
+                logger.info("%d gemerkte Antworten der Quellen abgelaufen", await abruf().vorrat.aufraeumen())
                 await sichern()
                 logger.info("%d Begleiter erneuert", await begleiter())
         except (WolkeFehler, OSError) as f:

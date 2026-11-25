@@ -284,6 +284,37 @@ CREATE TABLE IF NOT EXISTS nutzer_sitzung (
     angelegt_am TEXT NOT NULL DEFAULT (datetime('now')),
     zuletzt_am TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS quelle_vorrat (         -- gemerkte Antworten fremder Quellen (quellen/vorrat.py), Zeiten als Unix-Zeit
+    adresse TEXT PRIMARY KEY,
+    quelle TEXT NOT NULL,
+    art TEXT NOT NULL,                             -- treffer, leer, fehler
+    inhalt BLOB DEFAULT NULL,                      -- gepackt
+    grund TEXT NOT NULL DEFAULT '',
+    geholt_am REAL NOT NULL,
+    gilt_bis REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_quelle_vorrat_gilt ON quelle_vorrat(gilt_bis);
+CREATE TABLE IF NOT EXISTS quelle_stand (          -- je Quelle letzter Erfolg, letzter Fehler, Pause, Anfragen heute (quellen/zustand.py)
+    quelle TEXT PRIMARY KEY,
+    erfolg_am REAL DEFAULT NULL,
+    fehler_am REAL DEFAULT NULL,
+    fehler TEXT NOT NULL DEFAULT '',
+    ausfaelle INTEGER NOT NULL DEFAULT 0,
+    stufe INTEGER NOT NULL DEFAULT 0,
+    pause_bis REAL DEFAULT NULL,
+    pause_grund TEXT NOT NULL DEFAULT '',
+    geprueft_am REAL DEFAULT NULL,
+    tag TEXT NOT NULL DEFAULT '',
+    anfragen INTEGER NOT NULL DEFAULT 0,
+    hintergrund INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS autor_verweis (         -- Kennungen eines Autors in Normdateien (gnd, viaf, isni, orcid)
+    author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
+    art TEXT NOT NULL,
+    kennung TEXT NOT NULL,
+    PRIMARY KEY (author_id, art)
+);
+CREATE INDEX IF NOT EXISTS idx_autor_verweis_kennung ON autor_verweis(art, kennung);
 CREATE INDEX IF NOT EXISTS idx_aufnahme_stand ON aufnahme(stand);
 CREATE INDEX IF NOT EXISTS idx_aufnahme_sha ON aufnahme(sha256);
 """

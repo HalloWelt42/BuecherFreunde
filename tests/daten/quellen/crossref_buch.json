@@ -1,0 +1,53 @@
+{
+ "status": "ok",
+ "message-type": "work-list",
+ "message-version": "1.0.0",
+ "message": {
+  "facets": {},
+  "total-results": 1,
+  "items": [
+   {
+    "publisher": "Springer Fachmedien Wiesbaden",
+    "DOI": "10.1007/978-3-658-05620-9",
+    "type": "book",
+    "title": [
+     "Mathematik für Ingenieure und Naturwissenschaftler Band 1"
+    ],
+    "author": [
+     {
+      "given": "Lothar",
+      "family": "Papula",
+      "sequence": "first",
+      "affiliation": [],
+      "role": [
+       {
+        "vocabulary": "crossref",
+        "role": "author"
+       }
+      ]
+     }
+    ],
+    "subtitle": [
+     "Ein Lehr- und Arbeitsbuch für das Grundstudium"
+    ],
+    "issued": {
+     "date-parts": [
+      [
+       2014
+      ]
+     ]
+    },
+    "ISBN": [
+     "9783658056193",
+     "9783658056209"
+    ],
+    "URL": "https://doi.org/10.1007/978-3-658-05620-9"
+   }
+  ],
+  "items-per-page": 3,
+  "query": {
+   "start-index": 0,
+   "search-terms": null
+  }
+ }
+}
