@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import shutil
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from backend.app.ablage.namen import sauber
 from backend.app.ablage.wolke import WolkeFehler, wolke
 from backend.app.annahme import auswertung
 from backend.app.annahme.eintragen import ablegen, eintragen
+from backend.app.core.anschluesse import anschluesse
 from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.services.storage import SUPPORTED_FORMATS, get_storage_path
@@ -170,7 +172,7 @@ class Annahme:
             empfangen, knoten = await self._teil_hier(z, strom), None
         fertig = empfangen >= z["groesse"]
         await self._setze(nr, empfangen=empfangen, anteil=empfangen / z["groesse"], knoten=knoten or z["knoten"], stand="liest" if fertig else "laedt", schritt=2 if fertig else 1,
-                          text="Wartet auf das Lesen" if fertig else f"Wird in der Kellerwolke abgelegt, {mb(empfangen)} von {mb(z['groesse'])}")
+                          text="Wartet auf das Lesen" if fertig else f"Wird abgelegt, {mb(empfangen)} von {mb(z['groesse'])}")
         if fertig:
             self._arbeit.set()
         return await self.einer(nr)
@@ -299,10 +301,17 @@ class Annahme:
         else:
             ziel = get_storage_path(summe) / name
             ziel.parent.mkdir(parents=True, exist_ok=True)
-            pfad.replace(ziel)
-        ohne = not e.fulltext.strip()
-        await self._setze(nr, buch_id=buch, schritt=5 if not ohne else 6, anteil=1, stand="ohne_text" if ohne else "wissen",
-                          text="In der Bibliothek. Nur Bilder, kein Text: nicht im Volltext zu finden." if ohne else "In der Bibliothek. Die Bedeutung folgt mit dem nächsten Abgleich.")
+            await asyncio.to_thread(shutil.move, pfad, ziel)      # auch über Datenträger hinweg
+        stand, schritt, text = self._am_ziel(e.fulltext)
+        await self._setze(nr, buch_id=buch, schritt=schritt, anteil=1, stand=stand, text=text)
+
+    @staticmethod
+    def _am_ziel(volltext: str) -> tuple[str, int, str]:
+        if not volltext.strip():
+            return "ohne_text", 6, "In der Bibliothek. Nur Bilder, kein Text: nicht im Volltext zu finden."
+        if not anschluesse().bedeutung:
+            return "fertig", 6, "Fertig, in der Bibliothek zu finden"
+        return "wissen", 5, "In der Bibliothek. Die Bedeutung folgt mit dem nächsten Abgleich."
 
     async def _zu_klaeren(self, z: dict) -> None:
         """Eine unlesbare Datei wird nie gelöscht, sie kommt in der Kellerwolke nach "Zu klären"."""

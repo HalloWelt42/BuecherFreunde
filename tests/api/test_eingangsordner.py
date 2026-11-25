@@ -72,7 +72,7 @@ async def test_abgelegtes_kommt_in_die_bibliothek(annahme_dienst, auth_headers, 
     assert await eingangsordner.aufnehmen() == 0, "jede Datei nur einmal"
     alle = await aufnahmen(annahme_dienst, auth_headers)
     fertig = [await warten(annahme_dienst, auth_headers, alle[n]["id"]) for n in ("Im Unterordner.pdf", "Noch einmal.pdf")]
-    assert sorted(z["stand"] for z in fertig) == ["da", "wissen"], fertig
+    assert sorted(z["stand"] for z in fertig) == ["da", "fertig"], fertig
     assert fertig[0]["buch_id"] == fertig[1]["buch_id"]
     assert alle["Comic.cbz"]["stand"] == "format"
     assert len(ablage.umgezogen) == 1, "nur das aufgenommene Buch zieht um"

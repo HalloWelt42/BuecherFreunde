@@ -2,6 +2,7 @@
 
 import json
 import logging
+from pathlib import Path
 
 import httpx
 
@@ -19,6 +20,18 @@ Antworte ausschließlich als JSON-Array mit Objekten:
 [{"kategorie": "Name", "konfidenz": 0.0-1.0}]
 
 Verwende deutsche Kategorienamen."""
+
+
+def _kopf() -> dict[str, str]:
+    """Anmeldung bei der KI-Schnittstelle; ohne Schlüsseldatei keine."""
+    if not settings.ki_schluessel_datei:
+        return {}
+    try:
+        schluessel = Path(settings.ki_schluessel_datei).read_text(encoding="utf-8").strip()
+    except OSError as f:
+        logger.warning("Schlüssel der KI nicht lesbar: %s", f)
+        return {}
+    return {"Authorization": f"Bearer {schluessel}"} if schluessel else {}
 
 
 async def _load_prompt(schluessel: str) -> dict | None:
@@ -47,7 +60,7 @@ async def send_prompt(
     max_tokens = prompt["max_tokens"] if prompt else 500
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=60.0, headers=_kopf()) as client:
             response = await client.post(
                 f"{settings.lm_studio_url}/chat/completions",
                 json={
@@ -160,7 +173,7 @@ async def check_connection() -> dict:
         return {"erreichbar": False, "grund": "Deaktiviert"}
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=5.0, headers=_kopf()) as client:
             response = await client.get(f"{settings.lm_studio_url}/models")
             if response.status_code == 200:
                 data = response.json()

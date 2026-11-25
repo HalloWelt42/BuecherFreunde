@@ -1,4 +1,5 @@
-// Anmelden mit der Kellerwolke: Passwort oder Kopplungscode. Antwortet mit der Anmeldung für diesen Browser.
+// Anmelden mit der Kellerwolke (Passwort oder Kopplungscode) oder mit dem eigenen Konto der App. Antwortet mit der Anmeldung für diesen Browser.
+import { anfrage } from "./client";
 import type { AppAngaben } from "./config";
 
 export async function ladeAppAngaben(): Promise<AppAngaben> {
@@ -21,3 +22,6 @@ async function sende(weg: string, daten: Record<string, string>): Promise<string
 
 export const meldeAn = (kennung: string, passwort: string): Promise<string> => sende("/api/anmeldung", { kennung, passwort });
 export const kopple = (code: string, name: string, art: string): Promise<string> => sende("/api/anmeldung/koppeln", { code, name, art });
+/** Das erste Konto anlegen; geht nur, solange es keins gibt. */
+export const richteEin = (kennung: string, passwort: string): Promise<string> => sende("/api/anmeldung/einrichten", { kennung, passwort });
+export const aendereKennwort = (alt: string, neu: string): Promise<Response> => anfrage("/api/anmeldung/kennwort", { method: "POST", body: JSON.stringify({ alt, neu }) });

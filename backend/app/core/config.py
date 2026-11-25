@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     lm_studio_enabled: bool = False
     lm_studio_url: str = "http://localhost:1234/v1"
     lm_studio_model: str = "qwen2.5"
+    ki_schluessel_datei: str = ""      # Schlüssel der KI-Schnittstelle (Datei, Modus 0600), falls sie einen verlangt
 
     # Host-Pfade (von Docker durchgereicht, für Anzeige im Frontend)
     host_storage_dir: str = ""

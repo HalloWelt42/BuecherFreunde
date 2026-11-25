@@ -192,7 +192,7 @@ export class Hochlader {
     a.ansicht.eintrag = eintrag;
     a.ansicht.gesendet = ab;
     a.ansicht.anteil = a.datei.size ? ab / a.datei.size : 0;
-    this.#setze(a, "laedt", "Wird in der Kellerwolke abgelegt");
+    this.#setze(a, "laedt", "Wird abgelegt");
   }
 
   async #pause(a: Arbeit): Promise<void> {

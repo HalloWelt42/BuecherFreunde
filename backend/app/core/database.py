@@ -272,6 +272,18 @@ CREATE TABLE IF NOT EXISTS aufnahme (
     angelegt_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     geaendert_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
+CREATE TABLE IF NOT EXISTS nutzer (                -- eigene Konten, nur ohne Kellerwolke (core/eigene_anmeldung.py)
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    kennwort TEXT NOT NULL,
+    angelegt_am TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS nutzer_sitzung (
+    schluessel TEXT PRIMARY KEY,
+    nutzer INTEGER NOT NULL REFERENCES nutzer(id) ON DELETE CASCADE,
+    angelegt_am TEXT NOT NULL DEFAULT (datetime('now')),
+    zuletzt_am TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE INDEX IF NOT EXISTS idx_aufnahme_stand ON aufnahme(stand);
 CREATE INDEX IF NOT EXISTS idx_aufnahme_sha ON aufnahme(sha256);
 """

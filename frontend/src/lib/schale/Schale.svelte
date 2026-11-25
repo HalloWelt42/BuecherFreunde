@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { anschluesse } from "../stand/anschluesse.svelte";
   import type { Snippet } from "svelte";
   import { bestand } from "../stand/bestand.svelte";
   import { annahme } from "../stand/annahme.svelte";
@@ -53,7 +54,7 @@
 {:else if schale.offen === "darstellung"}
   <Schwebefeld titel="Darstellung"><Darstellungswahl /><p class="leise hinweis">Die Regalwand entsteht aus den Farben der eigenen Umschläge. Eigene Hintergrundbilder stehen unter Einstellungen, Darstellung.</p></Schwebefeld>
 {:else if schale.offen === "konto"}
-  <Schwebefeld titel="Angemeldet mit der Kellerwolke" breite="18rem"><Konto /></Schwebefeld>
+  <Schwebefeld titel={anschluesse.jetzt.anmeldung === "kellerwolke" ? "Angemeldet mit der Kellerwolke" : "Konto"} breite="18rem"><Konto /></Schwebefeld>
 {/if}
 {#if schale.notizOffen}<Schnellnotiz />{/if}
 

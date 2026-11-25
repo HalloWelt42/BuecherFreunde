@@ -3,6 +3,7 @@
   import { route, matchRoute, handleLinkClick } from "./lib/router.svelte";
   import { hasToken, oeffneInhalte, onAuthError, beiTokenWechsel } from "./lib/api/client";
   import { fassungVerfolgen, vielleichtNeuLaden } from "./lib/fassung.svelte";
+  import { anschluesse } from "./lib/stand/anschluesse.svelte";
   import { filter } from "./lib/stand/filter.svelte";
   import { schale } from "./lib/stand/schale.svelte";
   import Kulisse from "./lib/schale/Kulisse.svelte";
@@ -46,9 +47,9 @@
   ];
 
   let angemeldet = $state(hasToken());
-  /** Erst wenn Bilder und Ereignisströme lesen dürfen, kommt die Bibliothek auf den Schirm. */
+  /** Erst wenn Bilder und Ereignisströme lesen dürfen und feststeht, was angeschlossen ist, kommt die Bibliothek auf den Schirm. */
   let offen = $state(false);
-  if (hasToken()) void oeffneInhalte().then(() => (offen = true));
+  if (hasToken()) void Promise.all([oeffneInhalte(), anschluesse.laden()]).then(() => (offen = true));
 
   let ziel = $derived.by(() => {
     for (const z of ziele) {

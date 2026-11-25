@@ -24,7 +24,7 @@ type Beschreibung = Pick<Dienst, "kennung" | "name" | "symbol" | "adresse" | "be
 
 const beschreibungen: Record<string, Beschreibung> = {
   server: { kennung: "server", name: "Server", symbol: "server", adresse: "", beschreibung: "Verwaltet Bücher, Regale, Suche, Aufnahme und Einstellungen und liefert alles über eine Schnittstelle aus.", felder: [] },
-  oberflaeche: { kennung: "oberflaeche", name: "Oberfläche", symbol: "display", adresse: "", beschreibung: "Diese Seite. Spricht nur mit dem Server, mit der Anmeldung der Kellerwolke.", felder: [] },
+  oberflaeche: { kennung: "oberflaeche", name: "Oberfläche", symbol: "display", adresse: "", beschreibung: "Diese Seite. Spricht nur mit dem Server.", felder: [] },
   verzeichnis1: {
     kennung: "verzeichnis1", name: "Verzeichnis 1", symbol: "book-atlas", adresse: "https://www.googleapis.com/books/v1",
     beschreibung: "Erste Quelle für Angaben: Titel, Autor, Verlag, ISBN, Beschreibung, Umschlag und Kategorien. Ohne eigenen Schlüssel nur wenige Anfragen am Tag.",

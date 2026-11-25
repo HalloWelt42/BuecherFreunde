@@ -1,5 +1,6 @@
 <script lang="ts">
   import { melde } from "../../lib/stand/meldungen.svelte";
+  import { anschluesse } from "../../lib/stand/anschluesse.svelte";
   import { verbindungen } from "../../lib/stand/verbindungen.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import type { Guete } from "../../lib/typen";
@@ -14,7 +15,7 @@
   let zeilen = $derived<Zeile[]>([
     { name: "BücherFreunde", ...verbindungen.app },
     ...verbindungen.liste.map((v) => ({ name: v.name, stand: v.stand, text: v.text })),
-    { name: "KI", ...verbindungen.ki },
+    ...(anschluesse.jetzt.ki ? [{ name: "KI", ...verbindungen.ki }] : []),
   ]);
 
   async function pruefe(name: string) {
@@ -28,7 +29,6 @@
   }
 </script>
 
-<p class="leise">Die Adressen kommen aus dem Verbund, immer als Name.</p>
 {#each zeilen as z (z.name)}
   <div class="stelle zeile-stand">
     <span class="led {z.stand}"></span>
@@ -43,4 +43,4 @@
     <Knopf text="Öffnen" symbol="arrow-up-right-from-square" klein extern href={verbindungen.assistent} />
   </div>
 {/if}
-{#if !verbindungen.liste.length}<p class="leise">Zu Kellerwolke, Fundus und Rechner noch keine Angaben vom Server.</p>{/if}
+{#if !verbindungen.liste.length}<p class="leise">Nichts weiter angeschlossen.</p>{/if}

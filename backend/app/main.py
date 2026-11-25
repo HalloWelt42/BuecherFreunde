@@ -86,7 +86,7 @@ async def lifespan(app: FastAPI):
     logger.info("BuecherFreunde v%s wird gestartet", settings.version)
 
     orte.einrichten()
-    if not await eigener_zugang.erfragen():
+    if settings.kellerwolke_url and not await eigener_zugang.erfragen():
         logger.warning("Kein App-Zugang der Kellerwolke: Anmelden geht erst nach der Einrichtung "
                        "(KELLERWOLKE_URL, KELLERWOLKE_SCHLUESSEL_DATEI)")
     _ensure_directories()

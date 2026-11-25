@@ -1,4 +1,5 @@
 // Suchart und Suchwort der Adresse /search
+import { anschluesse } from "./anschluesse.svelte";
 import { navigate, route } from "../router.svelte";
 import { lies, merke } from "../speicher";
 import { merkeBegriff, ladeVerlauf, leereVerlauf, vergissBegriff } from "../suchverlauf";
@@ -21,6 +22,7 @@ class Suche {
   wort = $derived(route.path === "/search" ? (route.params as Record<string, string>).q ?? "" : "");
 
   get art(): Suchart {
+    if (!anschluesse.jetzt.bedeutung) return "woerter";
     const inAdresse = route.path === "/search" ? (route.params as Record<string, string>).art : undefined;
     return gueltig(inAdresse) ? inAdresse : this.#art;
   }

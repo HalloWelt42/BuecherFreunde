@@ -11,6 +11,8 @@ services:
       - EXTERNAL_DIR=/app/external
       - IMPORT_DIR=/app/import
       - DATABASE_DIR=/app/database
+      # Hochgeladenes liegt bis zur Aufnahme neben den Büchern und überlebt so einen Neustart
+      - ZWISCHEN_DIR=/app/storage/.zwischen
       - HOST_STORAGE_DIR=${STORAGE_DIR:-./storage}
       - HOST_EXTERNAL_DIR=${EXTERNAL_DIR:-./external}
       - HOST_IMPORT_DIR=${IMPORT_DIR:-./import}
@@ -44,9 +46,9 @@ services:
       context: ..
       dockerfile: frontend/Dockerfile
     restart: unless-stopped
-    # nur am Pi selbst (HELF-169): im Heimnetz über den Vorbau des Pi (HTTPS), die frühere Adresse leitet dorthin um
+    # im ganzen Heimnetz; steht ein Vorbau mit HTTPS davor, BINDUNG=127.0.0.1 setzen
     ports:
-      - "127.0.0.1:${EXTERNAL_PORT:-8160}:80"
+      - "${BINDUNG:-0.0.0.0}:${EXTERNAL_PORT:-8160}:80"
     depends_on:
       backend:
         condition: service_healthy

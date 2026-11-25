@@ -2,8 +2,9 @@
 import { get } from "../api/client";
 import { kiStatus } from "../api/ai";
 import { healthCheck, ladeConfig, ladeVersion } from "../api/config";
-import { ladeOberflaeche, ladeVerbindungen } from "../api/orte";
+import { ladeVerbindungen } from "../api/orte";
 import type { Guete, Verbindung } from "../typen";
+import { anschluesse } from "./anschluesse.svelte";
 
 export interface Dienststand {
   stand: Guete | "aus";
@@ -20,7 +21,7 @@ class Verbindungen {
   ki = $state<Dienststand>(PRUEFT);
   fassung = $state("");
   neueFassung = $state("");
-  assistent = $state("");
+  assistent = $derived(anschluesse.jetzt.assistent);
   #uhr: ReturnType<typeof setInterval> | undefined;
 
   starte(): void {
@@ -35,7 +36,7 @@ class Verbindungen {
   }
 
   async laden(): Promise<void> {
-    await Promise.allSettled([this.pruefen(), this.#fassungLaden(), this.#assistentLaden()]);
+    await Promise.allSettled([this.pruefen(), this.#fassungLaden()]);
   }
 
   async pruefen(): Promise<void> {
@@ -63,10 +64,6 @@ class Verbindungen {
 
   async #listeLaden(): Promise<void> {
     this.liste = await ladeVerbindungen();
-  }
-
-  async #assistentLaden(): Promise<void> {
-    this.assistent = (await ladeOberflaeche()).assistent ?? "";
   }
 
   async #fassungLaden(): Promise<void> {

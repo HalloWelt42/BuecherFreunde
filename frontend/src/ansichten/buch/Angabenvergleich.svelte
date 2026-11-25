@@ -1,5 +1,6 @@
 <script lang="ts">
   // Angaben aus Verzeichnissen vergleichen und übernehmen; dazu Buchtext, KI-Vorschlag und neuer Umschlag
+  import { anschluesse } from "../../lib/stand/anschluesse.svelte";
   import { coverUrl, umschlagNeu } from "../../lib/api/books";
   import { sucheMetadaten, uebernehmMetadaten } from "../../lib/api/metadata";
   import { anzahl } from "../../lib/format";
@@ -110,7 +111,7 @@
       <Knopf text="Verwerfen" symbol="xmark" klein onclick={verwirf} />
     {/if}
     <Knopf text="Aus dem Buchtext" symbol="book" klein aufgeklappt={textOffen} onclick={() => (textOffen = !textOffen)} />
-    <Knopf text="Vorschlag der KI" symbol="wand-magic-sparkles" klein onclick={() => (kiOffen = true)} />
+    {#if anschluesse.jetzt.ki}<Knopf text="Vorschlag der KI" symbol="wand-magic-sparkles" klein onclick={() => (kiOffen = true)} />{/if}
     <Knopf text="Umschlag neu aus der Datei" symbol="image" klein laeuft={holtUmschlag} onclick={() => void holeUmschlag()} />
   </div>
   {#if textOffen}<Beschreibungstext {buch} onfertig={() => { textOffen = false; ongeaendert(); }} onabbruch={() => (textOffen = false)} />{/if}

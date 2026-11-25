@@ -12,7 +12,7 @@ schluessel_orte:
   - "pi5b: `{{wurzel}}/zugang/kellerwolke.schluessel`, Modus 0600 (App-Zugang der Kellerwolke) und `zugang/hausstelle.pem`"
   - "pi5b: `{{wurzel}}/.env` (Orte, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
 einrichten: einrichten.sh
-stand: da9c640
+stand: e4a452a
 ---
 
 # BücherFreunde (Neubau)
@@ -34,7 +34,8 @@ nach `Bücher` um. Doppel, fremde Formate und Unlesbares bleiben liegen und steh
 
 - Docker und die [[Kellerwolke]] mit einem App-Zugang als Datei `zugang/kellerwolke.schluessel`, dazu die Hausstelle als
   `zugang/hausstelle.pem`; Adresse der Kellerwolke `{{umgebung:KELLERWOLKE_URL}}`.
-- Ohne sie läuft sie weiter, ihr fehlt nur die Fähigkeit: [[Fundus]] für die Suche nach Bedeutung.
+- Ohne sie läuft sie weiter, ihr fehlt nur die Fähigkeit: [[Fundus]] für die Suche nach Bedeutung, [[Vertonung]] zum Vorlesen
+ . Ohne [[Kellerwolke]] gelten eigene Konten und die Ablage auf dem Gerät; hier ist sie angeschlossen.
 
 ## Neu einrichten
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Anmeldung mit dem Konto der Kellerwolke: Passwort oder Code vom Rechner. Gekoppelte Geräte bleiben angemeldet.
+  // Anmeldung mit dem Konto der Kellerwolke (Passwort oder Code vom Rechner) oder mit dem eigenen Konto der App
   import { ladeAppAngaben } from "../../lib/api/anmeldung";
   import { setToken } from "../../lib/api/client";
   import type { AppAngaben } from "../../lib/api/config";
@@ -7,6 +7,7 @@
   import Logo from "../../lib/schale/Logo.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Segment from "../../lib/teile/Segment.svelte";
+  import Einrichten from "./Einrichten.svelte";
   import Koppeln from "./Koppeln.svelte";
   import Passwort from "./Passwort.svelte";
   import { codeAusAnker } from "./kopplung";
@@ -18,7 +19,7 @@
 
   let mitCode = $state(!!ausLink);
   let darstellungOffen = $state(false);
-  let angaben = $state<AppAngaben>({ name: "BücherFreunde", kellerwolke: "", besitzer: null, eingerichtet: true });
+  let angaben = $state<AppAngaben>({ name: "BücherFreunde", art: "kellerwolke", kellerwolke: "", besitzer: null, eingerichtet: true });
 
   $effect(() => {
     ladeAppAngaben().then((a) => (angaben = a)).catch(() => {});
@@ -43,8 +44,10 @@
         <div class="feld">Schrift<Segment name="Schriftgröße" werte={wahlen.schrift} wert={darstellung.schrift} onwahl={(w) => (darstellung.schrift = w)} /></div>
       </div>
     {/if}
-    {#if !angaben.eingerichtet}<p class="marke-text warn">Die App ist noch nicht mit der Kellerwolke verbunden, der App-Zugang fehlt.</p>{/if}
-    {#if mitCode}
+    {#if angaben.art === "kellerwolke" && !angaben.eingerichtet}<p class="marke-text warn">Die App ist noch nicht mit der Kellerwolke verbunden, der App-Zugang fehlt.</p>{/if}
+    {#if angaben.art === "eigen" && !angaben.eingerichtet}
+      <Einrichten onerfolg={erfolg} />
+    {:else if mitCode && angaben.art === "kellerwolke"}
       <Koppeln {angaben} anfang={ausLink} onerfolg={erfolg} onzurueck={() => (mitCode = false)} />
     {:else}
       <Passwort {angaben} onerfolg={erfolg} onkoppeln={() => (mitCode = true)} />

@@ -4,6 +4,7 @@
   import { rollstand } from "../../lib/rollstand";
   import { holeBuch } from "../../lib/api/books";
   import { schale } from "../../lib/stand/schale.svelte";
+  import { anschluesse } from "../../lib/stand/anschluesse.svelte";
   import { suche, suchwerte } from "../../lib/stand/suche.svelte";
   import { wahl } from "../../lib/stand/wahl.svelte";
   import Chip from "../../lib/teile/Chip.svelte";
@@ -50,7 +51,7 @@
   <Suchfeld id="suchfeld-m" klasse="suchfeld-mobil" />
   <h1>{frage || "Suche"}</h1>
   <span class="leise zahl" role="status">{frage ? zahltext : ""}</span>
-  <span class="nur-schmal schiebt"><Segment name="Suchart" werte={suchwerte} wert={art} onwahl={(w) => suche.waehleArt(w)} /></span>
+  {#if anschluesse.jetzt.bedeutung}<span class="nur-schmal schiebt"><Segment name="Suchart" werte={suchwerte} wert={art} onwahl={(w) => suche.waehleArt(w)} /></span>{/if}
 </div>
 
 <div class="inhalt rollen" style:gap=".5rem" use:rollstand={`/search?${frage}&${art}`}>

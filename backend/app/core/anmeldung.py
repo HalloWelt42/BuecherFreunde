@@ -6,6 +6,8 @@ angelegt auf dem Rechner der Kellerwolke mit `tools/app_zugang.py --app BücherF
 ihren Namen in der Kellerwolke (Anmeldungen gelten dann nur für sie) und das Konto, dem sie gehört: dieses Konto darf
 sie nutzen, dazu die Konten aus `ANMELDUNG_KONTEN`. Andere Apps melden sich mit ihrem App-Schlüssel an (Konto mit
 `app`); sie dürfen nur die Wege `fundus/*`, und nur die Apps aus `FUNDUS_APPS`.
+
+Ohne Kellerwolke (`KELLERWOLKE_URL` leer) gelten eigene Konten der App (`eigene_anmeldung`), mit denselben Aufrufen.
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ import httpx
 from appkern.anmeldung import Anmeldung
 
 from backend.app.core.config import settings
+from backend.app.core.eigene_anmeldung import EigeneAnmeldung
 
 logger = logging.getLogger("buecherfreunde.anmeldung")
 
@@ -77,7 +80,8 @@ def erlaubte_apps() -> set[str]:
     return {a.strip().lower() for a in settings.fundus_apps.split(",") if a.strip()}
 
 
-anmeldung = Anmeldung(settings.kellerwolke_url, erlaubte_konten, client=client, app_name=eigener_zugang.erfragen)
+anmeldung = (Anmeldung(settings.kellerwolke_url, erlaubte_konten, client=client, app_name=eigener_zugang.erfragen)
+             if settings.kellerwolke_url else EigeneAnmeldung())
 
 
 async def schliessen() -> None:

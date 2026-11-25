@@ -5,6 +5,7 @@
   import { ersteMarkierung } from "../../lib/auszug";
   import { anzahl, zahl } from "../../lib/format";
   import { leseAdresse } from "../../lib/lesestand";
+  import { anschluesse } from "../../lib/stand/anschluesse.svelte";
   import Auszug from "../../lib/teile/Auszug.svelte";
   import Chip from "../../lib/teile/Chip.svelte";
   import Haekchen from "../../lib/teile/Haekchen.svelte";
@@ -78,7 +79,7 @@
 <Karte titel="Im Buch suchen" symbol="magnifying-glass">
   <form class="reihe" onsubmit={(e) => { e.preventDefault(); void suche(); }}>
     <input class="eingabe feldwort" type="search" bind:value={wort} aria-label="Suchwort" placeholder={art === "wort" ? "Wort oder Satz" : "Worum es gehen soll"} enterkeyhint="search" />
-    <Segment name="Suche im Buch" werte={[["wort", "Wörtlich"], ["sinn", "Bedeutung"]]} wert={art} onwahl={setzeArt} />
+    {#if anschluesse.jetzt.bedeutung}<Segment name="Suche im Buch" werte={[["wort", "Wörtlich"], ["sinn", "Bedeutung"]]} wert={art} onwahl={setzeArt} />{/if}
     <Knopf text="Suchen" symbol="magnifying-glass" nur klein art="submit" laeuft={sucht} gesperrt={wort.trim().length < 2} />
   </form>
   {#if stand}<p class="leise zahl" role="status">{stand}</p>{/if}

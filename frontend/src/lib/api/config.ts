@@ -39,6 +39,7 @@ export interface Dateipruefung {
 
 export interface AppAngaben {
   name: string;
+  art: "kellerwolke" | "eigen";
   kellerwolke: string;
   besitzer: string | null;
   eingerichtet: boolean;

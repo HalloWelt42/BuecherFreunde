@@ -28,7 +28,7 @@
   }
 </script>
 
-<p class="klein">Angemeldet wird mit der Kellerwolke. Daraus entsteht dieser Schlüssel; Skripte schicken ihn im Kopf der Anfrage mit. Ändern nur, wenn ein anderer gelten soll.</p>
+<p class="klein">Er entsteht beim Anmelden; Skripte schicken ihn im Kopf der Anfrage mit. Ändern nur, wenn ein anderer gelten soll.</p>
 <form class="reihe schluessel" onsubmit={speichere}>
   <input class="eingabe" type={sichtbar ? "text" : "password"} aria-label="Schlüssel" autocomplete="off" spellcheck="false" bind:value={wert} />
   <Knopf text={sichtbar ? "Verbergen" : "Zeigen"} symbol={sichtbar ? "eye-slash" : "eye"} onclick={() => (sichtbar = !sichtbar)} />

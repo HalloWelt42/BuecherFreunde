@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { Annahmezeile } from "../../lib/annahme/zeilen";
+  import { stationsnamen, type Annahmezeile } from "../../lib/annahme/zeilen";
+  import { anschluesse } from "../../lib/stand/anschluesse.svelte";
   import { annahme } from "../../lib/stand/annahme.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
@@ -7,7 +8,7 @@
   import Aufnahmezeile from "./Aufnahmezeile.svelte";
 
   let { zeilen, onwaehlen }: { zeilen: Annahmezeile[]; onwaehlen: () => void } = $props();
-  const stationen = ["Prüfen", "Wolke", "Lesen", "Angaben", "Regal", "Wissen"];
+  let stationen = $derived(stationsnamen(anschluesse.jetzt));
   let mitFertigen = $derived(annahme.zeilen.some((z) => z.gruppe === "fertig" || z.gruppe === "da" || z.wort === "Ohne Text"));
 
   async function blendeAus() {
@@ -21,7 +22,7 @@
 
 <section>
   <div class="titelzeile">
-    <h2>Aufnahmen</h2><span class="leise">sechs Stationen je Datei</span><span class="schiebt"></span>
+    <h2>Aufnahmen</h2><span class="leise">{["", "", "", "", "", "fünf", "sechs"][stationen.length]} Stationen je Datei</span><span class="schiebt"></span>
     <Knopf text="Fertige ausblenden" symbol="broom" klein frei gesperrt={!mitFertigen} titel="Nur ausgeblendet, im Verlauf bleibt alles" onclick={() => void blendeAus()} />
   </div>
   {#if annahme.grund}

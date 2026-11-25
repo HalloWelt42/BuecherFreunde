@@ -40,7 +40,7 @@ async def test_aufnahme_bis_ins_regal(annahme_dienst, auth_headers):
     inhalt = pdf("Glaswelt Probe")
     z = await hochladen(annahme_dienst, auth_headers, "Glaswelt Probe.pdf", inhalt)
     z = await warten(annahme_dienst, auth_headers, z["id"])
-    assert z["stand"] == "wissen" and z["buch_id"], z
+    assert z["stand"] == "fertig" and z["buch_id"], z            # ohne Fundus ist sie mit dem Regal am Ziel
     buch = (await annahme_dienst.get(f"/api/books/{z['buch_id']}", headers=auth_headers)).json()
     assert buch["page_count"] == 2
     treffer = (await annahme_dienst.get("/api/search", params={"q": "Glaswelt"}, headers=auth_headers)).json()
@@ -72,7 +72,7 @@ async def test_fortsetzen_am_stand_des_servers(annahme_dienst, auth_headers):
     assert r.status_code == 409 and r.json()["empfangen"] == 1000
     z = await hochladen(annahme_dienst, auth_headers, "Fortsetzen.pdf", inhalt)          # nach Neuladen: derselbe Eintrag geht weiter
     assert z["id"] == nr
-    assert (await warten(annahme_dienst, auth_headers, nr))["stand"] == "wissen"
+    assert (await warten(annahme_dienst, auth_headers, nr))["stand"] == "fertig"
 
 
 @pytest.mark.asyncio
@@ -89,3 +89,12 @@ async def test_notiz_ist_sofort_gebucht(annahme_dienst, auth_headers):
     assert c.execute("SELECT COUNT(*) FROM book_notes").fetchone()[0] == 1
     r = await annahme_dienst.get(f"/api/books/{z['buch_id']}/volltext-suche", params={"q": "Notiz"}, headers=auth_headers)
     assert r.status_code == 200 and r.json()["gesamt"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_mit_fundus_wartet_sie_auf_die_bedeutung(annahme_dienst, auth_headers, monkeypatch):
+    from backend.app.core.config import settings
+
+    monkeypatch.setattr(settings, "fundus_url", "https://fundus.test")
+    z = await hochladen(annahme_dienst, auth_headers, "Mit Bedeutung.pdf", pdf("Mit Bedeutung"))
+    assert (await warten(annahme_dienst, auth_headers, z["id"]))["stand"] == "wissen"

@@ -63,7 +63,11 @@ if [ ! -f .env ]; then
     read -rp "Port für den Webzugriff [8160]: " PORT
     PORT="${PORT:-8160}"
 
-    read -rp "Adresse der Kellerwolke (etwa https://192.168.1.20:39280): " KELLERWOLKE
+    read -rp "Adresse der Kellerwolke (leer lassen: eigenes Konto, Bücher auf diesem Gerät): " KELLERWOLKE
+    KELLERWOLKE_CA=""; KELLERWOLKE_SCHLUESSEL=""
+    if [ -n "$KELLERWOLKE" ]; then
+        KELLERWOLKE_CA="/app/zugang/hausstelle.pem"; KELLERWOLKE_SCHLUESSEL="/app/zugang/kellerwolke.schluessel"
+    fi
 
     # LM Studio
     echo ""
@@ -89,10 +93,10 @@ HOST=0.0.0.0
 PORT=8000
 EXTERNAL_PORT=$PORT
 
-# Anmeldung mit dem Konto der Kellerwolke (App-Zugang in zugang/kellerwolke.schluessel, Modus 0600)
+# Kellerwolke: leer = eigenes Konto und Bücher auf diesem Gerät
 KELLERWOLKE_URL=$KELLERWOLKE
-KELLERWOLKE_CA=/app/zugang/hausstelle.pem
-KELLERWOLKE_SCHLUESSEL_DATEI=/app/zugang/kellerwolke.schluessel
+KELLERWOLKE_CA=$KELLERWOLKE_CA
+KELLERWOLKE_SCHLUESSEL_DATEI=$KELLERWOLKE_SCHLUESSEL
 FUNDUS_APPS=Fundus
 
 # Pfade

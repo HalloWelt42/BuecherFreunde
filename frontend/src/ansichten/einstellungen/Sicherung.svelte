@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { anschluesse } from "../../lib/stand/anschluesse.svelte";
   import { sicherungAdresse } from "../../lib/api/config";
   import { groesse } from "../../lib/format";
   import Knopf from "../../lib/teile/Knopf.svelte";
@@ -10,7 +11,7 @@
   const wann = (z: string) => new Date(z).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 </script>
 
-<p class="klein">Sichert Datenbank, Einstellungen und Angaben als eine Datei. Die Bücher selbst liegen in der Kellerwolke und sind nicht enthalten.</p>
+<p class="klein">Sichert Datenbank, Einstellungen und Angaben als eine Datei. Die Bücher selbst {anschluesse.inWolke ? "liegen in der Kellerwolke" : "liegen im Speicher der App"} und sind nicht enthalten.</p>
 {#if vorgaenge.sicherungen?.length}
   {#each vorgaenge.sicherungen as s (s.filename)}
     <div class="stelle zeile-stand eins-knopf">

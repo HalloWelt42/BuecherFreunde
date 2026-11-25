@@ -4,6 +4,7 @@
   import { vorschlaege, type Suchvorschlag as Vorschlag } from "../api/search";
   import { beiEsc } from "../flucht";
   import { navigate } from "../router.svelte";
+  import { anschluesse } from "../stand/anschluesse.svelte";
   import { suche } from "../stand/suche.svelte";
   import Symbol from "../teile/Symbol.svelte";
   import Suchvorschlaege from "./Suchvorschlaege.svelte";
@@ -83,7 +84,7 @@
 
 <form class="suche mulde {klasse}" role="search" onsubmit={abschicken} onfocusout={verlassen}>
   <Symbol name="magnifying-glass" />
-  <input {id} type="search" bind:value={wort} placeholder="Titel, Autor, Satz oder eine Frage" aria-label="In allen Büchern suchen" autocomplete="off" enterkeyhint="search" oninput={tippt} onkeydown={taste} onfocus={() => (offen = true)} />
+  <input {id} type="search" bind:value={wort} placeholder={anschluesse.jetzt.bedeutung ? "Titel, Autor, Satz oder eine Frage" : "Titel, Autor oder Satz"} aria-label="In allen Büchern suchen" autocomplete="off" enterkeyhint="search" oninput={tippt} onkeydown={taste} onfocus={() => (offen = true)} />
   {#if wort}<button type="button" class="leeren" aria-label="Suchwort leeren" title="Suchwort leeren" onclick={() => { wort = ""; tippt(); document.getElementById(id)?.focus(); }}><Symbol name="xmark" /></button>{/if}
   {@render children?.()}
   {#if offen && zeilen}

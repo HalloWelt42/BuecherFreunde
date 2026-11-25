@@ -12,7 +12,9 @@ Selbst gehostete Buchverwaltung für 50.000+ Bücher. Läuft per Docker auf Rasp
 - **Notizen**: Buchnotizen mit Seitenreferenz, Schnellnotiz-Pad
 - **Gutenberg**: Gemeinfreie Bücher direkt von Project Gutenberg importieren
 - **Metadaten**: Open Library, Google Books, Wikipedia/Wikidata
-- **KI**: Kategorisierung über LM Studio (optional, lokal)
+- **KI**: Einordnen in Regale (freiwillig, jede Schnittstelle unter /v1)
+- **Vorlesen**: mit den Stimmen des Geräts oder einem Sprechdienst, Stimme wählbar
+- **Läuft allein**: ohne Wolke, ohne KI, ohne weitere Dienste; was angeschlossen ist, kommt dazu
 - **Backup**: DB + Metadaten als ZIP, Buchmaterial per rsync
 - **Dark Mode**: Vier Papier-Modi im Reader (Normal, Sepia, Dunkel, Kontrast)
 - **Telefon**: Eigene Ansicht zum Suchen und Lesen mit Vollansicht
@@ -59,7 +61,7 @@ EXTERNAL_DIR=/mnt/festplatte/scan-ordner
 git clone https://github.com/HalloWelt42/BuecherFreunde.git
 cd BuecherFreunde
 cp .env.example .env
-# .env anpassen (Kellerwolke, Pfade, LM Studio)
+# .env anpassen (Pfade; alles andere ist freiwillig)
 ./start.sh
 ```
 
@@ -73,8 +75,8 @@ Alle Einstellungen stehen in der `.env` Datei im Projektverzeichnis:
 # Server
 EXTERNAL_PORT=8160              # Port für den Zugriff
 
-# Anmeldung mit dem Konto der Kellerwolke
-KELLERWOLKE_URL=https://ip:39280                          # Adresse der Kellerwolke
+# Kellerwolke, freiwillig: leer = eigenes Konto und Bücher auf diesem Gerät
+KELLERWOLKE_URL=                                          # Adresse der Kellerwolke
 KELLERWOLKE_CA=/app/zugang/hausstelle.pem                 # Zertifikatsstelle des Heimnetzes
 KELLERWOLKE_SCHLUESSEL_DATEI=/app/zugang/kellerwolke.schluessel   # eigener App-Zugang (Modus 0600)
 ANMELDUNG_KONTEN=                                         # weitere Konten außer dem Besitzer (kommagetrennt)
@@ -95,6 +97,22 @@ LM_STUDIO_ENABLED=false         # KI-Kategorisierung
 LM_STUDIO_URL=http://ip:1234/v1
 LM_STUDIO_MODEL=qwen2.5
 ```
+
+### Anschlüsse
+
+Alles hier ist freiwillig. Fehlt ein Anschluss, fehlt nur seine Fähigkeit, und die Oberfläche zeigt sie nicht.
+
+| Anschluss | Einstellung | Ohne ihn |
+|---|---|---|
+| Kellerwolke (Ablage und Anmeldung) | `KELLERWOLKE_URL` und App-Zugang | Bücher liegen auf dem Gerät; beim ersten Öffnen legt man ein eigenes Konto an |
+| Fundus (Suche nach Bedeutung) | `FUNDUS_URL`, `FUNDUS_SAMMLUNG` | Suche nach Wörtern |
+| Assistent | `ASSISTENT_URL` | keine Verweise dorthin |
+| Sprechdienst | `VORLESEN_URL` | vorgelesen wird mit den Stimmen des Geräts |
+| KI | `LM_STUDIO_ENABLED`, `LM_STUDIO_URL`, `LM_STUDIO_MODEL`, auf Wunsch `KI_SCHLUESSEL_DATEI` | Einordnen von Hand |
+| Verzeichnisse und Lexikon | `OPENLIBRARY_ENABLED`, `GOOGLE_BOOKS_ENABLED`, `WIKIPEDIA_ENABLED` | Angaben aus den Dateien |
+
+Der Port ist im Heimnetz offen (`BINDUNG=0.0.0.0`). Von außen erreichbar macht man die App nur hinter einem Vorbau mit HTTPS
+(dann `BINDUNG=127.0.0.1`).
 
 ### Konfiguration ändern
 
@@ -218,8 +236,8 @@ BücherFreunde/
 
 ### API
 
-Anmeldung mit dem Konto der Kellerwolke (Passwort oder Gerät mit Code aus der Kellerwolke koppeln) über den
-Anmeldebaustein des Appkern; Wege unter `/api/anmeldung`. Den App-Zugang legt man auf dem Rechner der Kellerwolke an
+Ohne Kellerwolke hat die App eigene Konten (`POST /api/anmeldung/einrichten`, nur für das erste). Mit ihr: Anmeldung mit dem
+Konto der Kellerwolke (Passwort oder Gerät mit Code koppeln) über den Anmeldebaustein des Appkern; Wege unter `/api/anmeldung`. Den App-Zugang legt man auf dem Rechner der Kellerwolke an
 (`tools/app_zugang.py --konto <konto> --app BücherFreunde --datei <ordner>/zugang/kellerwolke.schluessel`); der
 Ordner `zugang/` wird nach `/app/zugang` eingebunden. Anmelden darf das Konto, dem der Zugang gehört.
 

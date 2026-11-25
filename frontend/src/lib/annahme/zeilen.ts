@@ -25,6 +25,11 @@ export interface Annahmezeile {
   handlungen: Handlung[];
 }
 
+/** Die Stationen einer Aufnahme beim Namen; die letzte gibt es nur mit der Suche nach Bedeutung. */
+export function stationsnamen(a: { ablage: "kellerwolke" | "geraet"; bedeutung: boolean }): string[] {
+  return ["Prüfen", a.ablage === "kellerwolke" ? "Wolke" : "Ablage", "Lesen", "Angaben", "Regal", ...(a.bedeutung ? ["Wissen"] : [])];
+}
+
 /** Geht es von selbst voran, oder wartet die Zeile auf jemanden? */
 export function laeuftVonSelbst(z: Annahmezeile): boolean {
   return z.gruppe === "laeuft" && !z.handlungen.some((h) => h === "waehlen" || h === "weiter");
