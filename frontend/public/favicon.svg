@@ -1,10 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
 <title>Leselampe</title>
-<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8f7c68"/><stop offset="1" stop-color="#2d241b"/></linearGradient><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a4efd4"/><stop offset="1" stop-color="#1f9073"/></linearGradient><linearGradient id="l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9b0" stop-opacity="0.62"/><stop offset="1" stop-color="#f5c766" stop-opacity="0.12"/></linearGradient></defs>
-<rect width="64" height="64" rx="14" fill="url(#g)"/>
-<path d="M11 28H53L57 48H7Z" fill="url(#l)"/>
-<rect x="29" y="28" width="6" height="20" fill="#e0b04c"/>
-<rect x="28" y="7" width="8" height="5" rx="2" fill="#e0b04c"/>
-<path d="M8 29C8 24 10.500 17 15 13.500C17.500 11.500 20 11 24 11H40C44 11 46.500 11.500 49 13.500C53.500 17 56 24 56 29Z" fill="url(#s)"/>
-<path d="M32 46.500C26 42.500 17 42 8.500 43.500L6.500 53C17 51.500 26 52.500 32 56.500C38 52.500 47 51.500 57.500 53L55.500 43.500C47 42 38 42.500 32 46.500Z" fill="#fffaf0"/>
+<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5fe0b7"/><stop offset="1" stop-color="#0a7f61"/></linearGradient><linearGradient id="b" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffe9b4"/><stop offset=".5" stop-color="#fffdf6"/><stop offset="1" stop-color="#ffe9b4"/></linearGradient></defs>
+<g stroke="#2a1d10" stroke-width="3.4" stroke-linejoin="round">
+<path d="M29 29H35V50H29Z" fill="#f2b632"/>
+<path d="M27 4H37V11H27Z" fill="#f2b632"/>
+<path d="M32 46C25 41 14 40.500 4.500 42.500L2.500 56C14 54 25 55.500 32 60.500C39 55.500 50 54 61.500 56L59.500 42.500C50 40.500 39 41 32 46Z" fill="url(#b)"/>
+<path d="M4 30C4 23 8 15 14.500 11.500C17 10 20 9.500 24 9.500H40C44 9.500 47 10 49.500 11.500C56 15 60 23 60 30Z" fill="url(#s)"/>
+</g>
+<path d="M32 46V60" stroke="#2a1d10" stroke-width="2.600"/>
+<path d="M11.500 25C13 20 15.500 16.500 19.500 14.500" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="3" stroke-linecap="round"/>
 </svg>

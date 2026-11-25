@@ -4,7 +4,7 @@
 Quellen, jede für ihren Zweck gezeichnet:
   symbol.svg       groß, Grund randlos
   maskierbar.svg   Grund randlos, Motiv ganz in der sicheren Zone (Kreis mit 80 % Durchmesser)
-  tab.svg          vereinfacht für kleine Größen, mit eigener runder Platte
+  tab.svg          vereinfacht für kleine Größen, freigestellt und mit kräftigem Rand
   einfarbig.svg    eine Farbe (currentColor)
 Erzeugt in frontend/public:
   symbol.svg                                    Kopie für andere Programme im Haus
