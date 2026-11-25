@@ -30,7 +30,8 @@ export function textBildUrl(id: number, seite: number, nr: number): string {
   return `/api/books/${id}/textseiten/${seite}/bild/${nr}`;
 }
 
-export function coverUrl(id: number, stand?: string): string {
+/** `stand` ändert sich mit dem Bild (cover_stand), sonst mit dem Buch. */
+export function coverUrl(id: number, stand?: string | number): string {
   return `/api/books/${id}/cover${stand ? `?_v=${encodeURIComponent(stand)}` : ""}`;
 }
 

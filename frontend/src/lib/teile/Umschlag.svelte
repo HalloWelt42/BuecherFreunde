@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Umschlag eines Buchs: Bild vom Server, sonst ein gezeichneter Ersatz
+  // Umschlag eines Buchs: immer das Deckblatt vom Server; ein gezeichneter Ersatz nur für reine Textdateien und wenn es ausbleibt
   import { coverUrl } from "../api/books";
   import { formatName } from "../format";
   import { regalfarben } from "../schale/regalfarben";
@@ -11,14 +11,15 @@
     author?: string;
     updated_at?: string;
     cover_path?: string;
+    cover_stand?: number;
     file_format?: string;
   }
   let { buch, sofort = false, format = false }: { buch: Buchbild; sofort?: boolean; format?: boolean } = $props();
 
-  let adresse = $derived(coverUrl(buch.id, buch.updated_at));
+  let adresse = $derived(coverUrl(buch.id, buch.cover_stand || buch.updated_at));
   let fertig = $state("");
   let kaputt = $state("");
-  let ohneBild = $derived(buch.cover_path === "" || kaputt === adresse);
+  let ohneBild = $derived((buch.cover_path === "" && ["txt", "md"].includes(buch.file_format ?? "")) || kaputt === adresse);
 
   function geladen(e: Event) {
     fertig = adresse;

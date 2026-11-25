@@ -1,6 +1,8 @@
 """Pydantic-Modelle für Bücher."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
+
+from backend.app.services.storage import umschlag_stand
 
 
 class BookListItem(BaseModel):
@@ -29,6 +31,11 @@ class BookListItem(BaseModel):
     sammlung: dict | None = None
     created_at: str = ""
     updated_at: str = ""
+
+    @computed_field
+    @property
+    def cover_stand(self) -> int:
+        return umschlag_stand(self.hash)
 
 
 class BookResponse(BaseModel):
@@ -61,6 +68,11 @@ class BookResponse(BaseModel):
     authors: list[dict] = Field(default_factory=list)
     created_at: str = ""
     updated_at: str = ""
+
+    @computed_field
+    @property
+    def cover_stand(self) -> int:
+        return umschlag_stand(self.hash)
 
 
 class BookUpdate(BaseModel):

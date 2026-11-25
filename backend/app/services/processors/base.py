@@ -17,7 +17,6 @@ class BookProcessingResult:
     description: str = ""
     page_count: int = 0
     fulltext: str = ""
-    cover_data: bytes | None = None
     metadata_raw: dict = field(default_factory=dict)
     error: str = ""
 

@@ -143,6 +143,14 @@ def get_sidecar_path(file_hash: str, filename: str, storage_dir: Path | None = N
     return get_storage_path(file_hash, storage_dir) / filename
 
 
+def umschlag_stand(file_hash: str) -> int:
+    """Wann der Umschlag zuletzt geschrieben wurde (0: keiner da); ändert er sich, ändert sich seine Adresse, nicht das Buch."""
+    try:
+        return int(get_sidecar_path(file_hash, "cover.jpg").stat().st_mtime)
+    except OSError:
+        return 0
+
+
 def save_metadata(file_hash: str, metadata: dict, storage_dir: Path | None = None) -> Path:
     """Speichert Metadaten als JSON-Sidecar."""
     path = get_sidecar_path(file_hash, "metadata.json", storage_dir)

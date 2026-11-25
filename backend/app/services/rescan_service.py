@@ -16,6 +16,7 @@ from pathlib import Path
 
 from backend.app.core.database import db
 from backend.app.core.suchindex import SUCHTEXT_ZEICHEN
+from backend.app.services import deckblatt
 from backend.app.services.storage import (
     get_original_file,
     get_sidecar_path,
@@ -239,7 +240,7 @@ async def _rescan_worker(buecher: list, typen: list[str]):
                 original = await asyncio.to_thread(get_original_file, book["hash"])     # kann aus der Kellerwolke laden
 
             if original is not None and scan_cover and not hat_cover:
-                cover_data = await asyncio.to_thread(_extrahiere_cover, original, fmt)
+                cover_data = await asyncio.to_thread(deckblatt.von_datei, original, fmt)
                 if cover_data:
                     save_cover(book["hash"], cover_data)
                     await db.execute(
@@ -286,36 +287,6 @@ async def _rescan_worker(buecher: list, typen: list[str]):
         status["metadaten_aktualisiert"], status["volltext_extrahiert"],
         status["fehler"],
     )
-
-
-def _extrahiere_cover(original: Path, fmt: str) -> bytes | None:
-    """Cover aus Datei extrahieren (alle Formate)."""
-    if fmt == "epub":
-        from backend.app.services.processors.epub_processor import EpubProcessor
-        try:
-            import ebooklib.epub
-            book = ebooklib.epub.read_epub(str(original), options={"ignore_ncx": True})
-            proc = EpubProcessor()
-            data = proc._extract_cover(book)
-            if data:
-                return data
-        except Exception:
-            pass
-        return EpubProcessor._extract_cover_from_zip(original)
-
-    elif fmt == "pdf":
-        try:
-            from backend.app.services.processors.pdf_processor import PdfProcessor
-            import fitz
-            doc = fitz.open(str(original))
-            proc = PdfProcessor()
-            data = proc._extract_cover(doc)
-            doc.close()
-            return data
-        except Exception:
-            pass
-
-    return None
 
 
 def _extrahiere_volltext(original: Path, fmt: str) -> str | None:

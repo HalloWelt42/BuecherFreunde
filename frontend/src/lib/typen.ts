@@ -43,6 +43,7 @@ export interface Buch {
   file_format: string;
   file_size: number;
   cover_path: string;
+  cover_stand?: number;
   page_count: number;
   year: number | null;
   isbn: string;

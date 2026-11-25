@@ -52,7 +52,7 @@
         return;
       }
       vorschlag = a.vorschlag;
-      zeilen = vergleiche(a.vorschlag, a.aktuell, coverUrl(buch.id, buch.updated_at));
+      zeilen = vergleiche(a.vorschlag, a.aktuell, coverUrl(buch.id, buch.cover_stand || buch.updated_at));
     } catch (e) {
       hinweis = e instanceof Error ? e.message : String(e);
     } finally {

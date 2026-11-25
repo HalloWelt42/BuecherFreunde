@@ -34,14 +34,17 @@ class Ergebnis:
 
 
 def _lesen(pfad: str) -> Ergebnis:
+    from backend.app.services import deckblatt
     from backend.app.services.processor import process_book
 
     datei = Path(pfad)
     r = process_book(datei)
-    e = Ergebnis(**{k: getattr(r, k) for k in ("title", "author", "isbn", "publisher", "year", "language", "description", "page_count", "fulltext", "cover_data")})
+    e = Ergebnis(**{k: getattr(r, k) for k in ("title", "author", "isbn", "publisher", "year", "language", "description", "page_count", "fulltext")})
     inhalt = bool(e.fulltext.strip() or e.page_count)
     if not inhalt:
         e.grund = "Die Datei lässt sich nicht lesen" + (f" ({r.error})" if r.error else "")
+    if e.lesbar:
+        e.cover_data = deckblatt.von_datei(datei)
     e.title = (e.title or "").strip() or datei.stem.replace("_", " ").replace("-", " ").strip()
     return e
 

@@ -28,7 +28,6 @@ class TestBookProcessingResult:
         assert ergebnis.author == ""
         assert ergebnis.page_count == 0
         assert ergebnis.fulltext == ""
-        assert ergebnis.cover_data is None
         assert ergebnis.error == ""
 
     def test_fts_content_begrenzt_auf_100000_zeichen(self):
@@ -231,9 +230,6 @@ class TestPdfProzessorMock:
 
         mock_page = MagicMock()
         mock_page.get_text.return_value = "Seite 1 Text"
-        mock_page.get_pixmap.return_value = MagicMock(
-            width=100, height=150, samples=b"\x00" * (100 * 150 * 3)
-        )
 
         mock_doc = MagicMock()
         mock_doc.metadata = {
@@ -247,20 +243,12 @@ class TestPdfProzessorMock:
 
         with patch("backend.app.services.processors.pdf_processor.fitz") as mock_fitz:
             mock_fitz.open.return_value = mock_doc
-            mock_fitz.Matrix.return_value = MagicMock()
 
             processor = PdfProcessor()
             datei = tmp_path / "test.pdf"
             datei.write_bytes(b"%PDF-1.4")
 
-            with patch("backend.app.services.processors.pdf_processor.Image") as mock_image:
-                mock_img = MagicMock()
-                mock_image.frombytes.return_value = mock_img
-                mock_buffer = MagicMock()
-                mock_buffer.getvalue.return_value = b"\xff\xd8\xff"
-                with patch("backend.app.services.processors.pdf_processor.io") as mock_io:
-                    mock_io.BytesIO.return_value = mock_buffer
-                    ergebnis = processor.process(datei)
+            ergebnis = processor.process(datei)
 
         assert ergebnis.title == "Testbuch PDF"
         assert ergebnis.author == "PDF-Autor"

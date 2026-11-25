@@ -21,66 +21,10 @@ from backend.app.ablage import originale
 from backend.app.ablage.antwort import FEHLT, original_antwort
 from backend.app.ablage.wolke import wolke
 from backend.app.annahme.eintragen import autoren_verknuepfen
+from backend.app.services import deckblatt
 from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover, save_fulltext
 
 router = APIRouter(prefix="/api/books", tags=["Bücher"])
-
-_IMAGE_MAGIC = (
-    b"\xff\xd8\xff",      # JPEG
-    b"\x89PNG",           # PNG
-    b"GIF8",             # GIF
-    b"RIFF",             # WebP
-)
-
-_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
-
-
-def _extract_cover_from_zip(epub_path: Path, logger) -> bytes | None:
-    """Extrahiert das Cover direkt per zipfile -- Fallback wenn ebooklib scheitert."""
-    import zipfile
-
-    try:
-        with zipfile.ZipFile(epub_path) as zf:
-            namen = zf.namelist()
-
-            # 1. Datei mit "cover" im Namen und Bild-Endung
-            for name in namen:
-                lower = name.lower()
-                if "cover" in lower and any(lower.endswith(ext) for ext in _IMAGE_EXTENSIONS):
-                    data = zf.read(name)
-                    if data and len(data) > 500:
-                        logger.info("ZIP-Fallback: Cover gefunden in %s (%d Bytes)", name, len(data))
-                        return data
-
-            # 2. Groesstes Bild im Archiv
-            groesstes = None
-            groesste_bytes = 0
-            groesster_name = ""
-            for name in namen:
-                lower = name.lower()
-                if any(lower.endswith(ext) for ext in _IMAGE_EXTENSIONS):
-                    data = zf.read(name)
-                    if data and len(data) > groesste_bytes:
-                        groesste_bytes = len(data)
-                        groesstes = data
-                        groesster_name = name
-
-            if groesstes and groesste_bytes > 1000:
-                logger.info("ZIP-Fallback: Groesstes Bild als Cover: %s (%d Bytes)", groesster_name, groesste_bytes)
-                return groesstes
-
-            # 3. Beliebige Datei mit Bild-Magic-Bytes
-            for name in namen:
-                data = zf.read(name)
-                if data and len(data) > 1000 and any(data.startswith(m) for m in _IMAGE_MAGIC):
-                    logger.info("ZIP-Fallback: Bild per Magic Bytes: %s (%d Bytes)", name, len(data))
-                    return data
-
-    except Exception as e:
-        logger.warning("ZIP-Fallback fehlgeschlagen: %s", e)
-
-    return None
-
 
 async def _get_book_categories(book_id: int) -> list[dict]:
     """Lädt Kategorien eines Buches."""
@@ -749,45 +693,9 @@ def _platzhalter_cover_svg(title: str, file_format: str) -> str:
 
 
 def _generate_cover_sync(file_hash: str, file_format: str) -> bytes | None:
-    """Erzeugt ein Cover aus der Quelldatei (erste PDF-Seite bzw. eingebettetes
-    EPUB-Cover). CPU-lastig -> wird im Threadpool aufgerufen.
-    """
-    logger = logging.getLogger("buecherfreunde.api.books")
+    """Deckblatt aus der Quelldatei. CPU-lastig -> wird im Threadpool aufgerufen."""
     original = get_original_file(file_hash)
-    if not original or not original.exists():
-        return None
-    fmt = (file_format or original.suffix.lstrip(".")).lower()
-    try:
-        if fmt == "pdf":
-            import fitz
-            from backend.app.services.processors.pdf_processor import PdfProcessor
-
-            doc = fitz.open(str(original))
-            try:
-                return PdfProcessor()._extract_cover(doc)
-            finally:
-                doc.close()
-        if fmt == "epub":
-            from backend.app.services.processors.epub_processor import EpubProcessor
-
-            proc = EpubProcessor()
-            data = None
-            try:
-                import ebooklib.epub
-
-                buch = ebooklib.epub.read_epub(str(original), options={"ignore_ncx": True})
-                data = proc._extract_cover(buch)
-            except Exception:
-                data = None
-            if not data:
-                try:
-                    data = proc._extract_cover_from_zip(original)
-                except Exception:
-                    data = None
-            return data
-    except Exception as e:
-        logger.warning("Cover-Generierung fehlgeschlagen (%s): %s", file_hash, e)
-    return None
+    return deckblatt.von_datei(original, file_format) if original else None
 
 
 @router.get("/{book_id}/cover")
@@ -810,7 +718,8 @@ async def get_cover(book_id: int, _token: str = Depends(verify_token_inhalt)):
 
     cover_path = get_sidecar_path(book["hash"], "cover.jpg")
     if cover_path.exists():
-        return FileResponse(cover_path, media_type="image/jpeg")
+        # die Adresse trägt den Stand des Umschlags (cover_stand), darum darf der Browser ihn behalten
+        return FileResponse(cover_path, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=604800"})
 
     # Cover fehlt -> aus der Quelldatei erzeugen (CPU-lastig, daher im Thread)
     try:
@@ -822,9 +731,11 @@ async def get_cover(book_id: int, _token: str = Depends(verify_token_inhalt)):
 
     if data:
         try:
-            save_cover(book["hash"], data)  # für nächstes Mal cachen
-        except Exception:
-            pass
+            save_cover(book["hash"], data)
+            await db.execute("UPDATE books SET cover_path = 'cover.jpg' WHERE id = ? AND COALESCE(cover_path, '') = ''", (book_id,))
+            await db.commit()
+        except OSError as f:
+            logging.getLogger("buecherfreunde.api.books").warning("Umschlag nicht gemerkt: %s", f)
         return Response(content=data, media_type="image/jpeg")
 
     # Letzter Ausweg: Platzhalter (kein 404)
@@ -838,9 +749,6 @@ async def get_cover(book_id: int, _token: str = Depends(verify_token_inhalt)):
 @router.post("/{book_id}/cover/neu-extrahieren")
 async def re_extract_cover(book_id: int, _token: str = Depends(verify_token)):
     """Extrahiert das Cover neu aus der Buchdatei und überschreibt das bestehende."""
-    import logging
-    logger = logging.getLogger("buecherfreunde.api.books")
-
     book = await db.fetch_one(
         "SELECT id, hash, file_format FROM books WHERE id = ?", (book_id,)
     )
@@ -851,37 +759,9 @@ async def re_extract_cover(book_id: int, _token: str = Depends(verify_token)):
     if not original or not original.exists():
         raise HTTPException(status_code=404, detail=FEHLT)
 
-    fmt = book["file_format"].lower()
-    cover_data = None
-
-    if fmt == "pdf":
-        from backend.app.services.processors.pdf_processor import PdfProcessor
-        import fitz
-        try:
-            doc = fitz.open(str(original))
-            proc = PdfProcessor()
-            cover_data = proc._extract_cover(doc)
-            doc.close()
-        except Exception as e:
-            logger.warning("PDF Cover-Extraktion fehlgeschlagen: %s", e)
-
-    elif fmt == "epub":
-        from backend.app.services.processors.epub_processor import EpubProcessor
-        import ebooklib
-        import ebooklib.epub
-        try:
-            epub_book = ebooklib.epub.read_epub(str(original), options={"ignore_ncx": True})
-            proc = EpubProcessor()
-            cover_data = proc._extract_cover(epub_book)
-        except Exception as e:
-            logger.warning("ebooklib fehlgeschlagen, versuche ZIP-Fallback: %s", e)
-
-        # Fallback: Direkt per zipfile das Cover suchen (fuer kaputte EPUBs)
-        if not cover_data:
-            cover_data = _extract_cover_from_zip(original, logger)
-
+    cover_data = await asyncio.to_thread(deckblatt.von_datei, original, book["file_format"])
     if not cover_data:
-        raise HTTPException(status_code=422, detail="Kein eingebettetes Cover in der Datei gefunden")
+        raise HTTPException(status_code=422, detail="In der Datei ist kein Deckblatt zu finden")
 
     save_cover(book["hash"], cover_data)
     await db.execute(
