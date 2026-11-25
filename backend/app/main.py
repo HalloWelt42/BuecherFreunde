@@ -102,7 +102,7 @@ async def lifespan(app: FastAPI):
     await annahme.stoppen()
     await bedeutung.schliessen()
     await vorlesen.schliessen()
-    await nachschlagen.dienst.schliessen()
+    await nachschlagen.schliessen()
     await gespraech.dienst.schliessen()
     await wolke.schliessen()
     await anmeldung_schliessen()

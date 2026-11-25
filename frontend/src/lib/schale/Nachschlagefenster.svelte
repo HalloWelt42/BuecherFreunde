@@ -61,7 +61,7 @@
   {#snippet knoepfe()}
     {#if nachschlag.kannZurueck}<Knopf text="Zurück" symbol="arrow-left" nur klein frei onclick={() => void nachschlag.zurueck()} />{/if}
     {#if a}
-      <Knopf text="In Nachschlag öffnen" symbol="arrow-up-right-from-square" nur klein frei extern href={a.adresse} />
+      <Knopf text={anschluesse.lexikonOeffnen} symbol="arrow-up-right-from-square" nur klein frei extern href={a.adresse} />
       <Knopf text="Mehr" symbol="ellipsis" nur klein frei aufgeklappt={menueOffen} bind:element={menueKnopf} onclick={() => (menueOffen = !menueOffen)} />
     {/if}
   {/snippet}
@@ -80,7 +80,7 @@
         <p class="leise herkunft">{a.buchtitel}</p>
         <h1>{a.titel}</h1>
         {#if a.bild && bildWeg !== a.bild}<img src={a.bild} alt="" loading="lazy" onerror={() => (bildWeg = a!.bild)} />{/if}
-        <!-- Der Server lässt nur Text, Überschriften, Listen und Verweise im selben Buch durch -->
+        <!-- Der Server lässt nur Text, Überschriften, Listen und Verweise ins selbe Lexikon durch -->
         {@html a.html}
       </div>
     {:else if nachschlag.laedt}
@@ -100,7 +100,7 @@
 {#if menueOffen && a}
   <Menue anker={menueKnopf} name="Mehr" breite="15rem" onschliessen={() => (menueOffen = false)}>
     <div class="mehr">
-      <Knopf text="In Nachschlag öffnen" symbol="arrow-up-right-from-square" klein frei extern href={a.adresse} onclick={() => (menueOffen = false)} />
+      <Knopf text={anschluesse.lexikonOeffnen} symbol="arrow-up-right-from-square" klein frei extern href={a.adresse} onclick={() => (menueOffen = false)} />
       <Knopf text="Vorlesen" symbol="volume-low" klein frei onclick={() => tun(() => { vorlesen.pruefe(); vorlesen.entsperre(); vorlesen.lies(text(), a!.titel); })} />
       <Knopf text="Kopieren" symbol="copy" klein frei onclick={() => tun(() => void kopiere())} />
       <Knopf text="In die Schnellnotiz" symbol="note-sticky" klein frei onclick={() => tun(inDieNotiz)} />

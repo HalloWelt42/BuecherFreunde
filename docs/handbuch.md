@@ -35,8 +35,8 @@ nach `Bücher` um. Doppel, fremde Formate und Unlesbares bleiben liegen und steh
 - Docker und die [[Kellerwolke]] mit einem App-Zugang als Datei `zugang/kellerwolke.schluessel`, dazu die Hausstelle als
   `zugang/hausstelle.pem`; Adresse der Kellerwolke `{{umgebung:KELLERWOLKE_URL}}`.
 - Ohne sie läuft sie weiter, ihr fehlt nur die Fähigkeit: [[Fundus]] für die Suche nach Bedeutung, [[Vertonung]] zum Vorlesen
-  (`VORLESEN_URL`), Nachschlag zum Nachschlagen im Leser (`NACHSCHLAG_URL`), Assistent für das Gespräch über eine Stelle
-  (`ASSISTENT_URL`). Ohne [[Kellerwolke]] gelten eigene Konten und die Ablage auf dem Gerät; hier ist sie angeschlossen.
+  (`VORLESEN_URL`), Nachschlag zum Nachschlagen im Leser (`NACHSCHLAG_URL`; ohne ihn schlägt der Leser im öffentlichen Lexikon
+  im Netz nach, solange `WIKIPEDIA_ENABLED` an ist), Assistent für das Gespräch über eine Stelle (`ASSISTENT_URL`). Ohne [[Kellerwolke]] gelten eigene Konten und die Ablage auf dem Gerät; hier ist sie angeschlossen.
 
 ## Neu einrichten
 

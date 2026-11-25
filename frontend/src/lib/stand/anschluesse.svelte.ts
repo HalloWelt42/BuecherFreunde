@@ -6,18 +6,23 @@ export interface Anschluesse {
   anmeldung: "kellerwolke" | "eigen";
   bedeutung: boolean;
   assistent: string;
+  /** Adresse des Lexikons; leer: kein Nachschlagen */
   nachschlag: string;
+  /** Nachschlag aus den Hausdiensten oder das öffentliche Lexikon im Netz */
+  nachschlag_art: "nachschlag" | "netz" | "";
   ki: boolean;
   vorlesen: boolean;
 }
 
-const OHNE: Anschluesse = { ablage: "geraet", anmeldung: "kellerwolke", bedeutung: false, assistent: "", nachschlag: "", ki: false, vorlesen: false };
+const OHNE: Anschluesse = { ablage: "geraet", anmeldung: "kellerwolke", bedeutung: false, assistent: "", nachschlag: "", nachschlag_art: "", ki: false, vorlesen: false };
 
 class Anschlussstand {
   jetzt = $state<Anschluesse>(OHNE);
   geladen = $state(false);
 
   inWolke = $derived(this.jetzt.ablage === "kellerwolke");
+  /** Wie die Taste heißt, die einen Artikel im Lexikon selbst öffnet */
+  lexikonOeffnen = $derived(this.jetzt.nachschlag_art === "netz" ? "Im Lexikon öffnen" : "In Nachschlag öffnen");
 
   /** Scheitert es, gilt das Nötigste; der nächste Start fragt neu. */
   async laden(): Promise<void> {

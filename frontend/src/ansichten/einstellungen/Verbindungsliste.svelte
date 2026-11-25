@@ -46,7 +46,11 @@
 {#if anschluesse.jetzt.nachschlag}
   <div class="stelle zeile-stand">
     <span class="led aus"></span>
-    <span><b>Nachschlag</b><br /><span class="leise">Eingerichtet, schlägt Wörter beim Lesen nach</span></span>
+    {#if anschluesse.jetzt.nachschlag_art === "netz"}
+      <span><b>Lexikon im Netz</b><br /><span class="leise">Schlägt Wörter beim Lesen im öffentlichen Lexikon nach, ohne Nachschlag</span></span>
+    {:else}
+      <span><b>Nachschlag</b><br /><span class="leise">Eingerichtet, schlägt Wörter beim Lesen nach</span></span>
+    {/if}
     <Knopf text="Öffnen" symbol="arrow-up-right-from-square" klein extern href={anschluesse.jetzt.nachschlag} />
   </div>
 {/if}

@@ -83,5 +83,6 @@ async def test_anschluesse_und_verbindungen_nennen_nur_was_da_ist(client, auth_h
         monkeypatch.setattr(settings, name, "")
     monkeypatch.setattr(settings, "lm_studio_enabled", False)
     o = (await client.get("/api/config/oberflaeche", headers=auth_headers)).json()
-    assert o["anschluesse"] == {"ablage": "geraet", "anmeldung": "eigen", "bedeutung": False, "assistent": "", "nachschlag": "", "ki": False, "vorlesen": False}
+    assert o["anschluesse"] == {"ablage": "geraet", "anmeldung": "eigen", "bedeutung": False, "assistent": "", "nachschlag": "https://de.wikipedia.org",
+                                    "nachschlag_art": "netz", "ki": False, "vorlesen": False}
     assert (await client.get("/api/verbindungen", headers=auth_headers)).json() == []
