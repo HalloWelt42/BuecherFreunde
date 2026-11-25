@@ -12,6 +12,8 @@
   import { wischen } from "../../lib/leser/wischen";
   import { imBlick, Mitlauf, sichtVon } from "../../lib/leser/mitlauf";
   import type { Randeintrag } from "../../lib/leser/randmarken";
+  import { vorgelesenIn } from "../../lib/leser/fokus";
+  import type { Hilfeort } from "../../lib/leser/sitzung.svelte";
 
   interface Eigenschaften {
     sitzung: Lesesitzung;
@@ -202,6 +204,26 @@
     }
     return Math.max(r.getBoundingClientRect().top + 16, s.oben);
   }
+
+  // Für die Lesehilfen: ein PDF als Bild kennt keine Absätze, nur Zeilen
+  export const hilfeort: Hilfeort = {
+    blatt: () => anzeige?.rahmen(blaettert ? (bogen[0] ?? seite) : seite)?.getBoundingClientRect() ?? null,
+    zeilenhoehe: () => 16 * (anzeige?.mass ?? 1),
+    absatzBei: () => null,
+    vorgelesen: () => vorgelesenIn(document, flaeche ?? null),
+    mitAbsaetzen: false,
+    rolle: (px) => {
+      const vorher = flaeche!.scrollTop;
+      flaeche!.scrollTop += px;
+      return flaeche!.scrollTop !== vorher;
+    },
+    blaettere: () => {
+      const vorher = [seite, flaeche?.scrollTop];
+      vor();
+      return seite !== vorher[0] || flaeche?.scrollTop !== vorher[1];
+    },
+    art: () => (blaettert ? "blaettern" : "scrollen"),
+  };
 
   export function kante(): number | null {
     return anzeige?.rahmen(blaettert ? (bogen.at(-1) ?? seite) : seite)?.getBoundingClientRect().right ?? null;

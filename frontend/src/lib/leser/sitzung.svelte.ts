@@ -12,6 +12,8 @@ import { vorlesen } from "../stand/vorlesen.svelte";
 import type { BuchEinzeln, Etikett, Markierung, Notiz } from "../typen";
 import type { Buchquelle } from "../vorlesen/typen";
 import type { Randeintrag } from "./randmarken";
+import type { Kasten } from "./fokus";
+import type { Leseart } from "./fluss/fluss";
 import { VORGABE_STIFT } from "./farben";
 import type { Feldname, Kapitel, Textauswahl } from "./typen";
 import { Verzoegert } from "./verzoegert";
@@ -26,6 +28,22 @@ export interface Randort {
   lage(e: Randeintrag): number | null;
   /** Rechte Kante des Blatts im Fenster */
   kante(): number | null;
+}
+
+/** Was die Lesehilfen vom Leser des Formats brauchen */
+export interface Hilfeort {
+  /** Das Blatt im Fenster */
+  blatt(): DOMRect | null;
+  zeilenhoehe(): number;
+  /** Absatz unter einem Punkt im Fenster; null, wo es keine Absätze gibt (PDF als Bild) */
+  absatzBei(x: number, y: number): Kasten | null;
+  /** Absatz und Zeile, in denen gerade vorgelesen wird */
+  vorgelesen(): { absatz: Kasten | null; zeile: Kasten | null };
+  readonly mitAbsaetzen: boolean;
+  /** Ein Stück weiter, von selbst; false am Ende */
+  rolle(px: number): boolean;
+  blaettere(): boolean;
+  art(): Leseart;
 }
 
 export interface Lesegriffe {
@@ -51,10 +69,19 @@ export class Lesesitzung {
   stiftfarbe = $state(VORGABE_STIFT);
   griffe: Lesegriffe | null = null;
   spieler = $state(false);
+  /** Ruhe: Leisten und Zeiger sind ausgeblendet, bis sich etwas regt */
+  ruhig = $state(false);
   #spielerUhr: ReturnType<typeof setTimeout> | undefined;
   /** Woraus vorgelesen wird; der Leser des Formats setzt sie, sobald das Buch steht */
   quelle = $state.raw<Buchquelle | null>(null);
   rand = $state.raw<Randort | null>(null);
+  hilfe = $state.raw<Hilfeort | null>(null);
+  /** Farben des Blatts, für Voreinstellungen */
+  farbwahl = $state.raw<{ jetzt(): { fg: string; bg: string }; setze(fg: string, bg: string): void } | null>(null);
+  /** Wo der Zeiger über dem Buch steht, im Fenster */
+  zeiger = $state<{ x: number; y: number } | null>(null);
+  /** Tasten, die vor denen des Lesers gelten (Lineal, Kürzel); true, wenn erledigt */
+  vortaste: ((e: KeyboardEvent) => boolean) | null = null;
   /** Zählt jede Bewegung der Ansicht, damit, was am Text hängt, mitgeht */
   bewegung = $state(0);
   /** Trifft ein Tippen eine Marke am Rand? Dann gehört es ihr. */

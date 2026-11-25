@@ -19,6 +19,11 @@
   import { randmarken } from "../../lib/leser/randschalter.svelte";
   import Randmarken from "./Randmarken.svelte";
   import Spieler from "./Spieler.svelte";
+  import Blattfeinheiten from "./Blattfeinheiten.svelte";
+  import Fokusfeld from "./Fokusfeld.svelte";
+  import Hilfensteuerung from "./Hilfensteuerung.svelte";
+  import Tastenfeld from "./Tastenfeld.svelte";
+  import { hilfenCss, lesehilfen } from "../../lib/leser/lesehilfen.svelte";
   import Vorlesen from "./Vorlesen.svelte";
 
   interface Eigenschaften {
@@ -29,6 +34,8 @@
     tinte: string;
     art: Leseart;
     onart: (art: Leseart) => void;
+    /** Wirken Abstände im Satz (nicht beim PDF als Bild)? */
+    satz?: boolean;
     bereit: boolean;
     onzurueck: () => void;
     onabwahl: () => void;
@@ -37,7 +44,7 @@
     treffer?: Snippet;
     children: Snippet;
   }
-  let { sitzung, papier = "normal", grund, tinte, art, onart, bereit, onzurueck, onabwahl, darstellung, fuss, treffer = undefined, children }: Eigenschaften = $props();
+  let { sitzung, papier = "normal", grund, tinte, art, onart, satz = true, bereit, onzurueck, onabwahl, darstellung, fuss, treffer = undefined, children }: Eigenschaften = $props();
 
   let rahmen: HTMLElement | undefined = $state();
   let vorleseKnopf = $state<HTMLElement | null>(null);
@@ -51,6 +58,12 @@
     e.preventDefault();
     e.stopPropagation();
   }
+
+  let hilfen = $derived(Object.entries(hilfenCss(lesehilfen.hilfen)).map(([k, v]) => `${k}: ${v}`).join("; "));
+  // Das Feld Fokus zeigt beim Öffnen gleich, was es tut
+  $effect(() => {
+    if (sitzung.feld === "fokus" && !lesehilfen.fokus.an) lesehilfen.setzeFokus({ an: true });
+  });
 
   let zustand = $derived(!liestHier ? "volume-low" : vorlesen.wartet && !vorlesen.pausiert ? "circle-notch" : vorlesen.pausiert ? "pause" : "volume-high");
 
@@ -70,9 +83,10 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="leser" onpointermove={(e) => sitzung.regt(e)} onclickcapture={tippeRand} class:mit-treffer={!!treffer && !schale.vollbild} class:randlos={schale.vollbild} data-papier={papier} style:--randgrund={grund} style:--randtinte={tinte} style:--blattrand="{blattrand.wert}px" style:--blattrand-oben="{blattrand.oben(schale.vollbild)}px" bind:this={rahmen}>
+<div class="leser" onpointermove={(e) => sitzung.regt(e)} onclickcapture={tippeRand} class:mit-treffer={!!treffer && !schale.vollbild} class:randlos={schale.vollbild} class:ruhig={sitzung.ruhig} style={hilfen} data-papier={papier} style:--randgrund={grund} style:--randtinte={tinte} style:--blattrand="{blattrand.wert}px" style:--blattrand-oben="{blattrand.oben(schale.vollbild)}px" bind:this={rahmen}>
   {@render children()}
   {#if bereit && rahmen && randmarken.an}<Randmarken {sitzung} {rahmen} />{/if}
+  {#if bereit && rahmen}<Hilfensteuerung {sitzung} {rahmen} offen={vorlesenOffen} />{/if}
 
   {#if schale.vollbild}
     <button type="button" class="schwebezeichen links" aria-label="Vollbild verlassen" title="Vollbild verlassen" onclick={() => void schale.vollbildUmschalten()}><Symbol name="compress" /></button>
@@ -85,7 +99,11 @@
       <Knopf text="Notizen und Markierungen" symbol="highlighter" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "stellen"} onclick={() => sitzung.schalteFeld("stellen")} />
       <!-- Am Telefon steht das Vorlesen im Feld; liest es gerade, auch hier -->
       <span class="reihe" class:nur-breit={!liestHier}><Knopf text="Vorlesen" symbol={liestHier ? zustand : "volume-high"} nur frei klein gesperrt={!bereit} gedrueckt={liestHier} aufgeklappt={vorlesenOffen} bind:element={vorleseKnopf} onclick={() => (vorlesenOffen = !vorlesenOffen)} /></span>
-      <span class="nur-breit reihe"><Knopf text="Vollbild" symbol="expand" nur frei klein onclick={() => void schale.vollbildUmschalten()} /></span>
+      <span class="nur-breit reihe">
+        <Knopf text="Fokus und Hilfen" symbol="crosshairs" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "fokus" || lesehilfen.fokus.an} onclick={() => sitzung.schalteFeld("fokus")} />
+        <Knopf text="Vollbild" symbol="expand" nur frei klein onclick={() => void schale.vollbildUmschalten()} />
+        <Knopf text="Tastenkürzel" symbol="keyboard" nur frei klein gedrueckt={sitzung.feld === "tasten"} onclick={() => sitzung.schalteFeld("tasten")} />
+      </span>
       <Knopf text="Schrift, Papier, Ansicht" symbol="font" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "darstellung"} onclick={() => sitzung.schalteFeld("darstellung")} />
     </div>
   {/if}
@@ -98,10 +116,15 @@
         <Verzeichnis {sitzung} />
       {:else if sitzung.feld === "stellen"}
         <Stellenfeld {sitzung} />
+      {:else if sitzung.feld === "fokus"}
+        <Fokusfeld {sitzung} />
+      {:else if sitzung.feld === "tasten"}
+        <Tastenfeld />
       {:else}
         <h2>Schrift und Papier</h2>
         <Leseartwahl {art} {onart} />
         {@render darstellung()}
+        <Blattfeinheiten {sitzung} text={satz} />
         <Leserwerkzeuge {sitzung} />
       {/if}
       </div>

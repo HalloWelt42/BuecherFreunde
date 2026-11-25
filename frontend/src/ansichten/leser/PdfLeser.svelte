@@ -3,7 +3,7 @@
   import { onDestroy, untrack } from "svelte";
   import { dateiUrl, volltextSuche } from "../../lib/api/books";
   import { blaettertaste } from "../../lib/leser/blaettertasten";
-  import { PAPIERFARBEN, papierOder, vorgabeThema, type Papier } from "../../lib/leser/darstellung";
+  import { FARBTHEMEN, istDunkel, PAPIERFARBEN, papierOder, vorgabeThema, type Papier } from "../../lib/leser/darstellung";
   import type { Leseart } from "../../lib/leser/fluss/fluss";
   import { ladefehler, type Ladefehler } from "../../lib/leser/ladefehler";
   import { leseart } from "../../lib/leser/leseart.svelte";
@@ -87,6 +87,20 @@
         },
         kante: () => (nurText ? text : seiten)?.kante() ?? null,
       };
+      const ansicht = () => (nurText ? text?.hilfeort : seiten?.hilfeort);
+      sitzung.hilfe = {
+        blatt: () => ansicht()?.blatt() ?? null,
+        zeilenhoehe: () => ansicht()?.zeilenhoehe() ?? 20,
+        absatzBei: (x, y) => ansicht()?.absatzBei(x, y) ?? null,
+        vorgelesen: () => ansicht()?.vorgelesen() ?? { absatz: null, zeile: null },
+        get mitAbsaetzen() {
+          return nurText;
+        },
+        rolle: (px) => ansicht()?.rolle(px) ?? false,
+        blaettere: () => ansicht()?.blaettere() ?? false,
+        art: () => art,
+      };
+      sitzung.farbwahl = { jetzt: () => farben, setze: setzeFarben };
       sitzung.kapitel = await verzeichnis(geladen.doc);
     } catch {
       fehler = await ladefehler(buch.id);
@@ -99,6 +113,17 @@
     const treffer = await volltextSuche(buch.id, wort, { limit: 1 }).catch(() => null);
     const nr = treffer?.treffer[0]?.seite;
     if (nr) [seite, fundseite] = [nr, nr];
+  }
+
+  // Voreinstellung: in der Textansicht das nächste Farbthema, im Original das Papier, das am besten passt
+  function setzeFarben(fg: string, bg: string) {
+    const n = FARBTHEMEN.findIndex((t) => t.bg.toLowerCase() === bg.toLowerCase());
+    if (nurText) textansicht.setzeThema(n >= 0 ? n : istDunkel(bg) ? 3 : 0);
+    else {
+      papierWahl = !istDunkel(bg) ? (n === 1 ? "sepia" : "normal") : n === 4 ? "kontrast" : "dunkel";
+      merke();
+    }
+    void fg;
   }
 
   const seiteVon = (e: Randeintrag) => e.seite ?? (e.prozent !== null ? Math.max(1, Math.round((e.prozent / 100) * gesamt)) : null);
@@ -210,6 +235,8 @@
     sitzung.griffe = null;
     sitzung.quelle = null;
     sitzung.rand = null;
+    sitzung.hilfe = null;
+    sitzung.farbwahl = null;
   });
 
   void lade();
@@ -217,7 +244,7 @@
 
 <svelte:window onkeydown={(e) => blaettertaste(e, art, { vor, zurueck, anfang: () => geheZu(1), ende: () => geheZu(gesamt), groesser: zoomtaste(1), kleiner: zoomtaste(-1) })} />
 
-<Leserahmen {sitzung} {papier} {art} onart={setzeArt} grund={farben.bg} tinte={farben.fg} bereit={!!pdf} {onzurueck} onabwahl={abwahl}>
+<Leserahmen {sitzung} {papier} {art} satz={nurText} onart={setzeArt} grund={farben.bg} tinte={farben.fg} bereit={!!pdf} {onzurueck} onabwahl={abwahl}>
   {#if !pdf}
     <Ladehinweis {fehler} adresse={dateiUrl(buch.id)} name={buch.file_name || buch.title} onerneut={() => void lade()} />
   {:else if nurText}

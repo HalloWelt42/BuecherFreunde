@@ -54,6 +54,8 @@ export class EpubAnzeige {
   kapitel: Kapitel[] = [];
   treffer: string[] = [];
   #view: View | null = null;
+  /** Regeln der Lesehilfen, an jedes Kapitel gehängt */
+  #zusatz = "";
   #overlayer: { highlight: unknown } | null = null;
   #markierungen: Markierung[] = [];
   #uhr: ReturnType<typeof setTimeout> | undefined;
@@ -105,7 +107,7 @@ export class EpubAnzeige {
   }
 
   #geladen({ doc, index }: { doc: Document; index: number }): void {
-    setzeStil(doc, epubCss(this.darstellung, schriftCss(this.darstellung.schrift)), this.#sprache());
+    setzeStil(doc, epubCss(this.darstellung, schriftCss(this.darstellung.schrift)) + this.#zusatz, this.#sprache());
     const rahmen = doc.defaultView?.frameElement as HTMLElement | null;
     if (rahmen) rahmen.style.backgroundColor = randfarbe(this.darstellung);
     requestAnimationFrame(() => void this.zeichne(this.#markierungen));
@@ -152,6 +154,13 @@ export class EpubAnzeige {
       // Stelle eines anderen Buchs oder kaputt
     }
     return null;
+  }
+
+  /** Lesehilfen im Kapitel: Abstände, Abbildungen, Ruhe */
+  zusatz(css: string): void {
+    if (css === this.#zusatz) return;
+    this.#zusatz = `\n${css}`;
+    this.stile(this.darstellung);
   }
 
   get ansicht(): View | null {
@@ -230,7 +239,7 @@ export class EpubAnzeige {
     this.darstellung = d;
     const r = this.#view?.renderer;
     if (!this.#view || !r) return;
-    const css = epubCss(d, schriftCss(d.schrift));
+    const css = epubCss(d, schriftCss(d.schrift)) + this.#zusatz;
     // Auch die Seite selbst kennt die Schrift, für die Probe im Feld
     if (d.schrift) nutzeSchrift(d.schrift);
     for (const { doc } of r.getContents()) {

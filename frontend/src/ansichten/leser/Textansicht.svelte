@@ -14,6 +14,9 @@
   import { imBlick, Mitlauf, sichtVon } from "../../lib/leser/mitlauf";
   import { zeichneMarkierungen, zeichneWortlaut } from "../../lib/leser/text/markierung";
   import type { Randeintrag } from "../../lib/leser/randmarken";
+  import { absatzBei, vorgelesenIn } from "../../lib/leser/fokus";
+  import { lesehilfen } from "../../lib/leser/lesehilfen.svelte";
+  import type { Hilfeort } from "../../lib/leser/sitzung.svelte";
   import { nutzeSchrift } from "../../lib/leser/schriften";
   import { textansicht } from "../../lib/leser/textansicht.svelte";
   import { schreibweise } from "../../lib/leser/typen";
@@ -131,7 +134,7 @@
 
   // Schrift, Zeilen, Rand: dieselbe Stelle bleibt
   $effect(() => {
-    void [textansicht.groesse, textansicht.zeilen, textansicht.familie, blattrand.wert, schale.vollbild];
+    void [textansicht.groesse, textansicht.zeilen, textansicht.familie, blattrand.wert, schale.vollbild, lesehilfen.hilfen];
     untrack(() => void fluss?.halte(tick));
   });
 
@@ -197,6 +200,25 @@
   }
 
   export const kante = (): number | null => blatt?.getBoundingClientRect().right ?? null;
+
+  // Für die Lesehilfen
+  export const hilfeort: Hilfeort = {
+    blatt: () => blatt?.getBoundingClientRect() ?? null,
+    zeilenhoehe: () => (blatt ? Number.parseFloat(getComputedStyle(blatt).lineHeight) || 26 : 26),
+    absatzBei: (x, y) => (satz ? absatzBei(document, x, y, satz) : null),
+    vorgelesen: () => vorgelesenIn(document, satz ?? null),
+    mitAbsaetzen: true,
+    rolle: (px) => {
+      const vorher = flaeche!.scrollTop;
+      flaeche!.scrollTop += px;
+      return flaeche!.scrollTop !== vorher;
+    },
+    blaettere: () => {
+      void vor();
+      return !(fluss?.amEnde && text.letzte >= text.gesamt);
+    },
+    art: () => art,
+  };
 
   export function hier(): { seite: number; wortlaut: string } {
     const h = fluss?.halt();

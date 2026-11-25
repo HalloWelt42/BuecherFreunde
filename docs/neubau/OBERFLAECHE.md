@@ -143,6 +143,23 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 | Markierungen und Buchnotizen im Leser: springen, Farbe, Name, Notiz, Text, kopieren, Schnellnotiz, löschen mit Rückfrage | Feld rechts statt verschiebbarer Fenster, wie im Entwurf | ja, Kopieren nein |
 | "Von vorn" verwirft nur die Stelle (18) | `leser/ziel` | ja (Test) |
 
+### Fokus und Lesehilfen am Rechner (BF-24)
+
+Eigene Taste oben im Leser (Rechner und Tablet) mit dem Feld "Fokus und Hilfen", dazu die Tastenkürzel. Alles je Gerät gemerkt
+(`leser/lesehilfen`), am Telefon nur Voreinstellungen und Blatt und Satz.
+
+| Teil | Ort | Geprüft |
+|---|---|---|
+| Fokus als eine Schicht aus vier Streifen um ein klares Fenster, außen dunkel oder milchig (Hauch Papier, 2 px Unschärfe), Stärke, Übergang, Farbe; Klicks, Auswahl und Scrollen gehen durch, Leisten und Felder liegen darüber | `Fokusschicht`, `leser/fokus` | 1440 und 1920, hell und dunkel |
+| Fenster: auf der Seite ziehen, an Kanten und Ecken fassen, Doppelklick stellt zurück (nur solange das Feld offen ist) | `Fokusschicht` | ja |
+| Lineal: 1 bis 8 Zeilen, folgt der Maus, den Pfeilen (am Rand geht der Text weiter) und beim Vorlesen dem Satz | `Fokusschicht`, `Hilfensteuerung` | ja |
+| Absatz: in Textansichten, MD, TXT, EPUB der Absatz unter der Maus, beim Vorlesen der gelesene; beim PDF als Bild nicht angeboten | `leser/fokus` | ja, beim Vorlesen gemessen |
+| Ruhe: Leisten und Zeiger gehen nach 2,5 Sekunden, Bewegung holt sie; im Vollbild der Zeiger von selbst | `Hilfensteuerung` | ja |
+| Von selbst lesen: Tempo in Zeilen je Minute, gescrollt ruhig in ganzen Bildpunkten, geblättert je Schirm; Leertaste hält an | `leser/selbstlauf` | ja |
+| Blatt (Helligkeit, Kontrast, Wärme, Graustufen; Abbildungen) und Satz (Zeichen-, Wort-, Absatzabstand, Blocksatz, Silbentrennung); EPUB über die Regeln im Rahmen, PDF als Bild nur das Blatt | `Blattfeinheiten`, `stil/lesetext.css` | ja |
+| Voreinstellungen Tag, Papier, Abend, Nacht und eigene: speichern, umbenennen, löschen mit Rückfrage, auf Wunsch je Buch gemerkt | `Blattfeinheiten`, `leser/lesehilfen` | Tests und Bedienwege |
+| Tastenkürzel: F, Umschalt F, [ und ], Pfeile fürs Lineal, R, A, Leertaste, V, +/-, ? | `Tastenfeld`, `Hilfensteuerung` | ja |
+
 ### Marken am Rand (BF-28)
 
 Nach dem abgenommenen Entwurf (Marken am Rand des Blatts): Notizen, Markierungen und Etiketten als bunte Streifen. Breit (34 x 46, Nummer)

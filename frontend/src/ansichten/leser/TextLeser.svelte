@@ -19,6 +19,8 @@
   import { faerbeCode, kopierknoepfe } from "../../lib/leser/text/codefarben";
   import { Blattquelle } from "../../lib/leser/text/lesequelle";
   import { nutzeSchrift } from "../../lib/leser/schriften";
+  import { absatzBei, vorgelesenIn } from "../../lib/leser/fokus";
+  import { lesehilfen } from "../../lib/leser/lesehilfen.svelte";
   import { imBlick, sichtVon, zeichenRechteck } from "../../lib/leser/mitlauf";
   import type { Randeintrag } from "../../lib/leser/randmarken";
   import { prozentVon, textkapitel, zeichneMarkierungen, zeichneTreffer } from "../../lib/leser/text/markierung";
@@ -94,6 +96,21 @@
     if (istMarkdown) void faerbeCode(s).then(() => kopierknoepfe(s));
     quelle = new Blattquelle({ satz: s, flaeche, fluss: () => fluss, kapitel: () => sitzung.kapitel, kapitelJetzt: () => sitzung.kapitelJetzt, ersatz: () => ersatz, ohneTitel: (nr, alle) => `Stück ${nr + 1} von ${alle}` });
     sitzung.quelle = quelle;
+    sitzung.hilfe = {
+      blatt: () => blatt?.getBoundingClientRect() ?? null,
+      zeilenhoehe: () => (blatt ? Number.parseFloat(getComputedStyle(blatt).lineHeight) || 24 : 24),
+      absatzBei: (x, y) => (satz ? absatzBei(document, x, y, satz) : null),
+      vorgelesen: () => vorgelesenIn(document, satz ?? null),
+      mitAbsaetzen: true,
+      rolle: (px) => {
+        const vorher = flaeche!.scrollTop;
+        flaeche!.scrollTop += px;
+        return flaeche!.scrollTop !== vorher;
+      },
+      blaettere: () => fluss?.vor() ?? false,
+      art: () => art,
+    };
+    sitzung.farbwahl = { jetzt: () => ({ fg: d.fg, bg: d.bg }), setze: (fg, bg) => setze({ fg, bg }) };
     sitzung.rand = { anteil: (e) => (e.prozent !== null ? e.prozent / 100 : null), lage: lageAmRand, kante: () => blatt?.getBoundingClientRect().right ?? null };
     if (start.wort || start.stelle) zeigeTreffer(start.wort || start.stelle, ab);
   }
@@ -178,7 +195,7 @@
 
   // Anderer Rand: dieselbe Stelle bleibt
   $effect(() => {
-    void [blattrand.wert, schale.vollbild];
+    void [blattrand.wert, schale.vollbild, lesehilfen.hilfen];
     untrack(() => void fluss?.halte(tick));
   });
 
@@ -239,6 +256,8 @@
     sitzung.griffe = null;
     sitzung.quelle = null;
     sitzung.rand = null;
+    sitzung.hilfe = null;
+    sitzung.farbwahl = null;
   });
 
   void lade();

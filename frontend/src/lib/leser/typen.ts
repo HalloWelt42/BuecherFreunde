@@ -23,7 +23,7 @@ export interface Textauswahl {
   ort: string;
 }
 
-export type Feldname = "" | "inhalt" | "stellen" | "darstellung";
+export type Feldname = "" | "inhalt" | "stellen" | "darstellung" | "fokus" | "tasten";
 
 export const schreibweise = {
   seite: (n: number) => `S.${n}`,

@@ -59,6 +59,12 @@
 .leser.mit-treffer .zurstelle { bottom: 8rem; }
 .leser.randlos .zurstelle { bottom: calc(.75rem + var(--unten, 0px)); }
 .leser.randlos .zurstelle.hoeher { bottom: calc(6.5rem + var(--unten, 0px)); }
+/* Lesehilfen: Helligkeit, Kontrast, Wärme, Graustufen für jede Fläche; Ruhe blendet Leisten und Zeiger aus */
+.leser :is(.seiten, .epubflaeche) { filter: var(--hilfe-filter, none); }
+.leseleiste, .schwebezeichen, .zurstelle { transition: opacity .3s; }
+.leser.ruhig, .leser.ruhig * { cursor: none; }
+.leser.ruhig :is(.leseleiste, .schwebezeichen, .zurstelle) { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .leseleiste, .schwebezeichen, .zurstelle { transition: none; } }
 .lesehinweis { position: absolute; inset: 0; display: grid; place-items: center; padding: 1rem; }
 .lesehinweis .karte { max-width: 30rem; width: 100%; }
 /* PDF */

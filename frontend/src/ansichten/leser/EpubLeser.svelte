@@ -11,6 +11,8 @@
   import { breite, randfarbe, type Epubdarstellung } from "../../lib/leser/epub/stile";
   import { leseart } from "../../lib/leser/leseart.svelte";
   import { Epubquelle } from "../../lib/leser/epub/lesequelle";
+  import { absatzBei, verschiebe, vorgelesenIn } from "../../lib/leser/fokus";
+  import { hilfenEpubCss, lesehilfen } from "../../lib/leser/lesehilfen.svelte";
   import { VORLESESATZ } from "../../lib/leser/text/lesequelle";
   import { vorlesen } from "../../lib/stand/vorlesen.svelte";
   import { Positionsspeicher } from "../../lib/leser/position";
@@ -63,7 +65,7 @@
     fehler = null;
     anzeige?.schliesse();
     anzeige = new EpubAnzeige(flaeche, d, mass, {
-      beiStand: gerueckt, beiTaste: taste, mitte: () => sitzung.tippeMitte(), belegt: (p) => sitzung.belegt(p), geladen: (doc) => quelle?.geladen(doc), maus: (e) => sitzung.regt(e), gerollt: () => sitzung.bewegt(),
+      beiStand: gerueckt, beiTaste: taste, mitte: () => sitzung.tippeMitte(), belegt: (p) => sitzung.belegt(p), geladen: (doc) => quelle?.geladen(doc), maus: (e) => zeige(e), gerollt: () => sitzung.bewegt(),
       beiAuswahl: (a) => nimmAuswahl(sitzung, a && { ...a, ort: schreibweise.prozent(prozent) }) && abwahl(),
     });
     try {
@@ -76,6 +78,40 @@
       quelle?.zerstoere();
       quelle = new Epubquelle({ view: () => a.ansicht, flaeche, gescrollt: () => art === "scrollen", kapitel: () => sitzung.kapitel, kapitelJetzt: () => sitzung.kapitelJetzt, male: (b) => a.male(b, VORLESESATZ.farbe) });
       sitzung.quelle = quelle;
+      const aktuell = () => a.ansicht?.renderer?.getContents()[0];
+      const rahmen = () => aktuell()?.doc.defaultView?.frameElement?.getBoundingClientRect();
+      sitzung.hilfe = {
+        blatt: () => flaeche?.getBoundingClientRect() ?? null,
+        zeilenhoehe: () => {
+          const b = aktuell()?.doc.body;
+          return b ? Number.parseFloat(getComputedStyle(b).lineHeight) || 24 : 24;
+        },
+        absatzBei: (x, y) => {
+          const [g, r] = [aktuell(), rahmen()];
+          const k = g?.doc.body && r ? absatzBei(g.doc, x - r.left, y - r.top, g.doc.body) : null;
+          return k && verschiebe(k, r!.left, r!.top);
+        },
+        vorgelesen: () => {
+          const [g, r] = [aktuell(), rahmen()];
+          return g && r ? vorgelesenIn(g.doc, g.doc.body, { x: r.left, y: r.top }) : { absatz: null, zeile: null };
+        },
+        mitAbsaetzen: true,
+        rolle: (px) => {
+          const r = a.ansicht?.renderer as (HTMLElement & { containerPosition: number }) | undefined;
+          if (!r) return false;
+          const vorher = r.containerPosition;
+          r.containerPosition = vorher + px;
+          return r.containerPosition !== vorher;
+        },
+        blaettere: () => {
+          const r = a.ansicht?.renderer as { atEnd?: boolean } | undefined;
+          if (r?.atEnd) return false;
+          a.vor();
+          return true;
+        },
+        art: () => art,
+      };
+      sitzung.farbwahl = { jetzt: () => ({ fg: d.fg, bg: d.bg }), setze: (fg, bg) => setze({ fg, bg }) };
       sitzung.rand = { anteil: (e) => (e.prozent !== null ? e.prozent / 100 : e.cfi ? a.anteilVon(e.cfi) : null), lage: (e) => (e.cfi ? a.lageVon(e.cfi) : null), kante: () => flaeche?.getBoundingClientRect().right ?? null };
       bereit = true;
       if (mitte > 0) await anzeige.zuAnteil(mitte);
@@ -103,6 +139,20 @@
     anzeige?.sucheBeenden();
     [treffer, trefferNr] = [0, -1];
   }
+
+  // Die Maus im Kapitelrahmen: Spieler, Ruhe und Fokus brauchen sie in Lagen des Fensters
+  function zeige(e: PointerEvent) {
+    sitzung.regt(e);
+    if (e.pointerType !== "mouse") return;
+    const r = (e.view as Window | null)?.frameElement?.getBoundingClientRect();
+    sitzung.zeiger = { x: e.clientX + (r?.left ?? 0), y: e.clientY + (r?.top ?? 0) };
+  }
+
+  // Lesehilfen im Kapitel: Abstände, Abbildungen; in Ruhe auch dort kein Zeiger
+  $effect(() => {
+    const css = hilfenEpubCss(lesehilfen.hilfen) + (sitzung.ruhig ? "\n* { cursor: none !important; }" : "");
+    if (bereit) untrack(() => anzeige?.zusatz(css));
+  });
 
   function gerueckt(s: Epubstand) {
     stand = s;
@@ -178,6 +228,8 @@
     quelle?.zerstoere();
     sitzung.quelle = null;
     sitzung.rand = null;
+    sitzung.hilfe = null;
+    sitzung.farbwahl = null;
     anzeige?.schliesse();
     sitzung.griffe = null;
   });
