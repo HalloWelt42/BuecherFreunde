@@ -53,7 +53,7 @@
     try {
       const a = await reichereAutorAn(id);
       if (a.angereichert) antwort = a;
-      else suchgrund = a.grund ?? "Kein passender Eintrag gefunden";
+      else suchgrund = a.grund || "Kein passender Eintrag gefunden";
     } catch (e) {
       suchgrund = e instanceof Error ? e.message : String(e);
     } finally {
@@ -71,7 +71,7 @@
   <Knopf text="Autoren" symbol="arrow-left" klein href="/authors" />
   {#if autor}
     <span class="reihe schiebt">
-      <Knopf text="Lexikon" symbol="book-atlas" klein laeuft={sucht} titel="Bei Wikipedia und Wikidata nachsehen, danach vergleichen" onclick={() => void sucheImLexikon()} />
+      <Knopf text="Lexikon" symbol="book-atlas" klein laeuft={sucht} titel="In Normdatei und Lexikon nachsehen, danach vergleichen" onclick={() => void sucheImLexikon()} />
       <Knopf text="Bearbeiten" symbol="pen" klein gedrueckt={bearbeitet} onclick={() => (bearbeitet = !bearbeitet)} />
     </span>
   {/if}

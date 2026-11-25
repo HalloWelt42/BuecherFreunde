@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Wie sicher der Lexikoneintrag zum Autor passt, mit Erklärung auf Antippen
+  // Wie sicher der Eintrag zum Autor passt, mit Erklärung auf Antippen
   import Menue from "../../lib/teile/Menue.svelte";
   import Symbol from "../../lib/teile/Symbol.svelte";
   import { PUNKTE, sicherheit, STUFEN } from "./angaben";
@@ -15,7 +15,7 @@
 </button>
 
 {#if offen}
-  <Menue anker={knopf} name="Sicherheit des Lexikoneintrags" breite="22rem" onschliessen={() => (offen = false)}>
+  <Menue anker={knopf} name="Sicherheit des Eintrags" breite="22rem" onschliessen={() => (offen = false)}>
     <h2>Wie sicher ist das?</h2>
     <dl class="angaben">{#each PUNKTE as [n, text] (text)}<dt class="zahl">+{n}</dt><dd>{text}</dd>{/each}</dl>
     <h3>Stufen</h3>

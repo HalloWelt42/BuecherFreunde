@@ -2,10 +2,15 @@
 import type { Autoreneinzeln, Autorvorschlag, Anreicherung } from "../../lib/api/authors";
 import type { Vergleichszeile } from "../../lib/teile/Vergleichstabelle.svelte";
 
+/** Ein Jahr, vor Christus mit Zusatz */
+export function jahr(n: number): string {
+  return n < 0 ? `${-n} v. Chr.` : String(n);
+}
+
 export function lebensdaten(a: { birth_year: number | null; death_year: number | null }): string {
   if (!a.birth_year && !a.death_year) return "";
-  if (!a.death_year) return `geboren ${a.birth_year}`;
-  return `${a.birth_year ?? "unbekannt"} bis ${a.death_year}`;
+  if (!a.death_year) return `geboren ${jahr(a.birth_year!)}`;
+  return `${a.birth_year ? jahr(a.birth_year) : "unbekannt"} bis ${jahr(a.death_year)}`;
 }
 
 export function anfangsbuchstaben(name: string): string {
@@ -29,9 +34,9 @@ export function sicherheit(stufe: string | undefined) {
 }
 
 export const PUNKTE: [string, string][] = [
-  ["10", "Beruf Schriftsteller oder Autor"], ["8", "Name stimmt genau"], ["5", "Deutscher Lexikonartikel"], ["1 bis 10", "Bekanntheit"], ["15", "Werke stimmen mit der Bibliothek überein"], ["30", "ISBN stimmt überein"],
+  ["30", "Normdatei über die ISBN eines Buchs"], ["30", "ISBN stimmt überein"], ["15", "Werke stimmen mit der Bibliothek überein"], ["10", "Beruf Schriftsteller oder Autor, Fachberuf 6"], ["8", "Name stimmt genau"], ["5", "Deutscher Lexikonartikel"], ["1 bis 10", "Bekanntheit"],
 ];
-export const STUFEN: [string, string][] = [["sicher", "ab 15 Punkten oder mit Buch- oder ISBN-Treffer"], ["wahrscheinlich", "8 bis 14 Punkte"], ["unsicher", "unter 8 Punkten"]];
+export const STUFEN: [string, string][] = [["sicher", "über ein Buch der Bibliothek belegt, oder als einziger dieses Namens ab 15 Punkten"], ["wahrscheinlich", "ab 8 Punkten"], ["unsicher", "darunter"]];
 
 export interface Autorformular {
   name: string;
@@ -73,7 +78,7 @@ export function aenderungen(a: Autoreneinzeln, f: Autorformular): Record<string,
 }
 
 const FELDER: [keyof Autorvorschlag & string, string][] = [
-  ["name", "Name"], ["beschreibung", "Beschreibung"], ["birth_year", "Geburtsjahr"], ["death_year", "Todesjahr"], ["nationality", "Nationalität"], ["biography", "Biografie"], ["wikidata_id", "Wikidata"], ["wikipedia_url", "Wikipedia"],
+  ["name", "Name"], ["beschreibung", "Beschreibung"], ["birth_year", "Geburtsjahr"], ["death_year", "Todesjahr"], ["nationality", "Nationalität"], ["biography", "Biografie"], ["wikidata_id", "Wikidata"], ["wikipedia_url", "Wikipedia"], ["website", "Website"],
 ];
 const KURZ = 320;
 
@@ -91,8 +96,18 @@ export function vergleichszeilen(autor: Autoreneinzeln, a: Anreicherung, fotoAlt
     const gleich = !neu || neu === alt;
     zeilen.push({ schluessel: k, feld, alt: kurz(alt), neu: kurz(neu || alt), gewaehlt: !gleich, gleich });
   }
+  const verweise = verweistext(a.vorschlag?.verweise);
+  const bisher = verweistext((a.aktuell?.verweise as Record<string, string> | undefined) ?? Object.fromEntries(autor.verweise?.map((v) => [v.art, v.kennung]) ?? []));
+  if (verweise) zeilen.push({ schluessel: "verweise", feld: "Verweise", alt: bisher, neu: verweise, gewaehlt: verweise !== bisher, gleich: verweise === bisher });
   if (a.vorschlag?.photo_url) zeilen.push({ schluessel: "photo_url", feld: "Foto", alt: "", neu: "", gewaehlt: true, gleich: false, bildAlt: a.aktuell?.hat_foto ? fotoAlt : undefined, bildNeu: a.vorschlag.photo_url });
   return zeilen;
+}
+
+const VERWEISNAMEN: Record<string, string> = { gnd: "GND", viaf: "VIAF", isni: "ISNI", orcid: "ORCID" };
+
+/** "GND 115673784, VIAF 59157273" in fester Reihenfolge */
+export function verweistext(v: Record<string, string> | undefined): string {
+  return Object.keys(VERWEISNAMEN).filter((k) => v?.[k]).map((k) => `${VERWEISNAMEN[k]} ${v![k]}`).join(", ");
 }
 
 /** Was an den Server geht: nur gewählte Felder, dazu Werke und Herkunft des Vorschlags */

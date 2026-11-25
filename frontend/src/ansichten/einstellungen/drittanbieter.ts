@@ -16,13 +16,13 @@ export const server: Paket[] = [
   p("EbookLib", "AGPL-3.0", "https://github.com/aerkalov/ebooklib", "EPUB lesen"),
   p("mobi", "GPL-3.0", "https://github.com/iscc/mobi", "MOBI lesen"),
   p("Pillow", "MIT-CMU", "https://github.com/python-pillow/Pillow", "Bilder der Umschläge"),
-  p("httpx", "BSD-3-Clause", "https://github.com/encode/httpx", "Abruf von Angaben und freien Büchern"),
+  p("httpx", "BSD-3-Clause", "https://github.com/encode/httpx", "Verbindung zu Kellerwolke und Hausdiensten"),
+  p("Requests", "Apache-2.0", "https://github.com/psf/requests", "Abruf von Angaben und freien Büchern"),
   p("aiosqlite", "MIT", "https://github.com/omnilib/aiosqlite", "Datenbank"),
   p("openai", "Apache-2.0", "https://github.com/openai/openai-python", "Anschluss an die KI"),
   p("Pydantic Settings", "MIT", "https://github.com/pydantic/pydantic-settings", "Einrichtung"),
   p("BeautifulSoup4", "MIT", "https://www.crummy.com/software/BeautifulSoup/", "Text aus Webseiten"),
   p("isbnlib", "LGPL-3.0", "https://github.com/xlcnd/isbnlib", "ISBN prüfen und suchen"),
-  p("Wikipedia-API", "MIT", "https://github.com/martin-majlis/Wikipedia-API", "Lexikon"),
   p("python-multipart", "Apache-2.0", "https://github.com/andrew-d/python-multipart", "Hochladen"),
 ];
 

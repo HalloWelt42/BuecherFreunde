@@ -9,6 +9,8 @@
     gleich: boolean;
     bildAlt?: string;
     bildNeu?: string;
+    /** woher der neue Wert kommt, wenn mehrere Quellen beitragen */
+    herkunft?: string;
   }
 </script>
 
@@ -28,7 +30,7 @@
     {#each zeilen as z (z.schluessel)}
       <tr class:gleich={z.gleich}>
         <td class="wahl"><Haekchen an={z.gewaehlt && !z.gleich} gesperrt={z.gleich || gesperrt} name="{z.feld} übernehmen" onwahl={(an) => onwahl(z.schluessel, an)} /></td>
-        <td class="feldname">{z.feld}</td>
+        <td class="feldname">{z.feld}{#if z.herkunft}<span class="herkunft">{z.herkunft}</span>{/if}</td>
         <td class="leise" data-spalte="Bisher">
           {#if z.bildAlt}<Bildvergleich adresse={z.bildAlt} name="{z.feld}, bisher" />{:else}<span class="wert">{z.alt || "leer"}</span>{/if}
         </td>
@@ -57,6 +59,12 @@
     padding-right: 0;
   }
   .gleich .feldname {
+    color: var(--tinte-3);
+  }
+  .herkunft {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 400;
     color: var(--tinte-3);
   }
   .wert {

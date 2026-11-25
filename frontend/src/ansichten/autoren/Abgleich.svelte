@@ -35,7 +35,7 @@
     {#if abgleich.fertig && abgleich.gesamt}<p>{abgleich.abgebrochen ? "Angehalten" : "Fertig"} nach {zahl(abgleich.stelle)} von {zahl(abgleich.gesamt)} Autoren.</p>
     {:else if abgleich.fertig && !abgleich.grund}<p>Alle Autoren haben schon einen Eintrag, es gab nichts zu tun.</p>{/if}
   {:else}
-    <p>Sucht zu jedem Autor den passenden Eintrag bei Wikipedia und Wikidata. Sichere Treffer werden auf Wunsch gleich übernommen, alle anderen stehen danach hier zur Auswahl.</p>
+    <p>Sucht zu jedem Autor den passenden Eintrag in Normdatei und Lexikon, zuerst über die ISBN seiner Bücher. Sichere Treffer werden auf Wunsch gleich übernommen, alle anderen stehen danach hier zur Auswahl. Die Quellen werden dabei schonend gefragt; macht eine Pause, hält der Abgleich an.</p>
   {/if}
 
   {#if abgleich.ergebnisse.length}
@@ -44,7 +44,7 @@
       <div class="abgleichliste">
         {#each abgleich.gefunden as e (e.autor)}
           {@const s = sicherheit(e.vorschlag?.konfidenz)}
-          <a href="/author/{e.autor}"><b>{e.name}</b><span class="leise">{e.vorschlag?.name ?? ""}</span><span><span class="marke-text {s.ton}">{s.wort}{e.vorschlag?.score ? `, ${e.vorschlag.score} Punkte` : ""}</span>{#if e.uebernommen}<span class="marke-text gut"><Symbol name="check" />übernommen</span>{/if}</span></a>
+          <a href="/author/{e.autor}"><b>{e.name}</b><span class="leise">{e.vorschlag?.name ?? ""}</span><span><span class="marke-text {s.ton}">{s.wort}{e.vorschlag?.score ? `, ${e.vorschlag.score} Punkte` : ""}</span>{#if e.uebernommen}<span class="marke-text gut"><Symbol name="check" />übernommen</span>{:else if e.grund && e.grund !== "nicht sicher genug"}<span class="leise">{e.grund}</span>{/if}</span></a>
         {/each}
       </div>
     {/if}

@@ -1,5 +1,5 @@
 import { leseKnopf, lesestand, lesewerte, leseweise, standText, stellenAdresse } from "../src/lib/lesestand";
-import { nutzlast, vergleiche } from "../src/ansichten/buch/angaben";
+import { fundart, gleichwertig, nutzlast, vergleiche } from "../src/ansichten/buch/angaben";
 
 const buch = (reading_position: string, page_count = 200) => ({ reading_position, page_count });
 
@@ -44,6 +44,28 @@ describe("Angaben vergleichen", () => {
     const wahl = Object.fromEntries(zeilen.map((z) => [z.schluessel, z.gewaehlt]));
     expect(wahl).toEqual({ titel: false, verlag: true, jahr: true, cover: true, kategorien: true });
     expect(zeilen.find((z) => z.schluessel === "kategorien")?.neu).toBe("dazu: Klassiker");
+  });
+
+  it("nimmt andere Schreibweisen derselben Angabe nicht als Unterschied", () => {
+    expect(gleichwertig("isbn", "978-3-257-22953-0", "9783257229530")).toBe(true);
+    expect(gleichwertig("autor", "Bernhard Schlink", "Schlink Bernhard")).toBe(true);
+    expect(gleichwertig("autor", "Schlink, Bernhard", "Bernhard Schlink")).toBe(false);
+    const zeilen = vergleiche({ titel: "Der Vorleser", isbn: "9783257229530" }, { titel: "DER VORLESER", isbn: "978-3-257-22953-0" }, "");
+    expect(zeilen.map((z) => [z.schluessel, z.gleich, z.gewaehlt])).toEqual([["titel", false, false], ["isbn", true, false]]);
+  });
+
+  it("nennt die Quelle je Feld und wie gefunden wurde", () => {
+    const v = { titel: "Effi Briest", jahr: 1896, cover_url: "/b.jpg", herkunft: { titel: "dnb", cover_url: "open_library" } };
+    const zeilen = vergleiche(v, { titel: "Effi", jahr: null }, "", { dnb: "Verzeichnis 3", open_library: "Verzeichnis 2" });
+    expect(zeilen.map((z) => z.herkunft)).toEqual(["Verzeichnis 3", undefined, "Verzeichnis 2"]);
+    expect(fundart({ fund: "isbn" })?.ton).toBe("gut");
+    expect(fundart({ fund: "titel", sicher: false })?.ton).toBe("warn");
+    expect(fundart({})).toBeNull();
+  });
+
+  it("legt schon vorhandene Regale ohne Rücksicht auf Groß und klein nicht noch einmal an", () => {
+    const z = vergleiche({ kategorien: ["romane", "Klassiker"] }, { kategorien: ["Romane"] }, "").find((x) => x.schluessel === "kategorien");
+    expect(z?.neu).toBe("dazu: Klassiker");
   });
 
   it("sendet nur Gewähltes, Listen als Regale", () => {

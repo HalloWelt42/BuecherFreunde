@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Vorschlag aus dem Lexikon neben den Angaben der Bibliothek; nichts ändert sich vor dem Übernehmen
+  // Vorschlag aus Lexikon und Normdatei neben den Angaben der Bibliothek; nichts ändert sich vor dem Übernehmen
   import { autorenFotoUrl, uebernehmAutorenDaten, type Anreicherung, type Autoreneinzeln } from "../../lib/api/authors";
   import { navigate } from "../../lib/router.svelte";
   import { bestand } from "../../lib/stand/bestand.svelte";
@@ -20,6 +20,7 @@
   let gescheitert = $state("");
 
   let vorschlag = $derived(antwort.vorschlag ?? {});
+  let herkunft = $derived(new Set(Object.values(vorschlag.herkunft ?? {})).size > 1 ? "Lexikon und Normdatei" : vorschlag.quelle === "gnd" ? "der Normdatei" : "dem Lexikon");
   let gewaehlt = $derived(zeilen.filter((z) => z.gewaehlt && !z.gleich).length);
   let werke = $derived(vorschlag.werke ?? []);
   let buecher = $derived(antwort.buecher_im_system ?? []);
@@ -57,7 +58,8 @@
 
 <Karte titel="Angaben vergleichen" symbol="code-compare" breit>
   {#snippet neben()}{#if vorschlag.konfidenz}<Konfidenz stufe={vorschlag.konfidenz} punkte={vorschlag.score} />{/if}{/snippet}
-  <p class="leise">Vorschlag von Wikipedia und Wikidata. Nichts ändert sich vor dem Übernehmen.</p>
+  <p class="leise">Vorschlag aus {herkunft}. Nichts ändert sich vor dem Übernehmen.</p>
+  {#each antwort.hinweise ?? [] as grund (grund)}<p class="leise klein"><Symbol name="circle-info" /> {grund}</p>{/each}
   <Vergleichstabelle {zeilen} gesperrt={laeuft} onwahl={schalte} />
   {#if werke.length}
     <details>

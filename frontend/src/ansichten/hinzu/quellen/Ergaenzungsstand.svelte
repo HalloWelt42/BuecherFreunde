@@ -26,6 +26,7 @@
       {#if e.laeuft}<Knopf text="Anhalten" symbol="stop" klein onclick={() => void halte()} />{:else}<Knopf text="Ergebnis ausblenden" symbol="xmark" klein frei onclick={() => auftraege.ergebnisAusblenden()} />{/if}
     </span>
   </div>
+  {#if e.grund}<p class="marke-text warn" role="status">Angaben angehalten: {e.grund}</p>{/if}
 </div>
 
 <style>

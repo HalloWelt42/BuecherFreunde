@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { aenderungen, anfangsbuchstaben, formularVon, imBestand, lebensdaten, pruefe, schriftAuf, uebernahmefelder, vergleichszeilen } from "../src/ansichten/autoren/angaben";
+import { aenderungen, anfangsbuchstaben, formularVon, imBestand, lebensdaten, pruefe, schriftAuf, uebernahmefelder, verweistext, vergleichszeilen } from "../src/ansichten/autoren/angaben";
 import { nachBand } from "../src/ansichten/sammlung/reihenfolge";
 import { betroffen, regalwerte } from "../src/ansichten/hinzu/quellen/ergaenzung";
 import type { Anreicherung, Autoreneinzeln } from "../src/lib/api/authors";
 
 const autor: Autoreneinzeln = {
-  id: 5, name: "Theodor Fontane", photo_path: "", birth_year: 1819, death_year: null, nationality: "", biography: "", beschreibung: "Erzähler", wikidata_id: "", wikipedia_url: "", website: "", quelle: "", konfidenz: "", score: 0, books: [], werke: [],
+  id: 5, name: "Theodor Fontane", photo_path: "", birth_year: 1819, death_year: null, nationality: "", biography: "", beschreibung: "Erzähler", wikidata_id: "", wikipedia_url: "", website: "", quelle: "", konfidenz: "", score: 0, books: [], werke: [], verweise: [],
 };
 
 describe("Autoren: Angaben", () => {
@@ -13,6 +13,7 @@ describe("Autoren: Angaben", () => {
     expect(lebensdaten({ birth_year: null, death_year: null })).toBe("");
     expect(lebensdaten({ birth_year: 1819, death_year: null })).toBe("geboren 1819");
     expect(lebensdaten({ birth_year: null, death_year: 1898 })).toBe("unbekannt bis 1898");
+    expect(lebensdaten({ birth_year: -427, death_year: -347 })).toBe("427 v. Chr. bis 347 v. Chr.");
   });
 
   it("nimmt zwei Anfangsbuchstaben und lesbare Schrift", () => {
@@ -62,6 +63,16 @@ describe("Autoren: Vergleich", () => {
     expect(felder).not.toHaveProperty("beschreibung");
     expect(felder).not.toHaveProperty("name");
     expect(felder).toMatchObject({ death_year: 1898, konfidenz: "hoch", score: 42 });
+  });
+
+  it("zeigt Verweise auf Normdateien als eine Zeile und sendet sie nur gewählt", () => {
+    expect(verweistext({ viaf: "59157273", gnd: "115673784", fremd: "x" })).toBe("GND 115673784, VIAF 59157273");
+    const mit: Anreicherung = { ...antwort, vorschlag: { ...antwort.vorschlag, verweise: { gnd: "115673784" } }, aktuell: { ...antwort.aktuell, verweise: {} } };
+    const zeilen = vergleichszeilen(autor, mit, "/foto");
+    expect(zeilen.find((z) => z.schluessel === "verweise")).toMatchObject({ alt: "", neu: "GND 115673784", gewaehlt: true });
+    expect(uebernahmefelder(mit.vorschlag!, zeilen).verweise).toEqual({ gnd: "115673784" });
+    const schon = { ...mit, aktuell: { ...mit.aktuell, verweise: { gnd: "115673784" } } };
+    expect(vergleichszeilen(autor, schon, "/foto").find((z) => z.schluessel === "verweise")?.gleich).toBe(true);
   });
 
   it("erkennt Werke im Bestand in beide Richtungen", () => {

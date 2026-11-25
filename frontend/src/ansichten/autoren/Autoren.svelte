@@ -23,7 +23,7 @@
 
   let s = $derived(ansicht.statistik);
   let zeigeAbgleich = $derived(abgleichOffen || autorenabgleich.laeuft);
-  let offen = $derived(s ? s.gesamt - s.mit_wikidata : 0);
+  let offen = $derived(s ? s.gesamt - s.mit_eintrag : 0);
 
   onMount(() => {
     void (ansicht.geladen ? ansicht.auffrischen() : ansicht.laden());
@@ -47,9 +47,9 @@
     const ja = await frage({
       titel: "Autoren aus den Büchern neu bilden?",
       folgen: [
-        `Autoren ohne Lexikoneintrag${s ? ` (${zahl(offen)})` : ""} werden gelöscht und aus den Angaben der Bücher neu angelegt.`,
+        `Autoren ohne Eintrag in Lexikon oder Normdatei${s ? ` (${zahl(offen)})` : ""} werden gelöscht und aus den Angaben der Bücher neu angelegt.`,
         "Von Hand eingetragene Lebensdaten und Biografien dieser Autoren gehen dabei verloren.",
-        `Autoren mit Lexikoneintrag${s ? ` (${zahl(s.mit_wikidata)})` : ""} bleiben mit Foto und Biografie erhalten.`,
+        `Autoren mit Eintrag${s ? ` (${zahl(s.mit_eintrag)})` : ""} bleiben mit Foto, Biografie und Verweisen erhalten.`,
       ],
       ja: "Neu bilden",
       symbol: "users-gear",
@@ -90,7 +90,7 @@
 
 <div class="werkzeug">
   <h1>Autoren</h1>
-  {#if s}<span class="leise zahl">{zahl(s.gesamt)}, davon {zahl(s.mit_wikidata)} mit Lexikoneintrag</span>{/if}
+  {#if s}<span class="leise zahl">{zahl(s.gesamt)}, davon {zahl(s.mit_eintrag)} mit Eintrag</span>{/if}
   <span class="reihe schiebt">
     <Knopf text="Lexikon abgleichen" symbol="arrows-rotate" klein aufgeklappt={zeigeAbgleich} onclick={() => (abgleichOffen = !abgleichOffen)} />
     <Knopf text="Aus den Büchern neu bilden" symbol="users-gear" klein laeuft={laeuft === "neu"} gesperrt={autorenabgleich.laeuft} onclick={() => void bildeNeu()} />

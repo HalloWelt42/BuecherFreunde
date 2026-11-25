@@ -36,6 +36,13 @@ export interface Werk {
   book_id: number | null;
 }
 
+/** Kennung in einer Normdatei mit Adresse dorthin */
+export interface Verweis {
+  art: "gnd" | "viaf" | "isni" | "orcid";
+  kennung: string;
+  adresse: string;
+}
+
 export interface Autoreneinzeln extends Omit<Autor, "book_count"> {
   biography: string;
   beschreibung: string;
@@ -47,6 +54,7 @@ export interface Autoreneinzeln extends Omit<Autor, "book_count"> {
   score: number;
   books: Autorbuch[];
   werke: Werk[];
+  verweise: Verweis[];
 }
 
 export interface Autorvorschlag {
@@ -58,11 +66,16 @@ export interface Autorvorschlag {
   nationality?: string;
   wikidata_id?: string;
   wikipedia_url?: string;
+  website?: string;
   photo_url?: string;
   konfidenz?: string;
   score?: number;
   quelle?: string;
   werke?: { titel: string; wikidata_id?: string }[];
+  /** Art -> Kennung in einer Normdatei */
+  verweise?: Record<string, string>;
+  /** Feld -> woher es kommt: "wikidata" oder "gnd" */
+  herkunft?: Record<string, string>;
 }
 
 export interface Anreicherung {
@@ -71,6 +84,8 @@ export interface Anreicherung {
   vorschlag?: Autorvorschlag;
   aktuell?: Record<string, unknown> & { hat_foto?: boolean };
   buecher_im_system?: { id: number; title: string; isbn: string }[];
+  /** Quellen, die gerade nicht antworten, mit Grund */
+  hinweise?: string[];
 }
 
 export interface Uebernahme {
@@ -85,6 +100,9 @@ export interface Autorenstatistik {
   mit_biografie: number;
   mit_foto: number;
   mit_wikidata: number;
+  mit_normdatei: number;
+  /** mit Lexikon- oder Normdatei-Eintrag */
+  mit_eintrag: number;
 }
 
 export interface Neubildung {
@@ -97,7 +115,7 @@ export interface Neubildung {
 
 /** Ein Ereignis des Abgleichs, je nach typ mit anderen Angaben */
 export interface Abgleichereignis {
-  typ: "start" | "suche" | "gefunden" | "nicht_gefunden" | "fehler" | "fertig" | "abgebrochen";
+  typ: "start" | "suche" | "gefunden" | "nicht_gefunden" | "fehler" | "fertig" | "abgebrochen" | "ruht";
   gesamt?: number;
   index?: number;
   autor_id?: number;
@@ -105,6 +123,8 @@ export interface Abgleichereignis {
   vorschlag?: Autorvorschlag;
   uebernommen?: boolean;
   fehler?: string | number;
+  /** bei "ruht": welche Quelle Pause macht und bis wann; bei "gefunden": warum nicht übernommen */
+  grund?: string;
 }
 
 export const holeAutoren = (params: Parameter = {}): Promise<Autorenliste> => get("/api/authors", params);

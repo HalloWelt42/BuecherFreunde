@@ -10,6 +10,7 @@ export interface Abgleichergebnis {
   vorschlag?: Autorvorschlag;
   uebernommen?: boolean;
   fehler?: string;
+  grund?: string;
 }
 
 const AUFTRAG = "autoren";
@@ -55,9 +56,10 @@ class Autorenabgleich {
       this.name = e.name ?? "";
     } else if (e.typ === "gefunden" || e.typ === "nicht_gefunden" || e.typ === "fehler") {
       this.stelle = e.index ?? this.stelle;
-      this.ergebnisse = [...this.ergebnisse, { autor: e.autor_id ?? 0, name: e.name ?? "", art: e.typ, vorschlag: e.vorschlag, uebernommen: e.uebernommen, fehler: e.fehler === undefined ? undefined : String(e.fehler) }];
-    } else if (e.typ === "fertig" || e.typ === "abgebrochen") {
-      this.abgebrochen = e.typ === "abgebrochen";
+      this.ergebnisse = [...this.ergebnisse, { autor: e.autor_id ?? 0, name: e.name ?? "", art: e.typ, vorschlag: e.vorschlag, uebernommen: e.uebernommen, grund: e.grund, fehler: e.fehler === undefined ? undefined : String(e.fehler) }];
+    } else if (e.typ === "fertig" || e.typ === "abgebrochen" || e.typ === "ruht") {
+      this.abgebrochen = e.typ !== "fertig";
+      if (e.typ === "ruht") this.grund = `Angehalten, eine Quelle macht Pause: ${e.grund ?? ""}`;
       this.#beende();
       return;
     }

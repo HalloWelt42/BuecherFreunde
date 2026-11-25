@@ -1,13 +1,6 @@
 // Grundeinstellungen, Fassung, Zustand
 import { get, post } from "./client";
 
-export interface Erreichbarkeit {
-  erreichbar: boolean;
-  grund?: string;
-  info?: string;
-  url?: string;
-}
-
 export interface Verzeichnisse {
   datenbank: string;
   speicher: string;
@@ -49,8 +42,6 @@ export const ladeConfig = (): Promise<any> => get("/api/config");
 export const ladeVersion = (): Promise<{ version: string }> => get("/api/config/version");
 export const ladePfade = (): Promise<Verzeichnisse> => get("/api/config/paths");
 export const healthCheck = (): Promise<{ status: string }> => get("/api/health");
-export const gutenbergStatus = (): Promise<Erreichbarkeit> => get("/api/gutenberg/status");
-export const quellenStatus = (): Promise<Record<"google_books" | "open_library" | "wikipedia", Erreichbarkeit>> => get("/api/metadata/verbindungsstatus");
 export const sicherungAnlegen = (): Promise<{ message: string; filename: string; size: number; neu: boolean }> => post("/api/backup/create");
 export const sicherungen = (): Promise<Sicherung[]> => get("/api/backup/list");
 /** Nur Bericht: öffnet jede Datei einmal, ändert nichts */

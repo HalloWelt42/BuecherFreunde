@@ -33,6 +33,8 @@ export interface Ergaenzung {
   metadaten_aktualisiert: number;
   volltext_extrahiert: number;
   fehler: number;
+  /** warum keine Angaben mehr ergänzt werden: alle Verzeichnisse machen Pause */
+  grund?: string;
 }
 
 /** Auftrag einer Ansicht, etwa der Abgleich der Autoren */

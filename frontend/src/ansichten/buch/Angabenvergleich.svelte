@@ -1,11 +1,12 @@
 <script lang="ts">
-  // Angaben aus Verzeichnissen vergleichen und übernehmen; dazu Buchtext, KI-Vorschlag und neuer Umschlag
+  // Angaben aus den Quellen vergleichen und übernehmen; dazu Buchtext, KI-Vorschlag und neuer Umschlag
   import { anschluesse } from "../../lib/stand/anschluesse.svelte";
   import { coverUrl, umschlagNeu } from "../../lib/api/books";
   import { sucheMetadaten, uebernehmMetadaten } from "../../lib/api/metadata";
   import { anzahl } from "../../lib/format";
   import { bestand } from "../../lib/stand/bestand.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
+  import { quellen as alleQuellen } from "../../lib/stand/quellen.svelte";
   import Karte from "../../lib/teile/Karte.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Segment from "../../lib/teile/Segment.svelte";
@@ -15,16 +16,17 @@
   import Beschreibungstext from "./Beschreibungstext.svelte";
   import Kivorschlag from "./Kivorschlag.svelte";
   import Rohdaten from "./Rohdaten.svelte";
-  import { nutzlast, vergleiche, type Quelle, type Vorschlag } from "./angaben";
+  import { ALLE, fundart, nutzlast, vergleiche, type Quelle, type Vorschlag } from "./angaben";
 
   let { buch, ongeaendert }: { buch: BuchEinzeln; ongeaendert: () => void } = $props();
 
-  const quellen: [Quelle, string][] = [["google_books", "Verzeichnis 1"], ["open_library", "Verzeichnis 2"], ["wikipedia", "Lexikon"]];
-  let quelle = $state<Quelle | "">("");
+  let quellen = $derived<[Quelle, string][]>([...(alleQuellen.buecher.length > 1 ? [[ALLE, "Alle"] as [Quelle, string]] : []), ...alleQuellen.buecher.map((q) => [q.kennung, q.name] as [Quelle, string])]);
+  let quelle = $state<Quelle>("");
   let sucht = $state(false);
   let speichert = $state(false);
   let holtUmschlag = $state(false);
   let hinweis = $state("");
+  let nebenbei = $state<string[]>([]);
   let vorschlag = $state<Vorschlag | null>(null);
   let zeilen = $state<Vergleichszeile[]>([]);
   let listen = $state<string[]>([]);
@@ -33,6 +35,9 @@
 
   let gewaehlt = $derived(zeilen.filter((z) => z.gewaehlt && !z.gleich).map((z) => z.schluessel));
   let zahlGewaehlt = $derived(gewaehlt.length + listen.length);
+  let gefunden = $derived(vorschlag ? fundart(vorschlag) : null);
+
+  $effect(() => void alleQuellen.bereit());
 
   function verwirf() {
     vorschlag = null;
@@ -40,6 +45,7 @@
     listen = [];
     quelle = "";
     hinweis = "";
+    nebenbei = [];
   }
 
   async function suche(neu: Quelle) {
@@ -48,12 +54,13 @@
     sucht = true;
     try {
       const a = await sucheMetadaten(buch.id, neu);
-      if (!a.angereichert) {
-        hinweis = `Im ${quellen.find(([q]) => q === neu)?.[1]} steht zu diesem Buch nichts.`;
+      nebenbei = a.angereichert ? (a.hinweise ?? []) : [];
+      if (!a.angereichert || !a.vorschlag || !a.aktuell) {
+        hinweis = a.grund ?? "Nichts gefunden.";
         return;
       }
       vorschlag = a.vorschlag;
-      zeilen = vergleiche(a.vorschlag, a.aktuell, coverUrl(buch.id, buch.cover_stand || buch.updated_at));
+      zeilen = vergleiche(a.vorschlag, a.aktuell, coverUrl(buch.id, buch.cover_stand || buch.updated_at), neu === ALLE ? alleQuellen.namen : {});
     } catch (e) {
       hinweis = e instanceof Error ? e.message : String(e);
     } finally {
@@ -65,8 +72,9 @@
     if (!vorschlag) return;
     speichert = true;
     try {
-      await uebernehmMetadaten(buch.id, nutzlast(vorschlag, quelle, new Set(gewaehlt), new Set(listen)));
-      melde.gut("Übernommen");
+      const e = await uebernehmMetadaten(buch.id, nutzlast(vorschlag, quelle, new Set(gewaehlt), new Set(listen)));
+      if (e.hinweis) melde.warn(`Übernommen, Umschlag nicht: ${e.hinweis}`);
+      else melde.gut("Übernommen");
       verwirf();
       bestand.geaendert();
       ongeaendert();
@@ -97,11 +105,14 @@
 
 <Karte titel="Angaben vergleichen" symbol="code-compare" breit>
   <div class="reihe">
-    <Segment name="Quelle" werte={quellen} wert={quelle as Quelle} gesperrt={sucht} onwahl={(q) => void suche(q)} />
+    {#if quellen.length}<Segment name="Quelle" werte={quellen} wert={quelle} gesperrt={sucht} onwahl={(q) => void suche(q)} />
+    {:else if alleQuellen.geladen}<span class="leise">Keine Quelle eingeschaltet.</span>{/if}
     <span class="leise">{#if sucht}<Symbol name="circle-notch" dreht /> wird gesucht{:else}Nichts ändert sich vor dem Übernehmen.{/if}</span>
   </div>
   {#if hinweis}<p class="marke-text warn" role="status">{hinweis}</p>{/if}
   {#if vorschlag}
+    {#if gefunden}<p class="marke-text {gefunden.ton}"><Symbol name={gefunden.ton === "gut" ? "circle-check" : "circle-question"} />{gefunden.text}</p>{/if}
+    {#each nebenbei as grund (grund)}<p class="leise klein"><Symbol name="circle-info" /> {grund}</p>{/each}
     <Vergleichstabelle {zeilen} gesperrt={speichert} onwahl={waehle} />
     {#if vorschlag.raw && Object.keys(vorschlag.raw).length}<Rohdaten daten={vorschlag.raw} gewaehlt={listen} onwahl={(name, an) => (listen = an ? [...listen, name] : listen.filter((l) => l !== name))} />{/if}
   {/if}

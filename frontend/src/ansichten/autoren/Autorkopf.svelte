@@ -24,6 +24,7 @@
     <div class="reihe">
       {#if autor.wikipedia_url}<Knopf text="Wikipedia" symbol="book-atlas" klein extern href={autor.wikipedia_url} />{/if}
       {#if autor.wikidata_id}<Knopf text={autor.wikidata_id} symbol="database" klein extern href="https://www.wikidata.org/wiki/{autor.wikidata_id}" titel="Eintrag bei Wikidata" />{/if}
+      {#each autor.verweise ?? [] as v (v.art)}<Knopf text="{v.art.toUpperCase()} {v.kennung}" symbol="id-card" klein extern href={v.adresse} titel="Eintrag in der Normdatei" />{/each}
       {#if autor.website}<Knopf text="Website" symbol="link" klein extern href={autor.website} />{/if}
       {#if autor.konfidenz}<Konfidenz stufe={autor.konfidenz} punkte={autor.score} />{/if}
     </div>
