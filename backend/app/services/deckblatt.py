@@ -43,6 +43,7 @@ def von_datei(datei: Path, format_: str = "") -> bytes | None:
 def erste_seite(datei: Path) -> bytes | None:
     import fitz
 
+    fitz.TOOLS.mupdf_display_errors(False)                  # fehlende Schriften eines Buchs gehören in kein Protokoll
     with fitz.open(str(datei)) as doc:
         if doc.is_reflowable:
             doc.layout(width=SEITE[0], height=SEITE[1], fontsize=13)

@@ -1,4 +1,4 @@
-"""Falsche und fehlende Umschläge von EPUB-Büchern berichtigen (im Container: docker exec -i buecherfreunde-backend python - [los]).
+"""Falsche und fehlende Umschläge von EPUB-Büchern berichtigen (im Container: python - [los] [schnell]).
 
 Ersetzt wird nur, was sicher falsch ist: kein Umschlag, kein JPEG, zu breit oder zu klein, oder das gemerkte Bild ist eines aus
 dem Inneren des Buchs, obwohl das Buch einen Umschlag nennt. Das alte Bild bleibt unter `_vorher` neben den Umschlägen. Das Buch
@@ -19,6 +19,7 @@ from backend.app.services import deckblatt
 from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover
 
 LOS = "los" in sys.argv
+SCHNELL = "schnell" in sys.argv        # nur, was schon dem Bild anzusehen ist; sonst auch jedes Buch auf Bilder aus dem Inneren
 
 
 def verdacht(daten: bytes | None) -> str:
@@ -46,13 +47,15 @@ async def lauf() -> None:
         pfad = get_sidecar_path(b["hash"], "cover.jpg")
         alt = pfad.read_bytes() if pfad.exists() else None
         grund = verdacht(alt)
+        if SCHNELL and not grund:
+            continue
         datei = get_original_file(b["hash"])
         if datei is None:
             gruende["noch nicht kopiert"] = gruende.get("noch nicht kopiert", 0) + 1
             continue
         try:
             grund = grund or ("Bild aus dem Inneren" if aus_dem_inneren(datei, alt) else "")
-        except zipfile.BadZipFile:
+        except (zipfile.BadZipFile, KeyError, NotImplementedError):
             pass
         if not grund:
             continue
