@@ -1,13 +1,12 @@
-// Vorlesen: welche Stimmen es gibt, welche gilt, was gerade klingt. Sprechen können der Sprechdienst (wenn einer angeschlossen
-// ist), die Stimmen des Geräts und die App Pappagei; jeder hinter derselben Schnittstelle (lib/vorlesen).
+// Vorlesen: welche Stimmen es gibt, welche gilt, was gerade klingt. Ist ein Sprechdienst angeschlossen, spricht nur er; sonst die
+// Stimmen des Geräts. Beide hinter derselben Schnittstelle (lib/vorlesen).
 import { ladeDienststimmen, type Dienststimmen } from "../api/vorlesen";
 import { lies as gemerkt, merke } from "../speicher";
 import { Dienstvorleser } from "../vorlesen/dienst";
 import { geraetDa, geraetestimmen, Geraetevorleser } from "../vorlesen/geraet";
-import { Pappagei } from "../vorlesen/pappagei";
 import type { Stimme, Vorleser } from "../vorlesen/typen";
 import { melde } from "./meldungen.svelte";
-import { schale } from "./schale.svelte";
+import { anschluesse } from "./anschluesse.svelte";
 
 const SCHLUESSEL = "vorlesen.stimme";
 const PROBE = "So klingt diese Stimme beim Vorlesen.";
@@ -21,14 +20,16 @@ class Vorlesestand {
   #dienst = $state<Dienststimmen | null>(null);
   #geraet = $state<Stimme[]>([]);
   #gefragt = false;
-  #vorleser: Record<string, Vorleser> = { dienst: new Dienstvorleser(), geraet: new Geraetevorleser(), pappagei: new Pappagei() };
+  #vorleser: Record<string, Vorleser> = { dienst: new Dienstvorleser(), geraet: new Geraetevorleser() };
   #spricht: Vorleser | null = null;
 
-  stimmen = $derived<Stimme[]>([
-    ...(this.#dienst?.da ? [{ id: "dienst:", name: "Vorgabe des Sprechdienstes", gruppe: "Sprechdienst" }, ...this.#dienst.stimmen.map((s) => ({ id: `dienst:${s.id}`, name: s.name, gruppe: GRUPPEN[s.gruppe] }))] : []),
-    ...this.#geraet,
-    ...(schale.telefon ? [] : [{ id: "pappagei:", name: "Pappagei", gruppe: "Dieses Gerät" }]),
-  ]);
+  stimmen = $derived<Stimme[]>(
+    anschluesse.jetzt.vorlesen
+      ? this.#dienst?.da
+        ? [{ id: "dienst:", name: "Vorgabe des Sprechdienstes", gruppe: "Sprechdienst" }, ...this.#dienst.stimmen.map((s) => ({ id: `dienst:${s.id}`, name: s.name, gruppe: GRUPPEN[s.gruppe] }))]
+        : []
+      : this.#geraet,
+  );
 
   /** Die Stimme, die gilt: die gewählte, solange es sie gibt, sonst die erste */
   stimme = $derived(this.stimmen.some((s) => s.id === this.#gewaehlt) ? this.#gewaehlt : (this.stimmen[0]?.id ?? ""));
@@ -44,7 +45,10 @@ class Vorlesestand {
   pruefe(): void {
     if (this.#gefragt) return;
     this.#gefragt = true;
-    ladeDienststimmen().then((d) => (this.#dienst = d)).catch(() => (this.#gefragt = false));
+    if (anschluesse.jetzt.vorlesen) {
+      ladeDienststimmen().then((d) => (this.#dienst = d)).catch(() => (this.#gefragt = false));
+      return;
+    }
     if (!geraetDa()) return;
     this.#geraet = geraetestimmen();
     speechSynthesis.addEventListener?.("voiceschanged", () => (this.#geraet = geraetestimmen()));
@@ -70,7 +74,7 @@ class Vorlesestand {
     this.halt();
     const [vorleser, stimme] = this.#teile();
     if (!text.trim()) return;
-    if (!vorleser) return void melde.warn("Hier gibt es keine Stimme zum Vorlesen");
+    if (!vorleser) return void melde.warn(this.hinweis || "Hier gibt es keine Stimme zum Vorlesen");
     this.#spricht = vorleser;
     Object.assign(this, { aktiv: true, wartet: true, was });
     const gilt = () => this.#spricht === vorleser;

@@ -5,12 +5,14 @@ import { Vorlauf } from "../src/lib/vorlesen/vorlauf";
 
 const antwort = { da: true, hinweis: "", stimmen: [{ id: "anna", name: "Anna", gruppe: "eigene" }, { id: "katalog:b", name: "Bert", gruppe: "eingebaut" }] };
 
-async function frisch(dienst: unknown) {
+async function frisch(dienst: unknown, angeschlossen = true) {
   vi.resetModules();
   vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(dienst))));
+  vi.stubGlobal("speechSynthesis", { getVoices: () => [{ voiceURI: "de-1", name: "Gerät", lang: "de-DE" }], addEventListener: () => {}, cancel: () => {} });
+  const { anschluesse } = await import("../src/lib/stand/anschluesse.svelte");
+  anschluesse.jetzt = { ...anschluesse.jetzt, vorlesen: angeschlossen };
   const { vorlesen } = await import("../src/lib/stand/vorlesen.svelte");
   vorlesen.pruefe();
-  await vi.waitFor(() => expect(fetch).toHaveBeenCalled());
   await new Promise((r) => setTimeout(r, 5));
   return vorlesen;
 }
@@ -21,17 +23,20 @@ describe("Stimmenauswahl", () => {
   it("bietet die Stimmen des Sprechdienstes in Gruppen, zuerst die Vorgabe", async () => {
     const v = await frisch(antwort);
     expect(v.stimme).toBe("dienst:");
-    expect(v.gruppen.map(([g]) => g)).toEqual(["Sprechdienst", "Eigene Stimmen", "Eingebaute Stimmen", "Dieses Gerät"]);
+    expect(v.gruppen.map(([g]) => g)).toEqual(["Sprechdienst", "Eigene Stimmen", "Eingebaute Stimmen"]);
   });
   it("merkt sich die Wahl auf dem Gerät", async () => {
     (await frisch(antwort)).waehle("dienst:anna");
     expect((await frisch(antwort)).stimme).toBe("dienst:anna");
   });
-  it("ohne Sprechdienst gelten die übrigen Stimmen, eine verschwundene Wahl fällt weg", async () => {
+  it("schweigt der Sprechdienst, springt keine andere Stimme ein", async () => {
+    expect((await frisch({ da: false, stimmen: [], hinweis: "Der Sprechdienst antwortet nicht" })).stimmen).toEqual([]);
+  });
+  it("ohne Sprechdienst gelten die Stimmen des Geräts, eine verschwundene Wahl fällt weg", async () => {
     localStorage.setItem("vorlesen.stimme", "dienst:anna");
-    const v = await frisch({ da: false, stimmen: [], hinweis: "" });
-    expect(v.stimmen.every((s) => !s.id.startsWith("dienst:"))).toBe(true);
-    expect(v.stimme).toBe("pappagei:");
+    const v = await frisch({}, false);
+    expect(v.stimmen.map((s) => s.id)).toEqual(["geraet:de-1"]);
+    expect(v.stimme).toBe("geraet:de-1");
   });
 });
 
