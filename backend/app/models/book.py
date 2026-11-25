@@ -73,6 +73,7 @@ class BookUpdate(BaseModel):
     year: int | None = None
     language: str | None = None
     description: str | None = None
+    page_count: int | None = None
     typ: str | None = None
     sammlung_id: int | None = None
     band_nummer: str | None = None

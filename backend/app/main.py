@@ -5,9 +5,12 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.ablage import orte
+from backend.app.ablage.wolke import wolke
+from backend.app.annahme.dienst import annahme
 from backend.app.api.ai import router as ai_router
+from backend.app.api.annahme import router as annahme_router
 from backend.app.api.auth import router as auth_router
 from backend.app.api.authors import router as authors_router
 from backend.app.api.backup import router as backup_router
@@ -22,45 +25,16 @@ from backend.app.api.collections import router as collections_router
 from backend.app.api.fundus import router as fundus_router
 from backend.app.api.highlights import router as highlights_router
 from backend.app.api.labels import router as labels_router
+from backend.app.api.neubau import router as neubau_router
 from backend.app.api.notes import router as notes_router
 from backend.app.api.user_data import router as user_data_router
 from backend.app.api.wartung import router as wartung_router
 from backend.app.core.anmeldung import eigener_zugang, schliessen as anmeldung_schliessen
 from backend.app.core.config import settings
 from backend.app.core.database import db
+from backend.app.services import bedeutung
 
 logger = logging.getLogger("buecherfreunde")
-
-
-MARKER_FILE = ".buecherfreunde"
-
-
-def _check_storage_mount() -> None:
-    """Prüft ob das Storage-Verzeichnis erreichbar ist.
-
-    Beim ersten Start wird eine Marker-Datei angelegt. Bei jedem weiteren
-    Start muss diese Datei existieren - fehlt sie (z.B. weil die externe
-    Festplatte nicht gemountet ist), wird der Start abgebrochen statt eine
-    neue leere DB auf der SD-Karte anzulegen.
-    """
-    marker = settings.storage_dir / MARKER_FILE
-
-    if not settings.storage_dir.exists():
-        raise RuntimeError(
-            f"ABBRUCH: Storage-Verzeichnis {settings.storage_dir} nicht erreichbar. "
-            "Ist die externe Festplatte gemountet?"
-        )
-
-    # Marker anlegen falls noch nicht vorhanden
-    if not marker.exists():
-        try:
-            marker.touch()
-            logger.info("Marker-Datei angelegt: %s", marker)
-        except OSError as e:
-            raise RuntimeError(
-                f"ABBRUCH: Kann Marker-Datei {marker} nicht erstellen: {e}. "
-                "Sind die Schreibrechte korrekt?"
-            ) from e
 
 
 def _ensure_directories() -> None:
@@ -83,16 +57,6 @@ def _ensure_directories() -> None:
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
         logger.info("Verzeichnis bereit: %s", d)
-
-    # Marker-Dateien anlegen falls noch nicht vorhanden
-    for marker_dir in [settings.storage_dir, settings.database_dir]:
-        marker = marker_dir / MARKER_FILE
-        if not marker.exists():
-            marker.write_text(
-                "BuecherFreunde Marker - diese Datei nicht löschen!\n"
-                "Sie verhindert Datenverlust wenn die Festplatte nicht gemountet ist.\n"
-            )
-            logger.info("Marker-Datei angelegt: %s", marker)
 
 
 async def _cleanup_stale_tasks() -> None:
@@ -123,15 +87,19 @@ async def lifespan(app: FastAPI):
     )
     logger.info("BuecherFreunde v%s wird gestartet", settings.version)
 
-    _check_storage_mount()
+    orte.einrichten()
     if not await eigener_zugang.erfragen():
         logger.warning("Kein App-Zugang der Kellerwolke: Anmelden geht erst nach der Einrichtung "
                        "(KELLERWOLKE_URL, KELLERWOLKE_SCHLUESSEL_DATEI)")
     _ensure_directories()
     await db.connect()
+    annahme.starten()
     # Verwaiste Tasks aufräumen (vom letzten Lauf übrig geblieben)
     await _cleanup_stale_tasks()
     yield
+    await annahme.stoppen()
+    await bedeutung.schliessen()
+    await wolke.schliessen()
     await anmeldung_schliessen()
     await db.disconnect()
     logger.info("BuecherFreunde wird heruntergefahren")
@@ -144,19 +112,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS: Backend sitzt hinter nginx (same-origin), aber fuer Entwicklung
-# und direkte Zugriffe erlauben wir alle Origins im lokalen Netz.
-# Da der Token-Auth den Zugriff schuetzt, ist das sicher.
-_cors_origins = ["*"]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+# Keine Freigabe für fremde Seiten: Oberfläche und Schnittstelle kommen von derselben Adresse (nginx davor).
+app.include_router(neubau_router)
+app.include_router(annahme_router)
 app.include_router(ai_router)
 app.include_router(auth_router)
 app.include_router(authors_router)

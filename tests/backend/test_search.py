@@ -41,7 +41,7 @@ class TestBuecherSuche:
     @pytest.mark.asyncio
     async def test_einfache_suche_python(self, such_db):
         """Suche nach 'Python' muss passende Buecher finden."""
-        ergebnisse = await search_books("Python")
+        ergebnisse, _ = await search_books("Python")
         assert len(ergebnisse) >= 1
         titel = [e.title for e in ergebnisse]
         assert any("Python" in t for t in titel)
@@ -49,7 +49,7 @@ class TestBuecherSuche:
     @pytest.mark.asyncio
     async def test_suche_ergebnis_ist_search_result(self, such_db):
         """Jedes Ergebnis muss ein SearchResult-Objekt sein."""
-        ergebnisse = await search_books("Python")
+        ergebnisse, _ = await search_books("Python")
         assert len(ergebnisse) > 0
         for e in ergebnisse:
             assert isinstance(e, SearchResult)
@@ -61,7 +61,7 @@ class TestBuecherSuche:
     @pytest.mark.asyncio
     async def test_suche_mit_snippet(self, such_db):
         """Suchergebnisse muessen Snippets mit Markierungen enthalten."""
-        ergebnisse = await search_books("Programmiersprache")
+        ergebnisse, _ = await search_books("Programmiersprache")
         assert len(ergebnisse) >= 1
         # Snippet muss <mark>-Tags enthalten
         hat_markierung = any("<mark>" in e.snippet for e in ergebnisse)
@@ -70,7 +70,7 @@ class TestBuecherSuche:
     @pytest.mark.asyncio
     async def test_suche_linux(self, such_db):
         """Suche nach 'Linux' muss das Linux-Buch finden."""
-        ergebnisse = await search_books("Linux")
+        ergebnisse, _ = await search_books("Linux")
         assert len(ergebnisse) >= 1
         titel = [e.title for e in ergebnisse]
         assert any("Linux" in t for t in titel)
@@ -78,39 +78,39 @@ class TestBuecherSuche:
     @pytest.mark.asyncio
     async def test_suche_ohne_treffer(self, such_db):
         """Suche nach einem nicht vorhandenen Begriff muss leere Liste ergeben."""
-        ergebnisse = await search_books("Quantenphysik")
+        ergebnisse, _ = await search_books("Quantenphysik")
         assert ergebnisse == []
 
     @pytest.mark.asyncio
     async def test_suche_leerer_string(self, such_db):
         """Leerer Suchstring muss leere Liste ergeben."""
-        ergebnisse = await search_books("")
+        ergebnisse, _ = await search_books("")
         assert ergebnisse == []
 
     @pytest.mark.asyncio
     async def test_suche_nur_leerzeichen(self, such_db):
         """Suchstring mit nur Leerzeichen muss leere Liste ergeben."""
-        ergebnisse = await search_books("   ")
+        ergebnisse, _ = await search_books("   ")
         assert ergebnisse == []
 
     @pytest.mark.asyncio
     async def test_suche_mit_limit(self, such_db):
         """Das Limit muss die Anzahl der Ergebnisse begrenzen."""
-        ergebnisse = await search_books("Python", limit=1)
+        ergebnisse, _ = await search_books("Python", limit=1)
         assert len(ergebnisse) <= 1
 
     @pytest.mark.asyncio
     async def test_suche_mit_offset(self, such_db):
         """Der Offset muss Ergebnisse ueberspringen."""
-        alle = await search_books("Python", limit=10)
-        mit_offset = await search_books("Python", limit=10, offset=1)
+        alle, _ = await search_books("Python", limit=10)
+        mit_offset, _ = await search_books("Python", limit=10, offset=1)
         if len(alle) > 1:
             assert len(mit_offset) == len(alle) - 1
 
     @pytest.mark.asyncio
     async def test_praefix_suche(self, such_db):
         """Praefixsuche mit Stern muss funktionieren."""
-        ergebnisse = await search_books("Pyth*")
+        ergebnisse, _ = await search_books("Pyth*")
         assert len(ergebnisse) >= 1
 
 
@@ -143,7 +143,7 @@ class TestTrefferanzahl:
     async def test_anzahl_stimmt_mit_suche_ueberein(self, such_db):
         """Trefferanzahl muss mit der Laenge der Suchergebnisse uebereinstimmen."""
         query = "Python"
-        ergebnisse = await search_books(query, limit=100)
+        ergebnisse, _ = await search_books(query, limit=100)
         anzahl = await search_count(query)
         assert anzahl == len(ergebnisse)
 
@@ -222,7 +222,7 @@ class TestIndexVerwaltung:
     async def test_suche_nach_neuaufbau(self, such_db):
         """Nach Neuaufbau muss die Suche weiterhin funktionieren."""
         await rebuild_index()
-        ergebnisse = await search_books("Python")
+        ergebnisse, _ = await search_books("Python")
         assert len(ergebnisse) >= 1
 
     @pytest.mark.asyncio

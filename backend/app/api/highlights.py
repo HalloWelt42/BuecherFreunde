@@ -43,6 +43,7 @@ async def erstelle_highlight(
            VALUES (?, ?, ?, ?, ?, ?)""",
         (book_id, daten.cfi_range, daten.color, daten.text_snippet, daten.label_name, daten.label_note),
     )
+    await db.commit()
     row = await db.fetch_one(
         "SELECT * FROM book_highlights WHERE id = ?", (cursor.lastrowid,)
     )
@@ -53,6 +54,7 @@ async def erstelle_highlight(
 async def loesche_highlight(highlight_id: int, _: str = Depends(verify_token)):
     """Highlight löschen."""
     await db.execute("DELETE FROM book_highlights WHERE id = ?", (highlight_id,))
+    await db.commit()
     return {"ok": True}
 
 
@@ -79,6 +81,7 @@ async def aktualisiere_highlight(
     await db.execute(
         f"UPDATE book_highlights SET {', '.join(updates)} WHERE id = ?", values
     )
+    await db.commit()
 
     row = await db.fetch_one(
         "SELECT * FROM book_highlights WHERE id = ?", (highlight_id,)

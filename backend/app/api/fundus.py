@@ -25,7 +25,7 @@ import time
 from datetime import datetime, timezone
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from backend.app.api.books import get_cover, get_file
 from appkern.anmeldung import Konto
@@ -208,5 +208,5 @@ async def umschlag(buch: int, _app: Konto = Depends(app_pruefen)):
 
 
 @router.get("/datei/{buch}")
-async def datei(buch: int, _app: Konto = Depends(app_pruefen)):
-    return await get_file(buch, _token="")
+async def datei(buch: int, request: Request, _app: Konto = Depends(app_pruefen)):
+    return await get_file(buch, request, _token="")

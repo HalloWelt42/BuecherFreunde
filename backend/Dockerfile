@@ -21,4 +21,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
 
 EXPOSE 8000
 
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# ohne Zugriffsprotokoll: Adressen können die Anmeldung tragen (BF-5); Fehler stehen im Protokoll der App
+CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

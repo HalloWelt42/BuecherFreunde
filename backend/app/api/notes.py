@@ -44,6 +44,7 @@ async def erstelle_notiz(
         VALUES (?, ?, ?, ?)""",
         (book_id, data.content, data.page_reference, data.cfi_reference),
     )
+    await db.commit()
     return await db.fetch_one("SELECT * FROM book_notes WHERE id = ?", (cursor.lastrowid,))
 
 
@@ -62,6 +63,7 @@ async def aktualisiere_notiz(
         f"UPDATE book_notes SET {sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
         tuple(values),
     )
+    await db.commit()
     return await db.fetch_one("SELECT * FROM book_notes WHERE id = ?", (note_id,))
 
 
@@ -69,6 +71,7 @@ async def aktualisiere_notiz(
 async def loesche_notiz(note_id: int, _: str = Depends(verify_token)):
     """Notiz löschen."""
     await db.execute("DELETE FROM book_notes WHERE id = ?", (note_id,))
+    await db.commit()
     return {"message": "Notiz gelöscht"}
 
 

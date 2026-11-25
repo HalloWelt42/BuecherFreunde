@@ -21,7 +21,7 @@ from backend.app.services.import_service import (
     import_single_file,
     update_task_status,
 )
-from backend.app.services.storage import check_duplicate, compute_hash, save_cover
+from backend.app.services.storage import compute_hash, save_cover
 
 logger = logging.getLogger("buecherfreunde.api.gutenberg")
 
@@ -210,11 +210,10 @@ async def _import_buecher(buecher: list[dict]):
             try:
                 # Hash prüfen
                 file_hash = compute_hash(temp_path)
-                dup = check_duplicate(file_hash)
                 existing_hash = await db.fetch_one(
                     "SELECT id, title FROM books WHERE hash = ?", (file_hash,)
                 )
-                if dup or existing_hash:
+                if existing_hash:
                     ergebnis["status"] = "duplikat"
                     ergebnis["detail"] = f"Datei-Duplikat (Hash)"
                     if existing_hash:

@@ -8,49 +8,18 @@ import asyncio
 import logging
 import re
 import shutil
-import sqlite3
 from pathlib import Path
 
 from backend.app.core.config import settings
 from backend.app.core.database import db
-from backend.app.services.processor import process_book
-from backend.app.services.storage import (
-    SUPPORTED_FORMATS,
-    check_duplicate,
-    compute_hash,
-    get_original_file,
-    get_storage_path,
-    sanitize_filename,
-    save_cover,
-    save_fulltext,
-    save_metadata,
-    store_file,
-)
+from backend.app.ablage.namen import sauber
+from backend.app.ablage.wolke import wolke
+from backend.app.annahme import auswertung
+from backend.app.annahme.eintragen import ablegen, eintragen
+from backend.app.services.storage import SUPPORTED_FORMATS, compute_hash, get_storage_path, sanitize_filename
 
 logger = logging.getLogger("buecherfreunde.import")
-
-
-def _repair_orphaned_storage(source_file: Path, storage_path: Path) -> None:
-    """Repariert verwaisten Storage: kopiert Quelldatei rein falls keine Originaldatei vorhanden."""
-    storage_path.mkdir(parents=True, exist_ok=True)
-
-    # Prüfen ob bereits eine Originaldatei im Storage liegt
-    sidecar_names = {"metadata.json", "fulltext.txt", "cover.jpg"}
-    has_original = any(
-        f.name not in sidecar_names and f.is_file()
-        for f in storage_path.iterdir()
-    )
-
-    if has_original:
-        logger.info("Verwaister Storage hat bereits Originaldatei, überspringe Kopie")
-        return
-
-    # Quelldatei in Storage kopieren (mit bereinigtem Namen)
-    raw_name = re.sub(r"^upload_\d+_", "", source_file.name)
-    safe_name = sanitize_filename(raw_name)
-    target = storage_path / safe_name
-    shutil.copy2(source_file, target)
-    logger.info("Quelldatei in verwaisten Storage kopiert: %s -> %s", source_file.name, target.name)
+_eine = asyncio.Semaphore(1)
 
 
 async def update_task_status(
@@ -90,8 +59,8 @@ async def import_single_file(file_path: Path, task_id: int | None = None, enrich
     result = {"status": "fehler", "datei": original_name}
 
     try:
-        logger.info("import_single_file gestartet: '%s' (task %s)", original_name, task_id)
-        return await _do_import(file_path, task_id, enrich, original_name, result)
+        async with _eine:                                   # immer nur ein Buch zugleich (wenig Arbeitsspeicher)
+            return await _do_import(file_path, task_id, enrich, original_name, result)
     except BaseException as e:
         error = f"{type(e).__name__}: {e}"
         logger.error("Import-Fehler fuer '%s': %s", original_name, error, exc_info=True)
@@ -111,231 +80,60 @@ async def _do_import(
     original_name: str,
     result: dict,
 ) -> dict:
-    """Eigentliche Import-Logik, wird von import_single_file aufgerufen."""
+    """Eine Datei vom Gerät (Ordner, gemeinfreies Buch) aufnehmen: derselbe Weg wie beim Hochladen (annahme/), das Original
+    geht in die Kellerwolke, ohne sie bleibt es im Speicher des Geräts."""
+    async def melde(status: str, anteil: int, schritt: str, fehler: str = "", buch: int | None = None) -> None:
+        if task_id:
+            await update_task_status(task_id, status, anteil, schritt, fehler, buch)
 
-    # 0. Prüfen ob Datei existiert
     if not file_path.exists():
-        error = f"Datei nicht gefunden: {file_path}"
-        logger.error(error)
-        if task_id:
-            await update_task_status(task_id, "fehler", 0, "", error)
-        result["fehler"] = error
+        result["fehler"] = f"Datei nicht gefunden: {file_path}"
+        await melde("fehler", 0, "", result["fehler"])
+        return result
+    if task_id and await is_task_cancelled(task_id):
+        result["status"] = "abgebrochen"
         return result
 
-    # 1. Prüfen ob Task noch existiert (könnte abgebrochen worden sein)
-    if task_id:
-        task_row = await db.fetch_one(
-            "SELECT status FROM import_tasks WHERE id = ?", (task_id,)
-        )
-        if not task_row or task_row["status"] not in ("wartend", "verarbeite"):
-            result["status"] = "abgebrochen"
-            return result
+    await melde("verarbeite", 10, "Prüfsumme wird gebildet")
+    file_hash = await asyncio.to_thread(compute_hash, file_path)
+    da = await db.fetch_one("SELECT id, title FROM books WHERE hash = ?", (file_hash,))
+    if da:
+        await melde("duplikat", 100, "Gibt es schon", "", da["id"])
+        return result | {"status": "duplikat", "book_id": da["id"], "titel": da["title"], "hash": file_hash}
 
-    # 2. Hash berechnen
-    if task_id:
-        await update_task_status(task_id, "verarbeite", 10, "Hash wird berechnet")
-
-    try:
-        file_hash = compute_hash(file_path)
-    except Exception as e:
-        error = f"Hash-Berechnung fehlgeschlagen: {e}"
-        if task_id:
-            await update_task_status(task_id, "fehler", 0, "", error)
-        result["fehler"] = error
+    await melde("verarbeite", 30, "Text und Umschlag werden gelesen")
+    e = await auswertung.auswerten(file_path)
+    if not e.lesbar:
+        result["fehler"] = e.grund
+        await melde("fehler", 0, "", e.grund)
         return result
-
-    # 3. Duplikat prüfen
-    if task_id:
-        await update_task_status(task_id, "verarbeite", 20, "Duplikat wird geprüft")
-
-    dup = check_duplicate(file_hash)
-    existing = None
-    if dup:
-        existing = await db.fetch_one(
-            "SELECT id, title FROM books WHERE hash = ?", (file_hash,)
-        )
-        if existing:
-            if task_id:
-                await update_task_status(
-                    task_id, "duplikat", 100, "Duplikat erkannt", "", existing["id"]
-                )
-            result["status"] = "duplikat"
-            result["book_id"] = existing["id"]
-            result["titel"] = existing["title"]
-            return result
-        # Storage existiert aber kein DB-Eintrag -> verwaist, weitermachen
-        logger.warning(
-            "Verwaiste Datei im Storage gefunden (Hash %s...), erstelle DB-Eintrag",
-            file_hash[:16],
-        )
-
-    # 4. Im Hash-Speicher ablegen (oder vorhandenen verwenden)
-    if task_id:
-        await update_task_status(task_id, "verarbeite", 30, "Datei wird gespeichert")
-
-    if dup and not existing:
-        # Verwaiste Datei - Storage-Pfad wiederverwenden, Quelldatei reinkopieren
-        storage_path = get_storage_path(file_hash)
-        _repair_orphaned_storage(file_path, storage_path)
-        logger.info("Verwende vorhandenen Storage-Pfad: %s", storage_path)
-    else:
-        try:
-            file_hash, storage_path = store_file(file_path, file_hash)
-        except FileExistsError:
-            # Noch ein Sicherheitscheck: vielleicht wurde zwischen Duplikat-Check
-            # und store_file ein DB-Eintrag erstellt (Race Condition)
-            race_check = await db.fetch_one(
-                "SELECT id, title FROM books WHERE hash = ?", (file_hash,)
-            )
-            if race_check:
-                if task_id:
-                    await update_task_status(
-                        task_id, "duplikat", 100, "Duplikat erkannt", "", race_check["id"]
-                    )
-                result["status"] = "duplikat"
-                result["book_id"] = race_check["id"]
-                result["titel"] = race_check["title"]
-                return result
-            # Verwaist - Storage wiederverwenden, Quelldatei reinkopieren
-            storage_path = get_storage_path(file_hash)
-            _repair_orphaned_storage(file_path, storage_path)
-            logger.warning("FileExistsError aber kein DB-Eintrag, verwende Storage: %s", storage_path)
-        except Exception as e:
-            error = f"Speichern fehlgeschlagen: {e}"
-            if task_id:
-                await update_task_status(task_id, "fehler", 30, "", error)
-            result["fehler"] = error
-            return result
-
-    # 5. Buch verarbeiten (Text, Metadaten, Cover extrahieren)
-    if task_id:
-        await update_task_status(task_id, "verarbeite", 50, "Inhalt wird extrahiert")
-
-    original = get_original_file(file_hash)
-    if not original:
-        original = file_path  # Fallback
-
-    try:
-        proc_result = process_book(original)
-    except Exception as e:
-        logger.error("Prozessor-Fehler fuer '%s': %s", original_name, e)
-        proc_result = None
-
-    if proc_result is None or proc_result.error:
-        # Trotz Fehler weitermachen -- Datei ist gespeichert, nur Metadaten fehlen
-        logger.warning(
-            "Verarbeitung fehlerhaft fuer '%s': %s",
-            original_name,
-            proc_result.error if proc_result else "Prozessor gab None zurueck",
-        )
-        if proc_result is None:
-            from backend.app.services.processors.base import BookProcessingResult
-            proc_result = BookProcessingResult()
-            proc_result.title = file_path.stem.replace("_", " ").replace("-", " ")
-
-    # 6. Open Library Anreicherung
-    if task_id:
-        await update_task_status(task_id, "verarbeite", 60, "Metadaten werden angereichert")
-
     if enrich and settings.openlibrary_enabled:
+        await melde("verarbeite", 60, "Angaben werden ergänzt")
         try:
-            await _enrich_from_openlibrary(proc_result, file_path, task_id)
-        except Exception as e:
-            logger.warning("Open Library Anreicherung fehlgeschlagen: %s", e)
+            await _enrich_from_openlibrary(e, file_path, task_id)
+        except Exception as f:
+            logger.warning("Ergänzen der Angaben fehlgeschlagen: %s", f)
+    if task_id and await is_task_cancelled(task_id):
+        result["status"] = "abgebrochen"
+        return result
 
-    # 7. Sidecar-Dateien speichern
-    if task_id:
-        await update_task_status(task_id, "verarbeite", 75, "Metadaten werden gespeichert")
-
-    try:
-        metadata = {
-            "titel": proc_result.title,
-            "autor": proc_result.author,
-            "isbn": proc_result.isbn,
-            "verlag": proc_result.publisher,
-            "jahr": proc_result.year,
-            "sprache": proc_result.language,
-            "beschreibung": proc_result.description,
-            "seiten": proc_result.page_count,
-        }
-        save_metadata(file_hash, metadata)
-
-        if proc_result.fulltext:
-            save_fulltext(file_hash, proc_result.fulltext)
-
-        if proc_result.cover_data:
-            save_cover(file_hash, proc_result.cover_data)
-    except Exception as e:
-        logger.warning("Sidecar-Speicherung fehlgeschlagen: %s", e)
-
-    # 8. In Datenbank eintragen
-    if task_id:
-        await update_task_status(task_id, "verarbeite", 85, "Datenbankeintrag wird erstellt")
-
-    try:
-        # Dateigroesse aus Storage lesen (nicht aus temp_path die geloescht wird)
-        stored_file = get_original_file(file_hash)
-        file_size = stored_file.stat().st_size if stored_file else 0
-    except Exception:
-        file_size = 0
-
-    file_format = file_path.suffix.lower().lstrip(".")
-
-    try:
-        cursor = await db.execute(
-            """INSERT INTO books
-               (hash, title, author, isbn, publisher, year, language, description,
-                file_format, file_size, file_name, storage_path, cover_path,
-                page_count, fts_content)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                file_hash,
-                proc_result.title,
-                proc_result.author,
-                proc_result.isbn,
-                proc_result.publisher,
-                proc_result.year,
-                proc_result.language,
-                proc_result.description,
-                file_format,
-                file_size,
-                original_name,
-                str(storage_path),
-                "cover.jpg" if proc_result.cover_data else "",
-                proc_result.page_count,
-                proc_result.fts_content,
-            ),
-        )
-        await db.commit()
-        book_id = cursor.lastrowid
-    except sqlite3.IntegrityError:
-        # Race-Condition: paralleler Import desselben Buchs -- existierendes zurueckgeben
-        logger.info("Duplikat erkannt (Race-Condition) fuer Hash %s", file_hash)
-        row = await db.fetch_one("SELECT id FROM books WHERE hash = ?", (file_hash,))
-        if row:
-            result["status"] = "duplikat"
-            result["book_id"] = row["id"]
-            result["hash"] = file_hash
-            return result
-        raise
-
-    # Bücher ohne ISBN -> Kategorie "Ungeordnet"
-    if not proc_result.isbn:
-        try:
-            await _assign_ungeordnet(book_id)
-        except Exception as e:
-            logger.warning("Kategorie-Zuordnung fehlgeschlagen: %s", e)
-
-    # 9. Fertig
-    if task_id:
-        await update_task_status(task_id, "fertig", 100, "Import abgeschlossen", "", book_id)
-
-    result["status"] = "ok"
-    result["book_id"] = book_id
-    result["titel"] = proc_result.title
-    result["hash"] = file_hash
-    logger.info("Import erfolgreich: '%s' (ID %d)", proc_result.title, book_id)
-    return result
+    await melde("verarbeite", 75, "Wird abgelegt")
+    groesse = file_path.stat().st_size
+    knoten = None
+    if wolke.bereit:
+        await wolke.ordner(f"{settings.ablage_ordner}/Eingang")
+        knoten = (await wolke.datei_schreiben(f"{settings.ablage_ordner}/Eingang/{file_hash[:12]} {sauber(original_name, 180)}", file_path))["id"]
+    else:
+        ziel = get_storage_path(file_hash) / original_name
+        ziel.parent.mkdir(parents=True, exist_ok=True)
+        await asyncio.to_thread(shutil.copy2, file_path, ziel)
+    await melde("verarbeite", 85, "Kommt ins Regal")
+    buch = await eintragen(file_hash, original_name, groesse, e)
+    if knoten:
+        await ablegen(buch, knoten)
+    await melde("fertig", 100, "In der Bibliothek", "", buch)
+    logger.info("Aufgenommen: '%s' (Nummer %d)", e.title, buch)
+    return result | {"status": "ok", "book_id": buch, "titel": e.title, "hash": file_hash}
 
 
 async def _enrich_from_openlibrary(proc_result, file_path, task_id):
@@ -380,33 +178,6 @@ async def _enrich_from_openlibrary(proc_result, file_path, task_id):
             logger.info("Metadaten via Titelsuche: %s", proc_result.title)
 
 
-async def _assign_ungeordnet(book_id: int):
-    """Ordnet ein Buch der Kategorie 'Ungeordnet' zu."""
-    ungeordnet = await db.fetch_one(
-        "SELECT id FROM categories WHERE slug = ?", ("ungeordnet",)
-    )
-    if not ungeordnet:
-        cur = await db.execute(
-            "INSERT OR IGNORE INTO categories (name, slug, description) VALUES (?, ?, ?)",
-            ("Ungeordnet", "ungeordnet", "Bücher ohne ISBN oder Zuordnung"),
-        )
-        await db.commit()
-        if cur.lastrowid:
-            kat_id = cur.lastrowid
-        else:
-            row = await db.fetch_one(
-                "SELECT id FROM categories WHERE slug = ?", ("ungeordnet",)
-            )
-            kat_id = row["id"]
-    else:
-        kat_id = ungeordnet["id"]
-    await db.execute(
-        "INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'import')",
-        (book_id, kat_id),
-    )
-    await db.commit()
-
-
 async def scan_directory(directory: Path) -> list[dict]:
     """Scannt ein Verzeichnis nach importierbaren Dateien.
 
@@ -420,7 +191,6 @@ async def scan_directory(directory: Path) -> list[dict]:
         if f.is_file() and f.suffix.lower() in SUPPORTED_FORMATS:
             try:
                 file_hash = compute_hash(f)
-                dup = check_duplicate(file_hash)
                 existing = await db.fetch_one(
                     "SELECT id, title FROM books WHERE hash = ?", (file_hash,)
                 )
@@ -430,7 +200,7 @@ async def scan_directory(directory: Path) -> list[dict]:
                     "groesse": f.stat().st_size,
                     "format": f.suffix.lower(),
                     "hash": file_hash,
-                    "ist_duplikat": dup is not None or existing is not None,
+                    "ist_duplikat": existing is not None,
                     "bestehendes_buch": existing["title"] if existing else None,
                 })
             except Exception as e:

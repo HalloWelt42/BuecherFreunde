@@ -116,6 +116,19 @@ async def client_ohne_auth(test_db: Database):
         yield ac
 
 
+@pytest_asyncio.fixture(scope="function")
+async def annahme_dienst(client, tmp_path, monkeypatch):
+    """Die Annahme mit eigenen Orten je Test, ohne Kellerwolke."""
+    from backend.app.annahme.dienst import annahme
+
+    for ort in ("storage_dir", "umschlaege_dir", "zwischen_dir"):
+        monkeypatch.setattr(settings, ort, tmp_path / ort)
+    monkeypatch.setattr(settings, "openlibrary_enabled", False)
+    annahme.starten()
+    yield client
+    await annahme.stoppen()
+
+
 async def buch_erstellen(test_db: Database, **kwargs) -> int:
     """Hilfsfunktion: Legt ein Testbuch in der Datenbank an.
 

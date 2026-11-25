@@ -32,6 +32,17 @@ class Settings(BaseSettings):
     external_dir: Path = _project_root() / "external"
     import_dir: Path = _project_root() / "import"
     database_dir: Path = _project_root() / "database"
+    # Orte des Neubaus (ablage/orte.py); ohne Angabe liegen sie wie früher beim Speicher und bei der Datenbank
+    suche_dir: Path = Path("")
+    umschlaege_dir: Path = Path("")
+    zwischen_dir: Path = _project_root() / "zwischen"
+    zwischen_mb: int = 900             # so viel dürfen Originale im Zwischenspeicher belegen
+    ablage_ordner: str = "Apps/BücherFreunde"
+
+    # Fundus (Suche nach Bedeutung) und Assistent; leer: die Fähigkeit fehlt, die App läuft weiter
+    fundus_url: str = ""
+    fundus_sammlung: str = "Bücher"
+    assistent_url: str = ""
 
     # Google Books (Primärquelle)
     google_books_enabled: bool = True
@@ -81,6 +92,17 @@ class Settings(BaseSettings):
         "env_file_encoding": "utf-8",
         "extra": "ignore",
     }
+
+    def model_post_init(self, _kontext) -> None:
+        if not self.suche_dir.name:
+            self.suche_dir = self.database_dir
+        if not self.umschlaege_dir.name:
+            self.umschlaege_dir = self.storage_dir
+
+    @property
+    def host_pfade(self) -> dict[str, str]:
+        """Pfade auf dem Gerät, wie Compose sie eingehängt hat (nur zur Anzeige)."""
+        return {"bestand": self.host_database_dir, "suche": "", "texte": self.host_storage_dir, "umschlaege": "", "zwischen": "Arbeitsspeicher" if "/app/" in str(self.zwischen_dir) else ""}
 
     @property
     def database_path(self) -> Path:

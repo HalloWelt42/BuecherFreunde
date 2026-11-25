@@ -1,5 +1,6 @@
 """FTS5 Volltextsuche - Indexverwaltung und Suchfunktionen."""
 
+import html
 import logging
 import re
 from dataclasses import dataclass
@@ -9,22 +10,15 @@ from backend.app.services.query_parser import ParsedQuery, parse_query
 
 logger = logging.getLogger("buecherfreunde.search")
 
-# Erlaubte HTML-Tags in Suchergebnissen (alles andere wird entfernt)
-_ALLOWED_TAGS = {"b", "mark"}
-_STRIP_TAGS_RE = re.compile(
-    r"</?(?!" + "|".join(_ALLOWED_TAGS) + r")(\w+)[^>]*>", re.IGNORECASE
-)
+# Nur unsere Hervorhebung (ohne Merkmale) darf in Auszügen stehen, alles andere wird zu Text
+_ERLAUBT_RE = re.compile(r"&lt;/?(?:b|mark)&gt;")
 
 
 def _sanitize_html(text: str) -> str:
-    """Entfernt alle HTML-Tags ausser den erlaubten (b, mark).
-
-    Verhindert Stored XSS durch bösartige Buchtitel oder Metadaten
-    die per highlight()/snippet() mit HTML-Markup versehen werden.
-    """
+    """Entschärft HTML aus Büchern und Angaben; nur <b> und <mark> der Hervorhebung bleiben (BF-5)."""
     if not text:
         return text
-    return _STRIP_TAGS_RE.sub("", text)
+    return _ERLAUBT_RE.sub(lambda m: m.group(0).replace("&lt;", "<").replace("&gt;", ">"), html.escape(html.unescape(text), quote=False))
 
 
 @dataclass
@@ -89,7 +83,7 @@ async def search_books(
     try:
         if parsed.fts_query:
             # Fall A: FTS-Query vorhanden (ggf. mit zusaetzlichen Filtern)
-            where_parts = ["books_fts MATCH ?"]
+            where_parts = ["buch_fts MATCH ?"]
             params = [parsed.fts_query]
             where_parts.extend(filter_conds)
             params.extend(filter_params)
@@ -99,10 +93,10 @@ async def search_books(
                     books.id,
                     books.title,
                     books.author,
-                    snippet(books_fts, 2, '<mark>', '</mark>', '...', 40) as snippet,
+                    snippet(buch_fts, 2, '<mark>', '</mark>', '...', 40) as snippet,
                     rank
-                FROM books_fts
-                JOIN books ON books.id = books_fts.rowid
+                FROM buch_fts
+                JOIN books ON books.id = buch_fts.rowid
                 WHERE {' AND '.join(where_parts)}
                 ORDER BY rank
                 LIMIT ? OFFSET ?
@@ -112,8 +106,8 @@ async def search_books(
             results = [
                 SearchResult(
                     book_id=row["id"],
-                    title=_sanitize_html(row["title"]),
-                    author=_sanitize_html(row["author"]),
+                    title=row["title"],
+                    author=row["author"],
                     snippet=_sanitize_html(row["snippet"] or ""),
                     relevance=abs(row["rank"]),
                 )
@@ -134,8 +128,8 @@ async def search_books(
             results = [
                 SearchResult(
                     book_id=row["id"],
-                    title=_sanitize_html(row["title"]),
-                    author=_sanitize_html(row["author"]),
+                    title=row["title"],
+                    author=row["author"],
                     snippet="",
                     relevance=0,
                 )
@@ -162,15 +156,15 @@ async def search_count(query: str) -> int:
 
     try:
         if parsed.fts_query:
-            where_parts = ["books_fts MATCH ?"]
+            where_parts = ["buch_fts MATCH ?"]
             params = [parsed.fts_query]
             where_parts.extend(filter_conds)
             params.extend(filter_params)
 
             sql = f"""
                 SELECT COUNT(*) as total
-                FROM books_fts
-                JOIN books ON books.id = books_fts.rowid
+                FROM buch_fts
+                JOIN books ON books.id = buch_fts.rowid
                 WHERE {' AND '.join(where_parts)}
             """
             row = await db.fetch_one(sql, tuple(params))
@@ -201,11 +195,11 @@ async def suggest(query: str, limit: int = 5) -> list[dict]:
     sql = """
         SELECT
             books.id,
-            highlight(books_fts, 0, '<b>', '</b>') as title_hl,
+            highlight(buch_fts, 0, '<b>', '</b>') as title_hl,
             books.author
-        FROM books_fts
-        JOIN books ON books.id = books_fts.rowid
-        WHERE books_fts MATCH ?
+        FROM buch_fts
+        JOIN books ON books.id = buch_fts.rowid
+        WHERE buch_fts MATCH ?
         ORDER BY rank
         LIMIT ?
     """
@@ -225,10 +219,10 @@ async def suggest(query: str, limit: int = 5) -> list[dict]:
             author_query = f"author:{prefix}"
             sql_author = """
                 SELECT DISTINCT books.id, books.title,
-                    highlight(books_fts, 1, '<b>', '</b>') as author_hl
-                FROM books_fts
-                JOIN books ON books.id = books_fts.rowid
-                WHERE books_fts MATCH ?
+                    highlight(buch_fts, 1, '<b>', '</b>') as author_hl
+                FROM buch_fts
+                JOIN books ON books.id = buch_fts.rowid
+                WHERE buch_fts MATCH ?
                 ORDER BY rank
                 LIMIT ?
             """
@@ -253,26 +247,16 @@ async def rebuild_index() -> int:
     """
     logger.info("FTS-Index wird neu aufgebaut...")
 
-    # Index leeren
-    await db.execute("INSERT INTO books_fts(books_fts) VALUES('delete-all')")
+    from backend.app.core import suchindex
+    from backend.app.services.storage import load_fulltext
 
-    # Alle Bücher neu indexieren
-    sql = """
-        INSERT INTO books_fts(rowid, title, author, fts_content)
-        SELECT id, title, author, fts_content FROM books
-    """
-    await db.execute(sql)
-    await db.commit()
-
-    # Zählen
-    row = await db.fetch_one("SELECT COUNT(*) as total FROM books")
-    count = row["total"] if row else 0
+    count = await suchindex.neu_bauen(db.connection, load_fulltext)
     logger.info("FTS-Index neu aufgebaut: %d Bücher indexiert", count)
     return count
 
 
 async def optimize_index() -> None:
     """Optimiert den FTS-Index (Merge aller Segmente)."""
-    await db.execute("INSERT INTO books_fts(books_fts) VALUES('optimize')")
+    await db.execute("INSERT INTO buch_fts(buch_fts) VALUES('optimize')")
     await db.commit()
     logger.info("FTS-Index optimiert")

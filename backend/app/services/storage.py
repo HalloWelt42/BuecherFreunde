@@ -138,12 +138,15 @@ def store_file(
 
 def get_sidecar_path(file_hash: str, filename: str, storage_dir: Path | None = None) -> Path:
     """Gibt den Pfad zu einer Sidecar-Datei zurück."""
+    if filename == "cover.jpg" and storage_dir is None:
+        return get_storage_path(file_hash, settings.umschlaege_dir) / filename
     return get_storage_path(file_hash, storage_dir) / filename
 
 
 def save_metadata(file_hash: str, metadata: dict, storage_dir: Path | None = None) -> Path:
     """Speichert Metadaten als JSON-Sidecar."""
     path = get_sidecar_path(file_hash, "metadata.json", storage_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
     return path
 
@@ -159,6 +162,7 @@ def load_metadata(file_hash: str, storage_dir: Path | None = None) -> dict | Non
 def save_fulltext(file_hash: str, text: str, storage_dir: Path | None = None) -> Path:
     """Speichert den extrahierten Volltext als Sidecar."""
     path = get_sidecar_path(file_hash, "fulltext.txt", storage_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path
 
@@ -174,21 +178,25 @@ def load_fulltext(file_hash: str, storage_dir: Path | None = None) -> str | None
 def save_cover(file_hash: str, image_data: bytes, storage_dir: Path | None = None) -> Path:
     """Speichert ein Cover-Bild als Sidecar."""
     path = get_sidecar_path(file_hash, "cover.jpg", storage_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(image_data)
     return path
 
 
 def get_original_file(file_hash: str, storage_dir: Path | None = None) -> Path | None:
-    """Findet die Originaldatei im Hash-Verzeichnis."""
+    """Die Originaldatei: im Hash-Verzeichnis auf dem Gerät, sonst aus der Kellerwolke (ablage/originale.py). Kann laden,
+    darum nie direkt in der Ereignisschleife rufen."""
     dir_path = get_storage_path(file_hash, storage_dir)
-    if not dir_path.exists():
-        return None
-
     sidecar_names = {"metadata.json", "fulltext.txt", "cover.jpg", "seiten.json"}
-    for f in dir_path.iterdir():
-        if f.name not in sidecar_names and f.is_file():
-            return f
-    return None
+    if dir_path.exists():
+        for f in dir_path.iterdir():
+            if f.name not in sidecar_names and f.is_file():
+                return f
+    if storage_dir is not None:
+        return None
+    from backend.app.ablage import originale
+
+    return originale.holen(file_hash)
 
 
 def delete_stored_file(file_hash: str, storage_dir: Path | None = None) -> bool:

@@ -202,12 +202,6 @@ async def defekte_pruefen(
                 d["fehler_beim_verschieben"] = f"{type(e).__name__}: {e}"
                 logger.error("Quarantäne fehlgeschlagen für Buch %s: %s", d["id"], e)
         await db.commit()
-        # FTS-Index neu aufbauen, damit aussortierte Bücher aus der Suche fallen
-        try:
-            await db.execute("INSERT INTO books_fts(books_fts) VALUES('rebuild')")
-            await db.commit()
-        except Exception:
-            pass
 
     return {
         "geprueft": len(rows),

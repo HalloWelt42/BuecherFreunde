@@ -18,6 +18,7 @@ import json
 import logging
 import re
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
 from backend.app.services.storage import get_original_file, get_sidecar_path, load_fulltext, save_fulltext
@@ -108,16 +109,17 @@ def _gedruckt_berechnen(original: Path | None, fmt: str, texte: list[str]) -> tu
     return ("rand", erkannt) if any(erkannt) else ("", [])
 
 
-def _neu_auslesen(text: str, page_count: int | None, original: Path) -> bool:
+def _neu_auslesen(text: str, page_count: int | None, original_holen: Callable[[], Path | None]) -> bool:
     """Ein PDF-Volltext ohne Seitenvorschub, oder mit anderer Zahl an Teilen als die Datei Seiten hat (Befund
     27.10.2026: 68 Teile bei 625 Seiten), wird aus der Originaldatei neu ausgelesen."""
     if SEITENTRENNER not in text:
-        return True
+        return not (page_count == 1 and text.strip())      # eine einzige Seite hat keinen Trenner
     teile = text.count(SEITENTRENNER) + 1
     if page_count and teile == page_count:
         return False
     try:
-        return teile != pdf_seitenzahl(original)
+        original = original_holen()            # kann aus der Kellerwolke kommen, darum erst hier
+        return original is not None and teile != pdf_seitenzahl(original)
     except Exception:  # noqa: BLE001 - unlesbare Datei: der alte Volltext gilt weiter
         return False
 
@@ -127,10 +129,10 @@ def buch_seiten(file_hash: str, fmt: str | None, page_count: int | None) -> tupl
     ohne Seitenvorschub wird dabei einmal aus der Originaldatei neu ausgelesen und gespeichert."""
     fmt = (fmt or "").lower()
     text = load_fulltext(file_hash) or ""
-    original = get_original_file(file_hash)
-    if fmt == "pdf" and original is not None and _neu_auslesen(text, page_count, original):
+    if fmt == "pdf" and _neu_auslesen(text, page_count, lambda: get_original_file(file_hash)):
         try:
-            neu = pdf_volltext(original)
+            original = get_original_file(file_hash)
+            neu = pdf_volltext(original) if original is not None else ""
             if neu.strip():
                 save_fulltext(file_hash, neu)
                 text = neu
@@ -145,7 +147,7 @@ def buch_seiten(file_hash: str, fmt: str | None, page_count: int | None) -> tupl
         gespeichert = {}
     gedruckt = gespeichert.get("gedruckt") if gespeichert.get("fassung") == _FASSUNG else None
     if gedruckt is None or (gedruckt and len(gedruckt) != len(texte)):
-        quelle, gedruckt = _gedruckt_berechnen(original, fmt, texte)
+        quelle, gedruckt = _gedruckt_berechnen(get_original_file(file_hash), fmt, texte)
         try:
             pfad.write_text(json.dumps({"fassung": _FASSUNG, "quelle": quelle, "gedruckt": gedruckt}, ensure_ascii=False),
                             encoding="utf-8")

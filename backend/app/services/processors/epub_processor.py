@@ -71,6 +71,9 @@ class EpubProcessor(BaseProcessor):
         if not book and not result.title:
             self._extract_metadata_from_zip(file_path, result)
 
+        if not book and not result.fulltext:
+            result.error = result.error or "EPUB konnte nicht geöffnet werden"
+
         # Titel aus Dateiname ableiten falls immer noch leer
         if not result.title:
             result.title = file_path.stem.replace("_", " ").replace("-", " ")

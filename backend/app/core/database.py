@@ -6,11 +6,12 @@ from pathlib import Path
 
 import aiosqlite
 
+from backend.app.core import suchindex
 from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.db")
 
-SCHEMA_VERSION = 16
+SCHEMA_VERSION = 17
 
 SCHEMA_SQL = """
 -- Bücher
@@ -238,33 +239,41 @@ CREATE TABLE IF NOT EXISTS schema_version (
     version INTEGER PRIMARY KEY
 );
 
--- FTS5 Volltextsuche (External Content)
-CREATE VIRTUAL TABLE IF NOT EXISTS books_fts USING fts5(
-    title,
-    author,
-    fts_content,
-    content='books',
-    content_rowid='id',
-    tokenize='unicode61 remove_diacritics 2'
+"""
+
+# Neubau: wo das Original eines Buchs in der Kellerwolke liegt, und die Aufnahmen (Hochladen) mit ihrem Stand.
+# Der Volltextindex liegt in einer eigenen Datei (core/suchindex.py).
+NEUBAU_SQL = """
+CREATE TABLE IF NOT EXISTS ablage_datei (
+    hash TEXT PRIMARY KEY,
+    knoten TEXT NOT NULL,
+    name TEXT NOT NULL,
+    pfad TEXT NOT NULL DEFAULT '',
+    groesse INTEGER NOT NULL DEFAULT 0,
+    begleiter TEXT DEFAULT NULL,
+    abgelegt_am TEXT NOT NULL DEFAULT (datetime('now'))
 );
-
--- Trigger für automatische FTS-Synchronisation
-CREATE TRIGGER IF NOT EXISTS books_ai AFTER INSERT ON books BEGIN
-    INSERT INTO books_fts(rowid, title, author, fts_content)
-    VALUES (new.id, new.title, new.author, new.fts_content);
-END;
-
-CREATE TRIGGER IF NOT EXISTS books_ad AFTER DELETE ON books BEGIN
-    INSERT INTO books_fts(books_fts, rowid, title, author, fts_content)
-    VALUES ('delete', old.id, old.title, old.author, old.fts_content);
-END;
-
-CREATE TRIGGER IF NOT EXISTS books_au AFTER UPDATE ON books BEGIN
-    INSERT INTO books_fts(books_fts, rowid, title, author, fts_content)
-    VALUES ('delete', old.id, old.title, old.author, old.fts_content);
-    INSERT INTO books_fts(rowid, title, author, fts_content)
-    VALUES (new.id, new.title, new.author, new.fts_content);
-END;
+CREATE TABLE IF NOT EXISTS aufnahme (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    groesse INTEGER NOT NULL,
+    sha256 TEXT NOT NULL DEFAULT '',
+    upload TEXT DEFAULT NULL,
+    knoten TEXT DEFAULT NULL,
+    empfangen INTEGER NOT NULL DEFAULT 0,
+    stand TEXT NOT NULL,
+    schritt INTEGER NOT NULL DEFAULT 0,
+    anteil REAL NOT NULL DEFAULT 0,
+    text TEXT NOT NULL DEFAULT '',
+    buch_id INTEGER DEFAULT NULL,
+    versuche INTEGER NOT NULL DEFAULT 0,
+    anreichern INTEGER NOT NULL DEFAULT 0,
+    ausgeblendet INTEGER NOT NULL DEFAULT 0,
+    angelegt_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    geaendert_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_aufnahme_stand ON aufnahme(stand);
+CREATE INDEX IF NOT EXISTS idx_aufnahme_sha ON aufnahme(sha256);
 """
 
 
@@ -273,6 +282,7 @@ class Database:
 
     def __init__(self, db_path: Path | None = None):
         self.db_path = db_path or settings.database_path
+        self.suche_dir = db_path.parent if db_path else settings.suche_dir      # Tests: Suchindex neben der Probedatenbank
         self._connection: aiosqlite.Connection | None = None
 
     async def connect(self) -> None:
@@ -287,6 +297,8 @@ class Database:
         await self._connection.execute("PRAGMA busy_timeout=5000")
 
         await self._init_schema()
+        await self._connection.executescript(NEUBAU_SQL)
+        await suchindex.anhaengen(self._connection, self.suche_dir)
         logger.info("Datenbank verbunden: %s", self.db_path)
 
     async def disconnect(self) -> None:

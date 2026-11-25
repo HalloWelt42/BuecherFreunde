@@ -1,12 +1,13 @@
 """API-Endpunkte für Bücher."""
 
 import asyncio
+import html
 import logging
 import math
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import Request, APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -16,6 +17,10 @@ from backend.app.core.database import db
 from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate
 from backend.app.models.textansicht import TextBaustein, TextSeite, TextSeitenAntwort
 from backend.app.services.textansicht import Baustein, abbildung_png, seiten_lesen
+from backend.app.ablage import originale
+from backend.app.ablage.antwort import original_antwort
+from backend.app.ablage.wolke import wolke
+from backend.app.annahme.eintragen import autoren_verknuepfen
 from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover, save_fulltext
 
 router = APIRouter(prefix="/api/books", tags=["Bücher"])
@@ -500,7 +505,7 @@ async def update_book(
     if not existing:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
 
-    updates = update.model_dump(exclude_none=True)
+    updates = {k: v for k, v in update.model_dump(exclude_unset=True).items() if v is not None or k == "year"}
     if not updates:
         raise HTTPException(status_code=400, detail="Keine Felder zum Aktualisieren")
 
@@ -511,22 +516,9 @@ async def update_book(
         tuple(values),
     )
 
-    # FTS aktualisieren falls Titel oder Autor geändert
-    if "title" in updates or "author" in updates:
-        book = await db.fetch_one("SELECT * FROM books WHERE id = ?", (book_id,))
-        if book:
-            await db.execute(
-                "INSERT INTO books_fts(books_fts, rowid, title, author, fts_content) VALUES('delete', ?, ?, ?, ?)",
-                (book_id, book["title"], book["author"], book["fts_content"]),
-            )
-            new_title = updates.get("title", book["title"])
-            new_author = updates.get("author", book["author"])
-            await db.execute(
-                "INSERT INTO books_fts(rowid, title, author, fts_content) VALUES(?, ?, ?, ?)",
-                (book_id, new_title, new_author, book["fts_content"]),
-            )
-
-    await db.commit()
+    if "author" in updates:
+        await autoren_verknuepfen(book_id, updates["author"])
+    await db.commit()                 # der Suchindex zieht Titel und Autor selbst nach (core/suchindex.py)
     return await get_book(book_id)
 
 
@@ -545,8 +537,15 @@ async def delete_book(
     await db.commit()
 
     if datei_loeschen:
-        from backend.app.services.storage import delete_stored_file
+        from backend.app.services.storage import delete_stored_file, get_sidecar_path
 
+        ablage = await asyncio.to_thread(originale.eintrag, book["hash"])
+        if ablage and wolke.bereit:
+            # in den Papierkorb der Kellerwolke, der Begleiter geht mit; endgültig löscht nur das Konto
+            await wolke.rufe("DELETE", f"/api/v1/ablage/knoten/{ablage['knoten']}")
+            await db.execute("DELETE FROM ablage_datei WHERE hash = ?", (book["hash"],))
+            await db.commit()
+        get_sidecar_path(book["hash"], "cover.jpg").unlink(missing_ok=True)
         delete_stored_file(book["hash"])
 
     return {"geloescht": True, "id": book_id}
@@ -710,13 +709,6 @@ async def delete_all_books(
     await db.execute("DELETE FROM import_tasks")
     await db.commit()
 
-    # FTS-Index neu aufbauen
-    try:
-        await db.execute("INSERT INTO books_fts(books_fts) VALUES('rebuild')")
-        await db.commit()
-    except Exception:
-        pass
-
     return {"geloescht": True, "hinweis": "Alle Bücher und zugehörige Daten gelöscht"}
 
 
@@ -863,7 +855,7 @@ async def re_extract_cover(book_id: int, _token: str = Depends(verify_token)):
     if not book:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
 
-    original = get_original_file(book["hash"])
+    original = await asyncio.to_thread(get_original_file, book["hash"])
     if not original or not original.exists():
         raise HTTPException(status_code=404, detail="Buchdatei nicht gefunden")
 
@@ -910,17 +902,13 @@ async def re_extract_cover(book_id: int, _token: str = Depends(verify_token)):
 
 
 @router.get("/{book_id}/file")
-async def get_file(book_id: int, _token: str = Depends(verify_token_query)):
+async def get_file(book_id: int, request: Request, _token: str = Depends(verify_token_query)):
     """Streamt die Buchdatei (mit Range-Request-Unterstützung)."""
     book = await db.fetch_one(
         "SELECT hash, file_name, file_format FROM books WHERE id = ?", (book_id,)
     )
     if not book:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
-
-    file_path = get_original_file(book["hash"])
-    if not file_path or not file_path.exists():
-        raise HTTPException(status_code=404, detail="Datei nicht gefunden")
 
     media_types = {
         "pdf": "application/pdf",
@@ -931,12 +919,7 @@ async def get_file(book_id: int, _token: str = Depends(verify_token_query)):
     }
     media_type = media_types.get(book["file_format"], "application/octet-stream")
 
-    return FileResponse(
-        file_path,
-        media_type=media_type,
-        filename=book["file_name"],
-        headers={"Accept-Ranges": "bytes"},
-    )
+    return await original_antwort(request, book["hash"], media_type, book["file_name"])
 
 
 @router.post("/{book_id}/isbn-scan")
@@ -964,7 +947,7 @@ async def isbn_scan(book_id: int, _token: str = Depends(verify_token)):
 
     # Fallback: Volltext direkt aus EPUB extrahieren wenn Sidecar leer/fehlt
     if not text.strip():
-        original = get_original_file(book["hash"])
+        original = await asyncio.to_thread(get_original_file, book["hash"])
         if original and original.exists() and original.suffix.lower() == ".epub":
             import zipfile
             try:
@@ -1098,7 +1081,7 @@ async def _pdf_zum_lesen(book_id: int) -> tuple[dict, Path]:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
     if (book["file_format"] or "").lower() != "pdf":
         raise HTTPException(status_code=422, detail="Die Textansicht gibt es nur für PDF")
-    pfad = get_original_file(book["hash"])
+    pfad = await asyncio.to_thread(get_original_file, book["hash"])
     if pfad is None:
         raise HTTPException(status_code=404, detail="Datei nicht gefunden")
     return dict(book), pfad
@@ -1176,7 +1159,7 @@ async def fulltext_search_book(
 
     treffer = []
     gesamt_count = 0
-    text_len = len(text)
+    text_len = sum(len(s) + 1 for s in seiten)
     seiten_offset = 0  # Zeichenoffset am Anfang der aktuellen Seite
     for seiten_nr, seite in enumerate(seiten, 1):
         for match in pattern.finditer(seite):
@@ -1188,9 +1171,12 @@ async def fulltext_search_book(
             end = min(len(seite), match.end() + 80)
             kontext = seite[start:end].strip()
             # Treffer hervorheben
-            kontext_marked = pattern.sub(
-                lambda m: f"<mark>{m.group()}</mark>", kontext
-            )
+            # Buchtext wird entschärft, nur unsere Hervorhebung bleibt (BF-5)
+            teile, zuletzt = [], 0
+            for m in pattern.finditer(kontext):
+                teile += [html.escape(kontext[zuletzt:m.start()], quote=False), f"<mark>{html.escape(m.group(), quote=False)}</mark>"]
+                zuletzt = m.end()
+            kontext_marked = "".join(teile) + html.escape(kontext[zuletzt:], quote=False)
             if start > 0:
                 kontext_marked = "..." + kontext_marked
             if end < len(seite):
