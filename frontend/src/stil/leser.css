@@ -14,7 +14,8 @@
 .leseleiste.oben { top: .625rem; } .leseleiste.unten { bottom: .625rem; width: min(44rem, calc(100% - 1.25rem)); }
 .leseleiste .balken { flex: 1; }
 .leseleiste b { font: 600 .9375rem var(--buchschrift); padding: 0 .5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.seitenfeld { position: absolute; z-index: 6; top: 4rem; right: .625rem; max-height: calc(100% - 8rem); width: min(20rem, calc(100% - 1.25rem)); padding: .875rem; overflow: auto; display: grid; gap: .75rem; align-content: start; grid-template-columns: minmax(0, 1fr); }
+.seitenfeld { position: absolute; z-index: 6; top: 4rem; right: .625rem; max-height: calc(100% - 8rem); width: min(20rem, calc(100% - 1.25rem)); display: flex; flex-direction: column; }
+.seitenfeld > .rollen { min-height: 0; padding: .875rem; display: grid; gap: .75rem; align-content: start; grid-template-columns: minmax(0, 1fr); }
 /* Leser, Ergänzungen: Leisten am Telefon, Seiten eines PDF, Rahmen des EPUB, Felder, Auswahlmenü */
 .leser .seiten:focus-visible { outline-offset: -3px; }
 /* Papier und App können verschieden hell sein: über dem Blatt braucht die Leiste mehr Grund */
@@ -86,7 +87,7 @@
 .epubflaeche.ohne-grund { box-shadow: none; }
 .leser.mit-treffer .epubflaeche { bottom: 7.75rem; }
 /* Felder */
-.seitenfeld > h2, .seitenfeld h3 { font-size: 1rem; font-weight: 600; }
+.seitenfeld > .rollen > h2, .seitenfeld h3 { font-size: 1rem; font-weight: 600; }
 .seitenfeld h3 { font-size: .875rem; color: var(--tinte-2); }
 .seitenfeld .punkt .name { white-space: normal; }
 .seitenfeld .feld { justify-items: start; }

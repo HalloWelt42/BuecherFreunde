@@ -23,8 +23,10 @@
 </script>
 
 <div class="schwebe unterm-kopf glas dicht" style:--breite={breite} role="dialog" aria-label={titel} bind:this={feld}>
-  <h2>{titel}</h2>
-  {@render children()}
+  <div class="rollen">
+    <h2>{titel}</h2>
+    {@render children()}
+  </div>
 </div>
 
 <style>

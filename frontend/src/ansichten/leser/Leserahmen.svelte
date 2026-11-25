@@ -81,7 +81,9 @@
   {/if}
 
   {#if sitzung.feld && bereit}
-    <aside class="seitenfeld rollen glas dicht" aria-label="Seitenfeld">
+    <aside class="seitenfeld glas dicht" aria-label="Seitenfeld">
+      <!-- Glas rollt nie selbst: die Scheibe steht, gerollt wird innen -->
+      <div class="rollen">
       {#if sitzung.feld === "inhalt"}
         <Verzeichnis {sitzung} />
       {:else if sitzung.feld === "stellen"}
@@ -92,6 +94,7 @@
         {@render darstellung()}
         <Leserwerkzeuge {sitzung} />
       {/if}
+      </div>
     </aside>
   {/if}
 

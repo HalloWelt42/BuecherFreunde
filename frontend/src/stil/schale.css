@@ -42,5 +42,6 @@
 .led.gut { background: var(--led-gut); box-shadow: 0 0 0 1px rgb(var(--schatten) / .25), 0 0 7px color-mix(in srgb, var(--led-gut) 70%, transparent); }
 .led.warn { background: var(--led-warn); box-shadow: 0 0 0 1px rgb(var(--schatten) / .25), 0 0 7px color-mix(in srgb, var(--led-warn) 70%, transparent); }
 .led.schlecht { background: var(--led-schlecht); box-shadow: 0 0 0 1px rgb(var(--schatten) / .25), 0 0 7px color-mix(in srgb, var(--led-schlecht) 70%, transparent); }
-.schwebe { position: absolute; z-index: 40; padding: .75rem; right: var(--rechts); width: var(--breite, 21rem); max-width: calc(100% - 2 * var(--fuge)); max-height: calc(100% - var(--kopf) - 1.5rem); overflow: auto; }
+.schwebe { position: absolute; z-index: 40; right: var(--rechts); width: var(--breite, 21rem); max-width: calc(100% - 2 * var(--fuge)); max-height: calc(100% - var(--kopf) - 1.5rem); display: flex; flex-direction: column; }
+.schwebe > .rollen { min-height: 0; padding: .75rem; }
 .schwebe h2 { font-size: 1rem; font-weight: 600; margin-bottom: .5rem; }

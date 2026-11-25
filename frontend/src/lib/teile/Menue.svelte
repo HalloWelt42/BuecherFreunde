@@ -44,4 +44,4 @@
   });
 </script>
 
-<div class="schwebe menue glas dicht" style:--breite={breite} role="dialog" aria-label={name} bind:this={feld} use:anDieApp>{@render children()}</div>
+<div class="schwebe menue glas dicht" style:--breite={breite} role="dialog" aria-label={name} bind:this={feld} use:anDieApp><div class="rollen">{@render children()}</div></div>

@@ -5,6 +5,9 @@
 .glas.klar { background: rgb(var(--glas) / var(--a-klar)); -webkit-backdrop-filter: blur(var(--stufe-klar)) saturate(1.35); backdrop-filter: blur(var(--stufe-klar)) saturate(1.35); }
 .glas.milch { background: rgb(var(--glas) / var(--a-milch)); -webkit-backdrop-filter: blur(var(--stufe-milch)) saturate(1.2); backdrop-filter: blur(var(--stufe-milch)) saturate(1.2); }
 .glas.dicht { background: rgb(var(--glas) / var(--a-dicht)); -webkit-backdrop-filter: blur(var(--stufe-dicht)) saturate(1.2); backdrop-filter: blur(var(--stufe-dicht)) saturate(1.2); }
+/* Glas rollt nie selbst. Kante (::before) und Korn (::after) decken die Scheibe, so hoch sie zu sehen ist; rollte die Scheibe,
+   liefen beide mit dem Inhalt davon, darunter fehlten Korn und Kante und darüber stünde der Rand einer zweiten Scheibe. Wer
+   rollen muss, rollt eine innere Fläche (.rollen) in der festen Scheibe. Geprüft in tests/glas.test.ts. */
 /* geschliffene Kante: rundum ein Lichtverlauf von oben links, wo die Sonne auf die Scheibe trifft */
 .glas::before { content: ""; position: absolute; inset: 0; z-index: 3; border-radius: inherit; padding: 1px; pointer-events: none;
   background: linear-gradient(145deg, rgb(var(--licht) / .95), rgb(var(--licht) / .25) 24%, rgb(var(--kante) / .5) 60%, rgb(var(--kante) / .18) 78%, rgb(var(--licht) / .6));

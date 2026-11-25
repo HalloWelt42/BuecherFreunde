@@ -9,6 +9,7 @@
 </script>
 
 <div class="liste glas dicht">
+  <div class="rollen innen">
   {#if verlauf}
     <div class="reihe kopfzeile"><span class="leise">Zuletzt gesucht</span><span class="schiebt"><Knopf text="Verlauf löschen" symbol="trash" klein frei onclick={() => suche.leere()} /></span></div>
     {#each verlauf as wort, n (wort)}
@@ -24,6 +25,7 @@
       </div>
     {/each}
   {/if}
+  </div>
 </div>
 
 <style>
@@ -34,7 +36,11 @@
     left: 0;
     right: 0;
     max-height: min(26rem, 60vh);
-    overflow: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .innen {
+    min-height: 0;
     padding: 0.375rem;
   }
   .kopfzeile {
