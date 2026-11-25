@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
 <title>Leselampe</title>
 <defs>
-<linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a5045"/><stop offset="0.55" stop-color="#103229"/><stop offset="1" stop-color="#0a201b"/></linearGradient>
+<linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8f7c68"/><stop offset="0.55" stop-color="#5a4a3b"/><stop offset="1" stop-color="#2d241b"/></linearGradient>
 <radialGradient id="gs" gradientUnits="userSpaceOnUse" cx="512" cy="640" r="600"><stop offset="0" stop-color="#f0bd58" stop-opacity="0.55"/><stop offset="0.15" stop-color="#f0bd58" stop-opacity="0.495"/><stop offset="0.3" stop-color="#f0bd58" stop-opacity="0.374"/><stop offset="0.45" stop-color="#f0bd58" stop-opacity="0.242"/><stop offset="0.6" stop-color="#f0bd58" stop-opacity="0.132"/><stop offset="0.75" stop-color="#f0bd58" stop-opacity="0.055"/><stop offset="0.88" stop-color="#f0bd58" stop-opacity="0.015"/><stop offset="1" stop-color="#f0bd58" stop-opacity="0.0"/></radialGradient>
 <linearGradient id="sc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c4f7e4"/><stop offset="0.16" stop-color="#63cfac"/><stop offset="0.55" stop-color="#22937a"/><stop offset="0.86" stop-color="#0f6450"/><stop offset="1" stop-color="#4cc09c"/></linearGradient>
 <linearGradient id="sl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.9"/><stop offset="0.9" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
@@ -16,7 +16,7 @@
 </defs>
 <rect width="1024" height="1024" fill="url(#g)"/>
 <rect width="1024" height="1024" fill="url(#gs)"/>
-<g transform="matrix(0.84 0 0 0.84 81.92 71.92)">
+<g transform="matrix(0.9072 0 0 0.9072 47.5136 36.7136)">
 <ellipse cx="512" cy="856" rx="400" ry="40" fill="url(#sch)"/>
 <path d="M226 462H798L860 780H164Z" fill="url(#li)"/>
 <rect x="490" y="452" width="44" height="320" rx="4" fill="url(#mw)"/>
