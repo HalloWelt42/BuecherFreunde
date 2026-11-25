@@ -109,6 +109,15 @@ export class Blaetterfluss implements Lesefluss {
     return this.mass.erste((r) => this.#schirmVon(r) < this.#schirm);
   }
 
+  ende(): Anker | null {
+    return this.amEnde ? null : this.mass.erste((r) => this.#schirmVon(r) <= this.#schirm);
+  }
+
+  zeigt(a: Anker): boolean {
+    const r = this.mass.lage(a);
+    return !!r && this.#schirmVon(r) === this.#schirm;
+  }
+
   erreicht(e: Element): boolean {
     const r = this.satz.lageVon(e);
     return !!r && this.#schirmVon(r) <= this.#schirm;

@@ -7,7 +7,9 @@
   import type { Leseart } from "../../lib/leser/fluss/fluss";
   import { ladefehler, type Ladefehler } from "../../lib/leser/ladefehler";
   import { leseart } from "../../lib/leser/leseart.svelte";
-  import { ladePdf, seitentext, verzeichnis, type PdfBuch } from "../../lib/leser/pdf/dokument";
+  import { ladePdf, verzeichnis, type PdfBuch } from "../../lib/leser/pdf/dokument";
+  import { Pdfquelle } from "../../lib/leser/pdf/lesequelle";
+  import { vorlesen } from "../../lib/stand/vorlesen.svelte";
   import { Gedruckt } from "../../lib/leser/pdf/gedruckt.svelte";
   import { ansichtFuer, ansichtOder, artVon, naechsteStufe, STUFEN, type Ansicht } from "../../lib/leser/pdf/zoom";
   import { Positionsspeicher } from "../../lib/leser/position";
@@ -72,6 +74,7 @@
       if (!start.seite && start.wort) await sucheSeite();
       seite = Math.min(Math.max(1, seite), geladen.seiten);
       pdf = geladen;
+      sitzung.quelle = new Pdfquelle(buch.id, geladen, () => sitzung.kapitel, () => sitzung.kapitelJetzt, () => (nurText ? (text ?? null) : (seiten ?? null)));
       sitzung.kapitel = await verzeichnis(geladen.doc);
     } catch {
       fehler = await ladefehler(buch.id);
@@ -153,8 +156,6 @@
   const zoomtaste = (richtung: 1 | -1) => (nurText ? undefined : () => zoome(richtung));
 
   const griffe: Lesegriffe = {
-    abschnittName: "Seite",
-    abschnitt: async () => (pdf ? seitentext(pdf.doc, seite) : ""),
     zumKapitel: (k) => geheZu(k.ziel as number),
     zurMarkierung: (m) => geheZu(Number(m.cfi_range.match(/^page:(\d+)/)?.[1] ?? seite)),
     zurStelle: (ort, cfi) => {
@@ -189,8 +190,10 @@
   const aufraeumen = speicher.starte();
   onDestroy(() => {
     aufraeumen();
+    if (vorlesen.quelle && vorlesen.quelle === sitzung.quelle) vorlesen.halt();
     void pdf?.doc.loadingTask.destroy();
     sitzung.griffe = null;
+    sitzung.quelle = null;
   });
 
   void lade();
@@ -202,9 +205,9 @@
   {#if !pdf}
     <Ladehinweis {fehler} adresse={dateiUrl(buch.id)} name={buch.file_name || buch.title} onerneut={() => void lade()} />
   {:else if nurText}
-    <Textansicht bind:this={text} {sitzung} {art} startSeite={seite} {fundstelle} grund={farben.bg} tinte={farben.fg} onstand={(s) => { textstand = s; if (s.seite !== seite) gelesen(s.seite); }} onoriginal={schalteText} onmitte={() => sitzung.tippeMitte()} belegt={() => sitzung.belegt()} />
+    <Textansicht bind:this={text} {sitzung} {art} startSeite={seite} {fundstelle} grund={farben.bg} tinte={farben.fg} onstand={(s) => { textstand = s; if (s.seite !== seite) gelesen(s.seite); }} onoriginal={schalteText} onmitte={() => sitzung.tippeMitte()} belegt={() => sitzung.belegt()} onbeschriftet={() => (sitzung.quelle as Pdfquelle | null)?.gezeichnet()} />
   {:else}
-    <PdfSeiten bind:this={seiten} {sitzung} {pdf} {ansicht} {zoom} {seite} {fundstelle} {fundseite} onseite={gelesen} onmass={(m) => (mass = m)} onrest={(r) => (rest = r)} />
+    <PdfSeiten bind:this={seiten} {sitzung} {pdf} {ansicht} {zoom} {seite} {fundstelle} {fundseite} onseite={gelesen} onmass={(m) => (mass = m)} onrest={(r) => (rest = r)} onbeschriftet={(nr) => (sitzung.quelle as Pdfquelle | null)?.gezeichnet(nr)} />
   {/if}
 
   {#snippet darstellung()}

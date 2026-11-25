@@ -10,6 +10,8 @@
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { schreibweise } from "../../lib/leser/typen";
   import { wischen } from "../../lib/leser/wischen";
+  import { imBlick, Mitlauf, sichtVon } from "../../lib/leser/mitlauf";
+  import { vorlesen } from "../../lib/stand/vorlesen.svelte";
 
   interface Eigenschaften {
     sitzung: Lesesitzung;
@@ -23,14 +25,17 @@
     onseite: (nr: number) => void;
     onmass: (mass: number) => void;
     onrest: (rest: Seitenrest) => void;
+    /** Eine Seite ist samt Textebene gezeichnet */
+    onbeschriftet: (nr: number) => void;
   }
-  let { sitzung, pdf, ansicht, zoom, seite, fundstelle, fundseite, onseite, onmass, onrest }: Eigenschaften = $props();
+  let { sitzung, pdf, ansicht, zoom, seite, fundstelle, fundseite, onseite, onmass, onrest, onbeschriftet }: Eigenschaften = $props();
 
   /** So viel der letzten Zeilen bleibt stehen, wenn eine hohe Seite in Abschnitten geblättert wird */
   const UEBERLAPP = 48;
 
   let flaeche: HTMLElement | undefined = $state();
   let anzeige: PdfAnzeige | null = null;
+  let mitlauf: Mitlauf | null = null;
   let gezeigt = untrack(() => seite);
   let gerolltZurFundstelle = false;
 
@@ -69,6 +74,11 @@
     erstes.scrollIntoView({ block: "nearest" });
   }
 
+  function gezeichnet(nr: number, ebene: HTMLElement) {
+    beschrifte(nr, ebene);
+    onbeschriftet(nr);
+  }
+
   export function zeichne() {
     anzeige?.zeichneErneut((nr, ebene) => {
       leereEbene(ebene);
@@ -84,8 +94,12 @@
   $effect(() => {
     const f = flaeche;
     if (!f) return;
-    anzeige = new PdfAnzeige(pdf, f, { beiSeite: gelesen, gezeichnet: beschrifte });
-    return () => anzeige?.zerstoere();
+    anzeige = new PdfAnzeige(pdf, f, { beiSeite: gelesen, gezeichnet });
+    mitlauf = new Mitlauf({ get stand() { return f.scrollTop; }, set stand(w) { f.scrollTop = w; }, get hoehe() { const s = sichtVon(f); return s.unten - s.oben; } }, f);
+    return () => {
+      anzeige?.zerstoere();
+      mitlauf?.zerstoere();
+    };
   });
 
   // Ansicht oder Zoom: neu rechnen, die Seite bleibt
@@ -97,10 +111,10 @@
   // Sprung von außen
   $effect(() => {
     const ziel = seite;
-    if (ziel !== gezeigt) untrack(() => void zeige(ziel, "oben"));
+    if (ziel !== gezeigt) untrack(() => void zeigeSeite(ziel, "oben"));
   });
 
-  async function zeige(nr: number, kante: "oben" | "unten") {
+  async function zeigeSeite(nr: number, kante: "oben" | "unten") {
     if (!anzeige) return;
     gezeigt = nr;
     if (!blaettert) return anzeige.zeige(nr);
@@ -123,7 +137,7 @@
     if (ziel === seite) return;
     gezeigt = ziel;
     onseite(ziel);
-    void zeige(ziel, richtung > 0 ? "oben" : "unten");
+    void zeigeSeite(ziel, richtung > 0 ? "oben" : "unten");
   }
 
   // Eine vergrößerte oder im Querformat hohe Seite schiebt erst selbst
@@ -144,7 +158,39 @@
   function gerollt() {
     anzeige?.gerollt();
     if (blaettert) meldeRest();
+    vorlesen.bewegt();
   }
+
+  // Für das Vorlesen: wo der Text einer Seite steht, die Seite zeigen, die gelesene Zeile im Blick halten
+  export const wurzel = (nr: number): HTMLElement | null => anzeige?.rahmen(nr)?.querySelector<HTMLElement>(".textLayer") ?? null;
+
+  function seiteImBlick(nr: number): boolean {
+    if (blaettert) return bogen.includes(nr);
+    const r = anzeige?.rahmen(nr)?.getBoundingClientRect();
+    const s = flaeche && sichtVon(flaeche);
+    return !!r && !!s && r.bottom > s.oben && r.top < s.unten;
+  }
+
+  export async function zeige(nr: number, bereich: Range | null, sofort: boolean): Promise<void> {
+    if (!flaeche) return;
+    if (!seiteImBlick(nr) || (blaettert && nr !== seite && !bogen.includes(nr))) {
+      gezeigt = nr;
+      onseite(nr);
+      await zeigeSeite(nr, "oben");
+      return;
+    }
+    if (!bereich) return;
+    const r = bereich.getBoundingClientRect();
+    const s = sichtVon(flaeche);
+    mitlauf?.folge(r.top - s.oben, r.bottom - s.oben, sofort);
+  }
+
+  export function sichtbar(nr: number, bereich: Range | null): boolean {
+    return bereich && flaeche ? imBlick(bereich, sichtVon(flaeche)) : seiteImBlick(nr);
+  }
+
+  export const hier = () => ({ seite, wortlaut: "" });
+  export const seiten = (): number[] => (blaettert ? bogen : [seite]);
 
   const belegt = () => sitzung.belegt();
 

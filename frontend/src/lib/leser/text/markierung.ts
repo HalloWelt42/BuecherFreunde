@@ -1,89 +1,79 @@
-// Markierungen im Text eines MD- oder TXT-Buchs: über ihren Wortlaut gefunden, in der Nähe der gemerkten Stelle
+// Markierungen und Treffer im Text eines Blatts (MD, TXT, PDF als Text): über ihren Wortlaut gefunden, in der Nähe der
+// gemerkten Stelle. Gemalt wird mit Hervorhebungen, der Text selbst bleibt unberührt.
 import type { Markierung } from "../../typen";
 import { durchsichtig, VORGABE_STIFT } from "../farben";
-import { findeZeichen, type Zeichenstelle } from "../textsuche";
+import { hebeHervor, type Hervorhebungsart, type Rechteckschicht } from "../hervorhebung";
+import { findeZeichen } from "../textsuche";
 
-function textknoten(flaeche: HTMLElement): Text[] {
-  const geher = document.createTreeWalker(flaeche, NodeFilter.SHOW_TEXT);
+export function textknoten(flaeche: Node): Text[] {
+  const geher = document.createTreeWalker(flaeche, NodeFilter.SHOW_TEXT, { acceptNode: (k) => (k.parentElement?.closest(".hervorhebungen, button, [hidden]") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
   const aus: Text[] = [];
   while (geher.nextNode()) aus.push(geher.currentNode as Text);
   return aus;
 }
 
-/** Umhüllt den Bereich, Textknoten für Textknoten; das erste Stück kommt zurück */
-function umhuelle(knoten: Text[], von: Zeichenstelle, bis: Zeichenstelle, baue: () => HTMLElement): HTMLElement | null {
-  const a = knoten.indexOf(von.knoten);
-  const b = knoten.indexOf(bis.knoten);
-  let erstes: HTMLElement | null = null;
-  for (let i = b; i >= a; i--) {
-    const k = knoten[i];
-    const anfang = i === a ? von.versatz : 0;
-    const ende = i === b ? bis.versatz : k.data.length;
-    if (ende <= anfang || !k.data.slice(anfang, ende).trim()) continue;
-    const mitte = anfang > 0 ? k.splitText(anfang) : k;
-    if (ende - anfang < mitte.data.length) mitte.splitText(ende - anfang);
-    const huelle = baue();
-    mitte.replaceWith(huelle);
-    huelle.append(mitte);
-    erstes = huelle;
-  }
-  return erstes;
+function bereich(von: { knoten: Text; versatz: number }, bis: { knoten: Text; versatz: number }): Range {
+  const r = document.createRange();
+  r.setStart(von.knoten, von.versatz);
+  r.setEnd(bis.knoten, bis.versatz);
+  return r;
 }
 
-export function leere(flaeche: HTMLElement, art: string): void {
-  for (const h of flaeche.querySelectorAll<HTMLElement>(`mark[data-art="${art}"]`)) h.replaceWith(...h.childNodes);
-}
-
-function huelle(art: string, farbe: string, kennung: string): HTMLElement {
-  const m = document.createElement("mark");
-  m.dataset.art = art;
-  m.dataset.markierung = kennung;
-  m.style.backgroundColor = farbe;
-  return m;
-}
+export const TREFFER: Hervorhebungsart = { name: "bf-treffer", farbe: "rgba(255, 152, 0, 0.45)", rang: 2 };
+const stift = (farbe: string): Hervorhebungsart => ({ name: `bf-stift-${farbe.replace(/[^0-9a-z]/gi, "")}`, farbe: durchsichtig(farbe, 0.4), rang: 1 });
+/** Welche Arten von Stiften gerade gemalt sind, je Fläche, damit sie wieder weggehen */
+const GEMALT = new WeakMap<Document, Hervorhebungsart[]>();
 
 export function prozentVon(cfi: string | undefined): number | null {
   const p = cfi?.match(/^percent:([\d.]+)/)?.[1];
   return p === undefined ? null : Number(p);
 }
 
-export function zeichneMarkierungen(flaeche: HTMLElement, markierungen: Markierung[]): void {
-  leere(flaeche, "markierung");
+/** Malt die Markierungen; liefert ihre Bereiche je Kennung, zum Hinspringen. wurzel: wo eine Markierung zu suchen ist (etwa ihre Seite) */
+export function zeichneMarkierungen(flaeche: HTMLElement, markierungen: Markierung[], ersatz?: Rechteckschicht, wurzel: (m: Markierung) => HTMLElement | null = () => flaeche): Map<number, Range> {
+  const knotenVon = new Map<HTMLElement, Text[]>();
+  const aus = new Map<number, Range>();
+  const je = new Map<string, { art: Hervorhebungsart; bereiche: Range[] }>();
   for (const m of markierungen) {
+    const w = wurzel(m);
+    if (!w) continue;
+    if (!knotenVon.has(w)) knotenVon.set(w, textknoten(w));
     const p = prozentVon(m.cfi_range);
-    const knoten = textknoten(flaeche);
-    const ort = findeZeichen(knoten, m.text_snippet ?? "", p === null ? null : p / 100);
-    if (ort) umhuelle(knoten, ort.von, ort.bis, () => huelle("markierung", durchsichtig(m.color || VORGABE_STIFT, 0.4), String(m.id)));
+    const ort = findeZeichen(knotenVon.get(w)!, m.text_snippet ?? "", p === null ? null : p / 100);
+    if (!ort) continue;
+    const r = bereich(ort.von, ort.bis);
+    aus.set(m.id, r);
+    const art = stift(m.color || VORGABE_STIFT);
+    const gruppe = je.get(art.name) ?? { art, bereiche: [] };
+    gruppe.bereiche.push(r);
+    je.set(art.name, gruppe);
   }
+  const dok = flaeche.ownerDocument;
+  for (const alt of GEMALT.get(dok) ?? []) if (!je.has(alt.name)) hebeHervor(dok, alt, [], ersatz);
+  for (const { art, bereiche } of je.values()) hebeHervor(dok, art, bereiche, ersatz);
+  GEMALT.set(dok, [...je.values()].map((g) => g.art));
+  return aus;
 }
 
-const FARBE_TREFFER = "rgba(255, 152, 0, 0.45)";
-
-/** Ein Wortlaut, auch über mehrere Textknoten; liefert sein erstes Stück */
-export function zeichneWortlaut(flaeche: HTMLElement, wortlaut: string): HTMLElement | null {
-  leere(flaeche, "treffer");
-  const knoten = textknoten(flaeche);
-  const ort = findeZeichen(knoten, wortlaut.replace(/^"|"$/g, ""), null);
-  return ort && umhuelle(knoten, ort.von, ort.bis, () => huelle("treffer", FARBE_TREFFER, "treffer"));
+/** Ein Wortlaut, auch über mehrere Textknoten */
+export function zeichneWortlaut(flaeche: HTMLElement, wortlaut: string, ersatz?: Rechteckschicht): Range | null {
+  const ort = findeZeichen(textknoten(flaeche), wortlaut.replace(/^"|"$/g, ""), null);
+  const r = ort && bereich(ort.von, ort.bis);
+  hebeHervor(flaeche.ownerDocument, TREFFER, r ? [r] : [], ersatz);
+  return r;
 }
 
 /** Alle Stellen eines Suchworts (höchstens so viele), in Lesefolge */
-export function zeichneTreffer(flaeche: HTMLElement, wort: string, hoechstens = 500): HTMLElement[] {
-  leere(flaeche, "treffer");
+export function zeichneTreffer(flaeche: HTMLElement, wort: string, hoechstens = 500, ersatz?: Rechteckschicht): Range[] {
   const gesucht = wort.trim().replace(/^"|"$/g, "").toLowerCase();
-  if (gesucht.length < 2) return [];
-  const aus: HTMLElement[] = [];
-  for (const k of textknoten(flaeche)) {
-    const klein = k.data.toLowerCase();
-    const stellen: number[] = [];
-    for (let i = klein.indexOf(gesucht); i >= 0 && aus.length + stellen.length < hoechstens; i = klein.indexOf(gesucht, i + gesucht.length)) stellen.push(i);
-    const eigene: HTMLElement[] = [];
-    for (const i of stellen.reverse()) {
-      const h = umhuelle([k], { knoten: k, versatz: i }, { knoten: k, versatz: i + gesucht.length }, () => huelle("treffer", FARBE_TREFFER, "treffer"));
-      if (h) eigene.unshift(h);
+  const aus: Range[] = [];
+  if (gesucht.length >= 2) {
+    for (const k of textknoten(flaeche)) {
+      const klein = k.data.toLowerCase();
+      for (let i = klein.indexOf(gesucht); i >= 0 && aus.length < hoechstens; i = klein.indexOf(gesucht, i + gesucht.length)) aus.push(bereich({ knoten: k, versatz: i }, { knoten: k, versatz: i + gesucht.length }));
     }
-    aus.push(...eigene);
   }
+  hebeHervor(flaeche.ownerDocument, TREFFER, aus, ersatz);
   return aus;
 }
 

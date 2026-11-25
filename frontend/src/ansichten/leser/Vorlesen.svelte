@@ -1,57 +1,95 @@
 <script lang="ts">
-  // Vorlesen: was gelesen wird und mit welcher Stimme
-  import { ladeVolltext } from "../../lib/api/metadata";
+  // Vorlesen im Leser: was gelesen wird (Seite, Kapitel, ab hier, ganzes Buch), der Spieler, Stimme, Tempo, Schlafuhr
+  import { coverUrl } from "../../lib/api/books";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
-  import { vorlesen } from "../../lib/stand/vorlesen.svelte";
+  import { TEMPI, vorlesen } from "../../lib/stand/vorlesen.svelte";
   import Auswahl from "../../lib/teile/Auswahl.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Symbol from "../../lib/teile/Symbol.svelte";
-  let { sitzung, onfertig = undefined }: { sitzung: Lesesitzung; onfertig?: () => void } = $props();
+  import type { Schlaf } from "../../lib/vorlesen/folge";
+  import type { Strecke } from "../../lib/vorlesen/typen";
+  import Spieler from "./Spieler.svelte";
+  let { sitzung }: { sitzung: Lesesitzung } = $props();
 
-  let laedt = $state(false);
-  let abschnitt = $derived(sitzung.griffe?.abschnittName ?? "");
+  type Umfang = "seite" | "kapitel" | "hier" | "buch";
+  const UMFAENGE: [Umfang, string, string][] = [["seite", "Diese Seite", "file-lines"], ["kapitel", "Dieses Kapitel", "bookmark"], ["hier", "Ab hier", "play"], ["buch", "Ganzes Buch", "book-open"]];
+
+  let laedt = $state<Umfang | "">("");
+  let quelle = $derived(sitzung.quelle);
+  let hier = $derived(vorlesen.aktiv && !!quelle && vorlesen.quelle === quelle);
+  let art = $derived(quelle?.einheitsart ?? "Seite");
+  let tempo = $derived(TEMPI.indexOf(vorlesen.tempo));
+
+  const SCHLAF: [string, Schlaf][] = [["aus", { art: "aus" }], ["einheit", { art: "einheit" }], ["kapitel", { art: "kapitel" }], ["15", { art: "minuten", minuten: 15 }], ["30", { art: "minuten", minuten: 30 }], ["60", { art: "minuten", minuten: 60 }]];
+  let schlafwerte = $derived<[string, string][]>(SCHLAF.filter(([w]) => w !== "kapitel" || quelle?.mitKapiteln).map(([w, s]) => [w, s.art === "aus" ? "Aus" : s.art === "einheit" ? `Ende ${art === "Seite" ? "der Seite" : art === "Abschnitt" ? "des Abschnitts" : "des Stücks"}` : s.art === "kapitel" ? "Ende des Kapitels" : `Nach ${s.minuten} Minuten`]));
+  let schlafwert = $derived(vorlesen.schlaf.art === "minuten" ? String(vorlesen.schlaf.minuten) : vorlesen.schlaf.art);
 
   $effect(() => vorlesen.pruefe());
 
-  async function lies(was: string, hole: () => Promise<string>) {
+  async function strecke(u: Umfang): Promise<Strecke | null> {
+    if (!quelle) return null;
+    if (u === "buch") return { von: { einheit: 0, zeichen: 0 }, bis: null };
+    if (u === "hier") return { von: await quelle.hier(), bis: null };
+    return u === "seite" ? quelle.seite() : quelle.kapitel();
+  }
+
+  async function starte(u: Umfang, name: string) {
+    // Im Tippen selbst, sonst bleibt das Telefon stumm
     vorlesen.entsperre();
-    laedt = true;
+    laedt = u;
     try {
-      const text = await hole();
-      if (!text.trim()) melde.info("Hier steht kein Text zum Vorlesen");
-      else {
-        vorlesen.lies(text, was);
-        onfertig?.();
-      }
-    } catch (e) {
-      melde.schlecht(e, "Vorlesen");
+      const s = await strecke(u);
+      if (!s || !quelle) return void melde.info("Hier gibt es nichts zum Vorlesen");
+      const b = sitzung.buch;
+      vorlesen.liesBuch(quelle, s, name, { titel: b.title, autor: b.authors.map((a) => a.name).join(", "), bild: coverUrl(b.id) });
     } finally {
-      laedt = false;
+      laedt = "";
     }
   }
 </script>
 
 <div class="vorlesen">
-  {#if vorlesen.aktiv}
-    <div class="reihe">
-      <span class="marke-text info"><Symbol name={vorlesen.wartet ? "circle-notch" : "volume-high"} dreht={vorlesen.wartet} />{vorlesen.wartet ? "Ton wird geholt" : `Liest vor: ${vorlesen.was}`}</span>
-      <span class="schiebt"><Knopf text="Anhalten" symbol="stop" klein onclick={() => vorlesen.halt()} /></span>
+  {#if hier}
+    <div class="stand">
+      <Symbol name={vorlesen.wartet && !vorlesen.pausiert ? "circle-notch" : vorlesen.pausiert ? "pause" : "volume-high"} dreht={vorlesen.wartet && !vorlesen.pausiert} />
+      <span><b>{vorlesen.name}</b><span class="leise"> · {vorlesen.wartet && !vorlesen.pausiert ? "Ton wird geholt" : vorlesen.pausiert ? "Angehalten" : vorlesen.was}</span></span>
     </div>
+    <Spieler {art} />
+    {#if vorlesen.weg}<Knopf text="Zur Stelle" symbol="location-crosshairs" klein onclick={() => vorlesen.zurStelle()} />{/if}
   {:else}
-    <div class="reihe">
-      {#if abschnitt}<Knopf text="{abschnitt} vorlesen" symbol="volume-low" klein gesperrt={laedt} onclick={() => void lies(abschnitt, async () => (await sitzung.griffe?.abschnitt()) ?? "")} />{/if}
-      <Knopf text="Ganzes Buch vorlesen" symbol="book-open" klein laeuft={laedt} onclick={() => void lies("Ganzes Buch", async () => (await ladeVolltext(sitzung.buch.id, 1, 100000)).volltext ?? "")} />
+    <div class="tastenraster" style:--spalten="2" role="group" aria-label="Vorlesen">
+      {#each UMFAENGE as [u, name, symbol] (u)}
+        {#if u !== "kapitel" || quelle?.mitKapiteln}
+          <Knopf klasse="kachel" text={name} {symbol} laeuft={laedt === u} gesperrt={!quelle || !vorlesen.stimmen.length} titel={u === "buch" ? "Ganzes Buch von vorn" : undefined} onclick={() => void starte(u, name)} />
+        {/if}
+      {/each}
     </div>
   {/if}
   {#if vorlesen.stimmen.length}
-    <div class="stimme">
+    <div class="regelzeile">
       <span class="klein">Stimme</span>
       <Auswahl name="Stimme" gruppen={vorlesen.gruppen} wert={vorlesen.stimme} onwahl={(id) => vorlesen.waehle(id)} />
-      <Knopf text="Probe hören" symbol="play" nur klein gesperrt={vorlesen.aktiv} onclick={() => vorlesen.probe()} />
+      <Knopf text="Probe hören" symbol="play" nur klein gesperrt={vorlesen.aktiv} onclick={() => { vorlesen.entsperre(); vorlesen.probe(); }} />
     </div>
+    <div class="regelzeile">
+      <span class="klein">Tempo</span>
+      <span class="klein zahl tempo">{vorlesen.tempo.toLocaleString("de-DE")} ×</span>
+      <span class="reihe">
+        <Knopf text="Langsamer" symbol="minus" nur klein gesperrt={tempo <= 0} onclick={() => (vorlesen.tempo = TEMPI[tempo - 1])} />
+        <Knopf text="Schneller" symbol="plus" nur klein gesperrt={tempo >= TEMPI.length - 1} onclick={() => (vorlesen.tempo = TEMPI[tempo + 1])} />
+      </span>
+    </div>
+    {#if hier}
+      <div class="regelzeile">
+        <span class="klein">Schlafuhr</span>
+        <Auswahl name="Schlafuhr" werte={schlafwerte} wert={schlafwert} onwahl={(w) => vorlesen.setzeSchlaf(SCHLAF.find(([x]) => x === w)![1])} />
+      </div>
+    {/if}
+  {:else}
+    <p class="klein leise">{vorlesen.hinweis || "Hier gibt es keine Stimme zum Vorlesen."}</p>
   {/if}
-  {#if vorlesen.hinweis}<p class="klein leise">{vorlesen.hinweis}</p>{/if}
+  {#if vorlesen.hinweis && vorlesen.stimmen.length}<p class="klein leise">{vorlesen.hinweis}</p>{/if}
 </div>
 
 <style>
@@ -60,10 +98,27 @@
     gap: 0.5rem;
     min-width: 0;
   }
-  .stimme {
+  .stand {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     gap: 0.5rem;
     align-items: center;
+    font-size: 0.875rem;
+  }
+  .stand b {
+    font-weight: 600;
+  }
+  .regelzeile {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .tempo {
+    text-align: center;
+  }
+  .reihe {
+    gap: 0.25rem;
+    flex-wrap: nowrap;
   }
 </style>

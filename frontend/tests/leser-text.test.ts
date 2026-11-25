@@ -40,20 +40,20 @@ describe("Markdown", () => {
 });
 
 describe("Markierungen im Text", () => {
-  it("markiert über Elementgrenzen und nimmt die Stelle, die am nächsten liegt", () => {
+  // jsdom kennt keine Hervorhebungen: hier malt die Schicht aus Rechtecken, gezählt werden die Bereiche
+  it("findet über Elementgrenzen die Stelle, die am nächsten liegt, und lässt den Text unberührt", () => {
     const b = blatt("<p>Ein Deich am Meer.</p><p>Noch ein <b>Deich</b> im Land.</p>");
-    zeichneMarkierungen(b, [marke(3, "Deich", 70)]);
-    expect(b.querySelector("b mark")?.textContent).toBe("Deich");
-    zeichneMarkierungen(b, [marke(4, "ein Deich im", 60)]);
-    expect([...b.querySelectorAll("mark")].map((m) => m.textContent).join("")).toBe("ein Deich im");
-    zeichneMarkierungen(b, []);
-    expect(b.querySelector("mark")).toBeNull();
-    expect(b.textContent).toBe("Ein Deich am Meer.Noch ein Deich im Land.");
+    const vorher = b.innerHTML;
+    const r = zeichneMarkierungen(b, [marke(3, "Deich", 70)]);
+    expect([r.get(3)?.toString(), r.get(3)?.startContainer.parentElement?.tagName]).toEqual(["Deich", "B"]);
+    expect(zeichneMarkierungen(b, [marke(4, "ein Deich im", 60)]).get(4)?.toString()).toBe("ein Deich im");
+    expect(zeichneMarkierungen(b, []).size).toBe(0);
+    expect(b.innerHTML).toBe(vorher);
   });
 
   it("zeichnet Treffer in Lesefolge", () => {
     const b = blatt("<p>Salz und Pfeffer, Salz und Essig</p><p>salzig</p>");
-    expect(zeichneTreffer(b, "salz").map((t) => t.textContent)).toEqual(["Salz", "Salz", "salz"]);
+    expect(zeichneTreffer(b, "salz").map((t) => t.toString())).toEqual(["Salz", "Salz", "salz"]);
     expect(zeichneTreffer(b, "")).toEqual([]);
     expect(b.querySelector("mark")).toBeNull();
   });

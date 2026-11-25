@@ -1,27 +1,49 @@
-// Vorlesen: welche Stimmen es gibt, welche gilt, was gerade klingt. Ist ein Sprechdienst angeschlossen, spricht nur er; sonst die
-// Stimmen des Geräts. Beide hinter derselben Schnittstelle (lib/vorlesen).
+// Vorlesen: welche Stimmen es gibt, welche gilt, was gerade klingt, und der Spieler dazu. Ist ein Sprechdienst angeschlossen,
+// spricht nur er; sonst die Stimmen des Geräts. Beide hinter derselben Schnittstelle (lib/vorlesen).
 import { ladeDienststimmen, type Dienststimmen } from "../api/vorlesen";
 import { lies as gemerkt, merke } from "../speicher";
-import { Dienstvorleser } from "../vorlesen/dienst";
-import { geraetDa, geraetestimmen, Geraetevorleser } from "../vorlesen/geraet";
-import type { Stimme, Vorleser } from "../vorlesen/typen";
-import { melde } from "./meldungen.svelte";
+import { Dienstsprecher } from "../vorlesen/dienst";
+import { Vorlesefolge, type Schlaf } from "../vorlesen/folge";
+import { geraetDa, geraetestimmen, Geraetesprecher } from "../vorlesen/geraet";
+import { medienAus, medienStand, zeigeMedien, type Werk } from "../vorlesen/mediensitzung";
+import type { Lesequelle, Sprecher, Stimme, Strecke } from "../vorlesen/typen";
+import { Vorlauf } from "../vorlesen/vorlauf";
 import { anschluesse } from "./anschluesse.svelte";
+import { melde } from "./meldungen.svelte";
 
 const SCHLUESSEL = "vorlesen.stimme";
+const SCHLUESSEL_TEMPO = "vorlesen.tempo";
 const PROBE = "So klingt diese Stimme beim Vorlesen.";
 const GRUPPEN = { eigene: "Eigene Stimmen", weitere: "Weitere Stimmen", eingebaut: "Eingebaute Stimmen" };
+const OHNE_WERK: Werk = { titel: "", autor: "", bild: "" };
+
+export const TEMPI = [0.8, 0.9, 1, 1.1, 1.25, 1.5];
+
+/** Ein einzelner Text, der nirgends mitläuft (Auswahl, Antwort, Probe) */
+function textquelle(text: string, was: string): Lesequelle {
+  return { anzahl: 1, name: () => was, text: async () => text, markiere: () => {}, fuehre: async () => {}, sichtbar: () => true, kapitelende: async () => null };
+}
 
 class Vorlesestand {
   aktiv = $state(false);
   wartet = $state(false);
+  pausiert = $state(false);
+  /** Von Hand weggeblättert: die gelesene Stelle ist nicht im Blick */
+  weg = $state(false);
   was = $state("");
+  einheit = $state(0);
+  schlaf = $state<Schlaf>({ art: "aus" });
+  quelle = $state.raw<Lesequelle | null>(null);
+  kannVor = $state(false);
+  #tempo = $state(TEMPI.includes(Number(gemerkt(SCHLUESSEL_TEMPO))) ? Number(gemerkt(SCHLUESSEL_TEMPO)) : 1);
   #gewaehlt = $state(gemerkt(SCHLUESSEL));
   #dienst = $state<Dienststimmen | null>(null);
   #geraet = $state<Stimme[]>([]);
   #gefragt = false;
-  #vorleser: Record<string, Vorleser> = { dienst: new Dienstvorleser(), geraet: new Geraetevorleser() };
-  #spricht: Vorleser | null = null;
+  #sprecher: Record<string, Sprecher> = { dienst: new Dienstsprecher(), geraet: new Geraetesprecher() };
+  #vorlauf = new Vorlauf();
+  #folge: Vorlesefolge | null = null;
+  #werk = OHNE_WERK;
 
   stimmen = $derived<Stimme[]>(
     anschluesse.jetzt.vorlesen
@@ -34,6 +56,7 @@ class Vorlesestand {
   /** Die Stimme, die gilt: die gewählte, solange es sie gibt, sonst die erste */
   stimme = $derived(this.stimmen.some((s) => s.id === this.#gewaehlt) ? this.#gewaehlt : (this.stimmen[0]?.id ?? ""));
   hinweis = $derived(this.#dienst?.hinweis ?? "");
+  name = $derived(this.quelle?.name(this.einheit) ?? "");
 
   gruppen = $derived.by(() => {
     const aus = new Map<string, [string, string][]>();
@@ -55,14 +78,26 @@ class Vorlesestand {
   }
 
   waehle(id: string): void {
-    this.halt();
     this.#gewaehlt = id;
     merke(SCHLUESSEL, id);
+    const [sprecher, stimme] = this.#teile();
+    if (!sprecher) return this.halt();
+    sprecher.tempo = this.#tempo;
+    this.#folge?.wechsle(sprecher, stimme);
   }
 
-  #teile(): [Vorleser | undefined, string] {
+  #teile(): [Sprecher | undefined, string] {
     const trenner = this.stimme.indexOf(":");
-    return [this.#vorleser[this.stimme.slice(0, trenner)], this.stimme.slice(trenner + 1)];
+    return [this.#sprecher[this.stimme.slice(0, trenner)], this.stimme.slice(trenner + 1)];
+  }
+
+  get tempo(): number {
+    return this.#tempo;
+  }
+  set tempo(wert: number) {
+    this.#tempo = wert;
+    merke(SCHLUESSEL_TEMPO, String(wert));
+    for (const s of Object.values(this.#sprecher)) s.tempo = wert;
   }
 
   /** Noch im Tippen rufen, wenn der Text erst danach geholt wird. */
@@ -70,23 +105,43 @@ class Vorlesestand {
     this.#teile()[0]?.entsperre();
   }
 
+  /** Ein einzelner Text */
   lies(text: string, was: string): void {
+    if (text.trim()) this.liesBuch(textquelle(text.trim(), was), { von: { einheit: 0, zeichen: 0 }, bis: null }, was);
+    else this.halt();
+  }
+
+  /** Eine Strecke eines Buchs; die Ansicht läuft mit */
+  liesBuch(quelle: Lesequelle, strecke: Strecke, was: string, werk: Werk = OHNE_WERK): void {
     this.halt();
-    const [vorleser, stimme] = this.#teile();
-    if (!text.trim()) return;
-    if (!vorleser) return void melde.warn(this.hinweis || "Hier gibt es keine Stimme zum Vorlesen");
-    this.#spricht = vorleser;
-    Object.assign(this, { aktiv: true, wartet: true, was });
-    const gilt = () => this.#spricht === vorleser;
-    vorleser.lies(text.trim(), stimme, {
-      klingt: () => gilt() && (this.wartet = false),
-      wartet: () => gilt() && (this.wartet = true),
+    const [sprecher, stimme] = this.#teile();
+    if (!sprecher) return void melde.warn(this.hinweis || "Hier gibt es keine Stimme zum Vorlesen");
+    sprecher.tempo = this.#tempo;
+    sprecher.entsperre();
+    Object.assign(this, { aktiv: true, wartet: true, pausiert: false, weg: false, was, quelle, einheit: strecke.von.einheit });
+    this.#werk = werk;
+    const gilt = () => this.quelle === quelle;
+    this.#folge = new Vorlesefolge(quelle, strecke, sprecher, stimme, this.#vorlauf, {
+      zustand: (z) => gilt() && this.#zeige(z),
       ende: () => gilt() && this.#fertig(),
-      fehler: (grund) => {
-        if (!gilt()) return;
-        this.#fertig();
-        melde.warn(grund);
-      },
+      gerissen: (grund) => gilt() && melde.warn(`${grund}. Weiter setzt an derselben Stelle fort.`),
+      eingeschlafen: () => gilt() && (this.schlaf = { art: "aus" }),
+    });
+    this.#zeige({ wartet: true, pausiert: false, weg: false, einheit: strecke.von.einheit });
+  }
+
+  #zeige(z: { wartet: boolean; pausiert: boolean; weg: boolean; einheit: number }): void {
+    const neu = z.einheit !== this.einheit || !navigator.mediaSession?.metadata;
+    Object.assign(this, z);
+    this.kannVor = this.#folge?.kannVor ?? false;
+    if (neu) this.#zeigeMedien();
+    medienStand(!z.pausiert);
+  }
+
+  #zeigeMedien(): void {
+    zeigeMedien(this.#werk, this.name || this.was, {
+      weiter: () => this.weiter(), pause: () => this.pausiere(), halt: () => this.halt(),
+      satzZurueck: () => this.satzZurueck(), satzVor: () => this.satzVor(), einheitZurueck: () => this.einheitZurueck(), einheitVor: () => this.einheitVor(),
     });
   }
 
@@ -94,14 +149,50 @@ class Vorlesestand {
     this.lies(PROBE, "Probe");
   }
 
+  pausiere(): void {
+    this.#folge?.pausiere();
+  }
+  weiter(): void {
+    this.entsperre();
+    this.#folge?.weiter();
+  }
+  pauseOderWeiter(): void {
+    if (this.pausiert) this.weiter();
+    else this.pausiere();
+  }
+  satzVor(): void {
+    this.#folge?.satzVor();
+  }
+  satzZurueck(): void {
+    this.#folge?.satzZurueck();
+  }
+  einheitVor(): void {
+    this.#folge?.einheitVor();
+  }
+  einheitZurueck(): void {
+    this.#folge?.einheitZurueck();
+  }
+  zurStelle(): void {
+    void this.#folge?.zurStelle();
+  }
+  /** Die Ansicht des Buchs hat sich bewegt */
+  bewegt(): void {
+    this.#folge?.bewegt();
+  }
+  setzeSchlaf(schlaf: Schlaf): void {
+    this.schlaf = schlaf;
+    void this.#folge?.setzeSchlaf(schlaf);
+  }
+
   halt(): void {
-    this.#spricht?.halt();
+    this.#folge?.halt();
     this.#fertig();
   }
 
   #fertig(): void {
-    this.#spricht = null;
-    Object.assign(this, { aktiv: false, wartet: false, was: "" });
+    this.#folge = null;
+    Object.assign(this, { aktiv: false, wartet: false, pausiert: false, weg: false, was: "", quelle: null, kannVor: false, schlaf: { art: "aus" } });
+    medienAus();
   }
 }
 

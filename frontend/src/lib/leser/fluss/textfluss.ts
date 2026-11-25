@@ -60,6 +60,9 @@ export class Textfluss {
   zuAnteil = (anteil: number): void => this.#fluss.zuAnteil(anteil);
   zu = (ziel: Ziel): void => this.#fluss.zu(ziel);
   halt = (): Anker | null => this.#fluss.halt();
+  stelle = (): Anker | null => this.#fluss.stelle();
+  ende = (): Anker | null => this.#fluss.ende();
+  zeigt = (a: Anker): boolean => this.#fluss.zeigt(a);
   erreicht = (e: Element): boolean => this.#fluss.erreicht(e);
 
   /** Anteil einer Stelle am ganzen Text, etwa für eine Markierung */

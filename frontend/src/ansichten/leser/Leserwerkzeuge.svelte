@@ -15,8 +15,8 @@
     <Knopf klasse="kachel" text="Herunterladen" symbol="download" href={dateiUrl(sitzung.buch.id)} download={sitzung.buch.file_name || sitzung.buch.title} />
     <Knopf klasse="kachel" text="Im Browser" titel="Im Browser öffnen" symbol="up-right-from-square" extern href={dateiUrl(sitzung.buch.id)} />
   </div>
-  {#if schale.telefon}<Vorlesen {sitzung} />{/if}
 </div>
+{#if schale.telefon}<div class="feld werkzeuge">Vorlesen<Vorlesen {sitzung} /></div>{/if}
 
 <style>
   .werkzeuge {

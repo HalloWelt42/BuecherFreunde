@@ -15,12 +15,15 @@
   import { leseart } from "../../lib/leser/leseart.svelte";
   import { Positionsspeicher } from "../../lib/leser/position";
   import type { Lesegriffe, Lesesitzung } from "../../lib/leser/sitzung.svelte";
+  import { kannHervorheben, Rechteckschicht } from "../../lib/leser/hervorhebung";
   import { faerbeCode, kopierknoepfe } from "../../lib/leser/text/codefarben";
+  import { Blattquelle } from "../../lib/leser/text/lesequelle";
   import { prozentVon, textkapitel, zeichneMarkierungen, zeichneTreffer } from "../../lib/leser/text/markierung";
   import { schreibweise, type Kapitel } from "../../lib/leser/typen";
   import { gemerkt, nenntStelle, type Leseziel } from "../../lib/leser/ziel";
   import { lesewerte, type Lesewerte } from "../../lib/lesestand";
   import { darstellung as app } from "../../lib/stand/darstellung.svelte";
+  import { vorlesen } from "../../lib/stand/vorlesen.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
   import type { BuchEinzeln } from "../../lib/typen";
   import Fussleiste from "./Fussleiste.svelte";
@@ -56,7 +59,10 @@
   let satz: HTMLElement | undefined = $state();
   let fluss: Textfluss | null = null;
   let stand = $state({ anteil: 0, amAnfang: true, amEnde: false });
-  let trefferliste = $state.raw<HTMLElement[]>([]);
+  let trefferliste = $state.raw<Range[]>([]);
+  let markiert = new Map<number, Range>();
+  let ersatz: Rechteckschicht | undefined;
+  let quelle: Blattquelle | null = null;
   let trefferNr = $state(-1);
 
   let gesamt = $derived(buch.page_count > 1 ? buch.page_count : Math.max(1, Math.ceil((inhalt?.length ?? 0) / ZEICHEN_JE_SEITE)));
@@ -77,11 +83,14 @@
     if (!flaeche || !blatt || !satz) return;
     const s = satz;
     sitzung.kapitel = sammleKapitel();
-    zeichneMarkierungen(s, sitzung.markierungen);
+    if (!kannHervorheben()) ersatz ??= new Rechteckschicht(blatt);
+    zeichne();
     fluss ??= new Textfluss({ flaeche, blatt, satz }, art, bewegt);
     const ab = start.prozent ? start.prozent / 100 : start.seite ? (start.seite - 1) / gesamt : nenntStelle(start) ? 0 : (alt.scrollPct ?? 0) / 100;
     fluss.zuAnteil(ab);
     if (istMarkdown) void faerbeCode(s).then(() => kopierknoepfe(s));
+    quelle = new Blattquelle({ satz: s, flaeche, fluss: () => fluss, kapitel: () => sitzung.kapitel, kapitelJetzt: () => sitzung.kapitelJetzt, ersatz: () => ersatz, ohneTitel: (nr, alle) => `Stück ${nr + 1} von ${alle}` });
+    sitzung.quelle = quelle;
     if (start.wort || start.stelle) zeigeTreffer(start.wort || start.stelle, ab);
   }
 
@@ -93,9 +102,9 @@
 
   function zeigeTreffer(wort: string, ab: number) {
     if (!satz || !fluss) return;
-    trefferliste = zeichneTreffer(satz, wort);
+    trefferliste = zeichneTreffer(satz, wort, 500, ersatz);
     if (!trefferliste.length) return;
-    const nr = ab > 0 ? trefferliste.findIndex((t) => fluss!.anteilVon(t, 0) >= ab - 0.002) : 0;
+    const nr = ab > 0 ? trefferliste.findIndex((t) => fluss!.anteilVon(t.startContainer, t.startOffset) >= ab - 0.002) : 0;
     zumTreffer(Math.max(0, nr));
   }
 
@@ -105,7 +114,7 @@
   }
 
   function trefferZu() {
-    if (satz) zeichneTreffer(satz, "");
+    if (satz) zeichneTreffer(satz, "", 0, ersatz);
     trefferliste = [];
   }
 
@@ -114,7 +123,13 @@
     stand = { anteil: fluss.anteil, amAnfang: fluss.amAnfang, amEnde: fluss.amEnde };
     if (istMarkdown) sitzung.kapitelJetzt = sitzung.kapitel.findLastIndex((k) => fluss!.erreicht(k.ziel as HTMLElement));
     else sitzung.kapitelJetzt = sitzung.kapitel.findLastIndex((k) => (k.ziel as number) <= stand.anteil + 0.002);
+    ersatz?.zeichne();
+    vorlesen.bewegt();
     merke();
+  }
+
+  function zeichne() {
+    if (satz) markiert = zeichneMarkierungen(satz, sitzung.markierungen, ersatz);
   }
 
   function merke() {
@@ -160,12 +175,10 @@
   });
 
   const griffe: Lesegriffe = {
-    abschnittName: "",
-    abschnitt: async () => "",
     zumKapitel: (k) => (k.ziel instanceof HTMLElement ? fluss?.zu(k.ziel) : fluss?.zuAnteil(k.ziel as number)),
     zurMarkierung: (m) => {
-      const gezeichnet = satz?.querySelector<HTMLElement>(`mark[data-markierung="${m.id}"]`);
-      if (gezeichnet) fluss?.zu(gezeichnet);
+      const gezeichnet = markiert.get(m.id);
+      if (gezeichnet?.startContainer.isConnected) fluss?.zu(gezeichnet);
       else fluss?.zuAnteil((prozentVon(m.cfi_range) ?? 0) / 100);
     },
     zurStelle: (ort, cfi, p) => {
@@ -175,7 +188,7 @@
       fluss?.zuAnteil(prozent ? prozent / 100 : (nr - 1) / gesamt);
       return true;
     },
-    zeichne: () => satz && zeichneMarkierungen(satz, sitzung.markierungen),
+    zeichne,
     hier: () => ({ ort: schreibweise.seite(seite), prozent: Math.round(stand.anteil * 1000) / 10, cfi: `percent:${(stand.anteil * 100).toFixed(1)}` }),
   };
   untrack(() => (sitzung.griffe = griffe));
@@ -200,7 +213,11 @@
   onDestroy(() => {
     aufraeumen();
     fluss?.zerstoere();
+    quelle?.zerstoere();
+    ersatz?.zerstoere();
+    if (vorlesen.quelle === quelle && quelle) vorlesen.halt();
     sitzung.griffe = null;
+    sitzung.quelle = null;
   });
 
   void lade();

@@ -101,6 +101,17 @@ export class Scrollfluss implements Lesefluss {
     return this.mass.erste((r) => r.unten <= grenze);
   }
 
+  ende(): Anker | null {
+    if (this.amEnde) return null;
+    const grenze = this.flaeche.stand + this.flaeche.hoehe;
+    return this.mass.erste((r) => r.unten <= grenze);
+  }
+
+  zeigt(a: Anker): boolean {
+    const r = this.mass.lage(a);
+    return !!r && r.unten > this.flaeche.stand + this.flaeche.verdeckt && r.oben < this.flaeche.stand + this.flaeche.hoehe;
+  }
+
   erreicht(e: Element): boolean {
     const r = this.flaeche.lageVon(e);
     return !!r && r.oben < this.flaeche.stand + this.flaeche.verdeckt + 48;

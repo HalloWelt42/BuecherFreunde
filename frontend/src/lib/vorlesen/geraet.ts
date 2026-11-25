@@ -1,7 +1,7 @@
-// Vorlesen mit den Stimmen, die Browser und Gerät mitbringen; geht überall und ohne Anschluss. Lange Texte gehen in kurzen
-// Stücken hinein, weil Browser lange Äußerungen still abbrechen.
-import { saetze } from "./saetze";
-import type { Beobachter, Stimme, Vorleser } from "./typen";
+// Vorlesen mit den Stimmen, die Browser und Gerät mitbringen; geht überall und ohne Anschluss. Jeder Satz ist eine eigene
+// Äußerung, weil Browser lange still abbrechen.
+import { saetzeMitLage } from "./saetze";
+import type { Sprecher, Stimme, Tonsatz } from "./typen";
 
 export const geraetDa = () => typeof window !== "undefined" && "speechSynthesis" in window;
 
@@ -15,34 +15,59 @@ export function geraetestimmen(): Stimme[] {
     .map((s) => ({ id: `geraet:${s.voiceURI}`, name: deutsch(s) ? s.name : `${s.name} (${s.lang})`, gruppe: "Dieses Gerät" }));
 }
 
-export class Geraetevorleser implements Vorleser {
+const ZEICHEN_JE_S = 14;
+
+export class Geraetesprecher implements Sprecher {
+  tempo = 1;
   #lauf = 0;
+  #jetzt: { sprich: () => void; fertig: () => void } | null = null;
 
   entsperre(): void {
+    if (geraetDa() && !this.#jetzt) speechSynthesis.cancel();
+  }
+
+  async *saetze(text: string): AsyncIterable<Tonsatz> {
+    for (const s of saetzeMitLage(text)) yield { ...s, ton: null, dauer: s.text.length / ZEICHEN_JE_S };
+  }
+
+  spiele(satz: Tonsatz, stimme: string, fortschritt: (anteil: number) => void): Promise<void> {
+    const wahl = speechSynthesis.getVoices().find((s) => s.voiceURI === stimme);
+    return new Promise<void>((gut, schlecht) => {
+      const fertig = () => {
+        this.#lauf++;
+        this.#jetzt = null;
+        gut();
+      };
+      const sprich = () => {
+        const lauf = ++this.#lauf;
+        const a = new SpeechSynthesisUtterance(satz.text.replace(/\s+/g, " "));
+        if (wahl) a.voice = wahl;
+        a.lang = wahl?.lang ?? "de-DE";
+        a.rate = this.tempo;
+        a.onboundary = (e) => lauf === this.#lauf && fortschritt(Math.min(1, e.charIndex / Math.max(1, satz.text.length)));
+        a.onend = () => lauf === this.#lauf && fertig();
+        a.onerror = (e) => {
+          if (lauf !== this.#lauf || e.error === "canceled" || e.error === "interrupted") return;
+          this.#jetzt = null;
+          schlecht(new Error("Die Stimme des Geräts brach ab"));
+        };
+        speechSynthesis.speak(a);
+      };
+      this.#jetzt = { sprich, fertig };
+      sprich();
+    });
+  }
+
+  // Anhalten und Weitersprechen können viele Browser nicht zuverlässig: der Satz beginnt neu
+  pause(): void {
+    this.#lauf++;
     if (geraetDa()) speechSynthesis.cancel();
   }
-
-  lies(text: string, stimme: string, bei: Beobachter): void {
-    this.halt();
-    const lauf = ++this.#lauf;
-    const wahl = speechSynthesis.getVoices().find((s) => s.voiceURI === stimme);
-    const stuecke = saetze(text);
-    const naechstes = (n: number) => {
-      if (lauf !== this.#lauf) return;
-      if (n >= stuecke.length) return bei.ende();
-      const a = new SpeechSynthesisUtterance(stuecke[n]);
-      if (wahl) a.voice = wahl;
-      a.lang = wahl?.lang ?? "de-DE";
-      a.onend = () => naechstes(n + 1);
-      a.onerror = (e) => lauf === this.#lauf && e.error !== "canceled" && e.error !== "interrupted" && bei.fehler("Die Stimme des Geräts brach ab");
-      speechSynthesis.speak(a);
-    };
-    bei.klingt();
-    naechstes(0);
+  weiter(): void {
+    this.#jetzt?.sprich();
   }
-
   halt(): void {
-    this.#lauf++;
+    this.#jetzt?.fertig();
     if (geraetDa()) speechSynthesis.cancel();
   }
 }

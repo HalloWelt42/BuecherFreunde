@@ -16,6 +16,7 @@
   import Stellenfeld from "./Stellenfeld.svelte";
   import Verzeichnis from "./Verzeichnis.svelte";
   import { vorlesen } from "../../lib/stand/vorlesen.svelte";
+  import Spieler from "./Spieler.svelte";
   import Vorlesen from "./Vorlesen.svelte";
 
   interface Eigenschaften {
@@ -38,7 +39,11 @@
 
   let rahmen: HTMLElement | undefined = $state();
   let vorleseKnopf = $state<HTMLElement | null>(null);
+  let vorleseZeichen = $state<HTMLElement | null>(null);
   let vorlesenOffen = $state(false);
+  // Liest es gerade aus diesem Buch vor?
+  let liestHier = $derived(vorlesen.aktiv && !!sitzung.quelle && vorlesen.quelle === sitzung.quelle);
+  let zustand = $derived(!liestHier ? "volume-low" : vorlesen.wartet && !vorlesen.pausiert ? "circle-notch" : vorlesen.pausiert ? "pause" : "volume-high");
 
   $effect(() => {
     if (sitzung.feld) return beiEsc(() => (sitzung.feld = ""));
@@ -55,21 +60,22 @@
   });
 </script>
 
-<div class="leser" class:mit-treffer={!!treffer && !schale.vollbild} class:randlos={schale.vollbild} data-papier={papier} style:--randgrund={grund} style:--randtinte={tinte} style:--blattrand="{blattrand.wert}px" style:--blattrand-oben="{blattrand.oben(schale.vollbild)}px" bind:this={rahmen}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="leser" onpointermove={(e) => sitzung.regt(e)} class:mit-treffer={!!treffer && !schale.vollbild} class:randlos={schale.vollbild} data-papier={papier} style:--randgrund={grund} style:--randtinte={tinte} style:--blattrand="{blattrand.wert}px" style:--blattrand-oben="{blattrand.oben(schale.vollbild)}px" bind:this={rahmen}>
   {@render children()}
 
   {#if schale.vollbild}
     <button type="button" class="schwebezeichen links" aria-label="Vollbild verlassen" title="Vollbild verlassen" onclick={() => void schale.vollbildUmschalten()}><Symbol name="compress" /></button>
+    {#if bereit}<button type="button" class="schwebezeichen rechts" aria-label="Vorlesen" title="Vorlesen" aria-expanded={vorlesenOffen} bind:this={vorleseZeichen} onclick={() => (vorlesenOffen = !vorlesenOffen)}><Symbol name={zustand} dreht={zustand === "circle-notch"} /></button>{/if}
   {:else}
     <div class="leseleiste oben glas klar">
       <Knopf text="Zurück" symbol="arrow-left" nur frei klein onclick={onzurueck} />
       <b title={sitzung.buch.title}>{sitzung.buch.title}</b>
       <Knopf text="Inhaltsverzeichnis" symbol="list" nur frei klein gesperrt={!sitzung.kapitel.length} titel={sitzung.kapitel.length ? "Inhaltsverzeichnis" : "Dieses Buch hat kein Inhaltsverzeichnis"} gedrueckt={sitzung.feld === "inhalt"} onclick={() => sitzung.schalteFeld("inhalt")} />
       <Knopf text="Notizen und Markierungen" symbol="highlighter" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "stellen"} onclick={() => sitzung.schalteFeld("stellen")} />
-      <span class="nur-breit reihe">
-        <Knopf text="Vorlesen" symbol="volume-high" nur frei klein gesperrt={!bereit} gedrueckt={vorlesen.aktiv} aufgeklappt={vorlesenOffen} bind:element={vorleseKnopf} onclick={() => (vorlesenOffen = !vorlesenOffen)} />
-        <Knopf text="Vollbild" symbol="expand" nur frei klein onclick={() => void schale.vollbildUmschalten()} />
-      </span>
+      <!-- Am Telefon steht das Vorlesen im Feld; liest es gerade, auch hier -->
+      <span class="reihe" class:nur-breit={!liestHier}><Knopf text="Vorlesen" symbol={liestHier ? zustand : "volume-high"} nur frei klein gesperrt={!bereit} gedrueckt={liestHier} aufgeklappt={vorlesenOffen} bind:element={vorleseKnopf} onclick={() => (vorlesenOffen = !vorlesenOffen)} /></span>
+      <span class="nur-breit reihe"><Knopf text="Vollbild" symbol="expand" nur frei klein onclick={() => void schale.vollbildUmschalten()} /></span>
       <Knopf text="Schrift, Papier, Ansicht" symbol="font" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "darstellung"} onclick={() => sitzung.schalteFeld("darstellung")} />
     </div>
   {/if}
@@ -91,11 +97,20 @@
 
   {#if treffer && !schale.vollbild}<div class="leseleiste treffer unten glas klar">{@render treffer()}</div>{/if}
   {#if bereit && !schale.vollbild}<div class="leseleiste unten glas klar">{@render fuss()}</div>{/if}
+  {#if liestHier && schale.vollbild && sitzung.spieler}
+    <div class="spielerleiste glas klar" role="region" aria-label="Vorlesen" onpointerenter={() => sitzung.zeigeSpieler(true)} onpointerleave={() => sitzung.zeigeSpieler()}>
+      <span class="klein spielername">{vorlesen.name}</span>
+      <Spieler art={sitzung.quelle?.einheitsart} />
+    </div>
+  {/if}
+  {#if liestHier && vorlesen.weg}
+    <button type="button" class="zurstelle glas klar knopf klein" class:hoeher={schale.vollbild && sitzung.spieler} onclick={() => vorlesen.zurStelle()}><Symbol name="location-crosshairs" />Zur Stelle</button>
+  {/if}
   {#if sitzung.auswahl && rahmen}<Auswahlmenue {sitzung} {rahmen} {onabwahl} />{/if}
 </div>
 
 {#if vorlesenOffen}
-  <Menue anker={vorleseKnopf} name="Vorlesen" breite="21rem" onschliessen={() => (vorlesenOffen = false)}><Vorlesen {sitzung} onfertig={() => (vorlesenOffen = false)} /></Menue>
+  <Menue anker={schale.vollbild ? vorleseZeichen : vorleseKnopf} name="Vorlesen" breite="21rem" onschliessen={() => (vorlesenOffen = false)}><Vorlesen {sitzung} /></Menue>
 {/if}
 
 <style>

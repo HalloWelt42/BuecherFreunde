@@ -10,7 +10,10 @@
   import { Textfluss } from "../../lib/leser/fluss/textfluss";
   import { Textseiten, type Baustein } from "../../lib/leser/pdf/textseiten.svelte";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
+  import { kannHervorheben, Rechteckschicht } from "../../lib/leser/hervorhebung";
+  import { imBlick, Mitlauf, sichtVon } from "../../lib/leser/mitlauf";
   import { zeichneMarkierungen, zeichneWortlaut } from "../../lib/leser/text/markierung";
+  import { vorlesen } from "../../lib/stand/vorlesen.svelte";
   import { textansicht } from "../../lib/leser/textansicht.svelte";
   import { schreibweise } from "../../lib/leser/typen";
   import { schale } from "../../lib/stand/schale.svelte";
@@ -29,14 +32,18 @@
     onoriginal: () => void;
     onmitte: () => void;
     belegt: () => boolean;
+    /** Der Text hat sich geändert (nachgeladen, umgebrochen) */
+    onbeschriftet: () => void;
   }
-  let { sitzung, art, startSeite, fundstelle, grund, tinte, onstand, onoriginal, onmitte, belegt }: Eigenschaften = $props();
+  let { sitzung, art, startSeite, fundstelle, grund, tinte, onstand, onoriginal, onmitte, belegt, onbeschriftet }: Eigenschaften = $props();
 
   let flaeche: HTMLElement | undefined = $state();
   let blatt: HTMLElement | undefined = $state();
   let satz: HTMLElement | undefined = $state();
   let lupe = $state<{ quelle: string; beschreibung: string } | null>(null);
   let fluss: Textfluss | null = null;
+  let ersatzschicht: Rechteckschicht | undefined;
+  let mitlauf: Mitlauf | null = null;
   let gemeldet = 0;
   let gesucht = untrack(() => fundstelle);
 
@@ -73,6 +80,8 @@
     const geladen = text.letzte - text.erste + 1;
     const innen = amEnde ? 1 : Math.min(0.999, Math.max(0, fluss.anteil * geladen - (nr - text.erste)));
     onstand({ seite: nr, amAnfang, amEnde, innen });
+    ersatzschicht?.zeichne();
+    vorlesen.bewegt();
     void fuelleNach();
   }
 
@@ -80,6 +89,9 @@
     if (!(await text.neu(ab))) return;
     await tick();
     if (!flaeche || !blatt || !satz) return;
+    if (!kannHervorheben()) ersatzschicht ??= new Rechteckschicht(blatt);
+    const f = flaeche;
+    mitlauf ??= new Mitlauf({ get stand() { return f.scrollTop; }, set stand(w) { f.scrollTop = w; }, get hoehe() { const s = sichtVon(f); return s.unten - s.oben; } }, f);
     fluss ??= new Textfluss({ flaeche, blatt, satz }, art, bewegt);
     fluss.neu();
     springe(ab);
@@ -88,7 +100,7 @@
   function springe(nr: number) {
     const a = abschnitt(nr);
     if (!a || !fluss) return;
-    const treffer = gesucht && nr === startSeite ? zeichneWortlaut(a, gesucht) : null;
+    const treffer = gesucht && nr === startSeite ? zeichneWortlaut(a, gesucht, ersatzschicht) : null;
     if (treffer) gesucht = "";
     gemeldet = nr;
     fluss.zu(treffer ?? a);
@@ -128,7 +140,44 @@
   }
   export function zeichne() {
     if (!satz) return;
-    for (const s of satz.querySelectorAll<HTMLElement>("[data-textseite]")) zeichneMarkierungen(s, sitzung.markierungen.filter((m) => m.cfi_range === `page:${s.dataset.textseite}`));
+    const seitenweise = sitzung.markierungen.filter((m) => m.cfi_range.startsWith("page:"));
+    zeichneMarkierungen(satz, seitenweise, ersatzschicht, (m) => abschnitt(Number(m.cfi_range.slice(5))));
+    onbeschriftet();
+  }
+
+  // Für das Vorlesen
+  export const wurzel = (nr: number): HTMLElement | null => abschnitt(nr);
+  export const ersatz = () => ersatzschicht;
+  export const seiten = () => [gemeldet || startSeite];
+
+  export async function zeige(nr: number, bereich: Range | null, sofort: boolean): Promise<void> {
+    if (!fluss || !flaeche) return;
+    if (!abschnitt(nr)) return void (await beginne(nr));
+    if (!bereich) {
+      if (seiteVon(fluss.halt()?.knoten) !== nr) springe(nr);
+      return;
+    }
+    const a = { knoten: bereich.startContainer, versatz: bereich.startOffset };
+    if (fluss.art === "blaettern") {
+      if (!fluss.zeigt(a)) fluss.zu(a);
+      return;
+    }
+    const r = bereich.getBoundingClientRect();
+    const s = sichtVon(flaeche);
+    mitlauf?.folge(r.top - s.oben, r.bottom - s.oben, sofort);
+  }
+
+  export function sichtbar(nr: number, bereich: Range | null): boolean {
+    if (!fluss || !flaeche) return false;
+    if (!bereich) return seiteVon(fluss.halt()?.knoten) === nr;
+    if (fluss.art === "scrollen") return imBlick(bereich, sichtVon(flaeche));
+    return fluss.zeigt({ knoten: bereich.startContainer, versatz: bereich.startOffset }) || fluss.zeigt({ knoten: bereich.endContainer, versatz: Math.max(0, bereich.endOffset - 1) });
+  }
+
+  export function hier(): { seite: number; wortlaut: string } {
+    const h = fluss?.halt();
+    const k = h?.knoten;
+    return { seite: seiteVon(k) || gemeldet || startSeite, wortlaut: k?.nodeType === Node.TEXT_NODE ? (k as Text).data.slice(h!.versatz, h!.versatz + 60) : "" };
   }
 
   $effect(() => {
@@ -147,7 +196,11 @@
     return beobachteAuswahl(f, beschreibe, (a) => nimmAuswahl(sitzung, a) && getSelection()?.removeAllRanges());
   });
 
-  onDestroy(() => fluss?.zerstoere());
+  onDestroy(() => {
+    fluss?.zerstoere();
+    mitlauf?.zerstoere();
+    ersatzschicht?.zerstoere();
+  });
 
   // Die Bildunterschrift gleich nach einer Abbildung beschreibt sie in der Lupe
   const beschreibung = (liste: Baustein[], n: number) => (liste[n + 1]?.art === "unterschrift" ? liste[n + 1].text : "");

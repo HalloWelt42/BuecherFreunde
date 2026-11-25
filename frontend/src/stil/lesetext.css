@@ -1,6 +1,11 @@
 /* Text auf dem Blatt: Text, Markdown, Seiten eines PDF als Text */
 .lesetext .blatt { width: 100%; justify-self: center; background: var(--blattgrund); color: var(--blatttinte); overflow-wrap: break-word; }
 .lesetext .blatt.ohne-grund { box-shadow: none; }
+/* Ersatz für Hervorhebungen, wo der Browser sie nicht selbst malt: Rechtecke hinter dem Text, der Satz bleibt unberührt */
+.lesetext .blatt { position: relative; }
+.lesetext .satz { position: relative; z-index: 1; }
+.hervorhebungen { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.hervorhebungen i { position: absolute; border-radius: 2px; }
 .leser .seiten.lesetext { grid-template-columns: minmax(0, var(--lesebreite, 44rem)); }
 /* Schirmweise: das Blatt füllt die Fläche, der Satz läuft in Spalten dahinter, zu sehen ist immer ein Schirm */
 .leser .seiten.schirmweise { overflow: clip; touch-action: pinch-zoom; align-content: stretch; grid-template-rows: minmax(0, 1fr); }

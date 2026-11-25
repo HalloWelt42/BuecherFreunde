@@ -49,7 +49,15 @@
 .leser.randlos .epubflaeche { inset: var(--oben) var(--rechts) var(--unten) var(--links); max-width: none; border-radius: 0; box-shadow: none; }
 .schwebezeichen { position: absolute; z-index: 7; top: var(--oben, 0px); min-width: 2.75rem; min-height: 2.75rem; padding-top: 5px; display: flex; align-items: flex-start; font-size: 1.125rem; line-height: 1; color: var(--randtinte); opacity: .6; filter: drop-shadow(0 0 2px var(--randgrund)) drop-shadow(0 0 1px var(--randgrund)); }
 .schwebezeichen.links { left: var(--links, 0px); padding-left: 18px; justify-content: flex-start; }
-.schwebezeichen:is(:hover, :active, :focus-visible) { opacity: 1; }
+.schwebezeichen.rechts { right: var(--rechts, 0px); padding-right: 18px; justify-content: flex-end; }
+.schwebezeichen:is(:hover, :active, :focus-visible, [aria-expanded="true"]) { opacity: 1; }
+/* Vorlesen: schmaler Spieler im Vollbild, "Zur Stelle", wenn man weggeblättert hat */
+.spielerleiste { position: absolute; z-index: 6; left: 0; right: 0; margin-inline: auto; bottom: calc(.625rem + var(--unten, 0px)); width: min(24rem, calc(100% - 1.25rem)); display: grid; gap: .125rem; padding: .375rem .5rem; }
+.spielername { text-align: center; color: var(--tinte-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zurstelle { position: absolute; z-index: 6; left: 0; right: 0; margin-inline: auto; width: max-content; bottom: 4.5rem; }
+.leser.mit-treffer .zurstelle { bottom: 8rem; }
+.leser.randlos .zurstelle { bottom: calc(.75rem + var(--unten, 0px)); }
+.leser.randlos .zurstelle.hoeher { bottom: calc(6.5rem + var(--unten, 0px)); }
 .lesehinweis { position: absolute; inset: 0; display: grid; place-items: center; padding: 1rem; }
 .lesehinweis .karte { max-width: 30rem; width: 100%; }
 /* PDF */

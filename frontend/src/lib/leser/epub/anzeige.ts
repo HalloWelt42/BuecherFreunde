@@ -35,6 +35,10 @@ export interface Epubgriffe {
   /** Tippen in die Mitte, und was vor dem Tippen kommt */
   mitte(): void;
   belegt(): boolean;
+  /** Ein Abschnitt ist geladen */
+  geladen(doc: Document): void;
+  /** Die Maus bewegt sich über dem Kapitel */
+  maus(e: PointerEvent): void;
 }
 
 const RUHE_AUSWAHL_MS = 350;
@@ -49,6 +53,7 @@ export class EpubAnzeige {
   kapitel: Kapitel[] = [];
   treffer: string[] = [];
   #view: View | null = null;
+  #overlayer: { highlight: unknown } | null = null;
   #markierungen: Markierung[] = [];
   #schriften = leseschriftenCss();
   #uhr: ReturnType<typeof setTimeout> | undefined;
@@ -67,6 +72,7 @@ export class EpubAnzeige {
     const datei = new File([await antwort.blob()], "buch.epub", { type: "application/epub+zip" });
     const view = new View();
     this.#view = view;
+    this.#overlayer = Overlayer;
     view.style.cssText = "display: block; width: 100%; height: 100%;";
     this.flaeche.replaceChildren(view);
     await view.open(datei);
@@ -108,7 +114,20 @@ export class EpubAnzeige {
       this.#uhr = setTimeout(auswerten, RUHE_AUSWAHL_MS);
     });
     doc.addEventListener("keydown", (e) => this.griffe.beiTaste(e));
+    doc.addEventListener("pointermove", (e) => this.griffe.maus(e));
     this.#hoere(doc);
+    this.griffe.geladen(doc);
+  }
+
+  get ansicht(): View | null {
+    return this.#view;
+  }
+
+  /** Hebt einen Bereich im gezeigten Abschnitt mit den Mitteln der Bibliothek hervor (wo der Browser es selbst nicht kann) */
+  male(bereich: Range | null, farbe: string): void {
+    const inhalt = this.#view?.renderer?.getContents()[0] as { overlayer?: { add(k: string, r: Range, f: unknown, o: object): void; remove(k: string): void } } | undefined;
+    inhalt?.overlayer?.remove("bf-vorlesen");
+    if (bereich && this.#overlayer) inhalt?.overlayer?.add("bf-vorlesen", bereich, this.#overlayer.highlight, { color: farbe });
   }
 
   // Finger, Rad und Maus: auf der Fläche und in jedem Kapitelrahmen gleich

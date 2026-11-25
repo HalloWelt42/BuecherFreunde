@@ -1,121 +1,121 @@
-// Vorlesen mit dem Sprechdienst: Satz für Satz als Ton vom Server, lückenlos gespielt. Gelesen wird nur wenig voraus, so
-// spricht der Dienst ein ganzes Buch nicht in einem Zug durch.
+// Vorlesen mit dem Sprechdienst: Satz für Satz als Ton vom Server. Gespielt wird über ein Tonelement, weil nur das am
+// gesperrten Telefon weiterläuft und auf Kopfhörertasten hört.
 import { vorleseStrom } from "../api/vorlesen";
-import type { Beobachter, Vorleser } from "./typen";
-import { Vorlauf } from "./vorlauf";
+import { lageAb } from "./saetze";
+import { mitPause, stilleAdresse } from "./ton";
+import type { Sprecher, Tonsatz } from "./typen";
 import { zeilenAus } from "./zeilen";
 
 interface Zeile {
   art: "satz" | "ende" | "fehler";
+  text?: string;
   ton?: string;
   meldung?: string;
 }
 
 const PAUSE_S = 0.3;
-const VORRAT_S = 45;
 
-function tonAus(basis64: string): ArrayBuffer {
-  return Uint8Array.from(atob(basis64), (z) => z.charCodeAt(0)).buffer;
-}
+const tonAus = (basis64: string): ArrayBuffer => Uint8Array.from(atob(basis64), (z) => z.charCodeAt(0)).buffer;
 
-const warte = (ms: number) => new Promise((r) => setTimeout(r, ms));
+export class Dienstsprecher implements Sprecher {
+  #element: HTMLAudioElement | null = null;
+  #frei = false;
+  #tempo = 1;
+  /** Beendet den laufenden Satz */
+  #fertig: (() => void) | null = null;
 
-export class Dienstvorleser implements Vorleser {
-  #ton: AudioContext | null = null;
-  #abbruch: AbortController | null = null;
-  #quellen = new Set<AudioBufferSourceNode>();
-  #vorlauf = new Vorlauf();
-
-  entsperre(): AudioContext {
-    const ton = (this.#ton ??= new AudioContext());
-    void ton.resume().catch(() => undefined);
-    return ton;
+  #ton(): HTMLAudioElement {
+    if (!this.#element) {
+      this.#element = new Audio();
+      this.#element.preload = "auto";
+    }
+    return this.#element;
   }
 
-  lies(text: string, stimme: string, bei: Beobachter): void {
-    this.halt();
-    const abbruch = new AbortController();
-    this.#abbruch = abbruch;
-    void this.#spiele(text, stimme, bei, abbruch).catch((grund) => {
-      if (abbruch.signal.aborted) return;
-      this.halt();
-      bei.fehler(grund instanceof Error ? grund.message : "Vorlesen brach ab");
+  get tempo(): number {
+    return this.#tempo;
+  }
+  set tempo(wert: number) {
+    this.#tempo = wert;
+    if (this.#element) this.#stelleTempo(this.#element);
+  }
+
+  // Schneller heißt nicht höher: die Tonhöhe bleibt
+  #stelleTempo(t: HTMLAudioElement): void {
+    t.preservesPitch = true;
+    t.defaultPlaybackRate = this.#tempo;
+    t.playbackRate = this.#tempo;
+  }
+
+  entsperre(): void {
+    if (this.#frei || this.#fertig) return;
+    const t = this.#ton();
+    t.src = stilleAdresse();
+    this.#frei = true;
+    void t.play().catch(() => (this.#frei = false));
+  }
+
+  async *saetze(text: string, stimme: string, abbruch: AbortSignal): AsyncIterable<Tonsatz> {
+    const antwort = await vorleseStrom(text, stimme, abbruch);
+    if (!antwort.body) throw new Error("Vorlesen brach ab");
+    let ab = 0;
+    for await (const z of zeilenAus<Zeile>(antwort.body)) {
+      if (z.art === "fehler") throw new Error(z.meldung || "Vorlesen brach ab");
+      if (z.art === "ende") return;
+      if (!z.ton) continue;
+      const [von, bis] = lageAb(text, z.text ?? "", ab);
+      ab = bis;
+      yield { text: z.text ?? "", von, bis, ...mitPause(tonAus(z.ton), PAUSE_S) };
+    }
+    // Ohne die Schlusszeile ist der Strom gerissen; was fehlt, holt der Nächste
+    if (text.slice(ab).trim()) throw new Error("Der Sprechdienst hat mitten im Text aufgehört");
+  }
+
+  spiele(satz: Tonsatz, _stimme: string, fortschritt: (anteil: number) => void): Promise<void> {
+    const t = this.#ton();
+    const adresse = URL.createObjectURL(satz.ton ?? new Blob());
+    return new Promise<void>((gut, schlecht) => {
+      const raeume = () => {
+        this.#fertig = null;
+        t.onended = t.onerror = t.ontimeupdate = null;
+        URL.revokeObjectURL(adresse);
+      };
+      this.#fertig = () => {
+        t.pause();
+        raeume();
+        gut();
+      };
+      t.onended = () => {
+        raeume();
+        gut();
+      };
+      t.onerror = () => {
+        raeume();
+        schlecht(new Error("Der Ton ließ sich nicht abspielen"));
+      };
+      t.ontimeupdate = () => {
+        const dauer = (Number.isFinite(t.duration) ? t.duration : satz.dauer) - PAUSE_S;
+        if (dauer > 0) fortschritt(Math.min(1, t.currentTime / dauer));
+      };
+      t.src = adresse;
+      this.#stelleTempo(t);
+      t.play().catch((grund: unknown) => {
+        // Abgelöst durch den nächsten Satz oder eine Pause ist kein Fehler
+        if (!(grund instanceof DOMException) || grund.name !== "NotAllowedError" || !this.#fertig) return;
+        raeume();
+        this.#frei = false;
+        schlecht(new Error("Der Browser gibt den Ton erst nach einem Tippen frei"));
+      });
     });
   }
 
-  async #spiele(text: string, stimme: string, bei: Beobachter, abbruch: AbortController): Promise<void> {
-    const ton = this.entsperre();
-    const vorlauf = this.#vorlauf;
-    let bereit: AudioBuffer[] = [];
-    let zeitpunkt = 0;
-    let spielt = false;
-    let fertig = false;
-
-    const pruefeEnde = () => {
-      if (!fertig || this.#quellen.size || bereit.length || abbruch.signal.aborted) return;
-      vorlauf.beenden();
-      this.#abbruch = null;
-      bei.ende();
-    };
-    const plane = (puffer: AudioBuffer) => {
-      const quelle = ton.createBufferSource();
-      quelle.buffer = puffer;
-      quelle.connect(ton.destination);
-      zeitpunkt = Math.max(zeitpunkt, ton.currentTime + 0.05);
-      quelle.start(zeitpunkt);
-      zeitpunkt += puffer.duration + PAUSE_S;
-      this.#quellen.add(quelle);
-      quelle.onended = () => {
-        this.#quellen.delete(quelle);
-        pruefeEnde();
-      };
-    };
-    const weiter = () => {
-      if (!spielt) {
-        if (!bereit.length || !vorlauf.genug(bereit.reduce((s, p) => s + p.duration, 0), fertig)) return;
-        spielt = true;
-        bei.klingt();
-      }
-      bereit.forEach(plane);
-      bereit = [];
-    };
-
-    vorlauf.beginnen();
-    bei.wartet();
-    const antwort = await vorleseStrom(text, stimme, abbruch.signal);
-    if (!antwort.body) throw new Error("Vorlesen brach ab");
-    for await (const z of zeilenAus<Zeile>(antwort.body)) {
-      if (abbruch.signal.aborted) return;
-      if (z.art === "fehler") throw new Error(z.meldung || "Vorlesen brach ab");
-      if (z.art === "ende") break;
-      if (!z.ton) continue;
-      const puffer = await ton.decodeAudioData(tonAus(z.ton));
-      if (abbruch.signal.aborted) return;
-      if (spielt && !this.#quellen.size && ton.currentTime > zeitpunkt) {
-        vorlauf.abgerissen();
-        spielt = false;
-        bei.wartet();
-      }
-      bereit.push(puffer);
-      weiter();
-      while (!abbruch.signal.aborted && zeitpunkt - ton.currentTime > VORRAT_S) await warte(500);
-    }
-    fertig = true;
-    weiter();
-    pruefeEnde();
+  pause(): void {
+    this.#element?.pause();
   }
-
+  weiter(): void {
+    if (this.#fertig) void this.#element?.play().catch(() => undefined);
+  }
   halt(): void {
-    this.#abbruch?.abort();
-    this.#abbruch = null;
-    for (const q of this.#quellen) {
-      q.onended = null;
-      try {
-        q.stop();
-      } catch {
-        // schon verklungen
-      }
-    }
-    this.#quellen.clear();
+    this.#fertig?.();
   }
 }

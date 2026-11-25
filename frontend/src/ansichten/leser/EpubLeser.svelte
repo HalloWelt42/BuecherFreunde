@@ -10,6 +10,9 @@
   import { EpubAnzeige, type Epubstand, type Seitenmass } from "../../lib/leser/epub/anzeige";
   import { breite, randfarbe, type Epubdarstellung } from "../../lib/leser/epub/stile";
   import { leseart } from "../../lib/leser/leseart.svelte";
+  import { Epubquelle } from "../../lib/leser/epub/lesequelle";
+  import { VORLESESATZ } from "../../lib/leser/text/lesequelle";
+  import { vorlesen } from "../../lib/stand/vorlesen.svelte";
   import { Positionsspeicher } from "../../lib/leser/position";
   import type { Lesegriffe, Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { schreibweise } from "../../lib/leser/typen";
@@ -51,6 +54,7 @@
   let treffer = $state(0);
   let trefferNr = $state(-1);
   let anzeige: EpubAnzeige | null = null;
+  let quelle: Epubquelle | null = null;
 
   let prozent = $derived(Math.round(stand.anteil * 100));
 
@@ -59,7 +63,7 @@
     fehler = null;
     anzeige?.schliesse();
     anzeige = new EpubAnzeige(flaeche, d, mass, {
-      beiStand: gerueckt, beiTaste: taste, mitte: () => sitzung.tippeMitte(), belegt: () => sitzung.belegt(),
+      beiStand: gerueckt, beiTaste: taste, mitte: () => sitzung.tippeMitte(), belegt: () => sitzung.belegt(), geladen: (doc) => quelle?.geladen(doc), maus: (e) => sitzung.regt(e),
       beiAuswahl: (a) => nimmAuswahl(sitzung, a && { ...a, ort: schreibweise.prozent(prozent) }) && abwahl(),
     });
     try {
@@ -68,6 +72,10 @@
       const mitte = gedacht / 100 || (start.seite > 0 && buch.page_count > 0 ? (start.seite - 1) / buch.page_count : 0);
       await anzeige.oeffne(buch.id, cfi);
       sitzung.kapitel = anzeige.kapitel;
+      const a = anzeige;
+      quelle?.zerstoere();
+      quelle = new Epubquelle({ view: () => a.ansicht, flaeche, gescrollt: () => art === "scrollen", kapitel: () => sitzung.kapitel, kapitelJetzt: () => sitzung.kapitelJetzt, male: (b) => a.male(b, VORLESESATZ.farbe) });
+      sitzung.quelle = quelle;
       bereit = true;
       if (mitte > 0) await anzeige.zuAnteil(mitte);
       void anzeige.zeichne(sitzung.markierungen);
@@ -100,6 +108,7 @@
     sitzung.kapitelJetzt = s.kapitelNr;
     sitzung.auswahl = null;
     if (bereit) merke();
+    vorlesen.bewegt();
   }
 
   function merke() {
@@ -144,8 +153,6 @@
   }
 
   const griffe: Lesegriffe = {
-    abschnittName: "Kapitel",
-    abschnitt: async () => anzeige?.kapiteltext() ?? "",
     zumKapitel: (k) => void anzeige?.springe(k.ziel as string),
     zurMarkierung: (m) => void anzeige?.zurStelle(m.cfi_range),
     zurStelle: (ort, cfi, p) => {
@@ -166,6 +173,9 @@
   const aufraeumen = speicher.starte();
   onDestroy(() => {
     aufraeumen();
+    if (vorlesen.quelle && vorlesen.quelle === quelle) vorlesen.halt();
+    quelle?.zerstoere();
+    sitzung.quelle = null;
     anzeige?.schliesse();
     sitzung.griffe = null;
   });

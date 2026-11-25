@@ -8,10 +8,14 @@ import { melde } from "../stand/meldungen.svelte";
 import { notizblock } from "../stand/notizblock.svelte";
 import { frage } from "../stand/rueckfrage.svelte";
 import { schale } from "../stand/schale.svelte";
+import { vorlesen } from "../stand/vorlesen.svelte";
 import type { BuchEinzeln, Etikett, Markierung, Notiz } from "../typen";
+import type { Buchquelle } from "../vorlesen/typen";
 import { VORGABE_STIFT } from "./farben";
 import type { Feldname, Kapitel, Textauswahl } from "./typen";
 import { Verzoegert } from "./verzoegert";
+
+const SPIELER_MS = 3500;
 
 export interface Lesegriffe {
   zumKapitel(k: Kapitel): void;
@@ -22,9 +26,6 @@ export interface Lesegriffe {
   zeichne(): void;
   /** Wo man gerade liest, für neue Notizen und Etiketten */
   hier(): { ort: string; prozent: number; cfi: string };
-  /** Text der Seite oder des Kapitels, zum Vorlesen */
-  abschnitt(): Promise<string>;
-  abschnittName: string;
 }
 
 export class Lesesitzung {
@@ -38,6 +39,10 @@ export class Lesesitzung {
   stift = $state(false);
   stiftfarbe = $state(VORGABE_STIFT);
   griffe: Lesegriffe | null = null;
+  spieler = $state(false);
+  #spielerUhr: ReturnType<typeof setTimeout> | undefined;
+  /** Woraus vorgelesen wird; der Leser des Formats setzt sie, sobald das Buch steht */
+  quelle = $state.raw<Buchquelle | null>(null);
   #spaeter = new Verzoegert();
 
   constructor(public buch: BuchEinzeln) {}
@@ -54,9 +59,22 @@ export class Lesesitzung {
     this.feld = this.feld === feld ? "" : feld;
   }
 
-  /** Tippen in die Mitte: Leisten aus und wieder ein, ohne das Vollbild des Browsers */
+  /** Tippen in die Mitte: Leisten aus und wieder ein, ohne das Vollbild des Browsers. Liest es im Vollbild vor, kommt erst der Spieler. */
   tippeMitte(): void {
+    if (schale.vollbild && vorlesen.aktiv && !this.spieler) return this.zeigeSpieler();
     schale.vollbild = !schale.vollbild;
+  }
+
+  /** Die Maus bewegt sich über dem Buch: im Vollbild kommt, wenn vorgelesen wird, der Spieler */
+  regt(e: PointerEvent): void {
+    if (e.pointerType === "mouse" && schale.vollbild && vorlesen.aktiv && vorlesen.quelle === this.quelle) this.zeigeSpieler();
+  }
+
+  /** Der schmale Spieler im Vollbild, für ein paar Sekunden; bleibt, solange man auf ihm ist */
+  zeigeSpieler(bleibt = false): void {
+    this.spieler = true;
+    clearTimeout(this.#spielerUhr);
+    if (!bleibt) this.#spielerUhr = setTimeout(() => (this.spieler = false), SPIELER_MS);
   }
 
   /** Ein Tippen schließt erst das offene Feld; eine Auswahl im Text geht ebenso vor */

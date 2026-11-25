@@ -19,6 +19,10 @@ export interface Lesefluss {
   zu(ziel: Ziel): void;
   /** Erste Stelle auf dem Schirm */
   stelle(): Anker | null;
+  /** Erste Stelle nach dem Schirm; null am Ende */
+  ende(): Anker | null;
+  /** Steht die Stelle auf dem Schirm? */
+  zeigt(a: Anker): boolean;
   /** Die Stelle, an der man liest: wohin zuletzt geblättert oder gesprungen wurde */
   halt(): Anker | null;
   /** Diese Stelle festhalten, auch wenn noch nie bewegt wurde (vor einem Umbau) */

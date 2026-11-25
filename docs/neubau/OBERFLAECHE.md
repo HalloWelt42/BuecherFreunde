@@ -127,7 +127,7 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 | Papier hell, Sepia, dunkel, Kontrast | Feld | ja |
 | Fundstelle aus ?q und ?stelle, nie gespeichert | Textebene | ?q ja, ?stelle nein |
 | Auswahlmenü: markieren (16 Farben), Kopieren, Vorlesen, Schnellnotiz, Buchnotiz neu, anhängen, ersetzen; schließt beim Abwählen (23) | `Auswahlmenue` | ja bis auf Vorlesen, Kopieren, Ersetzen |
-| Vorlesen Seite, Kapitel, ganzes Buch, Stopp | Menü oben, am Telefon im Feld | nein (Erweiterung fehlt) |
+| Vorlesen: siehe unten (BF-27) | Menü oben, am Telefon im Feld, im Vollbild am Zeichen oben rechts | ja, mit nachgestelltem Sprechdienst |
 | Vollbild, mit Ersatz ohne Browservollbild: Blatt bis an alle Kanten, auch hinter Kerbe und Home-Balken, `theme-color` in Blattfarbe; nur das Zeichen zum Verlassen schwebt, 18 von links und 5 von oben, Tippfläche 44 (BF-21) | `Leserahmen`, `stand/blattgrund`, `stil/leser.css` | alle Formate, hell und dunkel, 390, 844 quer, 834, 1440; echtes Vollbild des Browsers nein |
 | Innerer Rand 0 bis 120, je Gerät gemerkt, in PDF als Text, MD, TXT, EPUB und MOBI (BF-21) | `leser/blattrand`, `Randregler` | ja |
 | Tasten einer Gruppe gleich breit und gleich hoch (BF-21) | `.tastenraster` in `stil/leser.css` | gemessen 360, 390, 1440, sehr groß |
@@ -141,6 +141,24 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 | Textansicht: Größe, Schrift, Zeilen, Farbe, frühere Seiten, Abbildungen mit Lupe | `Textansicht`, `Bildlupe`, jetzt auf allen Geräten | ja, Scan-Hinweis und Lupe mit zwei Fingern nein |
 | Markierungen und Buchnotizen im Leser: springen, Farbe, Name, Notiz, Text, kopieren, Schnellnotiz, löschen mit Rückfrage | Feld rechts statt verschiebbarer Fenster, wie im Entwurf | ja, Kopieren nein |
 | "Von vorn" verwirft nur die Stelle (18) | `leser/ziel` | ja (Test) |
+
+### Vorlesen (BF-27)
+
+Vorgelesen wird aus einer Lesequelle je Leser (`lib/vorlesen/typen`: `Lesequelle`, `Buchquelle`): Einheiten mit Text erst bei Bedarf,
+Name, Kapitelgrenzen, hervorheben, Ansicht führen. Die Folge (`vorlesen/folge`, `vorlesen/zulauf`) holt Stück für Stück in eigenen kurzen
+Anfragen voraus (kein langer Strom, der an einer Grenze reißt), liest über das Ende einer Einheit hinaus und spielt über ein Tonelement,
+das am gesperrten Telefon weiterläuft.
+
+| Teil | Ort | Geprüft |
+|---|---|---|
+| Einheiten: PDF Seiten (Textauszug des Servers, sonst Textebene), EPUB und MOBI Abschnitte, MD und TXT Stücke ab jeder Überschrift | `pdf/lesequelle`, `epub/lesequelle`, `text/lesequelle` | ja |
+| Umfang: Diese Seite, Dieses Kapitel (nur mit Verzeichnis), Ab hier, Ganzes Buch von vorn; begonnen wird am Anfang des Satzes | `Vorlesen` | ja, alle Formate |
+| Spieler: Abschnitt und Satz zurück und vor, Pause, Stopp, Tempo ohne andere Tonhöhe, Stimme, Schlafuhr (Ende der Einheit, des Kapitels, 15, 30, 60 Minuten) | `Spieler`, `Vorlesen` | ja |
+| Satz mitführen: hervorgehoben ohne jedes Element im Text (Hervorhebungs-Schnittstelle des Browsers, sonst Rechtecke dahinter); Markierungen und Suchtreffer ebenso | `leser/hervorhebung`, `text/markierung` | Zeilen bitgenau verglichen: MD, TXT, PDF als Text, EPUB, geblättert und gescrollt, 1440 und 390 |
+| Mitlesen: gescrollt bleibt die Zeile zwischen oberem Fünftel und Mitte, Zeile um Zeile nachgeführt; geblättert wird am Ende des Schirms; wer selbst scrollt oder blättert, wird nicht zurückgezogen, "Zur Stelle" bringt hin | `leser/mitlauf`, `vorlesen/folge` | ja |
+| Vollbild: Zeichen oben rechts (18 von rechts, 5 von oben) öffnet das Feld; ein schmaler Spieler erscheint bei Berührung oder Mausbewegung | `Leserahmen` | 390 hoch und quer, 1440, hell und dunkel |
+| Sperrbildschirm und Kopfhörertasten (Titel, Umschlag, Tasten) | `vorlesen/mediensitzung` | gesetzt, an echtem Gerät nein |
+| Abriss: zwei neue Versuche, dann steht es still mit klarer Meldung, Weiter setzt an derselben Stelle fort; beim Verlassen des Lesers Schluss | `vorlesen/zulauf`, `Leser` | ja (Probe-Server mit Fehlern) |
 
 ### Blättern oder Scrollen (BF-16)
 
