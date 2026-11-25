@@ -19,30 +19,3 @@ export function durchsichtig(hex: string, deckung: number): string {
   const [r, g, b] = [0, 2, 4].map((i) => Number.parseInt(n.slice(i, i + 2), 16) || 0);
   return `rgba(${r}, ${g}, ${b}, ${deckung})`;
 }
-
-export interface Hsl {
-  h: number;
-  s: number;
-  l: number;
-}
-
-export function hexZuHsl(hex: string): Hsl {
-  const n = hex.replace("#", "");
-  const [r, g, b] = [0, 2, 4].map((i) => (Number.parseInt(n.slice(i, i + 2), 16) || 0) / 255);
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const d = max - min;
-  const l = (max + min) / 2;
-  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
-  const h = d === 0 ? 0 : max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-  return { h: Math.round(h * 60), s: Math.round(s * 100), l: Math.round(l * 100) };
-}
-
-export function hslZuHex({ h, s, l }: Hsl): string {
-  const a = (s / 100) * Math.min(l / 100, 1 - l / 100);
-  const teil = (n: number) => {
-    const k = (n + h / 30) % 12;
-    return Math.round(255 * (l / 100 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))));
-  };
-  return `#${[teil(0), teil(8), teil(4)].map((w) => w.toString(16).padStart(2, "0")).join("")}`;
-}

@@ -25,6 +25,11 @@ export interface Annahmezeile {
   handlungen: Handlung[];
 }
 
+/** Geht es von selbst voran, oder wartet die Zeile auf jemanden? */
+export function laeuftVonSelbst(z: Annahmezeile): boolean {
+  return z.gruppe === "laeuft" && !z.handlungen.some((h) => h === "waehlen" || h === "weiter");
+}
+
 interface Lage {
   gruppe: Gruppe;
   symbol: string;

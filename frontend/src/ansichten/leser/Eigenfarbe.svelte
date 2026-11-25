@@ -1,15 +1,15 @@
 <script lang="ts">
   // Freie Farbe über Ton, Kraft und Helligkeit oder als Hex-Wert
-  import { hexZuHsl, hslZuHex } from "../../lib/leser/farben";
+  import { alsHex, hexZuTon, tonZuHex, type Farbton } from "../../lib/farbton";
   import Regler from "../../lib/teile/Regler.svelte";
   let { name, wert, onwahl }: { name: string; wert: string; onwahl: (hex: string) => void } = $props();
   let offen = $state(false);
-  let hsl = $derived(hexZuHsl(wert));
-  const setze = (neu: Partial<typeof hsl>) => onwahl(hslZuHex({ ...hsl, ...neu }));
+  let ton = $derived(hexZuTon(wert));
+  const setze = (neu: Partial<Farbton>) => onwahl(tonZuHex({ ...ton, ...neu }));
 
   function tippe(roh: string) {
-    const hex = roh.trim().startsWith("#") ? roh.trim() : `#${roh.trim()}`;
-    if (/^#[0-9a-f]{6}$/i.test(hex)) onwahl(hex.toLowerCase());
+    const hex = alsHex(roh);
+    if (hex) onwahl(hex);
   }
 </script>
 
@@ -20,9 +20,9 @@
     <input class="eingabe hex" aria-label="{name} als Hex-Wert" value={wert} maxlength="7" spellcheck="false" onchange={(e) => tippe(e.currentTarget.value)} />
   </div>
   {#if offen}
-    <Regler name="Farbton" von={0} bis={360} wert={hsl.h} onwahl={(h) => setze({ h })} />
-    <Regler name="Kraft" von={0} bis={100} wert={hsl.s} anzeige="{hsl.s} %" onwahl={(s) => setze({ s })} />
-    <Regler name="Helligkeit" von={0} bis={100} wert={hsl.l} anzeige="{hsl.l} %" onwahl={(l) => setze({ l })} />
+    <Regler name="Farbton" von={0} bis={360} wert={ton.ton} onwahl={(w) => setze({ ton: w })} />
+    <Regler name="Kraft" von={0} bis={100} wert={ton.saettigung} anzeige="{ton.saettigung} %" onwahl={(w) => setze({ saettigung: w })} />
+    <Regler name="Helligkeit" von={0} bis={100} wert={ton.helligkeit} anzeige="{ton.helligkeit} %" onwahl={(w) => setze({ helligkeit: w })} />
   {/if}
 </div>
 

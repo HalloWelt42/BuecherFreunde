@@ -1,4 +1,4 @@
-import { fuegeZusammen } from "../src/lib/annahme/zeilen";
+import { fuegeZusammen, laeuftVonSelbst } from "../src/lib/annahme/zeilen";
 import type { AnnahmeEintrag, Hochladung } from "../src/lib/annahme/typen";
 
 function eintrag(ueber: Partial<AnnahmeEintrag>): AnnahmeEintrag {
@@ -40,6 +40,13 @@ describe("Zeilen der Annahme", () => {
     const z = eine({ stand: "laedt", empfangen: 410 });
     expect(z.handlungen).toEqual(["waehlen", "entfernen"]);
     expect(z.prozent).toBe(41);
+  });
+
+  it("zählt nur, was von selbst vorankommt", () => {
+    expect(laeuftVonSelbst(eine({ stand: "liest", empfangen: 1000 }))).toBe(true);
+    expect(laeuftVonSelbst(eine({ stand: "laedt", empfangen: 410 }))).toBe(false);
+    expect(laeuftVonSelbst(fuegeZusammen([], [hochladung({ lage: "ohne_verbindung" })])[0])).toBe(true);
+    expect(laeuftVonSelbst(fuegeZusammen([], [hochladung({ lage: "angehalten" })])[0])).toBe(false);
   });
 
   it("stellt laufende Hochladungen nach oben und verdeckt ihren Eintrag", () => {

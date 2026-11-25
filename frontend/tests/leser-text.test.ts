@@ -1,7 +1,7 @@
 import { entschaerfe, hinweiskasten, mitDiagramm, sichereAdresse } from "../src/lib/leser/text/markdown";
 import { prozentVon, textkapitel, zeichneMarkierungen, zeichneTreffer } from "../src/lib/leser/text/markierung";
 import { findeStuecke } from "../src/lib/leser/textsuche";
-import { hexZuHsl, hslZuHex } from "../src/lib/leser/farben";
+import { hexZuTon, tonZuHex } from "../src/lib/farbton";
 import { gleicheSchrift, istDunkel, klemme, papierOder, themaIndex, ZEILEN } from "../src/lib/leser/darstellung";
 import type { Markierung } from "../src/lib/typen";
 
@@ -75,7 +75,7 @@ describe("Markierungen im Text", () => {
 describe("Darstellung", () => {
   it("rechnet Farben hin und zurück", () => {
     for (const f of ["#f4ecd8", "#1e1e1e", "#3d2b1f", "#ff0000"]) {
-      const h = hslZuHex(hexZuHsl(f));
+      const h = tonZuHex(hexZuTon(f));
       const ab = (i: number) => Math.abs(Number.parseInt(f.slice(i, i + 2), 16) - Number.parseInt(h.slice(i, i + 2), 16));
       expect(Math.max(ab(1), ab(3), ab(5))).toBeLessThanOrEqual(3);
     }

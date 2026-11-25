@@ -1,5 +1,6 @@
 <script lang="ts">
   // Text und Markdown: ein langes Blatt zum Rollen
+  import { formatName } from "../../lib/format";
   import "../../stil/lesetext.css";
   import { onDestroy, tick, untrack } from "svelte";
   import { dateiUrl } from "../../lib/api/books";
@@ -206,7 +207,7 @@
   {#snippet fuss()}
     <Fussleiste {anteil} anAnfang={anteil <= 0} amEnde={anteil >= 0.999} onzurueck={() => blaettere(-1)} onvor={() => blaettere(1)} onanteil={rolle}>
       <Seitenstand {seite} {gesamt} onseite={(nr) => rolle((nr - 1) / gesamt)} />
-      <span class="stand zahl klein nur-breit">{Math.round(anteil * 100)} %</span>
+      <span class="stand zahl klein nur-breit">{Math.round(anteil * 100)} %, {formatName(buch.file_format)}</span>
     </Fussleiste>
   {/snippet}
 </Leserahmen>

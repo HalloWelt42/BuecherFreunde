@@ -4,7 +4,7 @@ import { hochladenZaehlen } from "../api/client";
 import { Hochlader } from "../annahme/hochlader";
 import { pruefsumme } from "../annahme/pruefsumme";
 import type { AnnahmeEintrag, AnnahmeListe, AnnahmeZaehler, Hochladung } from "../annahme/typen";
-import { fuegeZusammen, type Annahmezeile } from "../annahme/zeilen";
+import { fuegeZusammen, laeuftVonSelbst, type Annahmezeile } from "../annahme/zeilen";
 import { bestand } from "./bestand.svelte";
 
 const IM_REGAL = ["wissen", "fertig", "ohne_text"];
@@ -21,6 +21,8 @@ class Annahme {
 
   zeilen = $derived<Annahmezeile[]>(fuegeZusammen(this.eintraege, this.hochladungen));
   laufend = $derived(this.zeilen.filter((z) => z.gruppe === "laeuft"));
+  vonSelbst = $derived(this.laufend.filter(laeuftVonSelbst).length);
+  angehalten = $derived(this.laufend.length - this.vonSelbst);
 
   #hochlader = new Hochlader(annahmeDienst, pruefsumme);
   #stromAus: (() => void) | null = null;

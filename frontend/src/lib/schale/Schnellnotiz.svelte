@@ -1,5 +1,6 @@
 <script lang="ts">
   import { beiEsc } from "../flucht";
+  import { anzahl } from "../format";
   import { melde } from "../stand/meldungen.svelte";
   import { notizblock, type Notizort } from "../stand/notizblock.svelte";
   import { frage } from "../stand/rueckfrage.svelte";
@@ -54,7 +55,7 @@
 
   async function leere() {
     if (!notizblock.text.trim()) return;
-    const ja = await frage({ titel: "Schnellnotiz leeren?", folgen: [`Der Text mit ${notizblock.woerter} Wörtern geht verloren.`], ja: "Leeren" });
+    const ja = await frage({ titel: "Schnellnotiz leeren?", folgen: [`${anzahl(notizblock.woerter, "Wort geht", "Wörter gehen")} verloren.`], ja: "Leeren" });
     if (ja) notizblock.text = "";
   }
 </script>
@@ -63,6 +64,7 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <header class:zieht onpointerdown={verschiebe}>
     <Symbol name="note-sticky" />Schnellnotiz
+    {#if notizblock.woerter}<span class="leise zahl">{anzahl(notizblock.woerter, "Wort", "Wörter")}</span>{/if}
     <span class="schiebt reihe eng">
       <Knopf text="Alles kopieren" symbol="copy" nur klein frei onclick={kopiere} />
       <Knopf text="Leeren" symbol="trash-can" nur klein frei onclick={leere} />
