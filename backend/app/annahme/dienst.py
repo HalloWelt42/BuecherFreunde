@@ -99,15 +99,7 @@ class Annahme:
         if offen:
             await self._stand_holen(offen["id"])
             return await self.einer(offen["id"])
-        stand, text, buch, schritt = "wartet", "Bereit zum Hochladen", None, 1
-        endung = Path(name).suffix.lower()
-        vorhanden = await db.fetch_one("SELECT id, title FROM books WHERE hash = ?", (sha256,)) if sha256 else None
-        if endung not in SUPPORTED_FORMATS:
-            stand, schritt, text = "format", 0, f"Dieses Format kann die Bibliothek nicht lesen. Nichts hochgeladen. Möglich sind {FORMATE}."
-        elif groesse <= 0:
-            stand, schritt, text = "kaputt", 0, "Die Datei ist leer. Nicht eingetragen."
-        elif vorhanden:
-            stand, schritt, buch, text = "da", 0, vorhanden["id"], f"Gibt es schon: \"{vorhanden['title']}\" hat denselben Inhalt"
+        stand, schritt, text, buch = await self._vorab(name, groesse, sha256)
         c = await db.execute("INSERT INTO aufnahme(name, groesse, sha256, stand, schritt, text, buch_id, anreichern) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                              (name, groesse, sha256, stand, schritt, text, buch, int(anreichern)))
         nr = c.lastrowid
@@ -121,6 +113,29 @@ class Annahme:
         for e in self._neu:
             e.set()
         return await self.einer(nr)
+
+    async def _vorab(self, name: str, groesse: int, sha256: str) -> tuple[str, int, str, int | None]:
+        """Was sich ohne den Inhalt sagen lässt: Stand, Schritt, Text und die Nummer des Buchs, wenn es das schon gibt."""
+        if Path(name).suffix.lower() not in SUPPORTED_FORMATS:
+            return "format", 0, f"Dieses Format kann die Bibliothek nicht lesen. Möglich sind {FORMATE}.", None
+        if groesse <= 0:
+            return "kaputt", 0, "Die Datei ist leer. Nicht eingetragen.", None
+        da = await db.fetch_one("SELECT id, title FROM books WHERE hash = ?", (sha256,)) if sha256 else None
+        if da:
+            return "da", 0, f"Gibt es schon: \"{da['title']}\" hat denselben Inhalt", da["id"]
+        return "wartet", 1, "Bereit zum Hochladen", None
+
+    async def aus_wolke(self, k: dict) -> None:
+        """Eine Datei, die schon in der Kellerwolke liegt (Eingangsordner): gleich zum Lesen, ohne Hochladen."""
+        stand, schritt, text, buch = await self._vorab(k["name"], k["groesse"], k["sha256"])
+        if stand == "wartet":
+            stand, schritt, text = "liest", 2, "Wartet auf das Lesen"
+        await db.execute("INSERT INTO aufnahme(name, groesse, sha256, stand, schritt, text, buch_id, knoten, empfangen, anteil) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+                         (k["name"], k["groesse"], k["sha256"], stand, schritt, text, buch, k["id"], k["groesse"]))
+        await db.commit()
+        self._arbeit.set()
+        for e in self._neu:
+            e.set()
 
     async def _eingang_ordner(self) -> str:
         if self._eingang is None:
@@ -160,9 +175,14 @@ class Annahme:
             self._arbeit.set()
         return await self.einer(nr)
 
+    @staticmethod
+    def _hier(z: dict) -> Path:
+        """Ablage ohne Kellerwolke: ein Ordner je Aufnahme, damit der Name der Datei (und so der Titel) bleibt, wie er ist."""
+        return settings.zwischen_dir / "eingang" / str(z["id"]) / Path(z["name"]).name
+
     async def _teil_hier(self, z: dict, strom: AsyncIterator[bytes]) -> int:
         """Ohne Kellerwolke (Entwicklung): das Teil landet im Zwischenspeicher."""
-        ziel = settings.zwischen_dir / "eingang" / f"{z['id']}-{Path(z['name']).name}"
+        ziel = self._hier(z)
         ziel.parent.mkdir(parents=True, exist_ok=True)
         with ziel.open("ab" if z["empfangen"] else "wb") as f:
             async for stueck in strom:
@@ -171,13 +191,14 @@ class Annahme:
 
     # -- Bedienung -----------------------------------------------------------------------------------------------------
     async def entfernen(self, nr: int) -> None:
-        z = await db.fetch_one("SELECT upload, stand FROM aufnahme WHERE id = ?", (nr,))
+        z = await db.fetch_one("SELECT upload, stand, knoten FROM aufnahme WHERE id = ?", (nr,))
         if z and z["upload"] and z["stand"] in ("wartet", "laedt", "angehalten"):
             try:
                 await wolke.upload_abbrechen(z["upload"])
             except WolkeFehler as f:
                 logger.info("Upload %s nicht abgebrochen: %s", z["upload"], f)
-        await db.execute("DELETE FROM aufnahme WHERE id = ?", (nr,))
+        # Ein Knoten bleibt gemerkt, sonst nähme der Eingangsordner dieselbe Datei gleich noch einmal auf
+        await db.execute("UPDATE aufnahme SET ausgeblendet = 1 WHERE id = ?" if z and z["knoten"] else "DELETE FROM aufnahme WHERE id = ?", (nr,))
         await db.commit()
         for e in self._neu:
             e.set()
@@ -235,7 +256,7 @@ class Annahme:
                 await asyncio.sleep(10 if warten else 0)
 
     async def _datei(self, z: dict) -> Path:
-        hier = settings.zwischen_dir / "eingang" / f"{z['id']}-{Path(z['name']).name}"
+        hier = self._hier(z)
         if hier.exists():
             return hier
         await db.execute("INSERT OR IGNORE INTO ablage_datei(hash, knoten, name, groesse) VALUES (?, ?, ?, ?)", (z["sha256"], z["knoten"], Path(z["name"]).name, z["groesse"]))
@@ -245,9 +266,18 @@ class Annahme:
             raise WolkeFehler("Das Original kommt gerade nicht aus der Kellerwolke")
         return pfad
 
+    async def _anderswo(self, z: dict) -> dict | None:
+        """Das Buch, dem derselbe Inhalt unter einem anderen Knoten schon gehört (zweimal abgelegt, bevor das erste fertig war)."""
+        if not z["knoten"]:
+            return None
+        return await db.fetch_one("SELECT b.id, b.title FROM books b JOIN ablage_datei a ON a.hash = b.hash WHERE b.hash = ? AND a.knoten != ?", (z["sha256"], z["knoten"]))
+
     async def _verarbeiten(self, z: dict) -> None:
         nr, name = z["id"], Path(z["name"]).name
         await self._setze(nr, stand="liest", schritt=2, anteil=0, text="Text und Umschlag werden gelesen")
+        if da := await self._anderswo(z):
+            await self._setze(nr, stand="da", schritt=0, anteil=1, buch_id=da["id"], text=f"Gibt es schon: \"{da['title']}\" hat denselben Inhalt")
+            return
         pfad = await self._datei(z)
         summe = z["sha256"] or await asyncio.to_thread(lambda: hashlib.sha256(pfad.read_bytes()).hexdigest())
         e = await auswertung.auswerten(pfad)

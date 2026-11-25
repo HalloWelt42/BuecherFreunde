@@ -27,6 +27,8 @@ möglich), `kaputt` (leer oder unlesbar, nicht eingetragen), `fehler` (mit Grund
 | `POST /api/annahme/{id}/erneut` | Auswertung noch einmal |
 | `DELETE /api/annahme/{id}` | Eintrag entfernen, laufenden Upload abbrechen; ein eingetragenes Buch bleibt |
 | `POST /api/annahme/ausblenden` | fertige und schon vorhandene ausblenden (bleiben im Verlauf) |
+| `GET /api/annahme/eingangsordner` | `{bereit, pfad, dateien: [{name, groesse, stand, text, buch_id}]}`, was im Eingangsordner der Kellerwolke liegt |
+| `POST /api/annahme/eingangsordner` | jetzt nachsehen, sonst jede Minute; `{neu}` |
 | `GET /api/annahme/ereignisse?token=` | Ereignisstrom, je Änderung `data: {eintraege, zaehler}` |
 
 Der Browser rechnet den sha256 stückweise (npm `hash-wasm`), schickt Teile zu `teil_groesse` nacheinander, höchstens zwei

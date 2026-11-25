@@ -16,6 +16,7 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.wolke")
 ZEIT = httpx.Timeout(300.0, connect=5.0)
+JE_SEITE = 200
 
 
 class WolkeFehler(Exception):
@@ -105,6 +106,17 @@ class Wolke:
 
     async def knoten(self, kennung: str) -> dict:
         return await self.rufe("GET", f"/api/v1/ablage/knoten/{kennung}")
+
+    async def kinder(self, ordner: str) -> AsyncIterator[dict]:
+        """Alles, was direkt in einem Ordner liegt."""
+        ab = 0
+        while True:
+            stueck = await self.rufe("GET", f"/api/v1/ablage/knoten/{ordner}/kinder", params={"ab": ab, "anzahl": JE_SEITE})
+            for k in stueck:
+                yield k
+            if len(stueck) < JE_SEITE:
+                return
+            ab += JE_SEITE
 
     async def gibt_es(self, sha256: str) -> list[dict]:
         return await self.rufe("GET", f"/api/v1/ablage/pruefsumme/{sha256}")

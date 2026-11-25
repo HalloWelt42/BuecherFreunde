@@ -12,7 +12,7 @@ schluessel_orte:
   - "pi5b: `{{wurzel}}/zugang/kellerwolke.schluessel`, Modus 0600 (App-Zugang der Kellerwolke) und `zugang/hausstelle.pem`"
   - "pi5b: `{{wurzel}}/.env` (Orte, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
 einrichten: einrichten.sh
-stand: 247936c
+stand: da9c640
 ---
 
 # BücherFreunde (Neubau)
@@ -26,6 +26,9 @@ ist die App die Quelle der Bücher; die Nummern der Bücher sind dieselben wie i
 Zwei Container aus `docker/pi5b.compose.yml`: das Backend (FastAPI) und die Oberfläche (nginx, Port
 {{port:ziel/oberflaeche}}, nur am Gerät selbst). Im Heimnetz erreicht man sie über den [[Vorbau]] unter ihrem Namen (HTTPS);
 die App meldet selbst an, mit dem Konto der [[Kellerwolke]].
+
+`Apps/BücherFreunde/Eingangsordner` in der [[Kellerwolke]]: was dort liegt, nimmt die App jede Minute auf, die Datei zieht dabei
+nach `Bücher` um. Doppel, fremde Formate und Unlesbares bleiben liegen und stehen unter "Hinzufügen".
 
 ## Was sie braucht
 

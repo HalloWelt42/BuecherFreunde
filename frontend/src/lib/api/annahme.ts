@@ -32,6 +32,11 @@ export const annahmeErneut = (id: number): Promise<AnnahmeEintrag> => post(`/api
 export const entferneAnnahme = (id: number): Promise<unknown> => del(`/api/annahme/${id}`);
 export const blendeAnnahmenAus = (): Promise<unknown> => post("/api/annahme/ausblenden");
 
+export type Eingangsdatei = { name: string; groesse: number; stand: string; text: string; buch_id: number | null };
+export type Eingangsordner = { bereit: boolean; pfad: string; dateien: Eingangsdatei[] };
+export const ladeEingangsordner = (): Promise<Eingangsordner> => get("/api/annahme/eingangsordner");
+export const nimmEingangsordnerAuf = (): Promise<{ neu: number }> => post("/api/annahme/eingangsordner");
+
 /** Ereignisstrom; der Browser verbindet nach einem Abriss selbst neu. */
 export function annahmeEreignisse(tun: (liste: AnnahmeListe) => void): () => void {
   const strom = new EventSource(`/api/annahme/ereignisse?token=${encodeURIComponent(getToken())}`);

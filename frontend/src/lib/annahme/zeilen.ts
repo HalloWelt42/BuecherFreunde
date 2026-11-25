@@ -39,6 +39,7 @@ interface Lage {
 }
 
 const LAGEN: Record<string, Lage> = {
+  neu: { gruppe: "laeuft", symbol: "plus", ton: "info", wort: "Neu", handlungen: [] },
   wartet: { gruppe: "laeuft", symbol: "hourglass-half", ton: "info", wort: "Wartet", handlungen: [] },
   laeuft: { gruppe: "laeuft", symbol: "circle-notch", ton: "info", wort: "Läuft", handlungen: [] },
   angehalten: { gruppe: "laeuft", symbol: "circle-pause", ton: "warn", wort: "Angehalten", handlungen: ["waehlen", "entfernen"] },
@@ -54,7 +55,8 @@ const LAGEN: Record<string, Lage> = {
 const AM_SERVER = ["liest", "angaben", "regal"];
 const OHNE_STATIONEN = ["da", "format", "kaputt"];
 
-function lageFuer(stand: string): Lage {
+/** Zeichen, Ton und Wort zu einem Stand vom Server; "neu" heißt: gefunden, aber noch nicht aufgenommen. */
+export function lageFuer(stand: string): Lage {
   return AM_SERVER.includes(stand) || stand === "laedt" ? LAGEN.laeuft : (LAGEN[stand] ?? LAGEN.fehler);
 }
 

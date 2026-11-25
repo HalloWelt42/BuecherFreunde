@@ -11,26 +11,27 @@ BücherFreunde besteht aus zwei Komponenten:
 - **Backend** (Python FastAPI) - REST-API, Datenbankzugriff, Dateiverarbeitung
 - **Frontend** (Svelte 5) - Single-Page-Application im Browser
 
-Die Kommunikation erfolgt über eine REST-API mit Bearer-Token-Authentifizierung. Das Frontend ist austauschbar - jede Anwendung, die die API anspricht, kann als Frontend dienen.
+Die Kommunikation erfolgt über eine REST-API. Angemeldet wird mit dem Konto der Kellerwolke.
 
 ---
 
-## Hash-basierter Speicher
+## Wo die Bücher liegen
 
-Jede importierte Datei wird per SHA-256 gehasht. Der Hash bestimmt den Speicherpfad:
+Die Originale liegen ausschließlich in der Kellerwolke unter `Apps/BücherFreunde/Bücher`. Beim Hochladen strömt jede Datei in Teilen direkt dorthin, ohne auf dem Gerät abgelegt zu werden. Neben jedem Original liegt ein Begleiter mit Umschlag, Volltext und allen Angaben.
 
-```
-storage/a1/b2/a1b2c3d4e5f6.../
-  original.pdf      - Originaldatei
-  metadata.json     - Extrahierte + angereicherte Metadaten
-  cover.jpg          - Cover (max 800x1200)
-  fulltext.txt       - Volltext für Suchindex
-```
+Auf dem Gerät gibt es fünf Orte, jeder einzeln einstellbar:
 
-Vorteile:
-- **Duplikaterkennung:** Identische Dateien werden automatisch erkannt
-- **Keine Namenskonflikte:** Der Pfad ist immer eindeutig
-- **rsync-freundlich:** Die Ordnerstruktur kann direkt gesichert werden
+| Ort | Inhalt |
+|-----|--------|
+| bestand | Datenbank mit Angaben, Regalen, Notizen, Markierungen und Lesestand |
+| suche | Suchindex, jederzeit neu zu bilden |
+| texte | Volltexte |
+| umschlaege | Umschläge und Hintergrundbilder |
+| zwischen | begrenzter Zwischenspeicher im Arbeitsspeicher |
+
+- **Doppel:** Jede Datei wird vor dem Hochladen an ihrer SHA-256-Prüfsumme erkannt
+- **Fortsetzen:** Ein abgebrochenes Hochladen geht an derselben Stelle weiter
+- **Eingangsordner:** Was in `Apps/BücherFreunde/Eingangsordner` liegt, kommt von selbst in die Bibliothek
 
 ---
 
@@ -44,7 +45,11 @@ BücherFreunde nutzt SQLite FTS5 für die Volltextsuche. Der Index enthält Tite
 - **BM25-Ranking:** Relevanz-basierte Sortierung
 - **Snippet-Hervorhebung:** Fundstellen werden mit Kontext angezeigt
 
-Der vollständige Text liegt zusätzlich als `fulltext.txt` im Hash-Verzeichnis.
+Der vollständige Text jedes Buchs liegt zusätzlich bei den Volltexten.
+
+### Suche nach Bedeutung
+
+Fragen und Umschreibungen findet die Suche nach Bedeutung. Sie läuft über das Wissen im Haus, gerechnet wird auf einem eigenen Rechner. Schläft er, gelten die Wörter.
 
 ---
 
@@ -105,24 +110,16 @@ Optional ordnet ein Sprachmodell auf einem eigenen Rechner Bücher in Regale ein
 
 ---
 
-## Datenverteilung
-
-| Speicherort | Inhalt |
-|-------------|--------|
-| SQLite (DATABASE_DIR) | Metadaten, Kategorien, Sammlungen, Notizen, Highlights, Lesefortschritt, FTS-Index |
-| Hash-Ordner (STORAGE_DIR) | Buchdateien (original.pdf/epub), Cover (cover.jpg), Volltext (fulltext.txt), Metadaten-Sidecar (metadata.json) |
-| .env | Pfade, Token, externe Dienste, Ports |
-| Browser (localStorage) | API-Token, UI-Einstellungen |
-
----
-
 ## Sicherheit
 
-### Mount-Schutz
-Beim ersten Start legt das Backend eine Marker-Datei `.buecherfreunde` im Storage- und Datenbank-Verzeichnis an. Bei jedem weiteren Start wird geprüft, ob die Verzeichnisse korrekt gemountet sind. Fehlt die Marker-Datei, startet das Backend nicht - das verhindert, dass bei nicht gemounteter Festplatte eine leere Datenbank auf der SD-Karte angelegt wird.
+### Schutz vor falschen Laufwerken
+In jedem der fünf Orte liegt eine Datei `.buecherfreunde`. Fehlt sie an einem Ort, der schon eingerichtet war, startet die App nicht. So entsteht nie eine leere Datenbank, wenn ein Laufwerk fehlt.
 
-### Token-Authentifizierung
-Jeder API-Aufruf vom Frontend trägt einen Bearer-Token. Das Token wird beim ersten Start generiert und in der .env-Datei gespeichert.
+### Anmeldung
+Jeder Aufruf trägt die Anmeldung der Kellerwolke. Andere Apps lesen den Bestand nur mit ihrem eigenen App-Zugang.
+
+### Text aus Büchern
+HTML aus Büchern wird vor der Anzeige entschärft.
 
 ---
 

@@ -153,7 +153,8 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 | Bibliothek ergänzen: vier Arten mit Zahlen, Handbearbeitete, Regal oder ohne, Vorschau, Start | `Ergaenzen` | ja, Regalwahl und Anhalten nein |
 | Aufgabenliste, "Schon da" richtig benannt (36), Buch öffnen | `Einleseliste` | Anzeige ja |
 | Gemeinfreie Bücher: Suche, Auswahl über Seiten (42), Übernahme als Auftrag | `Gemeinfreie` | Suche und Auswahl nachgebaut, Übernahme nein |
-| Aus der Kellerwolke wählen | nicht gebaut, dafür gibt es keinen Weg am Server | - |
+| Eingangsordner in der Kellerwolke, wird beim Ablegen erkannt | `Eingangsordner` | siehe Betrieb |
+| Aus der Kellerwolke wählen | braucht die Freigabe "Alles lesen" für den App-Zugang, noch nicht gebaut | - |
 
 ## 17, 18, 20, 21 Einstellungen, Anmeldung, Schnellnotiz, Hintergründe
 

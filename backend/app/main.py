@@ -9,6 +9,7 @@ from fastapi import FastAPI
 
 from backend.app.ablage import orte
 from backend.app.ablage.wolke import wolke
+from backend.app.annahme import eingangsordner
 from backend.app.annahme.dienst import annahme
 from backend.app.api.ai import router as ai_router
 from backend.app.api.annahme import router as annahme_router
@@ -90,11 +91,12 @@ async def lifespan(app: FastAPI):
     _ensure_directories()
     await db.connect()
     annahme.starten()
-    pflege_lauf = asyncio.create_task(pflege.laufen())
+    im_hintergrund = [asyncio.create_task(pflege.laufen()), asyncio.create_task(eingangsordner.laufen())]
     # Verwaiste Tasks aufräumen (vom letzten Lauf übrig geblieben)
     await _cleanup_stale_tasks()
     yield
-    pflege_lauf.cancel()
+    for lauf in im_hintergrund:
+        lauf.cancel()
     await annahme.stoppen()
     await bedeutung.schliessen()
     await wolke.schliessen()

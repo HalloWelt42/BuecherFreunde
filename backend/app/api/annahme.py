@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.app.ablage.wolke import WolkeFehler
+from backend.app.annahme import eingangsordner
 from backend.app.annahme.dienst import TEIL, Versatz, annahme
 from backend.app.core.auth import verify_token, verify_token_query
 
@@ -43,6 +44,22 @@ async def anlegen(n: Neu, _=Depends(verify_token)):
 async def ausblenden(_=Depends(verify_token)):
     await annahme.ausblenden()
     return await annahme.alle()
+
+
+@router.get("/eingangsordner")
+async def eingang(_=Depends(verify_token)):
+    try:
+        return await eingangsordner.inhalt()
+    except WolkeFehler as f:
+        raise HTTPException(503, f.meldung) from f
+
+
+@router.post("/eingangsordner")
+async def eingang_aufnehmen(_=Depends(verify_token)):
+    try:
+        return {"neu": await eingangsordner.aufnehmen()}
+    except WolkeFehler as f:
+        raise HTTPException(503, f.meldung) from f
 
 
 @router.get("/ereignisse")

@@ -329,15 +329,15 @@ async def list_books(
 
     # Sortierung
     sort_map = {
-        "titel": "b.title",
-        "autor": "b.author",
+        "titel": "b.title COLLATE NOCASE",
+        "autor": "b.author COLLATE NOCASE",
         "datum": "b.created_at",
         "groesse": "b.file_size",
         "jahr": "b.year",
-        "verlag": "b.publisher",
+        "verlag": "b.publisher COLLATE NOCASE",
         "bewertung": "COALESCE(ud_sort.rating, 0)",
     }
-    sort_col = sort_map.get(sortierung, "b.title")
+    sort_col = sort_map.get(sortierung, sort_map["titel"])
     sort_dir = "DESC" if richtung.lower() == "desc" else "ASC"
     needs_ud_join = sortierung == "bewertung"
 
@@ -356,7 +356,7 @@ async def list_books(
         FROM books b
         {ud_join}
         WHERE {where}
-        ORDER BY {sort_col} {sort_dir}
+        ORDER BY {sort_col} {sort_dir}, b.title COLLATE NOCASE, b.id
         LIMIT ? OFFSET ?
     """
     rows = await db.fetch_all(select_sql, tuple(params) + (pro_seite, offset))
@@ -437,36 +437,28 @@ async def similar_books(
         )
         result["vom_autor"] = await _batch_enrich_book_list(rows)
 
-    # In derselben Kategorie
+    # Im selben Regal; "Ungeordnet" ist keins
     cat_ids = await db.fetch_all(
-        "SELECT category_id FROM book_categories WHERE book_id = ?", (book_id,)
+        "SELECT x.category_id FROM book_categories x JOIN categories c ON c.id = x.category_id "
+        "WHERE x.book_id = ? AND c.slug != 'ungeordnet'", (book_id,)
     )
     if cat_ids:
-        # Spezial-Kategorien wie "Ungeordnet" ausschliessen
-        filtered = []
-        for c in cat_ids:
-            is_special = await db.fetch_one(
-                "SELECT spezial FROM categories WHERE id = ?", (c["category_id"],)
-            )
-            if not is_special or not is_special.get("spezial"):
-                filtered.append(c["category_id"])
-
-        if filtered:
-            already = {book_id} | {b.id for b in result["vom_autor"]}
-            placeholders = ",".join("?" for _ in filtered)
-            exclude_ph = ",".join("?" for _ in already)
-            rows = await db.fetch_all(
-                f"""SELECT DISTINCT b.id, b.hash, b.title, b.author, b.publisher,
-                           b.file_format, b.file_size, b.cover_path, b.page_count,
-                           b.year, b.isbn, b.typ, b.sammlung_id, b.band_nummer,
-                           b.created_at, b.updated_at
-                    FROM books b
-                    JOIN book_categories bc ON bc.book_id = b.id
-                    WHERE bc.category_id IN ({placeholders}) AND b.id NOT IN ({exclude_ph})
-                    ORDER BY b.title LIMIT ?""",
-                (*filtered, *already, limit),
-            )
-            result["in_kategorie"] = await _batch_enrich_book_list(rows)
+        regale = [c["category_id"] for c in cat_ids]
+        already = {book_id} | {b.id for b in result["vom_autor"]}
+        placeholders = ",".join("?" for _ in regale)
+        exclude_ph = ",".join("?" for _ in already)
+        rows = await db.fetch_all(
+            f"""SELECT DISTINCT b.id, b.hash, b.title, b.author, b.publisher,
+                       b.file_format, b.file_size, b.cover_path, b.page_count,
+                       b.year, b.isbn, b.typ, b.sammlung_id, b.band_nummer,
+                       b.created_at, b.updated_at
+                FROM books b
+                JOIN book_categories bc ON bc.book_id = b.id
+                WHERE bc.category_id IN ({placeholders}) AND b.id NOT IN ({exclude_ph})
+                ORDER BY b.title COLLATE NOCASE LIMIT ?""",
+            (*regale, *already, limit),
+        )
+        result["in_kategorie"] = await _batch_enrich_book_list(rows)
 
     return result
 
