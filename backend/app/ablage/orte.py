@@ -19,6 +19,7 @@ from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.orte")
 MARKER = ".buecherfreunde"
+KNAPP = {True: 2_000_000_000, False: 200_000_000}      # so wenig freier Platz ist knapp; der Zwischenspeicher räumt selbst auf
 
 
 @dataclass(frozen=True)
@@ -61,7 +62,7 @@ def stand() -> list[dict]:
             platz = shutil.disk_usage(ort.pfad)
             gut = not ort.dauerhaft or (ort.pfad / MARKER).exists()
             aus.append({"kennung": ort.kennung, "name": ort.name, "pfad": str(settings.host_pfade.get(ort.kennung) or ort.pfad),
-                        "belegt": belegt(ort.pfad), "frei": platz.free, "stand": "schlecht" if not gut else "warn" if platz.free < 2e9 else "gut"})
+                        "belegt": belegt(ort.pfad), "frei": platz.free, "stand": "schlecht" if not gut else "warn" if platz.free < KNAPP[ort.dauerhaft] else "gut"})
         except OSError as f:
             aus.append({"kennung": ort.kennung, "name": ort.name, "pfad": str(ort.pfad), "belegt": 0, "frei": 0, "stand": "schlecht", "text": str(f)})
     return aus

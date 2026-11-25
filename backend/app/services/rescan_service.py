@@ -15,6 +15,7 @@ import re
 from pathlib import Path
 
 from backend.app.core.database import db
+from backend.app.core.suchindex import SUCHTEXT_ZEICHEN
 from backend.app.services.storage import (
     get_original_file,
     get_sidecar_path,
@@ -23,6 +24,8 @@ from backend.app.services.storage import (
 )
 
 logger = logging.getLogger("buecherfreunde.rescan")
+
+VOLLTEXT_MINDESTENS = 100        # Bytes; weniger ist kein Text
 
 # Globaler Status
 status = {
@@ -56,6 +59,28 @@ def _reset_status():
     })
 
 
+def _ohne_volltext(buecher: list) -> set[int]:
+    """Bücher, deren Volltext fehlt oder so kurz ist, dass er keiner ist."""
+    ids = set()
+    for b in buecher:
+        try:
+            kurz = get_sidecar_path(b["hash"], "fulltext.txt").stat().st_size < VOLLTEXT_MINDESTENS
+        except OSError:
+            kurz = True
+        if kurz:
+            ids.add(b["id"])
+    return ids
+
+
+async def _betroffen(buecher: list, typen: list[str]) -> dict[str, set[int]]:
+    """Je Art die Nummern der Bücher, denen etwas fehlt (bei "metadaten": die sich über ihre ISBN ergänzen lassen)."""
+    proben = {"cover": lambda b: not (b["cover_path"] or "").strip(), "isbn": lambda b: not (b["isbn"] or "").strip(), "metadaten": lambda b: bool((b["isbn"] or "").strip())}
+    aus = {t: {b["id"] for b in buecher if proben[t](b)} for t in typen if t in proben}
+    if "volltext" in typen:
+        aus["volltext"] = await asyncio.to_thread(_ohne_volltext, buecher)
+    return aus
+
+
 async def vorschau(
     typen: list[str],
     kategorie_id: int | None = None,
@@ -78,45 +103,9 @@ async def vorschau(
 
     basis_clause = " AND ".join(basis_where) if basis_where else "1=1"
 
-    ergebnis = {"gesamt": 0, "typen": {}}
-
-    typ_bedingungen = {
-        "cover": "(b.cover_path IS NULL OR b.cover_path = '')",
-        "isbn": "(b.isbn IS NULL OR b.isbn = '')",
-        "metadaten": "(b.isbn IS NOT NULL AND b.isbn != '')",  # Nur Buecher MIT ISBN koennen angereichert werden
-        "volltext": "NOT EXISTS (SELECT 1 FROM (SELECT 1) WHERE 1=1)",  # Wird per Sidecar geprueft
-    }
-
-    # Volltext separat behandeln (muss Sidecar pruefen)
-    for typ in typen:
-        if typ == "volltext":
-            # Alle Buecher zaehlen, Volltext-Pruefung geht nur zur Laufzeit
-            sql = f"SELECT COUNT(*) as cnt FROM books b WHERE {basis_clause}"
-            row = await db.fetch_one(sql, tuple(basis_params))
-            ergebnis["typen"]["volltext"] = row["cnt"] if row else 0
-        elif typ in typ_bedingungen:
-            sql = f"SELECT COUNT(*) as cnt FROM books b WHERE {basis_clause} AND {typ_bedingungen[typ]}"
-            row = await db.fetch_one(sql, tuple(basis_params))
-            cnt = row["cnt"] if row else 0
-            ergebnis["typen"][typ] = cnt
-
-    # Kombinierte Zahl (UNION um Duplikate zu vermeiden)
-    if typen:
-        union_parts = []
-        union_params = []
-        for typ in typen:
-            if typ in typ_bedingungen and typ != "volltext":
-                union_parts.append(
-                    f"SELECT b.id FROM books b WHERE {basis_clause} AND {typ_bedingungen[typ]}"
-                )
-                union_params.extend(basis_params)
-
-        if union_parts:
-            sql = f"SELECT COUNT(*) as cnt FROM ({' UNION '.join(union_parts)})"
-            row = await db.fetch_one(sql, tuple(union_params))
-            ergebnis["gesamt"] = row["cnt"] if row else 0
-        elif "volltext" in typen:
-            ergebnis["gesamt"] = ergebnis["typen"].get("volltext", 0)
+    buecher = await db.fetch_all(f"SELECT b.id, b.hash, b.isbn, b.cover_path FROM books b WHERE {basis_clause}", tuple(basis_params))
+    betroffen = await _betroffen(buecher, typen)
+    ergebnis = {"gesamt": len(set().union(*betroffen.values())) if betroffen else 0, "typen": {t: len(ids) for t, ids in betroffen.items()}}
 
     return ergebnis
 
@@ -193,20 +182,6 @@ async def starte_rescan(
             where_parts.append("b.id IN (SELECT book_id FROM book_categories WHERE category_id = ?)")
             params.append(kategorie_id)
 
-    # Typ-Filter
-    typ_bedingungen = []
-    if "cover" in typen:
-        typ_bedingungen.append("(b.cover_path IS NULL OR b.cover_path = '')")
-    if "isbn" in typen:
-        typ_bedingungen.append("(b.isbn IS NULL OR b.isbn = '')")
-    if "metadaten" in typen:
-        typ_bedingungen.append("(b.isbn IS NOT NULL AND b.isbn != '')")
-    if "volltext" in typen:
-        typ_bedingungen.append("1=1")  # Alle -- Volltext wird zur Laufzeit geprueft
-
-    if typ_bedingungen:
-        where_parts.append(f"({' OR '.join(typ_bedingungen)})")
-
     where_clause = " AND ".join(where_parts) if where_parts else "1=1"
 
     buecher = await db.fetch_all(
@@ -216,6 +191,8 @@ async def starte_rescan(
         tuple(params),
     )
 
+    faellig = set().union(*(await _betroffen(buecher, typen)).values())
+    buecher = [b for b in buecher if b["id"] in faellig]
     if not buecher:
         return {"gestartet": False, "grund": "Keine Buecher gefunden die gescannt werden muessen"}
 
@@ -253,14 +230,16 @@ async def _rescan_worker(buecher: list, typen: list[str]):
         status["aktuelles_buch"] = book["title"] or book["file_name"] or f"ID {book['id']}"
 
         try:
-            original = get_original_file(book["hash"])
             fmt = (book["file_format"] or "").lower()
             hat_cover = bool(book["cover_path"] and book["cover_path"].strip())
             hat_isbn = bool(book["isbn"] and book["isbn"].strip())
+            fehlt_text = scan_volltext and bool(await asyncio.to_thread(_ohne_volltext, [book]))
+            original = None
+            if (scan_cover and not hat_cover) or (scan_isbn and not hat_isbn) or fehlt_text:
+                original = await asyncio.to_thread(get_original_file, book["hash"])     # kann aus der Kellerwolke laden
 
-            # Cover
-            if scan_cover and not hat_cover and original and original.exists():
-                cover_data = _extrahiere_cover(original, fmt)
+            if original is not None and scan_cover and not hat_cover:
+                cover_data = await asyncio.to_thread(_extrahiere_cover, original, fmt)
                 if cover_data:
                     save_cover(book["hash"], cover_data)
                     await db.execute(
@@ -270,20 +249,19 @@ async def _rescan_worker(buecher: list, typen: list[str]):
                     await db.commit()
                     status["cover_gefunden"] += 1
 
-            # ISBN
-            if scan_isbn and not hat_isbn and original and original.exists():
-                isbn = await _extrahiere_isbn(book, original, fmt)
-                if isbn:
+            if original is not None and scan_isbn and not hat_isbn:
+                if await _extrahiere_isbn(book, original, fmt):
                     status["isbn_gefunden"] += 1
 
-            # Volltext
-            if scan_volltext and original and original.exists():
-                fulltext_path = get_sidecar_path(book["hash"], "fulltext.txt")
-                if not fulltext_path.exists() or fulltext_path.stat().st_size < 100:
-                    text = _extrahiere_volltext(original, fmt)
-                    if text:
-                        save_fulltext(book["hash"], text)
-                        status["volltext_extrahiert"] += 1
+            if original is not None and fehlt_text:
+                text = await asyncio.to_thread(_extrahiere_volltext, original, fmt)
+                if text:
+                    save_fulltext(book["hash"], text)
+                    # über fts_content in den Suchindex (Trigger), dann wieder leer
+                    await db.execute("UPDATE books SET fts_content = ?, updated_at = datetime('now') WHERE id = ?", (text[:SUCHTEXT_ZEICHEN], book["id"]))
+                    await db.execute("UPDATE books SET fts_content = '' WHERE id = ?", (book["id"],))
+                    await db.commit()
+                    status["volltext_extrahiert"] += 1
 
             # Metadaten-Anreicherung (OpenLibrary, rate-limited)
             if scan_metadaten and hat_isbn:
@@ -423,7 +401,7 @@ async def _extrahiere_isbn(book: dict, original: Path, fmt: str) -> str | None:
     # 2. Direkt aus Datei-Inhalt (erste Seiten)
     text_direkt = ""
     if fmt == "epub":
-        text_direkt = _extrahiere_volltext(original, fmt) or ""
+        text_direkt = await asyncio.to_thread(_extrahiere_volltext, original, fmt) or ""
     elif fmt == "pdf":
         try:
             import fitz

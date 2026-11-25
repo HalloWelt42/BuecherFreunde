@@ -1,7 +1,7 @@
 /* Weiterlesen */
 .weiter { display: grid; gap: .625rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
 .weiter > a { color: inherit; text-decoration: none; display: grid; grid-template-columns: 4rem minmax(0, 1fr); gap: .75rem; padding: .625rem; align-items: center; }
-.weiter b { display: block; font: 600 1rem/1.25 var(--buchschrift); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.weiter b { display: block; font: 600 1rem/1.25 var(--buchschrift); overflow: hidden; overflow-wrap: anywhere; hyphens: auto; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .weiter .balken { margin: .375rem 0 .25rem; }
 /* Regal: Bücher stehen auf durchgehenden Glasböden */
 .regal { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.75rem, 1fr)); row-gap: .25rem; }

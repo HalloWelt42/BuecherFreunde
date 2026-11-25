@@ -13,8 +13,9 @@ import threading
 import zipfile
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from backend.app.ablage.wolke import WolkeFehler, wolke
 from backend.app.core.auth import verify_token
 from backend.app.core.config import settings
 from backend.app.core.database import db
@@ -143,6 +144,24 @@ async def _aus_db_entfernen(book_id: int) -> None:
     await db.execute("DELETE FROM books WHERE id = ?", (book_id,))
 
 
+async def _auf_dem_geraet(row: dict) -> str | None:
+    """Grund, warum die Datei auf dem Gerät defekt ist; None: in Ordnung."""
+    pfad = await asyncio.to_thread(get_original_file, row["hash"])
+    return await asyncio.to_thread(_pruefe_datei, row["file_format"], pfad)
+
+
+async def _in_der_wolke(row: dict) -> str | None:
+    """Ob die Kellerwolke genau diesen Inhalt hält (Prüfsumme), ohne ihn zu laden."""
+    ablage = await db.fetch_one("SELECT knoten FROM ablage_datei WHERE hash = ?", (row["hash"],))
+    if ablage is None:
+        return "liegt noch nicht in der Kellerwolke"
+    try:
+        knoten = await wolke.knoten(ablage["knoten"])
+    except WolkeFehler as f:
+        return "fehlt in der Kellerwolke" if f.status == 404 else f"nicht prüfbar: {f.meldung}"
+    return None if knoten.get("sha256") == row["hash"] else "hat in der Kellerwolke einen anderen Inhalt"
+
+
 @router.post("/defekte-pruefen")
 async def defekte_pruefen(
     verschieben: bool = Query(
@@ -163,13 +182,17 @@ async def defekte_pruefen(
         "FROM books ORDER BY id"
     )
 
+    if wolke.bereit:
+        if verschieben:
+            raise HTTPException(409, "Die Originale liegen in der Kellerwolke, von hier wird dort nichts verschoben")
+        pruefer = _in_der_wolke
+    else:
+        pruefer = _auf_dem_geraet
     sem = asyncio.Semaphore(_PRUEF_PARALLEL)
 
     async def pruefe(row: dict):
         async with sem:
-            path = get_original_file(row["hash"])
-            grund = await asyncio.to_thread(_pruefe_datei, row["file_format"], path)
-            return row, grund
+            return row, await pruefer(row)
 
     ergebnisse = await asyncio.gather(*[pruefe(r) for r in rows])
 

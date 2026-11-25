@@ -14,10 +14,10 @@ from backend.app.ablage.wolke import WolkeFehler, wolke
 from backend.app.annahme.auswertung import Ergebnis
 from backend.app.core.config import settings
 from backend.app.core.database import db
+from backend.app.core.suchindex import SUCHTEXT_ZEICHEN
 from backend.app.services.storage import get_sidecar_path, get_storage_path, save_cover, save_fulltext, save_metadata
 
 logger = logging.getLogger("buecherfreunde.eintragen")
-SUCHTEXT = 100_000
 
 
 async def autoren_verknuepfen(buch: int, autor: str) -> None:
@@ -49,7 +49,7 @@ async def eintragen(file_hash: str, dateiname: str, groesse: int, e: Ergebnis) -
         "INSERT INTO books (hash, title, author, isbn, publisher, year, language, description, file_format, file_size, file_name, "
         "storage_path, cover_path, page_count, fts_content) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (file_hash, e.title, e.author or "", e.isbn or "", e.publisher or "", e.year, e.language or "", e.description or "", endung, groesse,
-         dateiname, str(get_storage_path(file_hash)), "cover.jpg" if e.cover_data else "", e.page_count, e.fulltext[:SUCHTEXT]))
+         dateiname, str(get_storage_path(file_hash)), "cover.jpg" if e.cover_data else "", e.page_count, e.fulltext[:SUCHTEXT_ZEICHEN]))
     buch = c.lastrowid
     await db.execute("UPDATE books SET fts_content = '' WHERE id = ?", (buch,))      # steht im Suchindex
     await autoren_verknuepfen(buch, e.author)
