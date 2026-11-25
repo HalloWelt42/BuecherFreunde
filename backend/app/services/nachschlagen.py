@@ -83,17 +83,29 @@ def _ordnen(frage: str, treffer: list[Nachschlagtreffer]) -> list[Nachschlagtref
     return [t for _, t in sorted(enumerate(treffer), key=rang)]
 
 
-async def suche(frage: str, anzahl: int = 12, sitzung: str = "") -> list[Nachschlagtreffer]:
+async def vorwaermen() -> None:
+    """Die Namen der Bücher schon beim Start holen; das dauert dort beim ersten Mal lange."""
+    try:
+        if settings.nachschlag_url:
+            await _titel_der_buecher("")
+    except DienstFehler:
+        pass
+
+
+async def suche(frage: str, anzahl: int = 12, sitzung: str = "", nur_titel: bool = False) -> list[Nachschlagtreffer]:
+    """`nur_titel`: nur Titel im großen Lexikon (schnell); sonst alle Bücher und auch die Suche im Text."""
     titel = await _titel_der_buecher(sitzung)
-    vorschlaege, gefunden = await asyncio.gather(
-        dienst.hole("GET", "/api/v1/vorschlaege", sitzung, params={"anfang": frage[:200], "anzahl": 8}),
-        dienst.hole("GET", "/api/v1/suche", sitzung, params={"frage": frage[:400], "anzahl": 12, "wege": "index"}))
+    lexika = [b for b in titel if b.startswith(LEXIKON)] if nur_titel else []
+    wege = [dienst.hole("GET", "/api/v1/vorschlaege", sitzung, params={"anfang": frage[:200], "anzahl": 8, **({"buecher": lexika} if lexika else {})})]
+    if not nur_titel:
+        wege.append(dienst.hole("GET", "/api/v1/suche", sitzung, params={"frage": frage[:400], "anzahl": 12, "wege": "index"}))
+    vorschlaege, *gefunden = await asyncio.gather(*wege)
     aus: dict[tuple[str, str], Nachschlagtreffer] = {}
     for v in vorschlaege.json():
         pfad, _, anker = (v.get("weiterleitung") or v["pfad"]).partition("#")
         aus.setdefault((v["buch"], pfad), Nachschlagtreffer(buch=v["buch"], buchtitel=titel.get(v["buch"], ""), pfad=pfad, titel=v["titel"],
                                                             auszug=_klartext(v.get("kurztext", "")), anker=anker, bild=_bild(v.get("bild", ""))))
-    for t in gefunden.json()["treffer"]:
+    for t in (t for g in gefunden for t in g.json()["treffer"]):
         neu = Nachschlagtreffer(buch=t["buch"], buchtitel=titel.get(t["buch"], ""), pfad=t["pfad"], titel=t["titel"],
                                 auszug=_klartext(t.get("ausschnitt", "")), anker=t.get("anker", ""), bild=_bild(t.get("bild", "")))
         vorhanden = aus.setdefault((t["buch"], t["pfad"]), neu)

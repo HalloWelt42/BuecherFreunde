@@ -32,6 +32,7 @@ class Frage(BaseModel):
     frage: str = Field("", max_length=8_000)
     stelle: Stelle = Stelle()
     chat: str = Field("", pattern=r"^$|" + KENNUNG)
+    nachsehen: bool = True              # in Büchern, Dateien und im Netz nachsehen; ohne antwortet er gleich aus der Stelle
 
 
 class Gestellt(BaseModel):
@@ -78,7 +79,7 @@ async def fragen(f: Frage, sitzung: str, basis: str) -> Gestellt:
     text = wortlaut(f.frage, f.stelle, titel, autor, verweis) if not f.chat or f.stelle.text.strip() else f.frage.strip()
     if not text:
         raise DienstFehler("Es fehlt die Frage", 422)
-    zug = (await dienst.hole("POST", f"/api/v1/chats/{chat}/zuege", sitzung, json={"text": text, "kennung": uuid.uuid4().hex})).json()
+    zug = (await dienst.hole("POST", f"/api/v1/chats/{chat}/zuege", sitzung, json={"text": text, "kennung": uuid.uuid4().hex} | ({} if f.nachsehen else {"kacheln": []}))).json()
     return Gestellt(chat=chat, zug=zug["id"], adresse=adresse(chat))
 
 

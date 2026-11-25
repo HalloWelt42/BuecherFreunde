@@ -29,9 +29,9 @@ def _basis(request: Request) -> str:
 
 
 @router.get("/nachschlag/suche", response_model=list[nachschlagen.Nachschlagtreffer])
-async def nachschlag_suche(request: Request, q: str = Query(min_length=1, max_length=400), _=Depends(verify_token)):
+async def nachschlag_suche(request: Request, q: str = Query(min_length=1, max_length=400), nur_titel: bool = False, _=Depends(verify_token)):
     try:
-        return await nachschlagen.suche(q, sitzung=_sitzung(request))
+        return await nachschlagen.suche(q, sitzung=_sitzung(request), nur_titel=nur_titel)
     except DienstFehler as f:
         raise _http(f) from f
 

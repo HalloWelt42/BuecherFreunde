@@ -51,7 +51,7 @@ class Gespraechsstand {
     this.bezug = { buch: this.bezug.buch, titel: this.bezug.titel };
   }
 
-  async frage(text: string): Promise<void> {
+  async frage(text: string, nachsehen = true): Promise<void> {
     if (this.laeuft) return;
     const { titel: _titel, ...stelle } = this.bezug;
     this.runden.push({ frage: text, stelle: stelle.text ?? "", antwort: "", laeuft: true, wartetAuf: "", fehler: "", belege: [] });
@@ -59,7 +59,7 @@ class Gespraechsstand {
     const abbruch = new AbortController();
     this.#abbruch = abbruch;
     try {
-      const gestellt = await stelleFrage(text, stelle, this.#chat);
+      const gestellt = await stelleFrage(text, stelle, this.#chat, nachsehen);
       this.#chat = gestellt.chat;
       this.#zug = gestellt.zug;
       this.adresse = gestellt.adresse;

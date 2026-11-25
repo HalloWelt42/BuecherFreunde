@@ -12,7 +12,8 @@
   import Schwebefenster from "../teile/Schwebefenster.svelte";
   import Symbol from "../teile/Symbol.svelte";
 
-  const VORSCHLAEGE: [string, string][] = [["Erklären", "Erkläre mir diese Stelle."], ["Kurz", "Fasse diese Stelle in wenigen Sätzen zusammen."], ["Einfach", "Erkläre diese Stelle so, dass es auch ohne Vorwissen verständlich ist."], ["Übersetzen", "Übersetze diese Stelle ins Deutsche."], ["Belegen", "Was steht in meinen anderen Büchern dazu? Nenne die Stellen."]];
+  // Nur "Belegen" sieht anderswo nach, die übrigen antworten schnell aus der Stelle
+  const VORSCHLAEGE: [string, string, boolean?][] = [["Erklären", "Erkläre mir diese Stelle."], ["Kurz", "Fasse diese Stelle in wenigen Sätzen zusammen."], ["Einfach", "Erkläre diese Stelle so, dass es auch ohne Vorwissen verständlich ist."], ["Übersetzen", "Übersetze diese Stelle ins Deutsche."], ["Belegen", "Was steht in meinen anderen Büchern dazu? Nenne die Stellen.", true]];
 
   let text = $state("");
   let verlauf: HTMLElement | undefined = $state();
@@ -29,10 +30,10 @@
     if (unten) void tick().then(() => verlauf && (verlauf.scrollTop = verlauf.scrollHeight));
   });
 
-  function stelleFrage(frage: string) {
+  function stelleFrage(frage: string, nachsehen = true) {
     unten = true;
     text = "";
-    void gespraech.frage(frage);
+    void gespraech.frage(frage, nachsehen);
   }
 
   function absenden(e?: SubmitEvent) {
@@ -88,7 +89,7 @@
   <form class="eingabezeile" onsubmit={absenden}>
     {#if mitStelle}
       <div class="stelle"><q>{gespraech.bezug.text}</q><Knopf text="Ohne diese Stelle" symbol="xmark" nur klein frei onclick={() => gespraech.loeseStelle()} /></div>
-      <div class="vorschlaege">{#each VORSCHLAEGE as [name, frage] (name)}<Knopf text={name} klein gesperrt={gespraech.laeuft} onclick={() => stelleFrage(frage)} />{/each}</div>
+      <div class="vorschlaege">{#each VORSCHLAEGE as [name, frage, nachsehen] (name)}<Knopf text={name} klein gesperrt={gespraech.laeuft} onclick={() => stelleFrage(frage, !!nachsehen)} />{/each}</div>
     {:else if gespraech.bezug.titel}
       <p class="leise bezug">{gespraech.bezug.titel}</p>
     {/if}

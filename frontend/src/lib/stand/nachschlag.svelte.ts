@@ -38,12 +38,15 @@ class Nachschlagstand {
     this.#weg = [];
     this.treffer = [];
     if (!wort.trim()) return;
+    const klein = (t: string) => t.trim().toLocaleLowerCase("de");
     await this.#tue(async (gilt) => {
-      const treffer = await sucheNach(wort.trim());
+      // Erst die Titel, die Suche im Text dauert länger; heißt einer genau so, steht sein Artikel sofort da
+      const titel = await sucheNach(wort.trim(), true);
       if (!gilt()) return;
-      this.treffer = treffer;
-      const genau = treffer[0];
-      if (gleichLesen && genau && genau.titel.toLocaleLowerCase("de") === wort.trim().toLocaleLowerCase("de")) await this.#hole(genau, gilt);
+      this.treffer = titel;
+      if (gleichLesen && titel[0] && klein(titel[0].titel) === klein(wort)) await this.#hole(titel[0], gilt);
+      const alle = await sucheNach(wort.trim());
+      if (gilt()) this.treffer = alle;
     });
   }
 

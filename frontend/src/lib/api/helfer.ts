@@ -23,7 +23,7 @@ export interface Nachschlagartikel {
   adresse: string;
 }
 
-export const sucheNach = (q: string): Promise<Nachschlagtreffer[]> => get("/api/nachschlag/suche", { q });
+export const sucheNach = (q: string, nurTitel = false): Promise<Nachschlagtreffer[]> => get("/api/nachschlag/suche", { q, nur_titel: nurTitel || undefined });
 export const ladeArtikel = (buch: string, pfad: string, q = "", anker = ""): Promise<Nachschlagartikel> => get("/api/nachschlag/artikel", { buch, pfad, q, anker });
 
 export interface Stelle {
@@ -49,6 +49,7 @@ export type Antwortzeile =
   | { art: "stand"; antwort: string; zustand: string; wartet_auf: string; fehler: string; belege: Antwortbeleg[] }
   | { art: "text"; text: string; ab: number; neu: boolean };
 
-export const stelleFrage = (frage: string, stelle: Stelle, chat = ""): Promise<Gestellt> => post("/api/gespraech", { frage, stelle, chat });
+/** `nachsehen`: auch in Büchern, Dateien und im Netz; ohne antwortet er schnell aus der Stelle allein. */
+export const stelleFrage = (frage: string, stelle: Stelle, chat = "", nachsehen = true): Promise<Gestellt> => post("/api/gespraech", { frage, stelle, chat, nachsehen });
 export const antwortStrom = (chat: string, zug: string, abbruch: AbortSignal): Promise<Response> => anfrage(`/api/gespraech/${chat}/${zug}`, { signal: abbruch });
 export const brichAntwortAb = (zug: string): Promise<Response> => anfrage(`/api/gespraech/zuege/${zug}/abbrechen`, { method: "POST" });
