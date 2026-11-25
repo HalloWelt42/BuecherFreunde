@@ -1,5 +1,10 @@
-<svg viewBox="0 0 32 32" aria-hidden="true">
-  <rect x="1" y="1" width="30" height="30" rx="5" fill="var(--messing-flaeche)" />
-  <path d="M16 9.5C13 7.4 9.6 7 6 7.4V23c3.6-.4 7 0 10 2.1 3-2.1 6.4-2.5 10-2.1V7.4C22.4 7 19 7.4 16 9.5Z" fill="var(--auf-messing)" />
-  <path d="M16 9.5V25" stroke="var(--messing-flaeche)" stroke-width="1.6" />
+<!-- Das Zeichen der App, wie symbole/tab.svg -->
+<svg aria-hidden="true" viewBox="0 0 64 64">
+<defs><linearGradient id="zeichen-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#17504a"/><stop offset="1" stop-color="#06130f"/></linearGradient><linearGradient id="zeichen-s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a4efd4"/><stop offset="1" stop-color="#1f9073"/></linearGradient><linearGradient id="zeichen-l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9b0" stop-opacity="0.62"/><stop offset="1" stop-color="#f5c766" stop-opacity="0.12"/></linearGradient></defs>
+<rect width="64" height="64" rx="14" fill="url(#zeichen-g)"/>
+<path d="M11 28H53L57 48H7Z" fill="url(#zeichen-l)"/>
+<rect x="29" y="28" width="6" height="20" fill="#e0b04c"/>
+<rect x="28" y="7" width="8" height="5" rx="2" fill="#e0b04c"/>
+<path d="M8 29C8 24 10.500 17 15 13.500C17.500 11.500 20 11 24 11H40C44 11 46.500 11.500 49 13.500C53.500 17 56 24 56 29Z" fill="url(#zeichen-s)"/>
+<path d="M32 46.500C26 42.500 17 42 8.500 43.500L6.500 53C17 51.500 26 52.500 32 56.500C38 52.500 47 51.500 57.500 53L55.500 43.500C47 42 38 42.500 32 46.500Z" fill="#fffaf0"/>
 </svg>

@@ -21,7 +21,7 @@ function symbolEinbetten() {
       const ziel = `${optionen.dir}/site.webmanifest`;
       const manifest = JSON.parse(readFileSync(ziel, "utf-8"));
       for (const symbol of manifest.icons ?? []) {
-        if (symbol.purpose !== "maskable") symbol.src = daten(symbol.src.replace(/^\//, ""));
+        if (symbol.purpose === "any") symbol.src = daten(symbol.src.replace(/^\//, ""));
       }
       writeFileSync(ziel, JSON.stringify(manifest));
     },

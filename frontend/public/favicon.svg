@@ -1,13 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#2563eb"/>
-  <path d="M9 19.5C17 15.5 25.5 16 31 20.5V49C25.5 44.8 17 44.4 9 47.5Z" fill="#ffffff"/>
-  <path d="M55 19.5C47 15.5 38.5 16 33 20.5V49C38.5 44.8 47 44.4 55 47.5Z" fill="#ffffff"/>
-  <g fill="none" stroke="#93c5fd" stroke-width="1.6" stroke-linecap="round">
-    <path d="M14.5 27C18.5 26.2 22.5 26.3 26.5 27.3"/>
-    <path d="M14.5 33C18.5 32.2 22.5 32.3 26.5 33.3"/>
-    <path d="M14.5 39C18.5 38.2 22.5 38.3 26.5 39.3"/>
-    <path d="M49.5 27C45.5 26.2 41.5 26.3 37.5 27.3"/>
-    <path d="M49.5 33C45.5 32.2 41.5 32.3 37.5 33.3"/>
-    <path d="M49.5 39C45.5 38.2 41.5 38.3 37.5 39.3"/>
-  </g>
+<title>Leselampe</title>
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#17504a"/><stop offset="1" stop-color="#06130f"/></linearGradient><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a4efd4"/><stop offset="1" stop-color="#1f9073"/></linearGradient><linearGradient id="l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9b0" stop-opacity="0.62"/><stop offset="1" stop-color="#f5c766" stop-opacity="0.12"/></linearGradient></defs>
+<rect width="64" height="64" rx="14" fill="url(#g)"/>
+<path d="M11 28H53L57 48H7Z" fill="url(#l)"/>
+<rect x="29" y="28" width="6" height="20" fill="#e0b04c"/>
+<rect x="28" y="7" width="8" height="5" rx="2" fill="#e0b04c"/>
+<path d="M8 29C8 24 10.500 17 15 13.500C17.500 11.500 20 11 24 11H40C44 11 46.500 11.500 49 13.500C53.500 17 56 24 56 29Z" fill="url(#s)"/>
+<path d="M32 46.500C26 42.500 17 42 8.500 43.500L6.500 53C17 51.500 26 52.500 32 56.500C38 52.500 47 51.500 57.500 53L55.500 43.500C47 42 38 42.500 32 46.500Z" fill="#fffaf0"/>
 </svg>
