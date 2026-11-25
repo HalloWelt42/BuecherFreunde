@@ -1,14 +1,12 @@
 // Textansicht eines PDF, je Gerät gemerkt: ob sie am Telefon an ist, Größe, Schrift, Zeilenabstand, Farbthema
 import { liesJson, merkeJson } from "../speicher";
 import { FARBTHEMEN, GROESSE, klemme, oderVorgabe, ZEILEN, type Farbthema } from "./darstellung";
+import { gleicheSchrift, LESESCHRIFTEN } from "./schriften";
 
 const SCHLUESSEL = "textansicht";
 
-/** Kennungen, unter denen die Schriften gemerkt sind */
-const SCHRIFTEN: [string, string][] = [
-  ["literata", '"Literata", Georgia, serif'], ["atkinson", '"Atkinson Hyperlegible", system-ui, sans-serif'], ["barlow", "Barlow, sans-serif"],
-  ["jetbrains", "'JetBrains Mono', monospace"], ["georgia", "Georgia, 'Times New Roman', serif"], ["system", "system-ui, -apple-system, sans-serif"],
-];
+/** Die Schriften mit den Kennungen, unter denen sie gemerkt sind */
+const SCHRIFTEN: [string, string][] = LESESCHRIFTEN.map((s) => [s.kennung, s.familie]);
 
 interface Gemerkt {
   an?: boolean;
@@ -59,7 +57,7 @@ class Textansicht {
     return SCHRIFTEN.find(([k]) => k === this.#w.schriftart)![1];
   }
   set familie(wert: string) {
-    const gleich = SCHRIFTEN.find(([, f]) => f.split(",")[0].replace(/["']/g, "") === wert.split(",")[0].replace(/["']/g, ""));
+    const gleich = SCHRIFTEN.find(([, f]) => gleicheSchrift(f, wert));
     if (gleich) this.#setze({ schriftart: gleich[0] });
   }
   /** -1: noch nie gewählt, dann folgt sie der App */

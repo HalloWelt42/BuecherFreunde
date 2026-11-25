@@ -8,7 +8,7 @@ import { VORGABE_STIFT } from "../farben";
 import type { Leseart } from "../fluss/fluss";
 import type { Kapitel } from "../typen";
 import { kapitelrand } from "./kapitelrand";
-import { leseschriftenCss } from "./schriften";
+import { nutzeSchrift, schriftCss } from "../schriften";
 import { breite, einspaltig, epubCss, randfarbe, setzeStil, type Epubdarstellung } from "./stile";
 
 export interface Epubstand {
@@ -56,7 +56,6 @@ export class EpubAnzeige {
   #view: View | null = null;
   #overlayer: { highlight: unknown } | null = null;
   #markierungen: Markierung[] = [];
-  #schriften = leseschriftenCss();
   #uhr: ReturnType<typeof setTimeout> | undefined;
 
   #gesten: () => void;
@@ -106,7 +105,7 @@ export class EpubAnzeige {
   }
 
   #geladen({ doc, index }: { doc: Document; index: number }): void {
-    setzeStil(doc, epubCss(this.darstellung, this.#schriften), this.#sprache());
+    setzeStil(doc, epubCss(this.darstellung, schriftCss(this.darstellung.schrift)), this.#sprache());
     const rahmen = doc.defaultView?.frameElement as HTMLElement | null;
     if (rahmen) rahmen.style.backgroundColor = randfarbe(this.darstellung);
     requestAnimationFrame(() => void this.zeichne(this.#markierungen));
@@ -231,7 +230,9 @@ export class EpubAnzeige {
     this.darstellung = d;
     const r = this.#view?.renderer;
     if (!this.#view || !r) return;
-    const css = epubCss(d, this.#schriften);
+    const css = epubCss(d, schriftCss(d.schrift));
+    // Auch die Seite selbst kennt die Schrift, für die Probe im Feld
+    if (d.schrift) nutzeSchrift(d.schrift);
     for (const { doc } of r.getContents()) {
       setzeStil(doc, css, this.#sprache());
       const rahmen = doc.defaultView?.frameElement as HTMLElement | null;

@@ -45,27 +45,7 @@ export function papierOder(wert: string | undefined, dunkel: boolean): Papier {
   return PAPIERE.some(([p]) => p === wert) ? (wert as Papier) : dunkel ? "dunkel" : "normal";
 }
 
-/** Schriftnamen sind technische Bezeichner der gebündelten Schriften */
-export interface Leseschrift {
-  name: string;
-  familie: string;
-}
-
-export const SCHRIFTEN: Leseschrift[] = [
-  { name: "Literata", familie: '"Literata", Georgia, serif' },
-  { name: "Atkinson Hyperlegible", familie: '"Atkinson Hyperlegible", system-ui, sans-serif' },
-  { name: "Barlow", familie: "Barlow, sans-serif" },
-  { name: "JetBrains Mono", familie: "'JetBrains Mono', monospace" },
-  { name: "Georgia", familie: "Georgia, 'Times New Roman', serif" },
-  { name: "System", familie: "system-ui, -apple-system, sans-serif" },
-];
-
-const erste = (familie: string) => familie.split(",")[0].replace(/["']/g, "").trim().toLowerCase();
-
-/** Dieselbe Schrift, auch wenn eine frühere Fassung sie anders geschrieben hat */
-export function gleicheSchrift(a: string, b: string): boolean {
-  return erste(a) === erste(b);
-}
+export { gleicheSchrift } from "./schriften";
 
 export interface Bereich {
   min: number;

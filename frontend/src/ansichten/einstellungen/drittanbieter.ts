@@ -39,6 +39,12 @@ export const oberflaeche: Paket[] = [
   p("Barlow", "OFL-1.1", "https://github.com/jpt/barlow", "Schrift der Oberfläche"),
   p("Literata", "OFL-1.1", "https://github.com/googlefonts/literata", "Schrift der Bücher"),
   p("Atkinson Hyperlegible", "OFL-1.1", "https://github.com/googlefonts/atkinson-hyperlegible", "Leseschrift"),
+  p("Source Serif 4", "OFL-1.1", "https://github.com/adobe-fonts/source-serif", "Leseschrift"),
+  p("Merriweather", "OFL-1.1", "https://github.com/SorkinType/Merriweather", "Leseschrift"),
+  p("Vollkorn", "OFL-1.1", "https://github.com/FAlthausen/Vollkorn-Typeface", "Leseschrift"),
+  p("Lexend", "OFL-1.1", "https://github.com/googlefonts/lexend", "Leseschrift für leichteres Lesen"),
+  p("Andika", "OFL-1.1", "https://github.com/silnrsi/font-andika", "Leseschrift für leichteres Lesen"),
+  p("OpenDyslexic", "OFL-1.1", "https://github.com/antijingoist/opendyslexic", "Leseschrift für leichteres Lesen"),
   p("JetBrains Mono", "OFL-1.1", "https://github.com/JetBrains/JetBrainsMono", "Schrift für Quelltext"),
 ];
 

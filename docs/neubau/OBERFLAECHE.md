@@ -130,6 +130,7 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 | Vorlesen: siehe unten (BF-27) | Menü oben, am Telefon im Feld, im Vollbild am Zeichen oben rechts | ja, mit nachgestelltem Sprechdienst |
 | Vollbild, mit Ersatz ohne Browservollbild: Blatt bis an alle Kanten, auch hinter Kerbe und Home-Balken, `theme-color` in Blattfarbe; nur das Zeichen zum Verlassen schwebt, 18 von links und 5 von oben, Tippfläche 44 (BF-21) | `Leserahmen`, `stand/blattgrund`, `stil/leser.css` | alle Formate, hell und dunkel, 390, 844 quer, 834, 1440; echtes Vollbild des Browsers nein |
 | Innerer Rand 0 bis 120, je Gerät gemerkt, in PDF als Text, MD, TXT, EPUB und MOBI (BF-21) | `leser/blattrand`, `Randregler` | ja |
+| Schriften (BF-22): zwölf an einer Stelle in drei Gruppen (mit Serifen, ohne Serifen, für leichteres Lesen), lokal über npm, nur lateinisch 400, 400 kursiv, 700; geladen erst, wenn gewählt oder die Auswahl offen ist, im EPUB nur die gewählte im Rahmen; gemerkte Wahl bleibt | `leser/schriften`, `Schriftwahl` | ja; Startseite 466,41 auf 466,99 kB (gzip +0,16 kB), CSS gleich |
 | Tasten einer Gruppe gleich breit und gleich hoch (BF-21) | `.tastenraster` in `stil/leser.css` | gemessen 360, 390, 1440, sehr groß |
 | Herunterladen, im Browser öffnen, Hinweis nach 4 Sekunden | Feld, `Ladehinweis` | nein |
 | Stand merken, beim Verlassen sofort (19), Adresse geht mit, Telefon getrennt vom Rechner (20) | `leser/position` | ja |

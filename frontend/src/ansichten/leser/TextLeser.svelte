@@ -18,6 +18,7 @@
   import { kannHervorheben, Rechteckschicht } from "../../lib/leser/hervorhebung";
   import { faerbeCode, kopierknoepfe } from "../../lib/leser/text/codefarben";
   import { Blattquelle } from "../../lib/leser/text/lesequelle";
+  import { nutzeSchrift } from "../../lib/leser/schriften";
   import { imBlick, sichtVon, zeichenRechteck } from "../../lib/leser/mitlauf";
   import type { Randeintrag } from "../../lib/leser/randmarken";
   import { prozentVon, textkapitel, zeichneMarkierungen, zeichneTreffer } from "../../lib/leser/text/markierung";
@@ -169,6 +170,10 @@
   $effect(() => {
     const neu = art;
     untrack(() => fluss?.setzeArt(neu));
+  });
+
+  $effect(() => {
+    if (d.schrift) nutzeSchrift(d.schrift);
   });
 
   // Anderer Rand: dieselbe Stelle bleibt

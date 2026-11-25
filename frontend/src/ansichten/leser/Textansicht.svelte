@@ -14,6 +14,7 @@
   import { imBlick, Mitlauf, sichtVon } from "../../lib/leser/mitlauf";
   import { zeichneMarkierungen, zeichneWortlaut } from "../../lib/leser/text/markierung";
   import type { Randeintrag } from "../../lib/leser/randmarken";
+  import { nutzeSchrift } from "../../lib/leser/schriften";
   import { textansicht } from "../../lib/leser/textansicht.svelte";
   import { schreibweise } from "../../lib/leser/typen";
   import { schale } from "../../lib/stand/schale.svelte";
@@ -125,6 +126,8 @@
       void fuelleNach();
     });
   });
+
+  $effect(() => nutzeSchrift(textansicht.familie));
 
   // Schrift, Zeilen, Rand: dieselbe Stelle bleibt
   $effect(() => {
