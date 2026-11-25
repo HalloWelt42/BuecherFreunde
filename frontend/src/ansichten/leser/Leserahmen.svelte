@@ -10,6 +10,7 @@
   import Leserwerkzeuge from "./Leserwerkzeuge.svelte";
   import Stellenfeld from "./Stellenfeld.svelte";
   import Verzeichnis from "./Verzeichnis.svelte";
+  import { vorlesen } from "../../lib/stand/vorlesen.svelte";
   import Vorlesen from "./Vorlesen.svelte";
 
   interface Eigenschaften {
@@ -51,7 +52,7 @@
       <Knopf text="Inhaltsverzeichnis" symbol="list" nur frei klein gesperrt={!sitzung.kapitel.length} titel={sitzung.kapitel.length ? "Inhaltsverzeichnis" : "Dieses Buch hat kein Inhaltsverzeichnis"} gedrueckt={sitzung.feld === "inhalt"} onclick={() => sitzung.schalteFeld("inhalt")} />
       <Knopf text="Notizen und Markierungen" symbol="highlighter" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "stellen"} onclick={() => sitzung.schalteFeld("stellen")} />
       <span class="nur-breit reihe">
-        <Knopf text="Vorlesen" symbol="volume-high" nur frei klein gesperrt={!bereit} aufgeklappt={vorlesenOffen} bind:element={vorleseKnopf} onclick={() => (vorlesenOffen = !vorlesenOffen)} />
+        <Knopf text="Vorlesen" symbol="volume-high" nur frei klein gesperrt={!bereit} gedrueckt={vorlesen.aktiv} aufgeklappt={vorlesenOffen} bind:element={vorleseKnopf} onclick={() => (vorlesenOffen = !vorlesenOffen)} />
         <Knopf text={schale.vollbild ? "Vollbild verlassen" : "Vollbild"} symbol={schale.vollbild ? "compress" : "expand"} nur frei klein gedrueckt={schale.vollbild} onclick={() => void schale.vollbildUmschalten()} />
       </span>
       <Knopf text="Schrift, Papier, Ansicht" symbol="font" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "darstellung"} onclick={() => sitzung.schalteFeld("darstellung")} />
@@ -78,7 +79,7 @@
 </div>
 
 {#if vorlesenOffen}
-  <Menue anker={vorleseKnopf} name="Vorlesen" breite="16rem" onschliessen={() => (vorlesenOffen = false)}><Vorlesen {sitzung} onfertig={() => (vorlesenOffen = false)} /></Menue>
+  <Menue anker={vorleseKnopf} name="Vorlesen" breite="21rem" onschliessen={() => (vorlesenOffen = false)}><Vorlesen {sitzung} onfertig={() => (vorlesenOffen = false)} /></Menue>
 {/if}
 
 <style>

@@ -30,11 +30,12 @@ from backend.app.api.labels import router as labels_router
 from backend.app.api.neubau import router as neubau_router
 from backend.app.api.notes import router as notes_router
 from backend.app.api.user_data import router as user_data_router
+from backend.app.api.vorlesen import router as vorlesen_router
 from backend.app.api.wartung import router as wartung_router
 from backend.app.core.anmeldung import eigener_zugang, schliessen as anmeldung_schliessen
 from backend.app.core.config import settings
 from backend.app.core.database import db
-from backend.app.services import bedeutung, pflege
+from backend.app.services import bedeutung, pflege, vorlesen
 
 logger = logging.getLogger("buecherfreunde")
 
@@ -99,6 +100,7 @@ async def lifespan(app: FastAPI):
         lauf.cancel()
     await annahme.stoppen()
     await bedeutung.schliessen()
+    await vorlesen.schliessen()
     await wolke.schliessen()
     await anmeldung_schliessen()
     await db.disconnect()
@@ -133,6 +135,7 @@ app.include_router(notes_router)
 app.include_router(search_router)
 app.include_router(user_data_router)
 app.include_router(wartung_router)
+app.include_router(vorlesen_router)
 
 
 @app.get("/api/health")

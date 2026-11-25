@@ -8,7 +8,7 @@
   import { navigate, route } from "../../lib/router.svelte";
   import { geraet } from "../../lib/stand/geraet.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
-  import { schweige } from "../../lib/stand/vorlesen.svelte";
+  import { vorlesen } from "../../lib/stand/vorlesen.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Zustand from "../../lib/teile/Zustand.svelte";
   import type { BuchEinzeln } from "../../lib/typen";
@@ -43,7 +43,7 @@
   });
 
   $effect(() => () => {
-    schweige();
+    vorlesen.halt();
     if (schale.vollbild) void schale.vollbildUmschalten();
   });
 
