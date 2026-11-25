@@ -1,13 +1,13 @@
 /**
- * Polyfills fuer aeltere Browser (v.a. aelteres iPad/iOS-Safari).
+ * Nachrüstungen für ältere Browser (v.a. älteres iPad/iOS-Safari).
  *
- * Dieses Modul wird in main.js als ALLERERSTES importiert, damit die
- * Polyfills aktiv sind, bevor App-Code oder Bibliotheken laufen.
- * Grundsatz: nichts entfernen, sondern Faehigkeiten nachruesten.
+ * Dieses Modul wird in main.ts als ALLERERSTES importiert, damit die
+ * Nachrüstungen aktiv sind, bevor App-Code oder Bibliotheken laufen.
+ * Grundsatz: nichts entfernen, sondern Fähigkeiten nachrüsten.
  */
 
 // URL.parse (statische Methode) gibt es erst ab Safari 18.4 / Chrome 126.
-// Aeltere iPads stuerzen sonst im Router ab ("URL.parse is not a function").
+// Ältere iPads stürzen sonst im Router ab ("URL.parse is not a function").
 if (typeof URL.parse !== "function") {
   URL.parse = function (url, base) {
     try {
@@ -20,8 +20,8 @@ if (typeof URL.parse !== "function") {
   };
 }
 
-// Promise.withResolvers (benoetigt von pdfjs-dist v5+), nativ erst ab
-// iOS/Safari 17.4 - ohne diesen Polyfill laesst sich kein PDF oeffnen.
+// Promise.withResolvers (benötigt von pdfjs-dist v5+), nativ erst ab
+// iOS/Safari 17.4 - ohne diesen Polyfill lässt sich kein PDF öffnen.
 if (typeof Promise.withResolvers !== "function") {
   Promise.withResolvers = function () {
     let resolve;
@@ -34,7 +34,7 @@ if (typeof Promise.withResolvers !== "function") {
   };
 }
 
-// Map.getOrInsertComputed (benoetigt von pdfjs-dist v5.5+).
+// Map.getOrInsertComputed (benötigt von pdfjs-dist v5.5+).
 if (!Map.prototype.getOrInsertComputed) {
   Map.prototype.getOrInsertComputed = function (key, callbackFn) {
     if (this.has(key)) return this.get(key);
@@ -45,8 +45,8 @@ if (!Map.prototype.getOrInsertComputed) {
 }
 
 // navigator.clipboard ist in unsicheren Kontexten (http statt https) und auf
-// aelteren Browsern undefined. Da BuecherFreunde im lokalen Netz per http
-// laeuft, wuerden sonst alle "Kopieren"-Buttons abstuerzen. Fallback ueber
+// älteren Browsern undefined. Da BücherFreunde im lokalen Netz per http
+// läuft, würden sonst alle "Kopieren"-Buttons abstürzen. Fallback über
 // das alte execCommand("copy").
 (function () {
   function legacyCopy(text) {
@@ -78,7 +78,7 @@ if (!Map.prototype.getOrInsertComputed) {
       });
     } catch {
       // Falls navigator.clipboard nicht definierbar ist, ignorieren wir es
-      // still - die Buttons werfen dann hoechstens einen abgefangenen Fehler.
+      // still - die Buttons werfen dann höchstens einen abgefangenen Fehler.
     }
   }
 })();

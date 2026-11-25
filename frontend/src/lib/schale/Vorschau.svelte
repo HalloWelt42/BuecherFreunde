@@ -3,6 +3,7 @@
   import { dateiUrl } from "../api/books";
   import { ladeAblage } from "../api/orte";
   import { formatName, groesse, zahl } from "../format";
+  import { ablageText } from "../ablage";
   import { leseAdresse, leseKnopf, lesestand, standText } from "../lesestand";
   import { merkmale } from "../stand/merkmale.svelte";
   import { verbindungen } from "../stand/verbindungen.svelte";
@@ -49,7 +50,7 @@
         {#if buch.sammlung}<dt>Sammlung</dt><dd>{buch.sammlung.name}{buch.band_nummer ? `, Band ${buch.band_nummer}` : ""}</dd>{/if}
         <dt>Format</dt><dd>{formatName(buch.file_format)}, {groesse(buch.file_size)}</dd>
         {#if buch.page_count}<dt>Seiten</dt><dd class="zahl">{zahl(buch.page_count)}</dd>{/if}
-        {#if ablage?.wolke}<dt>Liegt in</dt><dd>Kellerwolke, {ablage.wolke.pfad}</dd>{/if}
+        {#if ablage?.wolke}<dt>Liegt in</dt><dd>{ablageText(ablage.wolke)}</dd>{/if}
       </dl>
       {#if ablage?.wissen || verbindungen.assistent}
         <div class="platte karte">

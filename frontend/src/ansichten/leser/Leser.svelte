@@ -5,7 +5,7 @@
   import { formatName } from "../../lib/format";
   import { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { leseziel, type Leseziel } from "../../lib/leser/ziel";
-  import { navigate, route } from "../../lib/router.svelte.js";
+  import { navigate, route } from "../../lib/router.svelte";
   import { geraet } from "../../lib/stand/geraet.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
   import { schweige } from "../../lib/stand/vorlesen.svelte";

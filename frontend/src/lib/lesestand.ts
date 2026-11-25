@@ -87,7 +87,7 @@ export function leseweise(position: string | null | undefined): string[] {
   if (w.ansicht) teile.push(ANSICHTEN[w.ansicht] ?? w.ansicht);
   if (w.zoom) teile.push(`Zoom ${Math.round(w.zoom)} %`);
   if (w.fontSize) teile.push(`Schrift ${w.fontSize} %`);
-  if (w.fontFamily) teile.push(w.fontFamily.split(",")[0].replace(/'/g, "").trim());
+  if (w.fontFamily) teile.push(w.fontFamily.split(",")[0].replace(/['"]/g, "").trim());
   if (w.lineHeight) teile.push(`Zeilenabstand ${String(w.lineHeight).replace(".", ",")}`);
   if (w.singlePage !== undefined) teile.push(w.singlePage ? "einseitig" : "zweiseitig");
   if (w.maxWidthSingle && w.singlePage) teile.push(`Breite ${w.maxWidthSingle} px`);
@@ -101,7 +101,7 @@ export function leseweise(position: string | null | undefined): string[] {
 export function schriftprobe(position: string | null | undefined): { schrift: string; name: string; farbe: string; grund: string } | null {
   const w = lesewerte(position);
   if (!w.fontFamily) return null;
-  return { schrift: w.fontFamily, name: w.fontFamily.split(",")[0].replace(/'/g, "").trim(), farbe: w.fgColor ?? "", grund: w.bgColor ?? "" };
+  return { schrift: w.fontFamily, name: w.fontFamily.split(",")[0].replace(/['"]/g, "").trim(), farbe: w.fgColor ?? "", grund: w.bgColor ?? "" };
 }
 
 /** Adresse des Lesers an einer Stelle */

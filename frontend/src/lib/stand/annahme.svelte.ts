@@ -69,9 +69,9 @@ class Annahme {
     this.#uhr = setTimeout(() => bestand.geaendert(), AUFFRISCHEN_MS);
   }
 
-  nimmAn(dateien: Iterable<File>): void {
+  nimmAn(dateien: Iterable<File>, anreichern: boolean): void {
     void this.starte();
-    this.#hochlader.fuegeHinzu(dateien);
+    this.#hochlader.fuegeHinzu(dateien, anreichern);
   }
 
   anhalten(schluessel: string): void {

@@ -1,7 +1,7 @@
 <script lang="ts">
   // Vorschlag aus dem Lexikon neben den Angaben der Bibliothek; nichts ändert sich vor dem Übernehmen
   import { autorenFotoUrl, uebernehmAutorenDaten, type Anreicherung, type Autoreneinzeln } from "../../lib/api/authors";
-  import { navigate } from "../../lib/router.svelte.js";
+  import { navigate } from "../../lib/router.svelte";
   import { bestand } from "../../lib/stand/bestand.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
   import { frage } from "../../lib/stand/rueckfrage.svelte";

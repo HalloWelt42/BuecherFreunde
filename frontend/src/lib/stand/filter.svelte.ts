@@ -1,5 +1,5 @@
 // Filter der Bibliothek. Die Wahrheit steht in der Adresse; gemerkt wird sie für den nächsten Start der App.
-import { navigate, route } from "../router.svelte.js";
+import { navigate, route } from "../router.svelte";
 import { lies, merke } from "../speicher";
 
 const SCHLUESSEL = "lib_filter";
@@ -59,6 +59,12 @@ class Filter {
   #gehe(qs: string): void {
     merke(SCHLUESSEL, qs);
     navigate(qs ? `/?${qs}` : "/");
+  }
+
+  /** Zurück zur Bibliothek, so wie sie zuletzt gefiltert war */
+  get letzteAdresse(): string {
+    const gemerkt = lies(SCHLUESSEL);
+    return gemerkt ? `/?${gemerkt}` : "/";
   }
 
   /** Nur beim ersten Öffnen der App an der nackten Adresse: dort weiter, wo man aufgehört hat */

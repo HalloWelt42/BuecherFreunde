@@ -1,7 +1,7 @@
 <script lang="ts">
   // Untere Leiste am Telefon
   import { zuletztGelesen } from "../api/user-data";
-  import { navigate, route } from "../router.svelte.js";
+  import { navigate, route } from "../router.svelte";
   import { melde } from "../stand/meldungen.svelte";
   import { schale } from "../stand/schale.svelte";
   import Symbol from "../teile/Symbol.svelte";

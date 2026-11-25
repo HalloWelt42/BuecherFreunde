@@ -4,7 +4,7 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["svelte", "vite/client", "vitest/globals", "node"],
+    "types": ["svelte", "vite/client", "vitest/globals"],
     "strict": true,
     "noEmit": true,
     "allowJs": true,

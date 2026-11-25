@@ -1,6 +1,6 @@
 // Ein Klick wählt das Buch für die Vorschau, der zweite öffnet die Buchseite; ohne Vorschau öffnet schon der erste.
 // Mit Cmd, Strg, Umschalt, Alt oder mittlerer Taste gilt der Browser (neuer Tab).
-import { navigate } from "../../lib/router.svelte.js";
+import { navigate } from "../../lib/router.svelte";
 import { auswahl } from "../../lib/stand/auswahl.svelte";
 import { schale } from "../../lib/stand/schale.svelte";
 import { wahl } from "../../lib/stand/wahl.svelte";

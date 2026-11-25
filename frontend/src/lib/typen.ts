@@ -164,15 +164,15 @@ export interface Ort {
   stand: Guete;
 }
 
-export interface Ablage {
-  wolke: { pfad: string; groesse: number; sha256: string } | null;
-  volltext: { seiten: number; zeichen: number } | null;
-  wissen: { stand: Guete | string; text: string } | null;
+export interface Wolkenablage {
+  pfad: string;
+  groesse: number;
+  sha256: string;
+  in_der_wolke?: boolean;
 }
 
-/** Rohe, nicht geprüfte Form des Suchverlaufs und ähnlicher Vorschläge */
-export interface Vorschlag {
-  book_id: number;
-  title: string;
-  author: string;
+export interface Ablage {
+  wolke: Wolkenablage | null;
+  volltext: { seiten: number; zeichen: number } | null;
+  wissen: { stand: Guete; text: string; abschnitte?: number | null } | null;
 }

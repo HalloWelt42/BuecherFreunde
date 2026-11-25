@@ -2,7 +2,7 @@
   // Leiste links: Bestand, Lesen, Regale, Sammlungen. Filter lassen sich kombinieren, "Alle" hebt sie auf.
   import { abmelden } from "../api/client";
   import { zahl } from "../format";
-  import { route } from "../router.svelte.js";
+  import { route } from "../router.svelte";
   import { bestand } from "../stand/bestand.svelte";
   import { filter } from "../stand/filter.svelte";
   import { notizblock } from "../stand/notizblock.svelte";

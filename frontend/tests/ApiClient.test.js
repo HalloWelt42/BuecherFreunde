@@ -1,5 +1,5 @@
 /**
- * Tests fuer den API-Client (Token, Error-Handling, HTTP-Methoden)
+ * Tests für den API-Client (Token, Error-Handling, HTTP-Methoden)
  */
 
 // Modul muss vor jedem Test frisch geladen werden
@@ -8,7 +8,7 @@ let client;
 
 async function ladeClient() {
   vi.resetModules();
-  client = await import("../src/lib/api/client.js");
+  client = await import("../src/lib/api/client");
 }
 
 function mockFetchAntwort(body = {}, optionen = {}) {
@@ -78,15 +78,13 @@ describe("API-Client", () => {
       );
     });
 
-    it("sendet Default-Token wenn kein Token explizit gesetzt", async () => {
+    it("sendet ohne Anmeldung keinen Schlüssel", async () => {
       mockFetchAntwort({ ok: true });
 
       await client.get("/api/test");
 
       const aufruf = globalThis.fetch.mock.calls[0];
-      expect(aufruf[1].headers["Authorization"]).toBe(
-        "Bearer bitte-aendern-sicherer-token-hier",
-      );
+      expect(aufruf[1].headers["Authorization"]).toBeUndefined();
     });
   });
 

@@ -14,6 +14,7 @@ export interface HochladerOptionen {
 interface Arbeit {
   ansicht: Hochladung;
   datei: File;
+  anreichern: boolean;
   abbruch: AbortController | null;
   wecke: (() => void) | null;
   versuche: number;
@@ -56,7 +57,7 @@ export class Hochlader {
     return () => this.#zuhoerer.delete(tun);
   }
 
-  fuegeHinzu(dateien: Iterable<File>): void {
+  fuegeHinzu(dateien: Iterable<File>, anreichern = false): void {
     for (const datei of dateien) {
       const schon = [...this.#arbeiten.values()].find((a) => a.datei.name === datei.name && a.datei.size === datei.size && a.ansicht.lage !== "beim_server");
       if (schon) {
@@ -65,7 +66,7 @@ export class Hochlader {
       }
       const schluessel = `datei-${this.#naechste++}`;
       const ansicht: Hochladung = { schluessel, name: datei.name, groesse: datei.size, lage: "ansteht", anteil: 0, gesendet: 0, text: "Wartet, bis ein Platz frei ist", eintrag: null };
-      this.#arbeiten.set(schluessel, { ansicht, datei, abbruch: null, wecke: null, versuche: 0 });
+      this.#arbeiten.set(schluessel, { ansicht, datei, anreichern, abbruch: null, wecke: null, versuche: 0 });
       this.#reihe.push(schluessel);
     }
     this.#melde();
@@ -156,7 +157,7 @@ export class Hochlader {
       this.#melde();
     }, abbruch);
     abbruch.throwIfAborted();
-    const eintrag = await this.#dienst.anlegen({ name: a.datei.name, groesse: a.datei.size, sha256 });
+    const eintrag = await this.#dienst.anlegen({ name: a.datei.name, groesse: a.datei.size, sha256, anreichern: a.anreichern });
     a.ansicht.eintrag = eintrag;
     return eintrag;
   }
@@ -168,17 +169,23 @@ export class Hochlader {
       this.#fortschritt(a, eintrag, ab);
       try {
         eintrag = await this.#dienst.teil(eintrag.id, ab, a.datei.slice(ab, ab + (eintrag.teil_groesse || TEIL_VORGABE)), abbruch);
-        ab = eintrag.empfangen;
+        ab = this.#weiterAb(ab, eintrag.empfangen, HOCHZULADEN.includes(eintrag.stand));
         a.versuche = 0;
       } catch (grund) {
         if (!(grund instanceof AndererStand)) throw grund;
-        ab = grund.empfangen;
+        ab = this.#weiterAb(ab, grund.empfangen, true);
       }
       if (abbruch.aborted) return;
     }
     a.ansicht.eintrag = eintrag;
     a.ansicht.gesendet = a.datei.size;
     this.#setze(a, "beim_server", eintrag.text);
+  }
+
+  /** Rückt der Server nicht weiter, wird nicht sofort noch einmal geschickt, sondern erst nach einer Pause */
+  #weiterAb(bisher: number, stand: number, offen: boolean): number {
+    if (offen && stand === bisher) throw new OhneVerbindung("Der Server nimmt gerade nichts an");
+    return stand;
   }
 
   #fortschritt(a: Arbeit, eintrag: AnnahmeEintrag, ab: number): void {

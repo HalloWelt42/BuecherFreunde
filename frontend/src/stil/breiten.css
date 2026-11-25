@@ -80,5 +80,9 @@
   .buehne .suchfeld-mobil { display: flex; }
 }
 /* Sehr große Schrift am Telefon: das Zeichen trägt allein */
-@container app (max-width: 20rem) { .kopf .zeichen span { display: none; } }
+@container app (max-width: 20rem) {
+  .kopf .zeichen span { display: none; }
+  .buchkopf { grid-template-columns: minmax(0, 1fr); }
+  .buchkopf > :first-child { max-width: 9rem; }
+}
 @media (prefers-reduced-motion: reduce) { .band .umschlag { transition: none; } .band:hover .umschlag { transform: none; } }

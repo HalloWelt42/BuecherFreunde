@@ -35,6 +35,8 @@ export interface NeueDatei {
   name: string;
   groesse: number;
   sha256: string;
+  /** Nach dem Eintragen Angaben aus Verzeichnissen holen */
+  anreichern: boolean;
 }
 
 /** Was der Hochlader vom Server braucht; im Test durch nachgebaute Antworten ersetzt. */

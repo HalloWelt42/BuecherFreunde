@@ -1,7 +1,7 @@
 // Suchart und Suchwort der Adresse /search
-import { navigate, route } from "../router.svelte.js";
+import { navigate, route } from "../router.svelte";
 import { lies, merke } from "../speicher";
-import { merkeBegriff, ladeVerlauf, leereVerlauf, vergissBegriff } from "../utils/suchverlauf.js";
+import { merkeBegriff, ladeVerlauf, leereVerlauf, vergissBegriff } from "../suchverlauf";
 
 export type Suchart = "woerter" | "bedeutung" | "beides";
 

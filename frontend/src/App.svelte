@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Component } from "svelte";
-  import { route, matchRoute, handleLinkClick } from "./lib/router.svelte.js";
+  import { route, matchRoute, handleLinkClick } from "./lib/router.svelte";
   import { hasToken, onAuthError, beiTokenWechsel } from "./lib/api/client";
   import { fassungVerfolgen, vielleichtNeuLaden } from "./lib/fassung.svelte";
   import { filter } from "./lib/stand/filter.svelte";

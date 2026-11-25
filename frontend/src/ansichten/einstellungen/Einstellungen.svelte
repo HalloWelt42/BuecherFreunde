@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick } from "svelte";
-  import { route } from "../../lib/router.svelte.js";
+  import { route } from "../../lib/router.svelte";
   import Chip from "../../lib/teile/Chip.svelte";
   import Darstellungsreiter from "./Darstellungsreiter.svelte";
   import Mehrreiter from "./Mehrreiter.svelte";

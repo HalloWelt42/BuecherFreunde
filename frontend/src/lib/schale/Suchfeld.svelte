@@ -3,7 +3,7 @@
   import type { Snippet } from "svelte";
   import { vorschlaege, type Suchvorschlag as Vorschlag } from "../api/search";
   import { beiEsc } from "../flucht";
-  import { navigate } from "../router.svelte.js";
+  import { navigate } from "../router.svelte";
   import { suche } from "../stand/suche.svelte";
   import Symbol from "../teile/Symbol.svelte";
   import Suchvorschlaege from "./Suchvorschlaege.svelte";

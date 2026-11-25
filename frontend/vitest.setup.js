@@ -1,7 +1,7 @@
 /**
  * Vitest Setup - jsdom Umgebung, globale Mocks
  */
-// vi ist global verfuegbar (globals: true in vitest.config)
+// vi ist global verfügbar (globals: true in vitest.config)
 
 // localStorage Mock
 const localStorageMock = (() => {
@@ -29,7 +29,7 @@ Object.defineProperty(globalThis, "localStorage", {
   writable: true,
 });
 
-// fetch Mock - standardmaessig leere erfolgreiche Antwort
+// fetch Mock - standardmäßig leere erfolgreiche Antwort
 globalThis.fetch = vi.fn(() =>
   Promise.resolve({
     ok: true,
@@ -41,7 +41,7 @@ globalThis.fetch = vi.fn(() =>
   }),
 );
 
-// EventSource Mock fuer SSE-Tests
+// EventSource Mock für SSE-Tests
 class MockEventSource {
   constructor(url) {
     this.url = url;
@@ -57,7 +57,14 @@ class MockEventSource {
 
 globalThis.EventSource = MockEventSource;
 
-// Vor jedem Test Mocks zuruecksetzen
+// jsdom kennt weder Medienabfragen noch Sichtbarkeitsbeobachter
+window.matchMedia ??= (abfrage) => ({ matches: false, media: abfrage, addEventListener() {}, removeEventListener() {} });
+globalThis.IntersectionObserver ??= class {
+  observe() {}
+  disconnect() {}
+};
+
+// Vor jedem Test Mocks zurücksetzen
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();

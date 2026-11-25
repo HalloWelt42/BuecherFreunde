@@ -13,12 +13,13 @@ export function anzahl(n: number, eins: string, viele: string): string {
 
 export function groesse(bytes: number | null | undefined): string {
   const b = bytes ?? 0;
-  if (b < 1024) return `${zahl(b)} Byte`;
+  // Dezimal gezählt, wie am Server und im Dateimanager
+  if (b < 1000) return `${zahl(b)} Byte`;
   const stufen = ["KB", "MB", "GB", "TB"];
-  let wert = b / 1024;
+  let wert = b / 1000;
   let stufe = 0;
   while (wert >= 1000 && stufe < stufen.length - 1) {
-    wert /= 1024;
+    wert /= 1000;
     stufe += 1;
   }
   const stellen = wert >= 100 || stufe === 0 ? 0 : 1;
