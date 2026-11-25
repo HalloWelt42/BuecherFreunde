@@ -54,6 +54,9 @@ class Wolke:
                 daten = r.read()
                 if r.status in (502, 503, 504):
                     raise OSError(f"HTTP {r.status}")
+                if r.status >= 400 and koerper is not None:      # abgelehnt, ohne alles zu lesen: der Rest läge sonst vor der nächsten Anfrage
+                    self.v.close()
+                    self.v = None
                 return r.status, (json.loads(daten) if daten and "json" in (r.headers.get("content-type") or "") else daten)
             except (OSError, http.client.HTTPException) as f:
                 self.v = None
