@@ -11,7 +11,7 @@
   import { schreibweise } from "../../lib/leser/typen";
   import { wischen } from "../../lib/leser/wischen";
   import { imBlick, Mitlauf, sichtVon } from "../../lib/leser/mitlauf";
-  import { vorlesen } from "../../lib/stand/vorlesen.svelte";
+  import type { Randeintrag } from "../../lib/leser/randmarken";
 
   interface Eigenschaften {
     sitzung: Lesesitzung;
@@ -158,7 +158,7 @@
   function gerollt() {
     anzeige?.gerollt();
     if (blaettert) meldeRest();
-    vorlesen.bewegt();
+    sitzung.bewegt();
   }
 
   // Für das Vorlesen: wo der Text einer Seite steht, die Seite zeigen, die gelesene Zeile im Blick halten
@@ -190,9 +190,25 @@
   }
 
   export const hier = () => ({ seite, wortlaut: "" });
+
+  // Für die Marken am Rand: Höhe einer Stelle auf einer sichtbaren Seite, rechte Kante des Blatts
+  export function lage(nr: number, e: Randeintrag): number | null {
+    const r = anzeige?.rahmen(nr);
+    if (!flaeche || !r || !seiteImBlick(nr)) return null;
+    const s = sichtVon(flaeche);
+    if (e.art === "Markierung") {
+      const q = r.querySelector(`[data-markierung="${(e.quelle as { id: number }).id}"]`)?.getBoundingClientRect();
+      if (q && q.bottom > s.oben && q.top < s.unten) return q.top;
+    }
+    return Math.max(r.getBoundingClientRect().top + 16, s.oben);
+  }
+
+  export function kante(): number | null {
+    return anzeige?.rahmen(blaettert ? (bogen.at(-1) ?? seite) : seite)?.getBoundingClientRect().right ?? null;
+  }
   export const seiten = (): number[] => (blaettert ? bogen : [seite]);
 
-  const belegt = () => sitzung.belegt();
+  const belegt = (p: { x: number; y: number }) => sitzung.belegt(p);
 
   $effect(() => {
     const f = flaeche;

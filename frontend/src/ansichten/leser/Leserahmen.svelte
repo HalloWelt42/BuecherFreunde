@@ -16,6 +16,8 @@
   import Stellenfeld from "./Stellenfeld.svelte";
   import Verzeichnis from "./Verzeichnis.svelte";
   import { vorlesen } from "../../lib/stand/vorlesen.svelte";
+  import { randmarken } from "../../lib/leser/randschalter.svelte";
+  import Randmarken from "./Randmarken.svelte";
   import Spieler from "./Spieler.svelte";
   import Vorlesen from "./Vorlesen.svelte";
 
@@ -43,6 +45,13 @@
   let vorlesenOffen = $state(false);
   // Liest es gerade aus diesem Buch vor?
   let liestHier = $derived(vorlesen.aktiv && !!sitzung.quelle && vorlesen.quelle === sitzung.quelle);
+  // Gescrollt blättert kein Tippen: die Marken am Rand fangen es hier
+  function tippeRand(e: MouseEvent) {
+    if (!sitzung.randtreffer?.(e.clientX, e.clientY)) return;
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
   let zustand = $derived(!liestHier ? "volume-low" : vorlesen.wartet && !vorlesen.pausiert ? "circle-notch" : vorlesen.pausiert ? "pause" : "volume-high");
 
   $effect(() => {
@@ -61,8 +70,9 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="leser" onpointermove={(e) => sitzung.regt(e)} class:mit-treffer={!!treffer && !schale.vollbild} class:randlos={schale.vollbild} data-papier={papier} style:--randgrund={grund} style:--randtinte={tinte} style:--blattrand="{blattrand.wert}px" style:--blattrand-oben="{blattrand.oben(schale.vollbild)}px" bind:this={rahmen}>
+<div class="leser" onpointermove={(e) => sitzung.regt(e)} onclickcapture={tippeRand} class:mit-treffer={!!treffer && !schale.vollbild} class:randlos={schale.vollbild} data-papier={papier} style:--randgrund={grund} style:--randtinte={tinte} style:--blattrand="{blattrand.wert}px" style:--blattrand-oben="{blattrand.oben(schale.vollbild)}px" bind:this={rahmen}>
   {@render children()}
+  {#if bereit && rahmen && randmarken.an}<Randmarken {sitzung} {rahmen} />{/if}
 
   {#if schale.vollbild}
     <button type="button" class="schwebezeichen links" aria-label="Vollbild verlassen" title="Vollbild verlassen" onclick={() => void schale.vollbildUmschalten()}><Symbol name="compress" /></button>

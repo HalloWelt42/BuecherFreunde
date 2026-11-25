@@ -142,6 +142,21 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 | Markierungen und Buchnotizen im Leser: springen, Farbe, Name, Notiz, Text, kopieren, Schnellnotiz, löschen mit Rückfrage | Feld rechts statt verschiebbarer Fenster, wie im Entwurf | ja, Kopieren nein |
 | "Von vorn" verwirft nur die Stelle (18) | `leser/ziel` | ja (Test) |
 
+### Marken am Rand (BF-28)
+
+Nach dem abgenommenen Entwurf (Marken am Rand des Blatts): Notizen, Markierungen und Etiketten als bunte Streifen. Breit (34 x 46, Nummer)
+für die offene Seite auf Höhe ihrer Stelle, sie gehen beim Rollen mit; schmal (15 x 26) für alle übrigen an festem Platz nach ihrem
+Anteil im Buch. Dicht liegende rücken untereinander, bei sehr vielen fassen sie sich zusammen (Zahl), nie übereinander, auch nicht über
+breite. Am Telefon 6 Pixel schmal (30 und 64 hoch) am Rand, Tippfläche 44, die nur ein Tippen genau dort fängt; Wischen und Auswählen gehen
+durch. Überfahren oder Tippen klappt die Karte auf (Text, Art, Stelle), noch ein Tippen öffnet Notizen und Markierungen, schmale springen.
+
+| Teil | Ort | Geprüft |
+|---|---|---|
+| Einträge, Lage, Zusammenfassen | `leser/randmarken`, `Randmarken` | Tests, 1440 und 390, hell und dunkel |
+| Wo eine Stelle steht, je Format (PDF Original und Text, EPUB, MOBI, MD, TXT; gerollt und geblättert) | `Randort` der Leser | PDF, MD, EPUB |
+| Aus und an im Feld Darstellung, je Gerät gemerkt | `leser/randschalter` | ja |
+| Buchseite: dieselbe Reihe am Umschlag | nicht gebaut: Stellen im EPUB haben ohne geöffnetes Buch keinen Anteil, der Umschlag gehört zu BF-17 | nein |
+
 ### Vorlesen (BF-27)
 
 Vorgelesen wird aus einer Lesequelle je Leser (`lib/vorlesen/typen`: `Lesequelle`, `Buchquelle`): Einheiten mit Text erst bei Bedarf,

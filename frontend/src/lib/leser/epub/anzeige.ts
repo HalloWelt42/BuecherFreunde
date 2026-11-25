@@ -34,9 +34,10 @@ export interface Epubgriffe {
   beiTaste(e: KeyboardEvent): void;
   /** Tippen in die Mitte, und was vor dem Tippen kommt */
   mitte(): void;
-  belegt(): boolean;
+  belegt(punkt: { x: number; y: number }): boolean;
   /** Ein Abschnitt ist geladen */
   geladen(doc: Document): void;
+  gerollt(): void;
   /** Die Maus bewegt sich über dem Kapitel */
   maus(e: PointerEvent): void;
 }
@@ -85,6 +86,8 @@ export class EpubAnzeige {
     view.addEventListener("relocate", (e) => this.#gerueckt((e as CustomEvent<FoliateStand>).detail));
     this.#seitenmass();
     await view.init({ lastLocation: cfi || undefined });
+    // Gescrollt meldet die Bibliothek die Stelle erst nach einer Ruhe; was am Text hängt, soll gleich mitgehen
+    view.renderer?.addEventListener("scroll", () => this.griffe.gerollt());
     this.stile(this.darstellung);
   }
 
@@ -119,6 +122,39 @@ export class EpubAnzeige {
     this.griffe.geladen(doc);
   }
 
+  /** Anteil im Buch, an dem ein Abschnitt beginnt, für eine Stelle */
+  anteilVon(cfi: string): number | null {
+    try {
+      const index = this.#view?.resolveCFI(cfi).index;
+      return index === undefined ? null : (this.#view?.getSectionFractions()[index] ?? null);
+    } catch {
+      return null;
+    }
+  }
+
+  /** Höhe einer Stelle im Fenster, wenn sie auf der offenen Seite steht */
+  lageVon(cfi: string): number | null {
+    const g = this.#view?.renderer?.getContents()[0];
+    try {
+      const z = this.#view?.resolveCFI(cfi) as { index: number; anchor?: (d: Document) => Range } | undefined;
+      if (!g || !z || z.index !== g.index) return null;
+      const r = z.anchor?.(g.doc);
+      const rahmen = g.doc.defaultView?.frameElement?.getBoundingClientRect();
+      const f = this.flaeche.getBoundingClientRect();
+      // Eine Stelle ohne Ausdehnung (nur ein Element) hat keine Zeilen: dann gilt das Element
+      const zeilen = [...(r?.getClientRects() ?? [])];
+      const element = r?.startContainer.nodeType === Node.ELEMENT_NODE ? (r.startContainer as Element).children[r.startOffset] ?? (r.startContainer as Element) : r?.startContainer.parentElement;
+      if (!zeilen.length && element) zeilen.push(element.getBoundingClientRect());
+      for (const q of zeilen) {
+        const [x, y] = [q.left + (rahmen?.left ?? 0), q.top + (rahmen?.top ?? 0)];
+        if (q.width && x < f.right && x + q.width > f.left && y + q.height > f.top && y < f.bottom) return y;
+      }
+    } catch {
+      // Stelle eines anderen Buchs oder kaputt
+    }
+    return null;
+  }
+
   get ansicht(): View | null {
     return this.#view;
   }
@@ -132,9 +168,11 @@ export class EpubAnzeige {
 
   // Finger, Rad und Maus: auf der Fläche und in jedem Kapitelrahmen gleich
   #hoere(ort: HTMLElement | Document): () => void {
-    const versatz = () => ("defaultView" in ort ? (ort.defaultView?.frameElement?.getBoundingClientRect().left ?? 0) : 0);
-    const griffe: Blaettergriffe = { gilt: () => this.seite.art === "blaettern", vor: this.vor, zurueck: this.zurueck, mitte: () => this.griffe.mitte(), belegt: () => this.griffe.belegt() };
-    const blaettern = blaettergesten(ort, { rahmen: () => this.flaeche.getBoundingClientRect(), versatz }, griffe);
+    const rahmen = () => ("defaultView" in ort ? ort.defaultView?.frameElement?.getBoundingClientRect() : undefined);
+    const versatz = () => rahmen()?.left ?? 0;
+    const versatzOben = () => rahmen()?.top ?? 0;
+    const griffe: Blaettergriffe = { gilt: () => this.seite.art === "blaettern", vor: this.vor, zurueck: this.zurueck, mitte: () => this.griffe.mitte(), belegt: (p) => this.griffe.belegt(p) };
+    const blaettern = blaettergesten(ort, { rahmen: () => this.flaeche.getBoundingClientRect(), versatz, versatzOben }, griffe);
     const rand = kapitelrand(ort, { gilt: () => this.seite.art === "scrollen", amRand: (r) => this.#amRand(r), weiter: (r) => void (r > 0 ? this.vor() : this.zurueck()) });
     return () => {
       blaettern();

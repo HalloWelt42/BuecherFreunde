@@ -39,7 +39,7 @@ declare module "foliate-js/view.js" {
     next(weite?: number): Promise<void>;
     prev(weite?: number): Promise<void>;
     getCFI(index: number, bereich?: Range): string;
-    resolveCFI(cfi: string): { index: number };
+    resolveCFI(cfi: string): { index: number; anchor?: (doc: Document) => Range };
     getSectionFractions(): number[];
     addAnnotation(a: FoliateAnmerkung, weg?: boolean): Promise<unknown>;
     deleteAnnotation(a: FoliateAnmerkung): Promise<unknown>;

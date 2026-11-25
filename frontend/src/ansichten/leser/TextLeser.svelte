@@ -18,6 +18,8 @@
   import { kannHervorheben, Rechteckschicht } from "../../lib/leser/hervorhebung";
   import { faerbeCode, kopierknoepfe } from "../../lib/leser/text/codefarben";
   import { Blattquelle } from "../../lib/leser/text/lesequelle";
+  import { imBlick, sichtVon, zeichenRechteck } from "../../lib/leser/mitlauf";
+  import type { Randeintrag } from "../../lib/leser/randmarken";
   import { prozentVon, textkapitel, zeichneMarkierungen, zeichneTreffer } from "../../lib/leser/text/markierung";
   import { schreibweise, type Kapitel } from "../../lib/leser/typen";
   import { gemerkt, nenntStelle, type Leseziel } from "../../lib/leser/ziel";
@@ -91,6 +93,7 @@
     if (istMarkdown) void faerbeCode(s).then(() => kopierknoepfe(s));
     quelle = new Blattquelle({ satz: s, flaeche, fluss: () => fluss, kapitel: () => sitzung.kapitel, kapitelJetzt: () => sitzung.kapitelJetzt, ersatz: () => ersatz, ohneTitel: (nr, alle) => `Stück ${nr + 1} von ${alle}` });
     sitzung.quelle = quelle;
+    sitzung.rand = { anteil: (e) => (e.prozent !== null ? e.prozent / 100 : null), lage: lageAmRand, kante: () => blatt?.getBoundingClientRect().right ?? null };
     if (start.wort || start.stelle) zeigeTreffer(start.wort || start.stelle, ab);
   }
 
@@ -124,8 +127,20 @@
     if (istMarkdown) sitzung.kapitelJetzt = sitzung.kapitel.findLastIndex((k) => fluss!.erreicht(k.ziel as HTMLElement));
     else sitzung.kapitelJetzt = sitzung.kapitel.findLastIndex((k) => (k.ziel as number) <= stand.anteil + 0.002);
     ersatz?.zeichne();
-    vorlesen.bewegt();
+    sitzung.bewegt();
     merke();
+  }
+
+  // Für die Marken am Rand: wo eine Stelle auf dem Schirm steht
+  function lageAmRand(e: Randeintrag): number | null {
+    if (!flaeche || !blatt || !fluss) return null;
+    const b = blatt.getBoundingClientRect();
+    const sicht = art === "blaettern" ? { oben: b.top, unten: b.bottom, links: b.left, rechts: b.right } : sichtVon(flaeche);
+    const r = e.art === "Markierung" ? markiert.get((e.quelle as { id: number }).id) : null;
+    if (r?.startContainer.isConnected) return imBlick(r, sicht) ? (r.getClientRects()[0]?.top ?? null) : null;
+    const a = e.prozent !== null ? fluss.ankerBei(e.prozent / 100) : null;
+    const q = a?.knoten.nodeType === Node.TEXT_NODE ? zeichenRechteck(a.knoten as Text, a.versatz) : null;
+    return q && q.bottom > sicht.oben && q.top < sicht.unten && q.right > sicht.links && q.left < sicht.rechts ? q.top : null;
   }
 
   function zeichne() {
@@ -206,7 +221,7 @@
   $effect(() => {
     const f = flaeche;
     if (!f) return;
-    return blaettergesten(f, { rahmen: () => f.getBoundingClientRect() }, { gilt: () => art === "blaettern", vor, zurueck, mitte: () => sitzung.tippeMitte(), belegt: () => sitzung.belegt() });
+    return blaettergesten(f, { rahmen: () => f.getBoundingClientRect() }, { gilt: () => art === "blaettern", vor, zurueck, mitte: () => sitzung.tippeMitte(), belegt: (p) => sitzung.belegt(p) });
   });
 
   const aufraeumen = speicher.starte();
@@ -218,6 +233,7 @@
     if (vorlesen.quelle === quelle && quelle) vorlesen.halt();
     sitzung.griffe = null;
     sitzung.quelle = null;
+    sitzung.rand = null;
   });
 
   void lade();

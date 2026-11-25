@@ -9,6 +9,7 @@
   import { leseart } from "../../lib/leser/leseart.svelte";
   import { ladePdf, verzeichnis, type PdfBuch } from "../../lib/leser/pdf/dokument";
   import { Pdfquelle } from "../../lib/leser/pdf/lesequelle";
+  import type { Randeintrag } from "../../lib/leser/randmarken";
   import { vorlesen } from "../../lib/stand/vorlesen.svelte";
   import { Gedruckt } from "../../lib/leser/pdf/gedruckt.svelte";
   import { ansichtFuer, ansichtOder, artVon, naechsteStufe, STUFEN, type Ansicht } from "../../lib/leser/pdf/zoom";
@@ -75,6 +76,17 @@
       seite = Math.min(Math.max(1, seite), geladen.seiten);
       pdf = geladen;
       sitzung.quelle = new Pdfquelle(buch.id, geladen, () => sitzung.kapitel, () => sitzung.kapitelJetzt, () => (nurText ? (text ?? null) : (seiten ?? null)));
+      sitzung.rand = {
+        anteil: (e) => {
+          const s = seiteVon(e);
+          return s ? (s - 1) / Math.max(1, gesamt - 1) : null;
+        },
+        lage: (e) => {
+          const s = seiteVon(e);
+          return s ? ((nurText ? text : seiten)?.lage(s, e) ?? null) : null;
+        },
+        kante: () => (nurText ? text : seiten)?.kante() ?? null,
+      };
       sitzung.kapitel = await verzeichnis(geladen.doc);
     } catch {
       fehler = await ladefehler(buch.id);
@@ -89,9 +101,12 @@
     if (nr) [seite, fundseite] = [nr, nr];
   }
 
+  const seiteVon = (e: Randeintrag) => e.seite ?? (e.prozent !== null ? Math.max(1, Math.round((e.prozent / 100) * gesamt)) : null);
+
   function gelesen(nr: number) {
     seite = nr;
     merke();
+    sitzung.bewegt();
   }
 
   function merke() {
@@ -194,6 +209,7 @@
     void pdf?.doc.loadingTask.destroy();
     sitzung.griffe = null;
     sitzung.quelle = null;
+    sitzung.rand = null;
   });
 
   void lade();
@@ -205,7 +221,7 @@
   {#if !pdf}
     <Ladehinweis {fehler} adresse={dateiUrl(buch.id)} name={buch.file_name || buch.title} onerneut={() => void lade()} />
   {:else if nurText}
-    <Textansicht bind:this={text} {sitzung} {art} startSeite={seite} {fundstelle} grund={farben.bg} tinte={farben.fg} onstand={(s) => { textstand = s; if (s.seite !== seite) gelesen(s.seite); }} onoriginal={schalteText} onmitte={() => sitzung.tippeMitte()} belegt={() => sitzung.belegt()} onbeschriftet={() => (sitzung.quelle as Pdfquelle | null)?.gezeichnet()} />
+    <Textansicht bind:this={text} {sitzung} {art} startSeite={seite} {fundstelle} grund={farben.bg} tinte={farben.fg} onstand={(s) => { textstand = s; if (s.seite !== seite) gelesen(s.seite); }} onoriginal={schalteText} onmitte={() => sitzung.tippeMitte()} belegt={(p) => sitzung.belegt(p)} onbeschriftet={() => (sitzung.quelle as Pdfquelle | null)?.gezeichnet()} />
   {:else}
     <PdfSeiten bind:this={seiten} {sitzung} {pdf} {ansicht} {zoom} {seite} {fundstelle} {fundseite} onseite={gelesen} onmass={(m) => (mass = m)} onrest={(r) => (rest = r)} onbeschriftet={(nr) => (sitzung.quelle as Pdfquelle | null)?.gezeichnet(nr)} />
   {/if}

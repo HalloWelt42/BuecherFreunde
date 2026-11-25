@@ -65,6 +65,9 @@ export class Textfluss {
   zeigt = (a: Anker): boolean => this.#fluss.zeigt(a);
   erreicht = (e: Element): boolean => this.#fluss.erreicht(e);
 
+  /** Stelle bei einem Anteil des Textes */
+  ankerBei = (anteil: number): Anker | null => this.#mass.beiAnteil(anteil);
+
   /** Anteil einer Stelle am ganzen Text, etwa für eine Markierung */
   anteilVon(knoten: Node, versatz: number): number {
     return this.#mass.anteil(knoten.nodeType === Node.TEXT_NODE ? { knoten, versatz } : { knoten: knoten.childNodes[versatz] ?? knoten, versatz: 0 });

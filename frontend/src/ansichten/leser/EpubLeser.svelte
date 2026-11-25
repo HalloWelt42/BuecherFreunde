@@ -63,7 +63,7 @@
     fehler = null;
     anzeige?.schliesse();
     anzeige = new EpubAnzeige(flaeche, d, mass, {
-      beiStand: gerueckt, beiTaste: taste, mitte: () => sitzung.tippeMitte(), belegt: () => sitzung.belegt(), geladen: (doc) => quelle?.geladen(doc), maus: (e) => sitzung.regt(e),
+      beiStand: gerueckt, beiTaste: taste, mitte: () => sitzung.tippeMitte(), belegt: (p) => sitzung.belegt(p), geladen: (doc) => quelle?.geladen(doc), maus: (e) => sitzung.regt(e), gerollt: () => sitzung.bewegt(),
       beiAuswahl: (a) => nimmAuswahl(sitzung, a && { ...a, ort: schreibweise.prozent(prozent) }) && abwahl(),
     });
     try {
@@ -76,6 +76,7 @@
       quelle?.zerstoere();
       quelle = new Epubquelle({ view: () => a.ansicht, flaeche, gescrollt: () => art === "scrollen", kapitel: () => sitzung.kapitel, kapitelJetzt: () => sitzung.kapitelJetzt, male: (b) => a.male(b, VORLESESATZ.farbe) });
       sitzung.quelle = quelle;
+      sitzung.rand = { anteil: (e) => (e.prozent !== null ? e.prozent / 100 : e.cfi ? a.anteilVon(e.cfi) : null), lage: (e) => (e.cfi ? a.lageVon(e.cfi) : null), kante: () => flaeche?.getBoundingClientRect().right ?? null };
       bereit = true;
       if (mitte > 0) await anzeige.zuAnteil(mitte);
       void anzeige.zeichne(sitzung.markierungen);
@@ -108,7 +109,7 @@
     sitzung.kapitelJetzt = s.kapitelNr;
     sitzung.auswahl = null;
     if (bereit) merke();
-    vorlesen.bewegt();
+    sitzung.bewegt();
   }
 
   function merke() {
@@ -176,6 +177,7 @@
     if (vorlesen.quelle && vorlesen.quelle === quelle) vorlesen.halt();
     quelle?.zerstoere();
     sitzung.quelle = null;
+    sitzung.rand = null;
     anzeige?.schliesse();
     sitzung.griffe = null;
   });

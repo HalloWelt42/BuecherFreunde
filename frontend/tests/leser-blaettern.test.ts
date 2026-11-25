@@ -212,3 +212,38 @@ describe("Ansichten eines PDF", () => {
     expect(einpassen("einzeln", seite, { breite: 800, hoehe: 700 })).toBe(1);
   });
 });
+
+describe("Marken am Rand", () => {
+  it("liest Seite, Anteil und Stelle aus allen Arten von Einträgen", async () => {
+    const { randeintraege } = await import("../src/lib/leser/randmarken");
+    const m = { id: 1, book_id: 1, cfi_range: "page:12", color: "#EF5350", text_snippet: "Ein Satz", label_name: "", label_note: "", created_at: "" };
+    const n = { id: 2, book_id: 1, content: "Notiz", page_reference: "62%", cfi_reference: null, created_at: "", updated_at: "" };
+    const e = { id: 3, book_id: 1, name: "Wichtig", note: "", color: "#4FC3F7", created_at: "", page_reference: "S.40", position_percent: 33 };
+    const ohne = { ...n, id: 4, page_reference: "" };
+    const aus = randeintraege([m], [n, ohne], [e]);
+    expect(aus.map((x) => [x.schluessel, x.seite, x.prozent, x.ort])).toEqual([["m1", 12, null, "Seite 12"], ["n2", null, 62, "62 %"], ["e3", 40, 33, "Seite 40"]]);
+  });
+
+  it("legt schmale Marken auf feste Plätze, nie übereinander und nie über breite", async () => {
+    const { legeFest } = await import("../src/lib/leser/randmarken");
+    const g = legeFest([0, 0.01, 0.02, 0.5, 1].map((anteil, eintrag) => ({ anteil, eintrag })), 300, 26, 4, [[140, 186]]);
+    const ys = g.map((x) => x.y);
+    expect(ys[0]).toBe(0);
+    for (let i = 1; i < ys.length; i++) expect(ys[i] - ys[i - 1]).toBeGreaterThanOrEqual(30);
+    expect(g.every((x) => x.y + 26 <= 140 - 4 || x.y >= 186 + 4)).toBe(true);
+    expect(g.flatMap((x) => x.eintraege).sort()).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it("fasst bei zu vielen zusammen, statt zu stapeln", async () => {
+    const { legeFest } = await import("../src/lib/leser/randmarken");
+    const g = legeFest(Array.from({ length: 40 }, (_, n) => ({ anteil: n / 40, eintrag: n })), 120, 26, 4);
+    expect(g.length).toBe(4);
+    expect(g.reduce((s, x) => s + x.eintraege.length, 0)).toBe(40);
+  });
+
+  it("stellt breite Marken an ihre Stelle, im sichtbaren Bereich und untereinander", async () => {
+    const { legeAnStelle } = await import("../src/lib/leser/randmarken");
+    const g = legeAnStelle([{ y: 100, eintrag: "a" }, { y: 110, eintrag: "b" }, { y: -50, eintrag: "c" }, { y: 990, eintrag: "d" }], 0, 500, 46, 4);
+    expect(g.map((x) => [x.y, x.eintraege.join("")])).toEqual([[0, "c"], [100, "a"], [150, "b"], [454, "d"]]);
+  });
+});

@@ -3,11 +3,14 @@
   import { dateiUrl } from "../../lib/api/books";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
+  import { randmarken } from "../../lib/leser/randschalter.svelte";
+  import Haekchen from "../../lib/teile/Haekchen.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Vorlesen from "./Vorlesen.svelte";
   let { sitzung }: { sitzung: Lesesitzung } = $props();
 </script>
 
+<div class="feld">Rand<Haekchen text="Marken für Notizen und Markierungen" an={randmarken.an} onwahl={(an) => (randmarken.an = an)} /></div>
 <div class="feld werkzeuge">
   Werkzeuge
   <div class="tastenraster">

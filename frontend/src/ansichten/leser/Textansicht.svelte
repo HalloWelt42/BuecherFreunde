@@ -13,7 +13,7 @@
   import { kannHervorheben, Rechteckschicht } from "../../lib/leser/hervorhebung";
   import { imBlick, Mitlauf, sichtVon } from "../../lib/leser/mitlauf";
   import { zeichneMarkierungen, zeichneWortlaut } from "../../lib/leser/text/markierung";
-  import { vorlesen } from "../../lib/stand/vorlesen.svelte";
+  import type { Randeintrag } from "../../lib/leser/randmarken";
   import { textansicht } from "../../lib/leser/textansicht.svelte";
   import { schreibweise } from "../../lib/leser/typen";
   import { schale } from "../../lib/stand/schale.svelte";
@@ -31,7 +31,7 @@
     onstand: (stand: { seite: number; amAnfang: boolean; amEnde: boolean; innen: number }) => void;
     onoriginal: () => void;
     onmitte: () => void;
-    belegt: () => boolean;
+    belegt: (punkt: { x: number; y: number }) => boolean;
     /** Der Text hat sich geändert (nachgeladen, umgebrochen) */
     onbeschriftet: () => void;
   }
@@ -43,6 +43,7 @@
   let lupe = $state<{ quelle: string; beschreibung: string } | null>(null);
   let fluss: Textfluss | null = null;
   let ersatzschicht: Rechteckschicht | undefined;
+  let markiert = new Map<number, Range>();
   let mitlauf: Mitlauf | null = null;
   let gemeldet = 0;
   let gesucht = untrack(() => fundstelle);
@@ -81,7 +82,7 @@
     const innen = amEnde ? 1 : Math.min(0.999, Math.max(0, fluss.anteil * geladen - (nr - text.erste)));
     onstand({ seite: nr, amAnfang, amEnde, innen });
     ersatzschicht?.zeichne();
-    vorlesen.bewegt();
+    sitzung.bewegt();
     void fuelleNach();
   }
 
@@ -141,7 +142,7 @@
   export function zeichne() {
     if (!satz) return;
     const seitenweise = sitzung.markierungen.filter((m) => m.cfi_range.startsWith("page:"));
-    zeichneMarkierungen(satz, seitenweise, ersatzschicht, (m) => abschnitt(Number(m.cfi_range.slice(5))));
+    markiert = zeichneMarkierungen(satz, seitenweise, ersatzschicht, (m) => abschnitt(Number(m.cfi_range.slice(5))));
     onbeschriftet();
   }
 
@@ -173,6 +174,26 @@
     if (fluss.art === "scrollen") return imBlick(bereich, sichtVon(flaeche));
     return fluss.zeigt({ knoten: bereich.startContainer, versatz: bereich.startOffset }) || fluss.zeigt({ knoten: bereich.endContainer, versatz: Math.max(0, bereich.endOffset - 1) });
   }
+
+  // Für die Marken am Rand
+  function sicht() {
+    if (art === "scrollen" || !blatt) return sichtVon(flaeche!);
+    const b = blatt.getBoundingClientRect();
+    return { oben: b.top, unten: b.bottom, links: b.left, rechts: b.right };
+  }
+
+  export function lage(nr: number, e: Randeintrag): number | null {
+    const a = abschnitt(nr);
+    if (!a || !flaeche) return null;
+    const s = sicht();
+    const r = e.art === "Markierung" ? markiert.get((e.quelle as { id: number }).id) : null;
+    if (r?.startContainer.isConnected && imBlick(r, s)) return r.getClientRects()[0]?.top ?? null;
+    // Sonst der Anfang der Seite, wenn er auf dem Schirm steht
+    for (const q of a.getClientRects()) if (q.right > s.links && q.left < s.rechts && q.bottom > s.oben && q.top < s.unten) return Math.max(q.top, s.oben);
+    return null;
+  }
+
+  export const kante = (): number | null => blatt?.getBoundingClientRect().right ?? null;
 
   export function hier(): { seite: number; wortlaut: string } {
     const h = fluss?.halt();

@@ -9,8 +9,8 @@ export interface Blaettergriffe {
   zurueck(): void;
   /** Tippen in die Mitte */
   mitte(): void;
-  /** Offenes Feld oder Auswahlmenü: das Tippen gehört ihm; true, wenn es damit erledigt ist */
-  belegt(): boolean;
+  /** Offenes Feld, Auswahlmenü, Marke am Rand: das Tippen gehört ihm; true, wenn es damit erledigt ist */
+  belegt(punkt: { x: number; y: number }): boolean;
   /** Kann die Fläche in diese Richtung noch selbst schieben (vergrößerte Seite)? */
   schiebt?(achse: "x" | "y", richtung: 1 | -1): boolean;
 }
@@ -20,6 +20,7 @@ export interface Blaetterort {
   rahmen(): { left: number; width: number };
   /** Verschiebung eines Buchrahmens gegen das Fenster */
   versatz?(): number;
+  versatzOben?(): number;
 }
 
 const WISCH_AB = 40;
@@ -35,8 +36,8 @@ export function blaettergesten(flaeche: HTMLElement | Document, ort: Blaetterort
   const gewaehlt = () => dok.getSelection()?.isCollapsed === false;
   let start: { x: number; y: number; zeit: number; auswahl: boolean; schob: boolean } | null = null;
 
-  function tippe(x: number, rand: number): void {
-    if (tun.belegt()) return;
+  function tippe(x: number, y: number, rand: number): void {
+    if (tun.belegt({ x: x + (ort.versatz?.() ?? 0), y: y + (ort.versatzOben?.() ?? 0) })) return;
     const r = ort.rahmen();
     const im = x + (ort.versatz?.() ?? 0) - r.left;
     if (im < rand) tun.zurueck();
@@ -85,7 +86,7 @@ export function blaettergesten(flaeche: HTMLElement | Document, ort: Blaetterort
     if (!tipp || auswahl || istBedienbar(e.target)) return;
     // Der Klick, der dem Tippen folgt, soll nicht noch etwas treffen, das erst jetzt dort steht
     if (e.cancelable) e.preventDefault();
-    tippe(p.clientX, ort.rahmen().width * FINGERRAND);
+    tippe(p.clientX, p.clientY, ort.rahmen().width * FINGERRAND);
   };
 
   // Maus: nur die äußeren Ränder blättern, die Mitte bleibt für Auswahl und Verweise
@@ -99,7 +100,7 @@ export function blaettergesten(flaeche: HTMLElement | Document, ort: Blaetterort
     if (!m || !tun.gilt() || m.auswahl || gewaehlt() || Math.hypot(e.clientX - m.x, e.clientY - m.y) > TIPP_BIS || istBedienbar(e.target)) return;
     const r = ort.rahmen();
     const im = e.clientX + (ort.versatz?.() ?? 0) - r.left;
-    if (im < MAUSRAND || im > r.width - MAUSRAND) tippe(e.clientX, MAUSRAND);
+    if (im < MAUSRAND || im > r.width - MAUSRAND) tippe(e.clientX, e.clientY, MAUSRAND);
   };
 
   const rad = radschritt(tun);

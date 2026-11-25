@@ -11,11 +11,22 @@ import { schale } from "../stand/schale.svelte";
 import { vorlesen } from "../stand/vorlesen.svelte";
 import type { BuchEinzeln, Etikett, Markierung, Notiz } from "../typen";
 import type { Buchquelle } from "../vorlesen/typen";
+import type { Randeintrag } from "./randmarken";
 import { VORGABE_STIFT } from "./farben";
 import type { Feldname, Kapitel, Textauswahl } from "./typen";
 import { Verzoegert } from "./verzoegert";
 
 const SPIELER_MS = 3500;
+
+/** Wo die Marken am Rand stehen: der Leser des Formats weiß es */
+export interface Randort {
+  /** Anteil im Buch, 0 bis 1 */
+  anteil(e: Randeintrag): number | null;
+  /** Höhe der Stelle im Fenster, wenn sie auf der offenen Seite zu sehen ist */
+  lage(e: Randeintrag): number | null;
+  /** Rechte Kante des Blatts im Fenster */
+  kante(): number | null;
+}
 
 export interface Lesegriffe {
   zumKapitel(k: Kapitel): void;
@@ -43,6 +54,11 @@ export class Lesesitzung {
   #spielerUhr: ReturnType<typeof setTimeout> | undefined;
   /** Woraus vorgelesen wird; der Leser des Formats setzt sie, sobald das Buch steht */
   quelle = $state.raw<Buchquelle | null>(null);
+  rand = $state.raw<Randort | null>(null);
+  /** Zählt jede Bewegung der Ansicht, damit, was am Text hängt, mitgeht */
+  bewegung = $state(0);
+  /** Trifft ein Tippen eine Marke am Rand? Dann gehört es ihr. */
+  randtreffer: ((x: number, y: number) => boolean) | null = null;
   #spaeter = new Verzoegert();
 
   constructor(public buch: BuchEinzeln) {}
@@ -77,8 +93,15 @@ export class Lesesitzung {
     if (!bleibt) this.#spielerUhr = setTimeout(() => (this.spieler = false), SPIELER_MS);
   }
 
-  /** Ein Tippen schließt erst das offene Feld; eine Auswahl im Text geht ebenso vor */
-  belegt(): boolean {
+  /** Die Ansicht hat sich bewegt */
+  bewegt(): void {
+    this.bewegung++;
+    vorlesen.bewegt();
+  }
+
+  /** Ein Tippen schließt erst das offene Feld; eine Auswahl im Text und die Marken am Rand gehen ebenso vor */
+  belegt(punkt?: { x: number; y: number }): boolean {
+    if (punkt && this.randtreffer?.(punkt.x, punkt.y)) return true;
     if (!this.feld) return this.auswahl !== null;
     this.feld = "";
     return true;
