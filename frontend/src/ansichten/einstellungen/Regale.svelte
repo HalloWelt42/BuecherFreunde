@@ -50,7 +50,7 @@
     {#each passend as r (r.id)}
       <div class="stelle regalzeile">
         <span class="zeichenfeld"><Symbol name={r.icon || "folder"} farbe="color-mix(in srgb, {r.color || "#6b7280"} 70%, var(--tinte))" /></span>
-        <span><b>{r.name}</b> <span class="leise zahl">{zahl(r.buch_anzahl)}</span>{#if r.name.startsWith("ai_")} <span class="marke-text info"><Symbol name="wand-magic-sparkles" />KI</span>{/if}{#if r.description}<br /><span class="leise">{r.description}</span>{/if}</span>
+        <span><b>{r.name}</b> <span class="leise zahl">{zahl(r.buch_anzahl)}</span>{#if r.name.startsWith("ai_")}{" "}<span class="marke-text info"><Symbol name="wand-magic-sparkles" />KI</span>{/if}{#if r.description}<br /><span class="leise">{r.description}</span>{/if}</span>
         <span class="reihe griffe">
           <Knopf text={r.spezial ? "Aus der Leiste nehmen" : "In der Leiste zeigen"} symbol="table-columns" nur klein frei gedrueckt={!!r.spezial} onclick={() => void stelleInLeiste(r)} />
           <Knopf text="Bearbeiten" symbol="pen" nur klein frei onclick={() => (offen = r)} />

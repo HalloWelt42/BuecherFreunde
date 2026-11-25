@@ -11,7 +11,8 @@ export interface Dienststand {
 }
 
 const PRUEFT: Dienststand = { stand: "aus", text: "wird geprüft" };
-const TAKT_MS = 60_000;
+// Der Server fragt dabei auch den Rechner nach der Bedeutung: selten genug, dass er schlafen darf, und nur im Vordergrund
+const TAKT_MS = 300_000;
 
 class Verbindungen {
   liste = $state<Verbindung[]>([]);
@@ -25,7 +26,7 @@ class Verbindungen {
   starte(): void {
     if (this.#uhr) return;
     void this.laden();
-    this.#uhr = setInterval(() => void this.pruefen(), TAKT_MS);
+    this.#uhr = setInterval(() => document.visibilityState === "visible" && void this.pruefen(), TAKT_MS);
   }
 
   halte(): void {

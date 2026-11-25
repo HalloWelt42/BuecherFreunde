@@ -52,11 +52,12 @@
 :root[data-glas="dicht"] { --a-klar: .7; --a-milch: .82; --a-dicht: .95; }
 :root[data-glas="ohne"] { --a-klar: .95; --a-milch: .97; --a-dicht: .99; --stufe-klar: 0px; --stufe-milch: 0px; --stufe-dicht: 0px; }
 :root[data-grund="ruhig"] { --kulisse-licht: 0; }
-html { height: 100%; font-size: 16px; }
+/* clip statt hidden: ein Sprung an eine Stelle (scrollIntoView) darf die Schale nie verschieben */
+html { height: 100%; font-size: 16px; overflow: hidden; overflow: clip; }
 html[data-schrift="mittel"] { font-size: 17px; }
 html[data-schrift="gross"] { font-size: 19px; }
 html[data-schrift="riesig"] { font-size: 21.5px; }
-body { height: 100vh; height: 100dvh; margin: 0; background: var(--grund); color: var(--tinte); font-family: var(--schrift); line-height: 1.4; -webkit-font-smoothing: antialiased; overflow: hidden; }
+body { height: 100vh; height: 100dvh; margin: 0; background: var(--grund); color: var(--tinte); font-family: var(--schrift); line-height: 1.4; -webkit-font-smoothing: antialiased; overflow: hidden; overflow: clip; }
 *, *::before, *::after { box-sizing: border-box; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; background: none; border: 0; padding: 0; text-align: inherit; }

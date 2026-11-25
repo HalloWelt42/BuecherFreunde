@@ -8,17 +8,13 @@
   let suche = $state("");
   let passend = $derived(bestand.regale.filter((r) => !ohne.includes(r.id) && r.name.toLowerCase().includes(suche.trim().toLowerCase())));
 
-  function fokussiere(knoten: HTMLInputElement) {
-    knoten.focus();
-  }
-
   function abschicken(e: SubmitEvent) {
     e.preventDefault();
     if (passend.length) onwahl(passend[0]);
   }
 </script>
 
-<form class="feld" onsubmit={abschicken}><input class="eingabe" type="search" placeholder="Regal suchen" aria-label="Regal suchen" bind:value={suche} use:fokussiere /></form>
+<form class="feld" onsubmit={abschicken}><input class="eingabe" type="search" placeholder="Regal suchen" aria-label="Regal suchen" bind:value={suche} data-fokus /></form>
 <div class="liste">
   {#each passend as r (r.id)}
     <button type="button" class="punkt" onclick={() => onwahl(r)}><Symbol name={r.icon || "folder"} farbe={r.color} /><span class="name">{r.name}</span></button>

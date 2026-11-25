@@ -31,7 +31,7 @@
     <span></span>
     {#each spalten as [text, nach] (text)}
       {#if nach && sortierbar}
-        <button type="button" onclick={() => buecher.sortiere(nach)} title="Nach {text} sortieren">{text}{#if buecher.sortierung === nach} <Symbol name={pfeil} />{/if}</button>
+        <button type="button" onclick={() => buecher.sortiere(nach)} title="Nach {text} sortieren">{text}{#if buecher.sortierung === nach}{" "}<Symbol name={pfeil} />{/if}</button>
       {:else}<span>{text}</span>{/if}
     {/each}
   </div>

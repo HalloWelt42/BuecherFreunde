@@ -40,7 +40,7 @@
   {#each orte as ort (ort.kennung)}
     <div class="stelle zeile-stand zwei">
       <span class="led {ort.stand}"></span>
-      <span><b>{ort.name}</b>{#if platz(ort)} <span class="leise zahl">{platz(ort)}</span>{/if}<br /><code class="pfad">{ort.pfad}</code></span>
+      <span><b>{ort.name}</b>{#if platz(ort)}{" "}<span class="leise zahl">{platz(ort)}</span>{/if}<br /><code class="pfad">{ort.pfad}</code></span>
     </div>
   {/each}
 {:else if verzeichnisse}

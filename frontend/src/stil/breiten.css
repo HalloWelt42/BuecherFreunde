@@ -38,8 +38,9 @@
   .inhalt .knopf:not(.nur), .knopfreihe .knopf { height: auto; min-height: 2.75rem; white-space: normal; padding-block: .25rem; }
   .buchkopf > *, .buchkopf .rechts, .buchkopf .reihe { min-width: 0; }
   .kopf .knopf { height: 2.75rem; } .kopf .knopf.nur { width: 2.75rem; }
-  .knopf { height: 2.75rem; } .knopf.nur { width: 2.75rem; } .knopf.klein { height: 2.5rem; } .knopf.klein.nur { width: 2.5rem; }
-  .chip, .segment button { min-height: 2.5rem; }
+  .knopf, .knopf.klein { height: 2.75rem; } .knopf.nur, .knopf.klein.nur { width: 2.75rem; }
+  .chip, .segment button { min-height: 2.75rem; }
+  .sterne.waehlbar button { min-width: 2.25rem; min-height: 2.75rem; text-align: center; }
   .punkt { min-height: 2.75rem; font-size: 1rem; }
   .werkzeug { padding: .5rem var(--rand-seite); }
   .werkzeug { gap: .375rem; }

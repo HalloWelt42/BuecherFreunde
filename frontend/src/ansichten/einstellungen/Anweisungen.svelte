@@ -29,7 +29,7 @@
   {#each liste as a (a.id)}
     <div class="stelle zeile-stand eins-knopf">
       <div class="anweisung">
-        <b>{a.name}</b>{#if !a.aktiv} <span class="marke-text warn">aus</span>{/if}<br />
+        <b>{a.name}</b>{#if !a.aktiv}{" "}<span class="marke-text warn">aus</span>{/if}<br />
         <span class="leise">{a.beschreibung || a.schluessel}</span><br />
         <span class="leise zahl">Temperatur {dezimal(a.temperatur)}, höchstens {a.max_tokens} Token</span>
         <p class="anweisungstext">{a.system_prompt}</p>

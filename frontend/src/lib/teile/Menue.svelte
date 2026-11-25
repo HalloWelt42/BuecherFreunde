@@ -9,6 +9,8 @@
   function anDieApp(knoten: HTMLElement) {
     (knoten.closest(".app") ?? document.body).appendChild(knoten);
     setze(knoten);
+    // Erst nach dem Umhängen: vorher ginge der Fokus verloren. Am Telefon bleibt die Tastatur zu.
+    if (matchMedia("(hover: hover)").matches) knoten.querySelector<HTMLElement>("[data-fokus]")?.focus();
     return { destroy: () => knoten.remove() };
   }
 
