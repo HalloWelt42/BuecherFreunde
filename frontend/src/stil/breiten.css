@@ -27,7 +27,7 @@
   .buehne { grid-area: 2 / 1; border-radius: 0; box-shadow: none; }
   .buehne.glas::before { display: none; }
   .schale.leiste-offen > .leiste { grid-area: 2 / 1; width: 100%; }
-  .tafel { grid-area: 3 / 1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); z-index: 20; border-radius: 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .tafel { grid-area: 3 / 1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); z-index: 20; border-radius: 0; }
   .tafel button, .tafel a { text-decoration: none; text-align: center; display: grid; justify-items: center; gap: .125rem; padding: .5rem 0 .4375rem; font-size: .75rem; font-weight: 500; color: var(--tinte-2); min-height: 3.5rem; }
   .tafel i { font-size: 1.1875rem; }
   .tafel a[aria-current="page"], .tafel button[aria-current="page"] { color: var(--messing); }

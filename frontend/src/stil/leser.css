@@ -38,7 +38,8 @@
 /* Vollbild: das Blatt reicht bis an alle Kanten, darüber schwebt nur ein Zeichen. Sichere Ränder (Kerbe, Home-Balken) trägt das Blatt als eigenen Rand. */
 .schale.vollbild > .buehne.glas { background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
 .schale.vollbild > .buehne.glas::before { display: none; }
-.leser.randlos { --oben: env(safe-area-inset-top, 0px); --unten: env(safe-area-inset-bottom, 0px); --links: env(safe-area-inset-left, 0px); --rechts: env(safe-area-inset-right, 0px); background: var(--randgrund); }
+/* Unten kein Abstand über dem Home-Balken, wie die untere Leiste (BF-30); oben, links und rechts der sichere Rand */
+.leser.randlos { --oben: env(safe-area-inset-top, 0px); --unten: 0px; --links: env(safe-area-inset-left, 0px); --rechts: env(safe-area-inset-right, 0px); background: var(--randgrund); }
 .leser.randlos .seiten.lesetext { padding: 0; grid-template-columns: minmax(0, 1fr); }
 .leser.randlos .lesetext .blatt { border-radius: 0; box-shadow: none; padding: calc(var(--blattrand-oben) + var(--oben)) max(var(--blattrand) + var(--rechts), (100% - var(--lesebreite, 44rem)) / 2) calc(var(--blattrand) + var(--unten)) max(var(--blattrand) + var(--links), (100% - var(--lesebreite, 44rem)) / 2); }
 .leser.randlos .seiten.pdf { padding: var(--oben) var(--rechts) var(--unten) var(--links); gap: 1px; }
