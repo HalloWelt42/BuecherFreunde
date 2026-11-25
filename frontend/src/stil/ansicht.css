@@ -1,0 +1,7 @@
+/* Ansichten */
+.werkzeug { z-index: 8; flex: none; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; padding: .625rem .75rem; border-bottom: 1px solid var(--linie); }
+.werkzeug h1 { font-size: 1.25rem; font-weight: 600; line-height: 1.2; }
+
+.inhalt { flex: 1; padding: .75rem var(--rand-seite) 1.5rem; display: grid; gap: 1rem; align-content: start; grid-template-columns: minmax(0, 1fr); }
+.block > h2, .titelzeile h2 { font-size: 1rem; font-weight: 600; }
+.titelzeile { display: flex; flex-wrap: wrap; align-items: baseline; gap: .625rem; margin-bottom: .5rem; }

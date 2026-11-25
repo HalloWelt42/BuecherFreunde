@@ -1,0 +1,15 @@
+/* Reihenfolge zählt: Marken zuerst, Breiten zuletzt */
+@import "./marken.css";
+@import "./glas.css";
+@import "./schale.css";
+@import "./teile.css";
+@import "./felder.css";
+@import "./ansicht.css";
+@import "./regal.css";
+@import "./vorschau.css";
+@import "./buch.css";
+@import "./suche.css";
+@import "./hinzu.css";
+@import "./leser.css";
+@import "./schwebend.css";
+@import "./breiten.css";

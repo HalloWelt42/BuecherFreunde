@@ -1,257 +1,103 @@
-<script>
+<script lang="ts">
+  import type { Component } from "svelte";
   import { route, matchRoute, handleLinkClick } from "./lib/router.svelte.js";
-  import { ui } from "./lib/stores/ui.svelte.js";
-  import { hasToken, onAuthError, getToken, beiTokenWechsel } from "./lib/api/client.js";
-  import Header from "./lib/components/layout/Header.svelte";
-  import Sidebar from "./lib/components/layout/Sidebar.svelte";
-  import Footer from "./lib/components/layout/Footer.svelte";
-  import ScratchPad from "./lib/components/shared/ScratchPad.svelte";
-  import Login from "./lib/components/auth/Login.svelte";
-  import TelefonApp from "./lib/telefon/TelefonApp.svelte";
-  import { geraet } from "./lib/stores/geraet.svelte.js";
-  import { fassung, fassungVerfolgen, vielleichtNeuLaden } from "./lib/fassung.svelte.js";
-  import Toast from "./lib/components/ui/Toast.svelte";
+  import { hasToken, onAuthError, beiTokenWechsel } from "./lib/api/client";
+  import { fassungVerfolgen, vielleichtNeuLaden } from "./lib/fassung.svelte";
+  import { filter } from "./lib/stand/filter.svelte";
+  import { schale } from "./lib/stand/schale.svelte";
+  import Kulisse from "./lib/schale/Kulisse.svelte";
+  import Schale from "./lib/schale/Schale.svelte";
+  import Fassungsband from "./lib/schale/Fassungsband.svelte";
+  import Meldungen from "./lib/teile/Meldungen.svelte";
+  import Rueckfrage from "./lib/teile/Rueckfrage.svelte";
+  import Anmeldung from "./ansichten/anmeldung/Anmeldung.svelte";
+  import Autoren from "./ansichten/autoren/Autoren.svelte";
+  import Autorenseite from "./ansichten/autoren/Autorenseite.svelte";
+  import Bibliothek from "./ansichten/bibliothek/Bibliothek.svelte";
+  import Buchseite from "./ansichten/buch/Buchseite.svelte";
+  import Danke from "./ansichten/danke/Danke.svelte";
+  import Einstellungen from "./ansichten/einstellungen/Einstellungen.svelte";
+  import Hinzufuegen from "./ansichten/hinzu/Hinzufuegen.svelte";
+  import Leser from "./ansichten/leser/Leser.svelte";
+  import Sammlung from "./ansichten/sammlung/Sammlung.svelte";
+  import Suche from "./ansichten/suche/Suche.svelte";
+  import Unbekannt from "./ansichten/Unbekannt.svelte";
 
-  import Library from "./pages/Library.svelte";
-  import BookDetail from "./pages/BookDetail.svelte";
-  import Reader from "./pages/Reader.svelte";
-  import SearchResults from "./pages/SearchResults.svelte";
-  import CollectionView from "./pages/CollectionView.svelte";
-  import Authors from "./pages/Authors.svelte";
-  import AuthorDetail from "./pages/AuthorDetail.svelte";
-  import Import from "./pages/Import.svelte";
-  import Settings from "./pages/Settings.svelte";
+  interface Ziel {
+    muster: string;
+    // Ansichten ohne Bestandteile in der Adresse brauchen params nicht
+    ansicht: Component<{ params: Record<string, string> }> | Component;
+    vorschau?: boolean;
+    ohneLeiste?: boolean;
+  }
 
-  let showLogin = $state(!hasToken());
+  const ziele: Ziel[] = [
+    { muster: "/", ansicht: Bibliothek, vorschau: true },
+    { muster: "/book/:id/read", ansicht: Leser, ohneLeiste: true },
+    { muster: "/book/:id", ansicht: Buchseite },
+    { muster: "/authors", ansicht: Autoren },
+    { muster: "/author/:id", ansicht: Autorenseite },
+    { muster: "/search", ansicht: Suche, vorschau: true },
+    { muster: "/collection/:id", ansicht: Sammlung, vorschau: true },
+    { muster: "/import", ansicht: Hinzufuegen },
+    { muster: "/settings/*", ansicht: Einstellungen },
+    { muster: "/settings", ansicht: Einstellungen },
+    { muster: "/danke", ansicht: Danke },
+  ];
 
-  // Neue Fassung auf dem Server: von selbst neu laden (Start, Ortswechsel, Fenster wieder vorn)
-  $effect(() => fassungVerfolgen());
-  let letzterPfad = route.path;
-  $effect(() => {
-    if (route.path !== letzterPfad) {
-      letzterPfad = route.path;
-      vielleichtNeuLaden("ortswechsel");
+  let angemeldet = $state(hasToken());
+
+  let ziel = $derived.by(() => {
+    for (const z of ziele) {
+      const params = matchRoute(z.muster, route.path);
+      if (params) return { ...z, params };
     }
+    return { muster: "", ansicht: Unbekannt as Ziel["ansicht"], params: {}, vorschau: false, ohneLeiste: false };
   });
 
-  onAuthError(() => {
-    showLogin = true;
-  });
+  // Die Einstellungen bleiben beim Wechsel des Reiters stehen
+  let schluessel = $derived(ziel.muster.startsWith("/settings") ? "/settings" : route.path);
+
+  filter.stelleWiederHer();
+
+  onAuthError(() => (angemeldet = false));
 
   // Nach der Anmeldung lädt die Seite an derselben Adresse neu: ein Verweis (etwa /book/12/read?page=38&q=Begriff)
   // öffnet danach genau diese Stelle
-  function onLoginSuccess() {
-    showLogin = false;
-    window.location.reload();
+  function nachAnmeldung() {
+    location.reload();
   }
 
-  // In einem anderen Tab angemeldet: dieser zeigt seine Stelle, statt weiter die Anmeldung
+  // In einem anderen Tab an- oder abgemeldet gilt auch hier
   beiTokenWechsel((token) => {
-    if (token && showLogin) onLoginSuccess();
-    else if (!token) showLogin = true;
+    if (token && !angemeldet) nachAnmeldung();
+    else if (!token) angemeldet = false;
   });
 
-  let bgUrl = $derived(
-    ui.bgAktuellerDateiname
-      ? `/api/config/design/hintergrund/${ui.bgAktuellerDateiname}?token=${encodeURIComponent(getToken())}`
-      : null
-  );
+  // Neue Fassung auf dem Server: von selbst neu laden (Start, Ortswechsel, Fenster wieder vorn)
+  $effect(() => fassungVerfolgen());
 
-  const routeDefs = [
-    { pattern: "/book/:id/read", component: Reader },
-    { pattern: "/book/:id", component: BookDetail },
-    { pattern: "/authors", component: Authors },
-    { pattern: "/author/:id", component: AuthorDetail },
-    { pattern: "/search", component: SearchResults },
-    { pattern: "/collection/:id", component: CollectionView },
-    { pattern: "/import", component: Import },
-    { pattern: "/settings/*", component: Settings },
-    { pattern: "/settings", component: Settings },
-    { pattern: "/", component: Library },
-  ];
-
-  // route ist reaktives Objekt ($state in .svelte.js)
-  let resolved = $derived.by(() => {
-    const path = route.path;
-    for (const def of routeDefs) {
-      const match = matchRoute(def.pattern, path);
-      if (match !== null) {
-        const hasParams = Object.keys(match).length > 0;
-        return { component: def.component, params: hasParams ? match : null };
-      }
-    }
-    return null;
+  let letzterPfad = route.path;
+  $effect(() => {
+    if (route.path === letzterPfad) return;
+    letzterPfad = route.path;
+    schale.schliesseAlles();
+    vielleichtNeuLaden("ortswechsel");
   });
 </script>
 
-{#if showLogin}
-  <Login onSuccess={onLoginSuccess} />
-{/if}
-
 <svelte:document onclick={handleLinkClick} />
 
-{#if geraet.telefon}
-  <TelefonApp />
-{:else}
-<div class="app-layout" class:sidebar-collapsed={!ui.sidebarOpen} class:reader-fullscreen={ui.readerFullscreen} class:has-bg={bgUrl}>
-  {#if bgUrl}
-    <div class="app-bg" style="background-image: url({bgUrl})"></div>
+<div class="app" bind:clientWidth={schale.breite}>
+  <Kulisse />
+  {#if angemeldet}
+    <Schale mitVorschau={!!ziel.vorschau} mitLeiste={!ziel.ohneLeiste}>
+      {#key schluessel}<ziel.ansicht params={ziel.params} />{/key}
+    </Schale>
+  {:else}
+    <Anmeldung onerfolg={nachAnmeldung} />
   {/if}
-  <div class="grid-header">
-    <Header />
-  </div>
-
-  <div class="grid-sidebar">
-    <Sidebar currentPath={route.path} />
-  </div>
-
-  <main class="grid-main">
-    {#if resolved}
-      {#key route.path}
-        {#if resolved.params}
-          <resolved.component params={resolved.params} />
-        {:else}
-          <resolved.component />
-        {/if}
-      {/key}
-    {/if}
-  </main>
-
-  <div class="grid-footer">
-    <Footer />
-  </div>
+  <Fassungsband />
+  <Meldungen />
+  <Rueckfrage />
 </div>
-
-<ScratchPad visible={ui.scratchPadOpen} onClose={() => ui.scratchPadOpen = false} />
-{/if}
-<Toast />
-
-{#if fassung.neu}
-  <div class="neue-fassung" role="status">
-    <span>Neue Fassung {fassung.neu} bereit</span>
-    <button onclick={() => location.reload()}>Jetzt neu laden</button>
-  </div>
-{/if}
-
-<style>
-  .neue-fassung {
-    position: fixed;
-    left: 50%;
-    bottom: 1rem;
-    transform: translateX(-50%);
-    z-index: 10001;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    max-width: calc(100% - 2rem);
-    padding: 0.5rem 0.5rem 0.5rem 1rem;
-    border-radius: 12px;
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-    font-size: 15px;
-    color: var(--color-text-primary);
-  }
-
-  .neue-fassung button {
-    flex-shrink: 0;
-    height: 40px;
-    padding: 0 0.875rem;
-    border: none;
-    border-radius: 8px;
-    background: var(--color-accent);
-    color: #fff;
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .app-layout {
-    display: grid;
-    grid-template-areas:
-      "header header"
-      "sidebar main"
-      "footer footer";
-    grid-template-columns: var(--sidebar-width) 1fr;
-    grid-template-rows: var(--header-height) 1fr auto;
-    /* iOS-Safari: dvh statt 100vh, sonst werden Kopf-/Steuerleisten aus dem
-       sichtbaren Bereich gedrueckt. 100vh bleibt Fallback ohne dvh. */
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
-    position: relative;
-  }
-
-  .app-bg {
-    position: fixed;
-    inset: -10px;
-    z-index: 0;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    filter: blur(6px) saturate(1.2);
-    pointer-events: none;
-  }
-
-  /* Body transparent bei aktivem Hintergrundbild */
-  :global(body:has(.app-layout.has-bg)) {
-    background-color: transparent;
-  }
-
-  .app-layout.sidebar-collapsed {
-    grid-template-columns: 0 1fr;
-  }
-
-  .app-layout.sidebar-collapsed .grid-sidebar {
-    width: 0;
-    padding: 0;
-    border: none;
-  }
-
-  .grid-header {
-    grid-area: header;
-    z-index: 20;
-  }
-
-  .grid-sidebar {
-    grid-area: sidebar;
-    overflow-y: auto;
-    overflow-x: hidden;
-    transition: width 0.2s ease, padding 0.2s ease;
-    width: var(--sidebar-width);
-    z-index: 10;
-    position: relative;
-  }
-
-  .grid-main {
-    grid-area: main;
-    min-height: 0;
-    padding: 1.5rem;
-    overflow-y: auto;
-    overflow-x: hidden;
-    z-index: 2;
-    position: relative;
-  }
-
-  .grid-footer {
-    grid-area: footer;
-    z-index: 50;
-  }
-
-  /* Vollbild-Lesemodus: Header, Sidebar, Footer ausblenden */
-  .app-layout.reader-fullscreen {
-    grid-template-areas: "main";
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr;
-  }
-
-  .app-layout.reader-fullscreen .grid-header,
-  .app-layout.reader-fullscreen .grid-sidebar,
-  .app-layout.reader-fullscreen .grid-footer {
-    display: none;
-  }
-
-  .app-layout.reader-fullscreen .grid-main {
-    padding: 0;
-  }
-</style>

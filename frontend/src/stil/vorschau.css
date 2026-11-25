@@ -1,0 +1,8 @@
+/* Vorschau */
+.vorschau .rollen { flex: 1; padding: .875rem; display: grid; gap: .875rem; align-content: start; grid-template-columns: minmax(0, 1fr); }
+.vorschau .bild { width: 9.5rem; margin: .25rem auto 0; }
+.vorschau h2 { font: 600 1.25rem/1.25 var(--buchschrift); text-wrap: balance; }
+.angaben { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .25rem .75rem; font-size: .9375rem; }
+.angaben dt { color: var(--tinte-3); } .angaben dd { overflow-wrap: anywhere; }
+.knopfreihe { display: grid; grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); gap: .375rem; }
+.knopfreihe .voll { grid-column: 1 / -1; }

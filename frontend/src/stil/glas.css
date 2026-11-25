@@ -1,0 +1,24 @@
+/* Glas: drei Stufen nach Aufgabe. klar = über rollendem Inhalt, milch = feste Flächen, dicht = schwebend.
+   Echte Unschärfe haben nur diese wenigen festen Flächen; Karten und Zeilen darin sind Platten ohne Filter. */
+.glas { position: relative; border-radius: var(--r3); isolation: isolate;
+  box-shadow: inset 0 1px 0 var(--scheibe), 0 0 0 1px rgb(var(--kante) / .2), 0 1px 2px rgb(var(--schatten) / .1), 0 14px 34px -18px rgb(var(--schatten) / calc(var(--schatten-st) * 1.6)); }
+.glas.klar { background: rgb(var(--glas) / var(--a-klar)); -webkit-backdrop-filter: blur(var(--stufe-klar)) saturate(1.35); backdrop-filter: blur(var(--stufe-klar)) saturate(1.35); }
+.glas.milch { background: rgb(var(--glas) / var(--a-milch)); -webkit-backdrop-filter: blur(var(--stufe-milch)) saturate(1.2); backdrop-filter: blur(var(--stufe-milch)) saturate(1.2); }
+.glas.dicht { background: rgb(var(--glas) / var(--a-dicht)); -webkit-backdrop-filter: blur(var(--stufe-dicht)) saturate(1.2); backdrop-filter: blur(var(--stufe-dicht)) saturate(1.2); }
+/* geschliffene Kante: rundum ein Lichtverlauf von oben links, wo die Sonne auf die Scheibe trifft */
+.glas::before { content: ""; position: absolute; inset: 0; z-index: 3; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(145deg, rgb(var(--licht) / .95), rgb(var(--licht) / .25) 24%, rgb(var(--kante) / .5) 60%, rgb(var(--kante) / .18) 78%, rgb(var(--licht) / .6));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: .75; }
+/* Korn des geätzten Glases */
+.glas.milch::after, .glas.dicht::after { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; opacity: .5; mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='k'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23k)'/%3E%3C/svg%3E"); }
+/* Platte: Karte, Zeile, Feld auf Glas, ohne Filter */
+.platte { background: var(--platte); border-radius: var(--r2); box-shadow: inset 0 1px 0 var(--platte-licht), 0 0 0 1px var(--linie); }
+.mulde { background: var(--vertieft); border-radius: var(--r2); box-shadow: inset 0 1px 2px rgb(var(--schatten) / .16), inset 0 0 0 1px var(--linie); }
+/* Regalwand hinter allem: ein fertiges Bild (Canvas), leicht unscharf, darüber Dunst und Licht der Umschläge */
+.kulisse { position: absolute; inset: 0; overflow: hidden; z-index: 0; background: var(--grund); transition: --k1 .9s, --k2 .9s, --k3 .9s; }
+.kulisse canvas { position: absolute; inset: -14px; width: calc(100% + 28px); height: calc(100% + 28px); filter: blur(3px) saturate(1.05); opacity: calc(1 - var(--regal-daempfung)); }
+.kulisse::after { content: ""; position: absolute; inset: 0; opacity: var(--kulisse-licht);
+  background: radial-gradient(55% 60% at 14% 0%, var(--k1), transparent 72%), radial-gradient(50% 60% at 92% 12%, var(--k2), transparent 72%), radial-gradient(60% 60% at 70% 100%, var(--k3), transparent 74%), linear-gradient(180deg, rgb(var(--nebel) / .5), rgb(var(--nebel) / .2)); }
+:root[data-grund="licht"] .kulisse canvas, :root[data-grund="ruhig"] .kulisse canvas { display: none; }
+@media (prefers-reduced-motion: reduce) { .kulisse { transition: none; } }

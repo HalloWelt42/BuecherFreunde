@@ -1,0 +1,71 @@
+/* Glaswelt "Vitrine", Aufbau: Kopf, Leiste links, Bühne, Vorschau rechts; am Telefon Kopf, Bühne, Tafel unten.
+   Werkstoffe: Floatglas mit grünlicher Kante, geätztes Milchglas mit Korn, Messing als Akzent, dahinter die Regalwand.
+   Alle Farben, Ecken und Glasstufen stehen nur hier; Bausteine nutzen nur Marken.
+   Hell und Dunkel: lib/stand/darstellung.svelte.ts setzt data-theme immer (auch bei "System"); die Abfrage unten gilt
+   nur für den Augenblick, bis das Skript läuft. */
+@property --k1 { syntax: "<color>"; inherits: true; initial-value: #5a7f78; }
+@property --k2 { syntax: "<color>"; inherits: true; initial-value: #b98a3c; }
+@property --k3 { syntax: "<color>"; inherits: true; initial-value: #6b5b7a; }
+:root {
+  --schrift: "Barlow", system-ui, sans-serif;
+  --buchschrift: "Literata", Georgia, serif;
+  --codeschrift: "JetBrains Mono", ui-monospace, monospace;
+  --r1: 4px; --r2: 6px; --r3: 8px;
+  --fuge: 6px; --rand-seite: 16px;
+  --kopf: 3.5rem;
+  --stufe-klar: 14px; --stufe-milch: 28px; --stufe-dicht: 40px;
+  --a-klar: .52; --a-milch: .68; --a-dicht: .86;
+  --grund: #d3dedb; --nebel: 211 222 219;
+  --glas: 250 253 252; --vertieft: rgb(20 48 43 / .07); --vertieft-2: rgb(20 48 43 / .12);
+  --tinte: #12201d; --tinte-2: #33443f; --tinte-3: #495a55;
+  --kante: 64 138 112; --licht: 255 255 255; --linie: rgb(18 48 42 / .14);
+  --messing: #7d5608; --messing-flaeche: #8a6110; --auf-messing: #fffdf6; --messing-hauch: rgb(160 112 18 / .16);
+  --gut: #0b6b3a; --warn: #8f4a00; --schlecht: #a61e17; --info: #14558f;
+  --led-gut: #00a835; --led-warn: #f08a00; --led-schlecht: #e0261c; --led-aus: #8b9994;
+  --schatten: 12 34 29; --schatten-st: .18;
+  --kulisse-licht: .62; --regal-daempfung: .34;
+  --papier: #fbfaf5; --papier-tinte: #1b1d1c;
+  --knopf: rgb(var(--glas) / .62); --knopf-auf: rgb(var(--glas) / .94); --hauch: rgb(var(--licht) / .34); --platte: rgb(var(--glas) / .5); --platte-licht: rgb(var(--licht) / .4);
+  --gewaehlt: rgb(var(--glas) / .96); --spiegel: rgb(var(--licht) / .6); --scheibe: rgb(var(--licht) / .55); --streifen: rgb(var(--licht) / .18);
+  --boden: linear-gradient(180deg, rgb(var(--licht) / .95), rgb(var(--kante) / .3) 18%, rgb(var(--licht) / .3) 42%, rgb(var(--kante) / .4) 100%);
+  --fa-width: auto;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme]) { --grund: #0b1312; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --grund: #0b1312; --nebel: 11 19 18;
+  --glas: 26 39 37; --vertieft: rgb(0 0 0 / .26); --vertieft-2: rgb(0 0 0 / .4);
+  --tinte: #eef5f2; --tinte-2: #c3d1cc; --tinte-3: #a3b4ae;
+  --kante: 116 214 176; --licht: 226 255 244; --linie: rgb(210 255 238 / .13);
+  --messing: #e9bd62; --messing-flaeche: #d9a843; --auf-messing: #1c1403; --messing-hauch: rgb(233 189 98 / .17);
+  --gut: #5fd892; --warn: #ffb45c; --schlecht: #ff8f86; --info: #86c3ff;
+  --led-gut: #00d23c; --led-warn: #ff9b1a; --led-schlecht: #ff4036; --led-aus: #55645f;
+  --schatten: 0 0 0; --schatten-st: .5;
+  --kulisse-licht: .3; --regal-daempfung: .46;
+  --papier: #fbfaf5; --papier-tinte: #1b1d1c;
+  --knopf: rgb(var(--licht) / .085); --knopf-auf: rgb(var(--licht) / .16); --hauch: rgb(var(--licht) / .08); --platte: rgb(var(--licht) / .05); --platte-licht: rgb(var(--licht) / .08);
+  --gewaehlt: rgb(var(--licht) / .18); --spiegel: rgb(var(--licht) / .15); --scheibe: rgb(var(--licht) / .16); --streifen: rgb(var(--licht) / .03);
+  --boden: linear-gradient(180deg, rgb(var(--licht) / .52), rgb(var(--kante) / .24) 18%, rgb(var(--licht) / .07) 42%, rgb(var(--kante) / .34) 100%);
+  color-scheme: dark;
+}
+:root[data-glas="klar"] { --a-klar: .3; --a-milch: .46; --a-dicht: .8; --stufe-klar: 8px; --stufe-milch: 16px; --stufe-dicht: 28px; }
+:root[data-glas="dicht"] { --a-klar: .7; --a-milch: .82; --a-dicht: .95; }
+:root[data-glas="ohne"] { --a-klar: .95; --a-milch: .97; --a-dicht: .99; --stufe-klar: 0px; --stufe-milch: 0px; --stufe-dicht: 0px; }
+:root[data-grund="ruhig"] { --kulisse-licht: 0; }
+html { height: 100%; font-size: 16px; }
+html[data-schrift="mittel"] { font-size: 17px; }
+html[data-schrift="gross"] { font-size: 19px; }
+html[data-schrift="riesig"] { font-size: 21.5px; }
+body { height: 100vh; height: 100dvh; margin: 0; background: var(--grund); color: var(--tinte); font-family: var(--schrift); line-height: 1.4; -webkit-font-smoothing: antialiased; overflow: hidden; }
+*, *::before, *::after { box-sizing: border-box; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; text-align: inherit; }
+h1, h2, h3, p, ul, dl, dd, figure { margin: 0; padding: 0; }
+ul { list-style: none; }
+a { color: var(--messing); }
+img { max-width: 100%; }
+[hidden] { display: none; }
+:focus-visible { outline: 2px solid var(--messing); outline-offset: 2px; border-radius: var(--r1); }
+.zahl { font-variant-numeric: tabular-nums; }
+.nur-vorlesen { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+#app { height: 100%; }

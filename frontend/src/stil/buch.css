@@ -1,0 +1,18 @@
+/* Buchseite */
+.buchkopf { display: grid; grid-template-columns: 13.5rem minmax(0, 1fr); gap: 1.5rem; padding: 1.125rem; }
+.buchkopf h1 { font: 600 2rem/1.15 var(--buchschrift); text-wrap: balance; }
+.buchkopf .zwei { display: grid; gap: 1.5rem; grid-template-columns: minmax(0, 1fr) minmax(0, 22rem); }
+.buchkopf .rechts { display: grid; gap: .75rem; align-content: start; }
+.raster { display: grid; gap: .75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.raster > .breit { grid-column: 1 / -1; }
+.karte { padding: .875rem; display: grid; gap: .625rem; align-content: start; grid-template-columns: minmax(0, 1fr); }
+.karte > h2 { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: .5rem; }
+.karte > h2 i { color: var(--messing); width: 1.125rem; text-align: center; }
+.stelle { display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: .625rem; padding: .4375rem 0; border-top: 1px solid var(--linie); font-size: .9375rem; }
+.stelle:first-of-type { border-top: 0; }
+.stelle > i { background: var(--f, var(--messing)); align-self: stretch; }
+.stelle .chip { align-self: start; }
+.zitat { font: 400 .9375rem/1.5 var(--buchschrift); }
+.fluss { display: flex; align-items: stretch; gap: .375rem; flex-wrap: wrap; }
+.fluss > div { flex: 1 1 8.5rem; padding: .5rem .625rem; font-size: .875rem; }
+.fluss b { display: block; font-size: .9375rem; }

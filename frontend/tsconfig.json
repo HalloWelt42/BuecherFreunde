@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["svelte", "vite/client", "vitest/globals", "node"],
+    "strict": true,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": false,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "noUncheckedIndexedAccess": false,
+    "paths": { "$lib/*": ["./src/lib/*"] }
+  },
+  "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte", "tests/**/*.ts"]
+}

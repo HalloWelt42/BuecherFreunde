@@ -1,0 +1,64 @@
+<script lang="ts">
+  import type { Snippet } from "svelte";
+  import { bestand } from "../stand/bestand.svelte";
+  import { annahme } from "../stand/annahme.svelte";
+  import { auftraege } from "../stand/auftraege.svelte";
+  import { schale } from "../stand/schale.svelte";
+  import { verbindungen } from "../stand/verbindungen.svelte";
+  import Auftraege from "./Auftraege.svelte";
+  import Darstellungswahl from "./Darstellungswahl.svelte";
+  import Konto from "./Konto.svelte";
+  import Kopf from "./Kopf.svelte";
+  import Leiste from "./Leiste.svelte";
+  import Schnellnotiz from "./Schnellnotiz.svelte";
+  import Schwebefeld from "./Schwebefeld.svelte";
+  import Tafel from "./Tafel.svelte";
+  import Vorschau from "./Vorschau.svelte";
+
+  let { mitVorschau, mitLeiste, children }: { mitVorschau: boolean; mitLeiste: boolean; children: Snippet } = $props();
+
+  $effect(() => {
+    void bestand.laden();
+    void annahme.starte();
+    auftraege.starte();
+    verbindungen.starte();
+    return () => {
+      annahme.halte();
+      auftraege.halte();
+      verbindungen.halte();
+    };
+  });
+
+  $effect(() => {
+    const ab = () => schale.vollbildAbgleichen();
+    document.addEventListener("fullscreenchange", ab);
+    document.addEventListener("webkitfullscreenchange", ab);
+    return () => {
+      document.removeEventListener("fullscreenchange", ab);
+      document.removeEventListener("webkitfullscreenchange", ab);
+    };
+  });
+</script>
+
+<div class="schale" class:ohne-leiste={schale.leisteZu || !mitLeiste} class:ohne-vorschau={!mitVorschau} class:leiste-offen={schale.leisteOffen} class:vollbild={schale.vollbild}>
+  <Kopf />
+  <Leiste />
+  <main class="buehne glas klar">{@render children()}</main>
+  {#if mitVorschau && schale.mitVorschau}<Vorschau />{/if}
+  <Tafel />
+</div>
+
+{#if schale.offen === "auftraege"}
+  <Schwebefeld titel="Aufträge" breite="27rem"><Auftraege /></Schwebefeld>
+{:else if schale.offen === "darstellung"}
+  <Schwebefeld titel="Darstellung"><Darstellungswahl /><p class="leise hinweis">Die Regalwand entsteht aus den Farben der eigenen Umschläge. Eigene Hintergrundbilder stehen unter Einstellungen, Darstellung.</p></Schwebefeld>
+{:else if schale.offen === "konto"}
+  <Schwebefeld titel="Angemeldet mit der Kellerwolke" breite="18rem"><Konto /></Schwebefeld>
+{/if}
+{#if schale.notizOffen}<Schnellnotiz />{/if}
+
+<style>
+  .hinweis {
+    padding-top: 0.75rem;
+  }
+</style>

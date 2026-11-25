@@ -1,0 +1,84 @@
+.suchfeld-mobil, .nur-schmal, .nur-kompakt { display: none; }
+/* Breiten der App: unter 1180 ohne Vorschau, unter 900 schmale Leiste aus, unter 720 eigene Telefonansicht */
+@container app (max-width: 1180px) {
+  .schale, .schale.ohne-vorschau { grid-template-columns: 15.25rem minmax(0, 1fr); }
+  .schale.ohne-leiste, .schale.ohne-leiste.ohne-vorschau { grid-template-columns: minmax(0, 1fr); }
+  .buchkopf .zwei { grid-template-columns: minmax(0, 1fr); }
+  .kopf .nur-weit { display: none; }
+  .nur-schmal { display: inline-flex; }
+  .schale > .vorschau { display: none; }
+  .raster { grid-template-columns: minmax(0, 1fr); }
+}
+@container app (max-width: 900px) {
+  .schale, .schale.ohne-vorschau, .schale.ohne-leiste, .schale.ohne-leiste.ohne-vorschau { grid-template-columns: minmax(0, 1fr); }
+  .schale > .buehne, .schale.ohne-leiste > .buehne { grid-column: 1; }
+  .nur-schmal { display: inline-flex; }
+  .schale > .leiste { display: none; }
+  .schale.leiste-offen > .leiste { display: flex; grid-area: 2 / 1; z-index: 30; width: min(18rem, 100%); }
+  .plan { grid-template-columns: minmax(0, 1fr); }
+  .kopf .nur-breit { display: none; }
+  .nur-kompakt { display: contents; }
+  .zeile:not(.mehr) { grid-template-columns: 2.5rem minmax(0, 2fr) minmax(0, 1fr) 4rem; }
+  .zeile:not(.mehr) > :nth-child(n + 5) { display: none; }
+}
+@container app (max-width: 720px) {
+  .schale, .schale.ohne-vorschau, .schale.ohne-leiste, .schale.ohne-leiste.ohne-vorschau { grid-template: auto minmax(0, 1fr) auto / minmax(0, 1fr); padding: 0; gap: 0; }
+  .kopf { grid-area: 1 / 1; border-radius: 0; height: 3.5rem; padding: 0 var(--rand-seite); }
+  .buehne { grid-area: 2 / 1; border-radius: 0; box-shadow: none; }
+  .buehne.glas::before { display: none; }
+  .schale.leiste-offen > .leiste { grid-area: 2 / 1; width: 100%; }
+  .tafel { grid-area: 3 / 1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); z-index: 20; border-radius: 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .tafel button, .tafel a { text-decoration: none; text-align: center; display: grid; justify-items: center; gap: .125rem; padding: .5rem 0 .4375rem; font-size: .75rem; font-weight: 500; color: var(--tinte-2); min-height: 3.5rem; }
+  .tafel i { font-size: 1.1875rem; }
+  .tafel a[aria-current="page"], .tafel button[aria-current="page"] { color: var(--messing); }
+  .kopf .suche, .kopf .nur-breit, .kopf .nicht-telefon, .kopf .knopf.leisteknopf { display: none; }
+  .kopf .zeichen { flex: 1; min-width: 0; }
+  .kopf > .knopf { flex: none; }
+  .segment { flex-wrap: wrap; max-width: 100%; }
+  .inhalt .knopf:not(.nur), .knopfreihe .knopf { height: auto; min-height: 2.75rem; white-space: normal; padding-block: .25rem; }
+  .buchkopf > *, .buchkopf .rechts, .buchkopf .reihe { min-width: 0; }
+  .kopf .knopf { height: 2.75rem; } .kopf .knopf.nur { width: 2.75rem; }
+  .knopf { height: 2.75rem; } .knopf.nur { width: 2.75rem; } .knopf.klein { height: 2.5rem; } .knopf.klein.nur { width: 2.5rem; }
+  .chip, .segment button { min-height: 2.5rem; }
+  .punkt { min-height: 2.75rem; font-size: 1rem; }
+  .werkzeug { padding: .5rem var(--rand-seite); }
+  .werkzeug { gap: .375rem; }
+  .werkzeug > .schiebt:has(.bearbeiten) { display: contents; }
+  .werkzeug .bearbeiten { order: 1; margin-left: auto; }
+  .werkzeug .filter { order: 2; }
+  .werkzeug .mehrfilter { order: 1; margin-left: auto; }
+  .werkzeug .mehrfilter ~ .schiebt .bearbeiten { margin-left: 0; }
+  .werkzeug .sortierung { order: 3; flex: 1 1 9rem; min-width: 0; flex-wrap: nowrap; }
+  .werkzeug .sortierung .auswahl { flex: 1; }
+  .werkzeug .segment { order: 3; }
+  .werkzeug .auswahl { width: 100%; }
+  .werkzeug .leiste-auswahl, .werkzeug .auswahltitel { order: 4; }
+  .werkzeug .suchfeld-mobil { flex: 1 0 100%; max-width: none; order: -1; height: 2.75rem; }
+  .werkzeug .filter { display: flex; flex-wrap: wrap; gap: .375rem; width: 100%; }
+  .regal { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-inline: -.375rem; }
+  .regal.gross { grid-template-columns: repeat(2, minmax(0, 1fr)); } .regal.nur { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .band .stand { padding: .5rem .4375rem 0; } .schild { padding: .375rem .4375rem 0; height: 5.5rem; } .schild b { font-size: .875rem; }
+  .schnell { display: none; }
+  .weiter { grid-template-columns: minmax(0, 1fr); }
+  .buchkopf { grid-template-columns: 7rem minmax(0, 1fr); gap: .875rem; padding: .75rem; }
+  .buchkopf h1 { font-size: 1.375rem; }
+  .buchkopf .zwei { display: contents; }
+  .buchkopf .zwei > .rechts + .rechts { grid-column: 1 / -1; }
+  .buchkopf .sterne { width: 100%; }
+  .treffer { grid-template-columns: 3.25rem minmax(0, 1fr); } .treffer > :last-child { grid-column: 2; }
+  .ablage { grid-template-columns: auto minmax(0, 1fr); } .ablage > .knopf { grid-column: 1 / -1; }
+  .aufnahme { grid-template-columns: 1.25rem minmax(0, 1fr) auto; } .aufnahme > .stationen { grid-column: 2 / -1; grid-row: 2; }
+  .etappe { grid-template-columns: 2rem minmax(0, 1fr); } .etappe > :nth-child(3) { grid-column: 2; }
+  .zeile.mehr { grid-template-columns: 3.25rem minmax(0, 1fr); } .zeile.mehr > :nth-child(3) { display: none; }
+  .zeile:not(.mehr) { grid-template-columns: 2.25rem minmax(0, 1fr) 4rem; } .zeile:not(.mehr) > :nth-child(3) { display: none; }
+  .leseleiste.oben .nur-breit { display: none; }
+  .notizblock { right: var(--rand-seite); bottom: 4.5rem; width: calc(100% - 2 * var(--rand-seite)); }
+  .schwebe, .schwebe.menue { left: var(--rand-seite); right: var(--rand-seite); width: auto; }
+  .meldungen { bottom: 4.75rem; }
+  .auswahl select, .auswahl.klein select, .eingabe, .feld input, .feld textarea { font-size: 1rem; min-height: 2.75rem; }
+  .haekchen { min-height: 2.75rem; }
+  .buehne .suchfeld-mobil { display: flex; }
+}
+/* Sehr große Schrift am Telefon: das Zeichen trägt allein */
+@container app (max-width: 20rem) { .kopf .zeichen span { display: none; } }
+@media (prefers-reduced-motion: reduce) { .band .umschlag { transition: none; } .band:hover .umschlag { transform: none; } }

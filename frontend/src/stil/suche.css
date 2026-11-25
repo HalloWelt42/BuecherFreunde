@@ -1,0 +1,3 @@
+/* Treffer */
+.treffer { display: grid; grid-template-columns: 4rem minmax(0, 1fr) 10rem; gap: .875rem; padding: .75rem; align-items: start; }
+.treffer h3 { font: 600 1.0625rem/1.3 var(--buchschrift); }

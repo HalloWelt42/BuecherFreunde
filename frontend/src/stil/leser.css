@@ -1,0 +1,15 @@
+/* Leser */
+.leser { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+.leser .seiten { min-height: 0; overflow: auto; padding: 4.5rem var(--rand-seite) 4.5rem; display: grid; justify-content: center; align-content: start; grid-template-columns: minmax(0, 44rem); will-change: transform; }
+.blatt { background: var(--papier); color: var(--papier-tinte); border-radius: 3px; padding: clamp(1.25rem, 5cqw, 3.25rem); box-shadow: 0 0 0 1px rgb(0 0 0 / .14), 0 18px 40px -18px rgb(0 0 0 / .6); font: 400 var(--lesegroesse, 1.125rem)/1.62 var(--buchschrift); hyphens: auto; }
+.blatt h2 { font: 600 1.45em/1.25 var(--buchschrift); margin-bottom: .75em; }
+.blatt p + p { margin-top: .85em; }
+.blatt .gedruckt { font-size: .75em; opacity: .7; text-align: center; margin-top: 2em; }
+.leser[data-papier="sepia"] { --papier: #f1e3c6; --papier-tinte: #3c2c16; }
+.leser[data-papier="dunkel"] { --papier: #181b1a; --papier-tinte: #d7d8d0; }
+.leser[data-papier="kontrast"] { --papier: #000000; --papier-tinte: #ffffff; }
+.leseleiste { position: absolute; z-index: 5; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: .25rem; padding: .375rem; max-width: calc(100% - 1.25rem); }
+.leseleiste.oben { top: .625rem; } .leseleiste.unten { bottom: .625rem; width: min(44rem, calc(100% - 1.25rem)); }
+.leseleiste .balken { flex: 1; }
+.leseleiste b { font: 600 .9375rem var(--buchschrift); padding: 0 .5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.seitenfeld { position: absolute; z-index: 6; top: 4rem; right: .625rem; max-height: calc(100% - 8rem); width: min(20rem, calc(100% - 1.25rem)); padding: .875rem; overflow: auto; display: grid; gap: .75rem; align-content: start; grid-template-columns: minmax(0, 1fr); }

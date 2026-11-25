@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import tailwindcss from "@tailwindcss/vite";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import { readFileSync, writeFileSync } from "fs";
@@ -30,7 +29,7 @@ function symbolEinbetten() {
 }
 
 export default defineConfig({
-  plugins: [svelte(), tailwindcss(), symbolEinbetten()],
+  plugins: [svelte(), symbolEinbetten()],
   define: { __FASSUNG__: JSON.stringify(FASSUNG) },
   server: {
     port: 5173,
@@ -56,7 +55,7 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./vitest.setup.js"],
-    include: ["tests/**/*.test.js"],
+    include: ["tests/**/*.test.{js,ts}"],
     alias: {
       "$lib": resolve(__dirname, "src/lib"),
     },

@@ -1,0 +1,45 @@
+/* Schale: richtet sich nach der Breite der App (Container), damit Telefonrahmen und echtes Telefon dasselbe zeigen */
+.app { position: relative; width: 100%; height: 100%; overflow: hidden; container: app / inline-size; }
+.schale { position: relative; z-index: 1; height: 100%; display: grid; gap: var(--fuge); padding: var(--fuge);
+  grid-template: var(--kopf) minmax(0, 1fr) / 15.25rem minmax(0, 1fr) 20rem; }
+.schale.ohne-vorschau { grid-template-columns: 15.25rem minmax(0, 1fr); }
+.schale.ohne-leiste { grid-template-columns: minmax(0, 1fr) 20rem; }
+.schale.ohne-leiste.ohne-vorschau { grid-template-columns: minmax(0, 1fr); }
+.schale.ohne-leiste > .leiste, .schale.ohne-vorschau > .vorschau { display: none; }
+.schale.ohne-leiste > .buehne { grid-column: 1; }
+.schale.ohne-leiste > .vorschau { grid-column: 2; }
+.kopf { grid-area: 1 / 1 / 2 / -1; z-index: 20; display: flex; align-items: center; gap: .5rem; padding: 0 .625rem; }
+.leiste { grid-area: 2 / 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.buehne { grid-area: 2 / 2; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.vorschau { grid-area: 2 / 3; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.rollen { min-height: 0; overflow: auto; overscroll-behavior: contain; will-change: transform; scrollbar-width: thin; scrollbar-color: rgb(var(--kante) / .5) transparent; }
+.tafel { display: none; }
+.schale.vollbild { grid-template: minmax(0, 1fr) / minmax(0, 1fr); padding: 0; gap: 0; }
+.schale.vollbild > :not(.buehne) { display: none; }
+.schale.vollbild > .buehne { grid-area: 1 / 1; border-radius: 0; }
+.zeichen { color: inherit; text-decoration: none; display: flex; align-items: center; gap: .5rem; font-weight: 600; font-size: 1.0625rem; white-space: nowrap; }
+.zeichen span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.zeichen svg { width: 1.75rem; height: 1.75rem; flex: none; }
+.suche { flex: 1; min-width: 0; max-width: 46rem; margin: 0 auto; height: 2.5rem; display: flex; align-items: center; gap: .5rem; padding: 0 .25rem 0 .75rem; }
+.suche input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; outline: 0; font-size: 1rem; }
+.suche input::placeholder { color: var(--tinte-3); }
+.suche:focus-within { outline: 2px solid var(--messing); outline-offset: 1px; }
+.leiste .rollen { flex: 1; padding: .375rem; }
+.leiste h2 { font-size: .8125rem; font-weight: 600; color: var(--tinte-3); padding: .5rem .5rem .1875rem; }
+.punkt { color: inherit; text-decoration: none; display: flex; align-items: center; gap: .625rem; width: 100%; min-height: 2rem; padding: .1875rem .5rem; border-radius: var(--r2); font-size: .9375rem; font-weight: 500; color: var(--tinte-2); }
+.punkt > i { width: 1.125rem; text-align: center; color: var(--tinte-3); flex: none; }
+.punkt > .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.punkt .zahl { font-size: .8125rem; color: var(--tinte-3); }
+.punkt:hover { background: var(--hauch); }
+.punkt[aria-current="page"], .punkt[aria-pressed="true"] { background: var(--messing-hauch); color: var(--tinte); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--messing) 45%, transparent); }
+.punkt[aria-current="page"] > i, .punkt[aria-pressed="true"] > i { color: var(--messing); }
+.farbe { width: .625rem; height: .625rem; border-radius: 50%; flex: none; margin: 0 .25rem; }
+.leiste-fuss { border-top: 1px solid var(--linie); padding: .375rem; display: grid; gap: .125rem; font-size: .8125rem; color: var(--tinte-2); }
+.lampen { display: flex; flex-wrap: wrap; gap: .125rem .75rem; padding: .25rem .5rem .125rem; }
+.lampe { display: flex; align-items: center; gap: .4375rem; }
+.led { width: .5625rem; height: .5625rem; border-radius: 50%; flex: none; background: var(--led-aus); box-shadow: 0 0 0 1px rgb(var(--schatten) / .25); }
+.led.gut { background: var(--led-gut); box-shadow: 0 0 0 1px rgb(var(--schatten) / .25), 0 0 7px color-mix(in srgb, var(--led-gut) 70%, transparent); }
+.led.warn { background: var(--led-warn); box-shadow: 0 0 0 1px rgb(var(--schatten) / .25), 0 0 7px color-mix(in srgb, var(--led-warn) 70%, transparent); }
+.led.schlecht { background: var(--led-schlecht); box-shadow: 0 0 0 1px rgb(var(--schatten) / .25), 0 0 7px color-mix(in srgb, var(--led-schlecht) 70%, transparent); }
+.schwebe { position: absolute; z-index: 40; padding: .75rem; right: var(--rechts); width: var(--breite, 21rem); max-width: calc(100% - 2 * var(--fuge)); max-height: calc(100% - var(--kopf) - 1.5rem); overflow: auto; }
+.schwebe h2 { font-size: 1rem; font-weight: 600; margin-bottom: .5rem; }
