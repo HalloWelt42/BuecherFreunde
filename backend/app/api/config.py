@@ -7,7 +7,7 @@ import httpx
 from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi.responses import FileResponse
 
-from backend.app.core.auth import verify_token, verify_token_query
+from backend.app.core.auth import verify_token, verify_token_inhalt
 from backend.app.core.config import settings
 from backend.app.core.database import db
 
@@ -227,7 +227,7 @@ async def bg_image_status(_token: str = Depends(verify_token)):
 
 
 @router.get("/design/hintergrund/{dateiname}")
-async def get_bg_image_by_name(dateiname: str, token: str = Depends(verify_token_query)):
+async def get_bg_image_by_name(dateiname: str, token: str = Depends(verify_token_inhalt)):
     """Liefert ein Hintergrundbild nach Dateiname."""
     from fastapi import HTTPException
 
@@ -240,7 +240,7 @@ async def get_bg_image_by_name(dateiname: str, token: str = Depends(verify_token
 
 
 @router.get("/design/hintergrund")
-async def get_bg_image(token: str = Depends(verify_token_query)):
+async def get_bg_image(token: str = Depends(verify_token_inhalt)):
     """Liefert das erste Hintergrundbild (Fallback)."""
     from fastapi import HTTPException
 

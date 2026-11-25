@@ -1,6 +1,6 @@
 # Neue Schnittstellen des Neubaus (BF-7 bis BF-10)
 
-Alle Wege brauchen die Anmeldung wie bisher (`Authorization: Bearer`, für Bilder und Ereignisströme `?token=`).
+Alle Wege brauchen die Anmeldung (`Authorization: Bearer` oder `X-Kellerwolke-Sitzung`). Bilder, Dateien und Ereignisströme lesen sie aus dem Inhalts-Cookie von `POST /api/anmeldung/zugang`; in Adressen steht sie nie.
 Fehler kommen als `{"detail": "deutscher Satz"}`. Die vorhandenen Wege bleiben unverändert.
 
 ## Annahme (Hochladen)
@@ -29,7 +29,7 @@ möglich), `kaputt` (leer oder unlesbar, nicht eingetragen), `fehler` (mit Grund
 | `POST /api/annahme/ausblenden` | fertige und schon vorhandene ausblenden (bleiben im Verlauf) |
 | `GET /api/annahme/eingangsordner` | `{bereit, pfad, dateien: [{name, groesse, stand, text, buch_id}]}`, was im Eingangsordner der Kellerwolke liegt |
 | `POST /api/annahme/eingangsordner` | jetzt nachsehen, sonst jede Minute; `{neu}` |
-| `GET /api/annahme/ereignisse?token=` | Ereignisstrom, je Änderung `data: {eintraege, zaehler}` |
+| `GET /api/annahme/ereignisse` | Ereignisstrom, je Änderung `data: {eintraege, zaehler}` |
 
 Der Browser rechnet den sha256 stückweise (npm `hash-wasm`), schickt Teile zu `teil_groesse` nacheinander, höchstens zwei
 Dateien zugleich, und setzt nach Verbindungsverlust am Stand des Servers fort. Wer die Seite neu lädt, wählt die Datei

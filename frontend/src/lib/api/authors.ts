@@ -1,5 +1,5 @@
 // Autoren
-import { del, get, getToken, patch, post } from "./client";
+import { del, get, patch, post } from "./client";
 import type { Parameter } from "./client";
 
 export interface Autor {
@@ -124,7 +124,7 @@ export interface Abgleichoptionen {
 
 /** Ereignisstrom des Abgleichs; schließt sich nach einem Fehler */
 export function batchScanEvents(optionen: Abgleichoptionen, tun: (ereignis: Abgleichereignis) => void, beiFehler?: () => void): { close: () => void } {
-  const p = new URLSearchParams({ token: getToken() });
+  const p = new URLSearchParams();
   p.set("nur_ohne_wikidata", String(optionen.nurOhneWikidata !== false));
   if (optionen.autoUebernehmen) p.set("auto_uebernehmen", "true");
   const strom = new EventSource(`/api/authors/scanner/events?${p}`);
@@ -143,7 +143,5 @@ export function batchScanEvents(optionen: Abgleichoptionen, tun: (ereignis: Abgl
 }
 
 export function autorenFotoUrl(id: number, groesse: "normal" | "thumb" | "mini" = "normal"): string {
-  const p = new URLSearchParams({ token: getToken() });
-  if (groesse !== "normal") p.set("groesse", groesse);
-  return `/api/authors/${id}/foto?${p}`;
+  return `/api/authors/${id}/foto${groesse !== "normal" ? `?groesse=${groesse}` : ""}`;
 }

@@ -77,6 +77,18 @@ export async function abmelden(): Promise<void> {
 }
 
 /**
+ * Öffnet die Inhalte für Adressen, die keinen Kopf senden können (Bilder, Dateien, Ereignisströme): der Server setzt ein
+ * Cookie, das nur er liest. So steht die Anmeldung nie in einer Adresse.
+ */
+export async function oeffneInhalte(): Promise<void> {
+  try {
+    await anfrage("/api/anmeldung/zugang", { method: "POST" });
+  } catch {
+    // abgewiesen: die Anmeldung erscheint von selbst; ohne Verbindung versucht es der nächste Start
+  }
+}
+
+/**
  * Gibt den aktuellen Token zurück.
  */
 export function getToken(): string {
@@ -221,9 +233,7 @@ export async function upload<T = any>(path: string, formData: FormData): Promise
  * SSE-Verbindung für Echtzeit-Events.
  */
 export function sse(path: string, onEvent: (e: { type: string; data: any }) => void, onError?: (fehler: Error) => void): { close: () => void } {
-  const token = getToken();
-  const url = token ? `${path}?token=${encodeURIComponent(token)}` : path;
-  const source = new EventSource(url);
+  const source = new EventSource(path);
 
   source.onmessage = (event) => {
     try {

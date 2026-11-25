@@ -10,7 +10,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 
-from backend.app.core.auth import verify_token, verify_token_query
+from backend.app.core.auth import verify_token, verify_token_inhalt
 from backend.app.core.config import settings
 from backend.app.services.import_service import (
     cancel_pending_tasks,
@@ -266,7 +266,7 @@ async def cancel_import(_token: str = Depends(verify_token)):
 
 
 @router.get("/events")
-async def import_events(_token: str = Depends(verify_token_query)):
+async def import_events(_token: str = Depends(verify_token_inhalt)):
     """SSE-Endpunkt fuer Echtzeit-Fortschritt der Import-Aufgaben."""
 
     async def event_generator():

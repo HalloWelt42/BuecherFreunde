@@ -1,8 +1,9 @@
 """Schutz der Wege: Menschen mit einer Anmeldung der Kellerwolke (Sitzung oder gekoppeltes Gerät), andere Apps mit
 ihrem App-Schlüssel nur für `fundus/*`. Geprüft wird über den Baustein des Appkern (`core/anmeldung.py`)."""
 
-from fastapi import HTTPException, Query, Request, status
+from fastapi import HTTPException, Request, status
 from appkern.anmeldung import AnmeldungsFehler, Konto
+from appkern.anmeldung.api import COOKIE
 
 from backend.app.core.anmeldung import anmeldung, eigener_zugang, erlaubte_apps
 
@@ -32,11 +33,11 @@ async def verify_token(request: Request) -> Konto:
     return konto
 
 
-async def verify_token_query(
-    token: str = Query(..., description="Anmeldung als Parameter (für Bilder, Downloads und Ereignisströme)"),
-) -> Konto:
-    """Wie `verify_token`, für Adressen ohne Kopf (img, a, EventSource)."""
-    konto = await _konto(token)
+async def verify_token_inhalt(request: Request) -> Konto:
+    """Wie `verify_token`, für Adressen ohne Kopf (Bilder, Dateien, Ereignisströme): die Anmeldung kommt dann aus dem
+    Inhalts-Cookie, das `POST /api/anmeldung/zugang` setzt. In Adressen steht sie nie, sonst landet sie in Verläufen,
+    Protokollen und Fehlermeldungen. Nur für lesende Wege."""
+    konto = await _konto(_aus_kopf(request) or request.cookies.get(COOKIE, ""))
     if not konto.mensch:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Andere Apps nutzen die Wege fundus/*")
     return konto
@@ -55,4 +56,4 @@ async def app_pruefen(request: Request) -> Konto:
     return konto
 
 
-__all__ = ["app_pruefen", "verify_token", "verify_token_query"]
+__all__ = ["app_pruefen", "verify_token", "verify_token_inhalt"]

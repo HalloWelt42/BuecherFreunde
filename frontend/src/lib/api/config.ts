@@ -1,5 +1,5 @@
 // Grundeinstellungen, Fassung, Zustand
-import { get, getToken, post } from "./client";
+import { get, post } from "./client";
 
 export interface Erreichbarkeit {
   erreichbar: boolean;
@@ -56,5 +56,5 @@ export const sicherungen = (): Promise<Sicherung[]> => get("/api/backup/list");
 export const pruefeDateien = (): Promise<Dateipruefung> => post("/api/wartung/defekte-pruefen");
 
 export function sicherungAdresse(datei: string): string {
-  return `/api/backup/download?${new URLSearchParams({ filename: datei, token: getToken() })}`;
+  return `/api/backup/download?${new URLSearchParams({ filename: datei })}`;
 }

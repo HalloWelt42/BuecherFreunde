@@ -13,7 +13,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from backend.app.core.auth import verify_token, verify_token_query
+from backend.app.core.auth import verify_token, verify_token_inhalt
 from backend.app.core.database import db
 from backend.app.services.gutenberg import download_buch, download_cover, suche
 from backend.app.services.import_service import (
@@ -299,7 +299,7 @@ async def gutenberg_import_status(_token: str = Depends(verify_token)) -> dict:
 
 
 @router.get("/import/events")
-async def gutenberg_import_events(_token: str = Depends(verify_token_query)):
+async def gutenberg_import_events(_token: str = Depends(verify_token_inhalt)):
     """SSE-Endpunkt für Echtzeit-Fortschritt des Gutenberg-Imports."""
 
     async def event_generator():

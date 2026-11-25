@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from backend.app.ablage.wolke import WolkeFehler
 from backend.app.annahme import eingangsordner
 from backend.app.annahme.dienst import TEIL, Versatz, annahme
-from backend.app.core.auth import verify_token, verify_token_query
+from backend.app.core.auth import verify_token, verify_token_inhalt
 
 router = APIRouter(prefix="/api/annahme", tags=["Annahme"])
 
@@ -63,7 +63,7 @@ async def eingang_aufnehmen(_=Depends(verify_token)):
 
 
 @router.get("/ereignisse")
-async def ereignisse(_=Depends(verify_token_query)):
+async def ereignisse(_=Depends(verify_token_inhalt)):
     async def strom():
         async for d in annahme.ereignisse():
             yield f"data: {json.dumps(d, ensure_ascii=False)}\n\n"

@@ -1,5 +1,5 @@
 // Bücher: Liste, Einzelnes, Umschlag, Datei, Text
-import { get, getToken, patch, post } from "./client";
+import { get, patch, post } from "./client";
 import type { Parameter } from "./client";
 import type { Buch, BuchEinzeln, BuchListe } from "../typen";
 
@@ -27,16 +27,15 @@ export const isbnScan = (id: number): Promise<any> => post(`/api/books/${id}/isb
 export const textSeiten = (id: number, ab: number, anzahl: number): Promise<any> => get(`/api/books/${id}/textseiten`, { ab, anzahl });
 
 export function textBildUrl(id: number, seite: number, nr: number): string {
-  return `/api/books/${id}/textseiten/${seite}/bild/${nr}?token=${encodeURIComponent(getToken())}`;
+  return `/api/books/${id}/textseiten/${seite}/bild/${nr}`;
 }
 
 export function coverUrl(id: number, stand?: string): string {
-  const fassung = stand ? `&_v=${encodeURIComponent(stand)}` : "";
-  return `/api/books/${id}/cover?token=${encodeURIComponent(getToken())}${fassung}`;
+  return `/api/books/${id}/cover${stand ? `?_v=${encodeURIComponent(stand)}` : ""}`;
 }
 
 export function dateiUrl(id: number): string {
-  return `/api/books/${id}/file?token=${encodeURIComponent(getToken())}`;
+  return `/api/books/${id}/file`;
 }
 
 export function volltextSuche(id: number, wort: string, schalter: Suchschalter = {}): Promise<{ treffer: Buchtreffer[]; gesamt: number; seiten_gesamt?: number }> {

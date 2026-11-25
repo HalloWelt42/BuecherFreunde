@@ -14,6 +14,7 @@ from backend.app.ablage.wolke import WolkeFehler, wolke
 from backend.app.core.config import settings
 from backend.app.services.storage import get_storage_path
 
+FEHLT = "Dieses Buch liegt noch nicht in der Kellerwolke"
 NEBEN = {"metadata.json", "fulltext.txt", "cover.jpg", "seiten.json"}
 
 
@@ -31,7 +32,7 @@ async def original_antwort(request: Request, file_hash: str, art: str, name: str
         return FileResponse(da, media_type=art, filename=name, headers={"Accept-Ranges": "bytes"})
     ablage = originale.eintrag(file_hash)
     if ablage is None or not wolke.bereit:
-        raise HTTPException(status_code=404, detail="Datei nicht gefunden")
+        raise HTTPException(status_code=404, detail=FEHLT)
     try:
         r = await wolke.strom(ablage["knoten"], request.headers.get("range"))
     except WolkeFehler as f:

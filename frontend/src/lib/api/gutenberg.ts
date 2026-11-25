@@ -1,5 +1,5 @@
 // Gemeinfreie Bücher: Suche und Übernahme
-import { del, get, getToken, post } from "./client";
+import { del, get, post } from "./client";
 
 export interface Fundbuch {
   gutenberg_id: number;
@@ -45,7 +45,7 @@ export const setzeGemeinfreieZurueck = (): Promise<unknown> => del("/api/gutenbe
 
 /** Ereignisstrom der Übernahme; endet, wenn der Server fertig ist */
 export function ereignisseGemeinfreie(tun: (stand: Uebernahmestand) => void, beiFehler: () => void): () => void {
-  const strom = new EventSource(`/api/gutenberg/import/events?token=${encodeURIComponent(getToken())}`);
+  const strom = new EventSource("/api/gutenberg/import/events");
   strom.onmessage = (e) => {
     try {
       tun(JSON.parse(e.data) as Uebernahmestand);

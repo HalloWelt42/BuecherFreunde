@@ -1,5 +1,6 @@
 <script lang="ts">
   // EPUB und MOBI: umbrochene Kapitel, eigene Schrift und Farben
+  import { ladefehler, type Ladefehler } from "../../lib/leser/ladefehler";
   import { onDestroy, onMount, untrack } from "svelte";
   import { dateiUrl } from "../../lib/api/books";
   import { schreibtGerade } from "../../lib/flucht";
@@ -40,7 +41,7 @@
 
   let flaeche: HTMLElement | undefined = $state();
   let bereit = $state(false);
-  let fehler = $state("");
+  let fehler = $state<Ladefehler | null>(null);
   let stand = $state<Epubstand>({ anteil: alt.percent ? alt.percent / 100 : 0, cfi: "", kapitel: "", kapitelNr: -1, gedruckt: "" });
   let treffer = $state(0);
   let trefferNr = $state(-1);
@@ -50,7 +51,7 @@
 
   async function lade() {
     if (!flaeche) return;
-    fehler = "";
+    fehler = null;
     anzeige?.schliesse();
     anzeige = new EpubAnzeige(flaeche, d, { beiStand: gerueckt, beiAuswahl: (a) => nimmAuswahl(sitzung, a && { ...a, ort: schreibweise.prozent(prozent) }) && abwahl(), beiTaste: taste });
     try {
@@ -63,8 +64,8 @@
       if (mitte > 0) await anzeige.zuAnteil(mitte);
       void anzeige.zeichne(sitzung.markierungen);
       if (start.wort) await suche(start.wort, mitte);
-    } catch (e) {
-      fehler = e instanceof Error ? e.message : "Das Buch ließ sich nicht laden";
+    } catch {
+      fehler = await ladefehler(buch.id);
     }
   }
 

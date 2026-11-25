@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Component } from "svelte";
   import { route, matchRoute, handleLinkClick } from "./lib/router.svelte";
-  import { hasToken, onAuthError, beiTokenWechsel } from "./lib/api/client";
+  import { hasToken, oeffneInhalte, onAuthError, beiTokenWechsel } from "./lib/api/client";
   import { fassungVerfolgen, vielleichtNeuLaden } from "./lib/fassung.svelte";
   import { filter } from "./lib/stand/filter.svelte";
   import { schale } from "./lib/stand/schale.svelte";
@@ -46,6 +46,9 @@
   ];
 
   let angemeldet = $state(hasToken());
+  /** Erst wenn Bilder und Ereignisströme lesen dürfen, kommt die Bibliothek auf den Schirm. */
+  let offen = $state(false);
+  if (hasToken()) void oeffneInhalte().then(() => (offen = true));
 
   let ziel = $derived.by(() => {
     for (const z of ziele) {
@@ -90,11 +93,11 @@
 
 <div class="app" bind:clientWidth={schale.breite}>
   <Kulisse />
-  {#if angemeldet}
+  {#if angemeldet && offen}
     <Schale mitVorschau={!!ziel.vorschau} mitLeiste={!ziel.ohneLeiste}>
       {#key schluessel}<ziel.ansicht params={ziel.params} />{/key}
     </Schale>
-  {:else}
+  {:else if !angemeldet}
     <Anmeldung onerfolg={nachAnmeldung} />
   {/if}
   <Fassungsband />

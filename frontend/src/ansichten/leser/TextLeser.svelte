@@ -1,5 +1,6 @@
 <script lang="ts">
   // Text und Markdown: ein langes Blatt zum Rollen
+  import { ladefehler, type Ladefehler } from "../../lib/leser/ladefehler";
   import { formatName } from "../../lib/format";
   import "../../stil/lesetext.css";
   import { onDestroy, tick, untrack } from "svelte";
@@ -41,7 +42,7 @@
   let d = $derived<Textdarstellung>({ ...w, fg: eigeneFarben ? w.fg : thema.fg, bg: eigeneFarben ? w.bg : thema.bg });
 
   let inhalt = $state<string | null>(null);
-  let fehler = $state("");
+  let fehler = $state<Ladefehler | null>(null);
   let flaeche: HTMLElement | undefined = $state();
   let blatt: HTMLElement | undefined = $state();
   let anteil = $state(0);
@@ -52,11 +53,11 @@
   let seite = $derived(Math.max(1, Math.min(gesamt, Math.ceil(anteil * gesamt) || 1)));
 
   async function lade() {
-    fehler = "";
+    fehler = null;
     try {
       inhalt = await (await anfrage(dateiUrl(buch.id))).text();
-    } catch (e) {
-      fehler = e instanceof Error ? e.message : "Der Text ließ sich nicht laden";
+    } catch {
+      fehler = await ladefehler(buch.id);
     }
   }
 

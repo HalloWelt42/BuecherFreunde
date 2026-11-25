@@ -1,5 +1,6 @@
 <script lang="ts">
   // PDF: Seiten als Bild mit wählbarem Text, oder als umfließender Text
+  import { ladefehler, type Ladefehler } from "../../lib/leser/ladefehler";
   import { onDestroy, tick, untrack } from "svelte";
   import { dateiUrl, textSeiten, volltextSuche } from "../../lib/api/books";
   import { schreibtGerade } from "../../lib/flucht";
@@ -37,7 +38,7 @@
 
   let flaeche: HTMLElement | undefined = $state();
   let pdf = $state.raw<PdfBuch | null>(null);
-  let fehler = $state("");
+  let fehler = $state<Ladefehler | null>(null);
   let seite = $state(start.seite || alt.page || 1);
   let ansicht = $state<Ansicht>(ansichtOder(start.ansicht || meine.ansicht, telefon ? "breite" : "scroll"));
   let mass = $state((start.zoom || meine.zoom || 100) / 100);
@@ -57,7 +58,7 @@
   let bogen = $derived(blaettert && pdf ? sichtbareSeiten(ansicht, seite, pdf.seiten) : []);
 
   async function lade() {
-    fehler = "";
+    fehler = null;
     try {
       const geladen = await ladePdf(buch.id);
       if (!start.seite && start.wort) await sucheSeite();
@@ -66,8 +67,8 @@
       await tick();
       baue();
       sitzung.kapitel = await verzeichnis(geladen.doc);
-    } catch (e) {
-      fehler = e instanceof Error ? e.message : "Das PDF ließ sich nicht laden";
+    } catch {
+      fehler = await ladefehler(buch.id);
     }
   }
 

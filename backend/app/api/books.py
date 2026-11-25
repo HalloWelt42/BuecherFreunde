@@ -12,13 +12,13 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from backend.app.services.seiten import buch_seiten
-from backend.app.core.auth import verify_token, verify_token_query
+from backend.app.core.auth import verify_token, verify_token_inhalt
 from backend.app.core.database import db
 from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate
 from backend.app.models.textansicht import TextBaustein, TextSeite, TextSeitenAntwort
 from backend.app.services.textansicht import Baustein, abbildung_png, seiten_lesen
 from backend.app.ablage import originale
-from backend.app.ablage.antwort import original_antwort
+from backend.app.ablage.antwort import FEHLT, original_antwort
 from backend.app.ablage.wolke import wolke
 from backend.app.annahme.eintragen import autoren_verknuepfen
 from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover, save_fulltext
@@ -791,7 +791,7 @@ def _generate_cover_sync(file_hash: str, file_format: str) -> bytes | None:
 
 
 @router.get("/{book_id}/cover")
-async def get_cover(book_id: int, _token: str = Depends(verify_token_query)):
+async def get_cover(book_id: int, _token: str = Depends(verify_token_inhalt)):
     """Liefert das Cover eines Buches und gibt NIE 404 zurück.
 
     Reihenfolge: vorhandenes cover.jpg -> sonst aus der Quelldatei erzeugen
@@ -849,7 +849,7 @@ async def re_extract_cover(book_id: int, _token: str = Depends(verify_token)):
 
     original = await asyncio.to_thread(get_original_file, book["hash"])
     if not original or not original.exists():
-        raise HTTPException(status_code=404, detail="Buchdatei nicht gefunden")
+        raise HTTPException(status_code=404, detail=FEHLT)
 
     fmt = book["file_format"].lower()
     cover_data = None
@@ -894,7 +894,7 @@ async def re_extract_cover(book_id: int, _token: str = Depends(verify_token)):
 
 
 @router.get("/{book_id}/file")
-async def get_file(book_id: int, request: Request, _token: str = Depends(verify_token_query)):
+async def get_file(book_id: int, request: Request, _token: str = Depends(verify_token_inhalt)):
     """Streamt die Buchdatei (mit Range-Request-Unterstützung)."""
     book = await db.fetch_one(
         "SELECT hash, file_name, file_format FROM books WHERE id = ?", (book_id,)
@@ -1075,7 +1075,7 @@ async def _pdf_zum_lesen(book_id: int) -> tuple[dict, Path]:
         raise HTTPException(status_code=422, detail="Die Textansicht gibt es nur für PDF")
     pfad = await asyncio.to_thread(get_original_file, book["hash"])
     if pfad is None:
-        raise HTTPException(status_code=404, detail="Datei nicht gefunden")
+        raise HTTPException(status_code=404, detail=FEHLT)
     return dict(book), pfad
 
 
@@ -1100,7 +1100,7 @@ async def text_seiten(
 
 
 @router.get("/{book_id}/textseiten/{seite}/bild/{nr}")
-async def text_seiten_bild(book_id: int, seite: int, nr: int, _token: str = Depends(verify_token_query)):
+async def text_seiten_bild(book_id: int, seite: int, nr: int, _token: str = Depends(verify_token_inhalt)):
     """Abbildung `nr` einer Seite der Textansicht als PNG (Ausschnitt der Originalseite)."""
     _book, pfad = await _pdf_zum_lesen(book_id)
     png = await asyncio.to_thread(abbildung_png, pfad, seite, nr)

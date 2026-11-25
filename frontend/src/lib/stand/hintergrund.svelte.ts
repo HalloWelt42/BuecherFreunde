@@ -1,5 +1,5 @@
 // Eigene Hintergrundbilder: Liste vom Server, gewähltes Bild im Browser gemerkt
-import { del, get, getToken, upload } from "../api/client";
+import { del, get, upload } from "../api/client";
 import { lies, merke } from "../speicher";
 
 export interface Hintergrundbild {
@@ -15,7 +15,7 @@ class Hintergrund {
   adresse = $derived(this.bilder.length ? this.adresseVon(this.bilder[this.nummer].dateiname) : "");
 
   adresseVon(name: string): string {
-    return `/api/config/design/hintergrund/${encodeURIComponent(name)}?token=${encodeURIComponent(getToken())}`;
+    return `/api/config/design/hintergrund/${encodeURIComponent(name)}`;
   }
 
   async laden(): Promise<void> {

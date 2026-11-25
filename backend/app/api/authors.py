@@ -9,7 +9,7 @@ import re
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
 
-from backend.app.core.auth import verify_token, verify_token_query
+from backend.app.core.auth import verify_token, verify_token_inhalt
 from backend.app.core.database import db
 from backend.app.models.author import (
     AuthorListItem,
@@ -265,7 +265,7 @@ async def cancel_batch_scan(_token: str = Depends(verify_token)):
 
 @router.get("/scanner/events")
 async def batch_scan_events(
-    _token: str = Depends(verify_token_query),
+    _token: str = Depends(verify_token_inhalt),
     nur_ohne_wikidata: bool = Query(True, description="Nur Autoren ohne Wikidata-ID"),
     auto_uebernehmen: bool = Query(False, description="Hohe Konfidenz automatisch übernehmen"),
 ):
@@ -547,7 +547,7 @@ async def unlink_book(
 async def get_author_photo(
     author_id: int,
     groesse: str = Query("normal", description="normal, thumb, mini"),
-    _token: str = Depends(verify_token_query),
+    _token: str = Depends(verify_token_inhalt),
 ):
     """Gibt das Foto eines Autors in der gewünschten Größe zurück."""
     from backend.app.core.config import settings

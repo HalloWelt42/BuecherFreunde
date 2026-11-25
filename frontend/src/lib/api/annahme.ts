@@ -1,5 +1,5 @@
 // Schnittstelle der Annahme (Hochladen in Teilen)
-import { anfrage, del, get, post, getToken, ApiError } from "./client";
+import { anfrage, del, get, post, ApiError } from "./client";
 import { AndererStand, OhneVerbindung, type AnnahmeDienst, type AnnahmeEintrag, type AnnahmeListe, type NeueDatei } from "../annahme/typen";
 
 /** Netzfehler und vorübergehende Antworten des Servers (5xx, 429) heißen: später noch einmal. */
@@ -39,7 +39,7 @@ export const nimmEingangsordnerAuf = (): Promise<{ neu: number }> => post("/api/
 
 /** Ereignisstrom; der Browser verbindet nach einem Abriss selbst neu. */
 export function annahmeEreignisse(tun: (liste: AnnahmeListe) => void): () => void {
-  const strom = new EventSource(`/api/annahme/ereignisse?token=${encodeURIComponent(getToken())}`);
+  const strom = new EventSource("/api/annahme/ereignisse");
   strom.onmessage = (e) => {
     try {
       tun(JSON.parse(e.data) as AnnahmeListe);
