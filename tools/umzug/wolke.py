@@ -65,6 +65,20 @@ class Wolke:
                 print(f"  Verbindung ({type(f).__name__}: {f}), neuer Versuch", flush=True)
                 time.sleep(5 * (versuch + 1))
 
+    def ablegen(self, pfad: str, datei: Path):
+        """Legt eine Datei ab, wenn unter dem Pfad noch keine liegt; sonst gilt die vorhandene. Erst nachsehen: eine
+        Ablehnung kommt, bevor die Ablage den Inhalt liest, und ließe die Verbindung mitten im Senden abreißen."""
+        weg = "/api/v1/ablage/pfad?pfad=" + quote(pfad, safe="")
+        st, d = self.rufe("GET", weg)
+        if st < 400:
+            return st, d
+        with datei.open("rb") as f:
+            st, d = self.rufe("PUT", f"/api/v1/ablage/datei?pfad={quote(pfad, safe='')}", f,
+                              {"If-None-Match": "*", "Content-Type": "application/octet-stream"}, datei.stat().st_size)
+        if st in (409, 412):
+            st, d = self.rufe("GET", weg)
+        return st, d
+
     def ordner(self, pfad: str) -> None:
         st, d = self.rufe("POST", "/api/v1/ablage/ordner", json.dumps({"pfad": pfad}).encode(), {"Content-Type": "application/json"})
         if st >= 400:
@@ -153,10 +167,7 @@ def kopiere(w: Wolke, c, s, b) -> str:
     if q is None:
         return "Original fehlt auf der Platte"
     pfad, gr = ablageort(b), q.stat().st_size
-    with q.open("rb") as f:
-        st, d = w.rufe("PUT", f"/api/v1/ablage/datei?pfad={quote(pfad, safe='')}", f, {"If-None-Match": "*", "Content-Type": "application/octet-stream"}, gr)
-    if st in (409, 412):
-        st, d = w.rufe("GET", "/api/v1/ablage/pfad?pfad=" + quote(pfad, safe=""))
+    st, d = w.ablegen(pfad, q)
     if st >= 400:
         return f"Ablegen: {st} {d}"
     if d["sha256"] != b["hash"]:
@@ -234,10 +245,7 @@ def rest() -> None:
         teile = [sauber(t, 170) for t in ziel.split("/")]
         pfad = f"{ZIEL}/" + "/".join(teile)
         w.ordner(pfad.rsplit("/", 1)[0])
-        with f.open("rb") as h:
-            st, d = w.rufe("PUT", f"/api/v1/ablage/datei?pfad={quote(pfad, safe='')}", h, {"If-None-Match": "*", "Content-Type": "application/octet-stream"}, f.stat().st_size)
-        if st in (409, 412):
-            st, d = w.rufe("GET", "/api/v1/ablage/pfad?pfad=" + quote(pfad, safe=""))
+        st, d = w.ablegen(pfad, f)
         if st >= 400:
             print("FEHLER", f, st, d, flush=True)
             continue
