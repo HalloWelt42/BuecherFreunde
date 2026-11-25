@@ -1,5 +1,6 @@
 """BuecherFreunde Backend - FastAPI Hauptanwendung."""
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -32,7 +33,7 @@ from backend.app.api.wartung import router as wartung_router
 from backend.app.core.anmeldung import eigener_zugang, schliessen as anmeldung_schliessen
 from backend.app.core.config import settings
 from backend.app.core.database import db
-from backend.app.services import bedeutung
+from backend.app.services import bedeutung, pflege
 
 logger = logging.getLogger("buecherfreunde")
 
@@ -89,9 +90,11 @@ async def lifespan(app: FastAPI):
     _ensure_directories()
     await db.connect()
     annahme.starten()
+    pflege_lauf = asyncio.create_task(pflege.laufen())
     # Verwaiste Tasks aufräumen (vom letzten Lauf übrig geblieben)
     await _cleanup_stale_tasks()
     yield
+    pflege_lauf.cancel()
     await annahme.stoppen()
     await bedeutung.schliessen()
     await wolke.schliessen()

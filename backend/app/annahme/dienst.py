@@ -199,6 +199,15 @@ class Annahme:
         for e in self._neu:
             e.set()
 
+    async def wissen_pruefen(self) -> None:
+        """Aufnahmen, deren Bedeutung noch fehlt: sobald der Fundus das Buch durchsuchbar hat, sind sie fertig."""
+        from backend.app.services import bedeutung
+
+        for z in await db.fetch_all("SELECT id, buch_id FROM aufnahme WHERE stand = 'wissen' AND buch_id IS NOT NULL ORDER BY id LIMIT 20"):
+            s = await bedeutung.buch_stand(z["buch_id"])
+            if s and s["zustand"] == "durchsuchbar" and s["abschnitte"] > 1:
+                await self._setze(z["id"], stand="fertig", schritt=6, text=f"Fertig, überall zu finden ({s['abschnitte']} Abschnitte)")
+
     # -- Auswertung ----------------------------------------------------------------------------------------------------
     async def _arbeiten(self) -> None:
         while True:

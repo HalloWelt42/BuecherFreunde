@@ -88,6 +88,21 @@ async def suchen(frage: str, anzahl: int = 20, buch: int | None = None) -> dict:
     return {"verfuegbar": True, "grund": "", "treffer": treffer[:anzahl]}
 
 
+async def buch_stand(buch: int) -> dict | None:
+    """Wie der Fundus ein Buch kennt: {zustand, abschnitte}; None, wenn er es (noch) nicht kennt oder nicht antwortet."""
+    z = await db.fetch_one("SELECT title FROM books WHERE id = ?", (buch,))
+    if not settings.fundus_url or z is None:
+        return None
+    try:
+        r = await _verbindung().get(f"/api/v1/sammlungen/{await _kennung()}/dokumente", params={"suche": z["title"], "anzahl": 100})
+        r.raise_for_status()
+    except (httpx.HTTPError, LookupError) as f:
+        logger.info("Stand von Buch %d: %s", buch, f)
+        return None
+    d = next((e for e in r.json()["eintraege"] if e["herkunft"] == f"buch:{buch}"), None)
+    return {"zustand": d["zustand"], "abschnitte": d["abschnitte"]} if d else None
+
+
 async def stand() -> dict:
     if not settings.fundus_url:
         return {"kennung": "fundus", "name": "Fundus", "stand": "warn", "text": "nicht eingerichtet"}

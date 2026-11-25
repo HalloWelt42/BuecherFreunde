@@ -59,6 +59,10 @@ async def ablage(buch: int, _=Depends(verify_token)):
     pfad = (await db.fetch_one("SELECT pfad FROM ablage_datei WHERE hash = ?", (z["hash"],)) or {}).get("pfad", "")
     text = get_sidecar_path(z["hash"], "fulltext.txt")
     zeichen = text.stat().st_size if text.exists() else 0
+    wissen = await bedeutung.buch_stand(buch) if zeichen else None
+    gut = bool(wissen and wissen["zustand"] == "durchsuchbar")
+    tausend = f"{wissen['abschnitte']:,}".replace(",", ".") if wissen else ""
     return {"wolke": {"pfad": pfad or ("auf dem Gerät" if e is None else e["name"]), "groesse": z["file_size"], "sha256": z["hash"], "in_der_wolke": e is not None},
             "volltext": {"seiten": z["page_count"] or 0, "zeichen": zeichen},
-            "wissen": {"stand": "gut" if zeichen and settings.fundus_url else "warn", "text": "nach Bedeutung erfasst, sobald der Fundus abgeglichen hat" if zeichen else "kein Text, nicht nach Bedeutung zu finden"}}
+            "wissen": {"stand": "gut" if gut else "warn", "abschnitte": wissen["abschnitte"] if wissen else None,
+                       "text": f"{tausend} Abschnitte nach Bedeutung erfasst" if gut else "folgt mit dem nächsten Abgleich" if zeichen else "kein Text, nicht nach Bedeutung zu finden"}}
