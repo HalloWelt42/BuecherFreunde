@@ -28,8 +28,20 @@ function symbolEinbetten() {
   };
 }
 
+// Der Dienst im Hintergrund (public/sw.js) trägt die Fassung, so räumt eine neue die alte Hülle weg
+function dienstFassung() {
+  return {
+    name: "dienst-fassung",
+    apply: "build",
+    writeBundle(optionen) {
+      const ziel = `${optionen.dir}/sw.js`;
+      writeFileSync(ziel, readFileSync(ziel, "utf-8").replace("__FASSUNG__", FASSUNG));
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [svelte(), symbolEinbetten()],
+  plugins: [svelte(), symbolEinbetten(), dienstFassung()],
   define: { __FASSUNG__: JSON.stringify(FASSUNG) },
   server: {
     port: 5173,

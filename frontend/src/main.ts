@@ -22,4 +22,7 @@ import { darstellung } from "./lib/stand/darstellung.svelte";
 
 darstellung.anwenden();
 
+// Hülle ohne Netz; nur über https und im gebauten Stand
+if (import.meta.env.PROD && "serviceWorker" in navigator) addEventListener("load", () => void navigator.serviceWorker.register("/sw.js").catch(() => undefined));
+
 export default mount(App, { target: document.getElementById("app")! });

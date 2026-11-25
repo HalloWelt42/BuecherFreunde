@@ -9,7 +9,7 @@ async function mitVerbindung<T>(tun: () => Promise<T>): Promise<T> {
   } catch (grund) {
     if (grund instanceof ApiError) {
       if (grund.status === 409 && typeof grund.data?.empfangen === "number") throw new AndererStand(grund.data.empfangen);
-      if (grund.status >= 500 || grund.status === 429) throw new OhneVerbindung(grund.message);
+      if (grund.status === 0 || grund.status >= 500 || grund.status === 429) throw new OhneVerbindung(grund.message);
       throw grund;
     }
     if (grund instanceof DOMException && grund.name === "AbortError") throw grund;

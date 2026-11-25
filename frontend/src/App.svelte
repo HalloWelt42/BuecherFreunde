@@ -8,6 +8,7 @@
   import { schale } from "./lib/stand/schale.svelte";
   import Kulisse from "./lib/schale/Kulisse.svelte";
   import Schale from "./lib/schale/Schale.svelte";
+  import Netzband from "./lib/schale/Netzband.svelte";
   import Fassungsband from "./lib/schale/Fassungsband.svelte";
   import Meldungen from "./lib/teile/Meldungen.svelte";
   import Rueckfrage from "./lib/teile/Rueckfrage.svelte";
@@ -102,6 +103,7 @@
     <Anmeldung onerfolg={nachAnmeldung} />
   {/if}
   <Fassungsband />
+  <Netzband />
   <Meldungen />
   <Rueckfrage />
 </div>

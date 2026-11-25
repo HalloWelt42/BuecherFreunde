@@ -1,13 +1,56 @@
 {
   "id": "/",
   "lang": "de",
+  "dir": "ltr",
   "scope": "/",
   "name": "BücherFreunde",
   "short_name": "Bücher",
+  "description": "Deine Bücher lesen, suchen und ordnen",
+  "categories": [
+    "books",
+    "productivity"
+  ],
   "start_url": "/",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
   "theme_color": "#0b1312",
-  "background_color": "#2563eb",
+  "background_color": "#0b1312",
+  "shortcuts": [
+    {
+      "name": "Weiterlesen",
+      "url": "/?weiterlesen=true",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Suchen",
+      "url": "/search",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Hinzufügen",
+      "url": "/import",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
   "icons": [
     {
       "src": "/icon-192.png",

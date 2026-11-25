@@ -2,6 +2,8 @@
  * API-Client mit Bearer Token Auth, Fehlerbehandlung und SSE-Support.
  */
 
+import { netz } from "../stand/netz.svelte";
+
 const SCHLUESSEL = "api_token";
 
 // Die Anmeldung liegt im Speicher des Browsers (je Adresse geteilt von allen Tabs) und wird bei jeder Anfrage frisch
@@ -126,7 +128,15 @@ export async function anfrage(path: string, options: RequestInit = {}): Promise<
     headers["Content-Type"] = "application/json";
   }
 
-  const response = await fetch(path, { ...options, headers });
+  let response: Response;
+  try {
+    response = await fetch(path, { ...options, headers });
+  } catch (grund) {
+    if (grund instanceof DOMException && grund.name === "AbortError") throw grund;
+    netz.fort();
+    throw new ApiError(0, "Keine Verbindung zur Bibliothek");
+  }
+  netz.da();
 
   if (!response.ok) {
     let data = null;
