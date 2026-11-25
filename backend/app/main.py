@@ -25,6 +25,7 @@ from backend.app.api.metadata import router as metadata_router
 from backend.app.api.search import router as search_router
 from backend.app.api.collections import router as collections_router
 from backend.app.api.fundus import router as fundus_router
+from backend.app.api.helfer import router as helfer_router
 from backend.app.api.highlights import router as highlights_router
 from backend.app.api.labels import router as labels_router
 from backend.app.api.neubau import router as neubau_router
@@ -35,7 +36,7 @@ from backend.app.api.wartung import router as wartung_router
 from backend.app.core.anmeldung import eigener_zugang, schliessen as anmeldung_schliessen
 from backend.app.core.config import settings
 from backend.app.core.database import db
-from backend.app.services import bedeutung, pflege, vorlesen
+from backend.app.services import bedeutung, gespraech, nachschlagen, pflege, vorlesen
 
 logger = logging.getLogger("buecherfreunde")
 
@@ -101,6 +102,8 @@ async def lifespan(app: FastAPI):
     await annahme.stoppen()
     await bedeutung.schliessen()
     await vorlesen.schliessen()
+    await nachschlagen.dienst.schliessen()
+    await gespraech.dienst.schliessen()
     await wolke.schliessen()
     await anmeldung_schliessen()
     await db.disconnect()
@@ -127,6 +130,7 @@ app.include_router(collections_router)
 app.include_router(config_router)
 app.include_router(fundus_router)
 app.include_router(gutenberg_router)
+app.include_router(helfer_router)
 app.include_router(imports_router)
 app.include_router(highlights_router)
 app.include_router(labels_router)

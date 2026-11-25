@@ -39,6 +39,12 @@ def _schluessel() -> str:
         return ""
 
 
+def app_kopf() -> dict[str, str]:
+    """Der App-Zugang als Kopf für Aufrufe anderer Dienste; ohne Zugang keiner."""
+    schluessel = _schluessel()
+    return {"Authorization": f"Bearer {schluessel}"} if schluessel else {}
+
+
 class Wolke:
     def __init__(self) -> None:
         self._async: httpx.AsyncClient | None = None

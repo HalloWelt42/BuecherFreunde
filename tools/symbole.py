@@ -13,7 +13,7 @@ Erzeugt in frontend/public:
   icon-maskable-192.png, icon-maskable-512.png  aus maskierbar.svg (purpose maskable)
   icon-monochrom-512.png, einfarbig.svg         aus einfarbig.svg (purpose monochrome, angeheftete Tabs)
   apple-touch-icon.png                          180, deckend
-Das Zeichen im Kopf der App steht in frontend/src/lib/schale/Logo.svelte (wie tab.svg).
+Das Zeichen im Kopf der App steht in frontend/src/lib/schale/Logo.svelte (freigestellt aus symbol.svg).
 
 Die Bilder liegen im Repo und werden nie zur Laufzeit erzeugt. Nach einer Änderung neu erzeugen:
   python3 tools/symbole.py

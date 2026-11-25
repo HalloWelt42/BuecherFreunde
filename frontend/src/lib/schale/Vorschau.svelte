@@ -6,7 +6,8 @@
   import { ablageText } from "../ablage";
   import { leseAdresse, leseKnopf, lesestand, standText } from "../lesestand";
   import { merkmale } from "../stand/merkmale.svelte";
-  import { verbindungen } from "../stand/verbindungen.svelte";
+  import { anschluesse } from "../stand/anschluesse.svelte";
+  import { gespraech } from "../stand/gespraech.svelte";
   import { wahl } from "../stand/wahl.svelte";
   import Balken from "../teile/Balken.svelte";
   import Knopf from "../teile/Knopf.svelte";
@@ -52,11 +53,11 @@
         {#if buch.page_count}<dt>Seiten</dt><dd class="zahl">{zahl(buch.page_count)}</dd>{/if}
         {#if ablage?.wolke}<dt>Liegt in</dt><dd>{ablageText(ablage.wolke)}</dd>{/if}
       </dl>
-      {#if ablage?.wissen || verbindungen.assistent}
+      {#if ablage?.wissen || anschluesse.jetzt.assistent}
         <div class="platte karte">
           <h2><Symbol name="brain" />Wissen</h2>
           {#if ablage?.wissen}<p class="klein">{ablage.wissen.text}</p>{/if}
-          {#if verbindungen.assistent}<Knopf text="Im Assistenten fragen" symbol="comments" klein extern href={verbindungen.frageAdresse(buch.title)} />{/if}
+          {#if anschluesse.jetzt.assistent}<Knopf text="Im Assistenten fragen" symbol="comments" klein onclick={() => gespraech.oeffne({ buch: buch!.id, titel: buch!.title })} />{/if}
         </div>
       {/if}
     {:else}

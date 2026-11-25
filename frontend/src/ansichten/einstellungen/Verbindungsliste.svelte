@@ -43,4 +43,11 @@
     <Knopf text="Öffnen" symbol="arrow-up-right-from-square" klein extern href={verbindungen.assistent} />
   </div>
 {/if}
+{#if anschluesse.jetzt.nachschlag}
+  <div class="stelle zeile-stand">
+    <span class="led aus"></span>
+    <span><b>Nachschlag</b><br /><span class="leise">Eingerichtet, schlägt Wörter beim Lesen nach</span></span>
+    <Knopf text="Öffnen" symbol="arrow-up-right-from-square" klein extern href={anschluesse.jetzt.nachschlag} />
+  </div>
+{/if}
 {#if !verbindungen.liste.length}<p class="leise">Nichts weiter angeschlossen.</p>{/if}

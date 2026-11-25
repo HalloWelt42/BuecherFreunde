@@ -1,10 +1,13 @@
 <script lang="ts">
   // Schwebt an der Auswahl: markieren, kopieren, vorlesen, in Schnellnotiz oder Buchnotiz
   import { beiEsc } from "../../lib/flucht";
+  import { bezugAus } from "../../lib/leser/bezug";
   import { alsZitat, type Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
   import { vorlesen } from "../../lib/stand/vorlesen.svelte";
-  import { verbindungen } from "../../lib/stand/verbindungen.svelte";
+  import { anschluesse } from "../../lib/stand/anschluesse.svelte";
+  import { gespraech } from "../../lib/stand/gespraech.svelte";
+  import { nachschlag } from "../../lib/stand/nachschlag.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Farbreihe from "./Farbreihe.svelte";
 
@@ -55,7 +58,8 @@
       <Knopf text="Schnellnotiz" symbol="note-sticky" klein frei titel="An die Schnellnotiz anhängen" onclick={() => void tun(() => sitzung.anSchnellnotiz(alsZitat(a)))} />
       <Knopf text="Schnellnotiz ersetzen" symbol="right-left" nur klein frei onclick={() => void tun(() => sitzung.ersetzeSchnellnotiz(alsZitat(a)))} />
       <Knopf text="Buchnotiz" symbol="pen" klein frei onclick={() => (schritt = "notiz")} />
-      {#if verbindungen.assistent}<Knopf text="Im Assistenten fragen" symbol="comments" klein frei extern href={verbindungen.frageAdresse(a.text)} />{/if}
+      {#if anschluesse.jetzt.nachschlag}<Knopf text="Nachschlagen" symbol="book-atlas" klein frei onclick={() => void tun(() => nachschlag.oeffne(a.text))} />{/if}
+      {#if anschluesse.jetzt.assistent}<Knopf text="Assistent" symbol="comments" klein frei onclick={() => void tun(() => gespraech.oeffne(bezugAus(sitzung, a.text)))} />{/if}
     </div>
   {:else}
     <div class="reihe knoepfe">

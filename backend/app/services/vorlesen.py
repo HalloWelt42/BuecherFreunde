@@ -10,7 +10,7 @@ from collections.abc import AsyncIterator
 
 import httpx
 
-from backend.app.ablage.wolke import _pruefung, _schluessel
+from backend.app.ablage.wolke import _pruefung, app_kopf
 from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.vorlesen")
@@ -30,7 +30,7 @@ def _verbindung() -> httpx.AsyncClient:
     global _client
     if _client is None:
         _client = httpx.AsyncClient(base_url=settings.vorlesen_url.rstrip("/"), verify=_pruefung(), timeout=httpx.Timeout(120.0, connect=4.0),
-                                    headers={"Authorization": "Bearer " + _schluessel()})
+                                    headers=app_kopf())
     return _client
 
 

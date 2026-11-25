@@ -11,6 +11,10 @@
   import Konto from "./Konto.svelte";
   import Kopf from "./Kopf.svelte";
   import Leiste from "./Leiste.svelte";
+  import { gespraech } from "../stand/gespraech.svelte";
+  import { nachschlag } from "../stand/nachschlag.svelte";
+  import Assistentenfenster from "./Assistentenfenster.svelte";
+  import Nachschlagefenster from "./Nachschlagefenster.svelte";
   import Schnellnotiz from "./Schnellnotiz.svelte";
   import Schwebefeld from "./Schwebefeld.svelte";
   import Tafel from "./Tafel.svelte";
@@ -57,6 +61,8 @@
   <Schwebefeld titel={anschluesse.jetzt.anmeldung === "kellerwolke" ? "Angemeldet mit der Kellerwolke" : "Konto"} breite="18rem"><Konto /></Schwebefeld>
 {/if}
 {#if schale.notizOffen}<Schnellnotiz />{/if}
+{#if nachschlag.offen}<Nachschlagefenster />{/if}
+{#if gespraech.offen}<Assistentenfenster />{/if}
 
 <style>
   .hinweis {

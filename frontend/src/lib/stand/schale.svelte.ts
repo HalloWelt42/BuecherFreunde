@@ -13,6 +13,8 @@ class Schale {
   leisteOffen = $state(false);
   offen = $state<Schwebefeldname>("");
   notizOffen = $state(false);
+  /** Das verschiebbare Fenster, das vorn liegt */
+  fensterVorn = $state("");
   vollbild = $state(false);
 
   get mitVorschau(): boolean {

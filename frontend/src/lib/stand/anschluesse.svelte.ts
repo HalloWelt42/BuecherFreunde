@@ -6,11 +6,12 @@ export interface Anschluesse {
   anmeldung: "kellerwolke" | "eigen";
   bedeutung: boolean;
   assistent: string;
+  nachschlag: string;
   ki: boolean;
   vorlesen: boolean;
 }
 
-const OHNE: Anschluesse = { ablage: "geraet", anmeldung: "kellerwolke", bedeutung: false, assistent: "", ki: false, vorlesen: false };
+const OHNE: Anschluesse = { ablage: "geraet", anmeldung: "kellerwolke", bedeutung: false, assistent: "", nachschlag: "", ki: false, vorlesen: false };
 
 class Anschlussstand {
   jetzt = $state<Anschluesse>(OHNE);

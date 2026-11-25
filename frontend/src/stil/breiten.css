@@ -73,7 +73,9 @@
   .zeile.mehr { grid-template-columns: 3.25rem minmax(0, 1fr); } .zeile.mehr > :nth-child(3) { display: none; }
   .zeile:not(.mehr) { grid-template-columns: 2.25rem minmax(0, 1fr) 4rem; } .zeile:not(.mehr) > :nth-child(3) { display: none; }
   .leseleiste.oben .nur-breit { display: none; }
-  .notizblock { right: var(--rand-seite); bottom: 4.5rem; width: calc(100% - 2 * var(--rand-seite)); }
+  .schwebefenster { right: var(--rand-seite); bottom: 4.5rem; width: calc(100% - 2 * var(--rand-seite)); }
+  .nachschlagefenster, .assistentenfenster { height: min(30rem, calc(100% - 9rem)); }
+  .schwebefenster > .griff { display: none; }
   .schwebe, .schwebe.menue { left: var(--rand-seite); right: var(--rand-seite); width: auto; }
   .meldungen { bottom: 4.75rem; }
   .auswahl select, .auswahl.klein select, .eingabe, .feld input, .feld textarea { font-size: 1rem; min-height: 2.75rem; }

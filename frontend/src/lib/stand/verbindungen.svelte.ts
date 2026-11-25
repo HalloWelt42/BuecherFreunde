@@ -72,13 +72,6 @@ class Verbindungen {
     this.neueFassung = neu.update_verfuegbar && neuerAls(neu.remote_version ?? "", this.fassung) ? neu.remote_version : "";
   }
 
-  /** Adresse, unter der der Assistent eine Frage übernimmt; leer, wenn keiner eingerichtet ist */
-  frageAdresse(frage: string): string {
-    if (!this.assistent) return "";
-    const ziel = new URL(this.assistent);
-    ziel.searchParams.set("frage", frage);
-    return ziel.href;
-  }
 }
 
 /** Nur eine höhere Fassung ist neu, nicht jede andere. */

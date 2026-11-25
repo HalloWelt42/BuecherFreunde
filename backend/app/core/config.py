@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     fundus_url: str = ""
     fundus_sammlung: str = "Bücher"
     assistent_url: str = ""
+    nachschlag_url: str = ""           # Nachschlagen in Lexika und Handbüchern; leer: die Fähigkeit fehlt
     vorlesen_url: str = ""             # Sprechdienst (Vertonung); leer: vorgelesen wird mit den Stimmen des Geräts
 
     # Google Books (Primärquelle)

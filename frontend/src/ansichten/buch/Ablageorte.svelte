@@ -3,7 +3,7 @@
   import { ablageText } from "../../lib/ablage";
   import { anzahl, groesse } from "../../lib/format";
   import { anschluesse } from "../../lib/stand/anschluesse.svelte";
-  import { verbindungen } from "../../lib/stand/verbindungen.svelte";
+  import { gespraech } from "../../lib/stand/gespraech.svelte";
   import Karte from "../../lib/teile/Karte.svelte";
   import Symbol from "../../lib/teile/Symbol.svelte";
   import type { Ablage, BuchEinzeln } from "../../lib/typen";
@@ -29,11 +29,21 @@
     <div class="mulde"><b><Symbol name={ablage?.wolke?.in_der_wolke ? "cloud" : "hard-drive"} /> Datei</b>{#if ablage?.wolke}<span class="dateiort">{ablageText(ablage.wolke)}</span>, {groesse(ablage.wolke.groesse)}<br /><span class="leise" title={ablage.wolke.sha256}>Prüfsumme {ablage.wolke.sha256.slice(0, 12)}</span>{:else}{fehler || "wird geholt"}{/if}</div>
     <div class="mulde"><b><Symbol name="font" /> Volltext</b>{ablage ? volltext : fehler || "wird geholt"}</div>
     {#if anschluesse.jetzt.bedeutung}<div class="mulde"><b><Symbol name="brain" /> Bedeutung</b>{ablage ? (ablage.wissen?.text ?? "noch nicht erfasst") : fehler || "wird geholt"}</div>{/if}
-    {#if verbindungen.assistent}<div class="mulde"><b><Symbol name="comments" /> Assistent</b><a href={verbindungen.frageAdresse(buch.title)} target="_blank" rel="noopener">findet Stellen und springt an die Seite</a></div>{/if}
+    {#if anschluesse.jetzt.assistent}<div class="mulde"><b><Symbol name="comments" /> Assistent</b><button type="button" class="verweis" onclick={() => gespraech.oeffne({ buch: buch.id, titel: buch.title })}>fragen, mit Belegen aus dem Buch</button></div>{/if}
   </div>
 </Karte>
 
 <style>
+  .verweis {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--messing);
+    font: inherit;
+    text-align: start;
+    text-decoration: underline;
+    cursor: pointer;
+  }
   .dateiort {
     overflow-wrap: anywhere;
   }

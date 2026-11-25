@@ -1,7 +1,9 @@
 <script lang="ts">
   // Markiert und notiert: Stift, Markierungen, Buchnotizen, Etiketten
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
-  import { verbindungen } from "../../lib/stand/verbindungen.svelte";
+  import { bezugAus } from "../../lib/leser/bezug";
+  import { anschluesse } from "../../lib/stand/anschluesse.svelte";
+  import { gespraech } from "../../lib/stand/gespraech.svelte";
   import Haekchen from "../../lib/teile/Haekchen.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Etikettfeld from "./Etikettfeld.svelte";
@@ -14,7 +16,6 @@
   let neu = $state("");
   let istText = $derived(["md", "txt"].includes(sitzung.buch.file_format));
   let benannt = $derived(sitzung.markierungen.filter((m) => m.label_name).length);
-  let frage = $derived(sitzung.auswahl?.text ?? `${sitzung.buch.title}, ${sitzung.griffe?.hier().ort ?? ""}`);
 
   async function lege(e: Event) {
     e.preventDefault();
@@ -55,7 +56,7 @@
   </section>
 {/if}
 
-{#if verbindungen.assistent}<Knopf text="Stelle im Assistenten fragen" symbol="comments" klein extern href={verbindungen.frageAdresse(frage)} />{/if}
+{#if anschluesse.jetzt.assistent}<Knopf text="Im Assistenten fragen" symbol="comments" klein onclick={() => gespraech.oeffne(bezugAus(sitzung, sitzung.auswahl?.text))} />{/if}
 
 <style>
   section,

@@ -106,7 +106,8 @@ Alles hier ist freiwillig. Fehlt ein Anschluss, fehlt nur seine Fähigkeit, und 
 |---|---|---|
 | Kellerwolke (Ablage und Anmeldung) | `KELLERWOLKE_URL` und App-Zugang | Bücher liegen auf dem Gerät; beim ersten Öffnen legt man ein eigenes Konto an |
 | Fundus (Suche nach Bedeutung) | `FUNDUS_URL`, `FUNDUS_SAMMLUNG` | Suche nach Wörtern |
-| Assistent | `ASSISTENT_URL` | keine Verweise dorthin |
+| Assistent | `ASSISTENT_URL` | kein Gespräch über Stellen |
+| Nachschlag (Lexika, Handbücher) | `NACHSCHLAG_URL` | kein Nachschlagen im Leser |
 | Sprechdienst | `VORLESEN_URL` | vorgelesen wird mit den Stimmen des Geräts |
 | KI | `LM_STUDIO_ENABLED`, `LM_STUDIO_URL`, `LM_STUDIO_MODEL`, auf Wunsch `KI_SCHLUESSEL_DATEI` | Einordnen von Hand |
 | Verzeichnisse und Lexikon | `OPENLIBRARY_ENABLED`, `GOOGLE_BOOKS_ENABLED`, `WIKIPEDIA_ENABLED` | Angaben aus den Dateien |
