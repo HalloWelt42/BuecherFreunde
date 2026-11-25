@@ -1,10 +1,10 @@
 # Lizenz
 
-## BücherFreunde -- GNU Affero General Public License v3.0
+## BücherFreunde - GNU Affero General Public License v3.0
 
 Copyright (c) 2024-{{YEAR}} HalloWelt42
 
-BücherFreunde ist freie Software: Du kannst sie unter den Bedingungen der **GNU Affero General Public License** (AGPL-3.0), wie von der Free Software Foundation veröffentlicht, weiterverbreiten und/oder modifizieren -- entweder gemäß Version 3 der Lizenz oder (nach deiner Wahl) jeder späteren Version.
+BücherFreunde ist freie Software: Du kannst sie unter den Bedingungen der **GNU Affero General Public License** (AGPL-3.0), wie von der Free Software Foundation veröffentlicht, weiterverbreiten und/oder modifizieren - entweder gemäß Version 3 der Lizenz oder (nach deiner Wahl) jeder späteren Version.
 
 ### Erlaubt
 
@@ -23,7 +23,7 @@ BücherFreunde ist freie Software: Du kannst sie unter den Bedingungen der **GNU
 
 ### Keine Gewährleistung
 
-Diese Software wird ohne jede Gewährleistung bereitgestellt, weder ausdrücklich noch stillschweigend, einschließlich -- aber nicht beschränkt auf -- die implizite Gewährleistung der Marktgängigkeit oder Eignung für einen bestimmten Zweck.
+Diese Software wird ohne jede Gewährleistung bereitgestellt, weder ausdrücklich noch stillschweigend, einschließlich - aber nicht beschränkt auf - die implizite Gewährleistung der Marktgängigkeit oder Eignung für einen bestimmten Zweck.
 
 ### Vollständiger Lizenztext
 

@@ -1,4 +1,4 @@
-# BücherFreunde -- Technische Informationen
+# BücherFreunde - Technische Informationen
 
 Dieses Dokument erklärt die wichtigsten Konzepte, Fachbegriffe und technischen Grundlagen von BücherFreunde.
 
@@ -8,10 +8,10 @@ Dieses Dokument erklärt die wichtigsten Konzepte, Fachbegriffe und technischen 
 
 BücherFreunde besteht aus zwei Komponenten:
 
-- **Backend** (Python FastAPI) -- REST-API, Datenbankzugriff, Dateiverarbeitung
-- **Frontend** (Svelte 5) -- Single-Page-Application im Browser
+- **Backend** (Python FastAPI) - REST-API, Datenbankzugriff, Dateiverarbeitung
+- **Frontend** (Svelte 5) - Single-Page-Application im Browser
 
-Die Kommunikation erfolgt über eine REST-API mit Bearer-Token-Authentifizierung. Das Frontend ist austauschbar -- jede Anwendung, die die API anspricht, kann als Frontend dienen.
+Die Kommunikation erfolgt über eine REST-API mit Bearer-Token-Authentifizierung. Das Frontend ist austauschbar - jede Anwendung, die die API anspricht, kann als Frontend dienen.
 
 ---
 
@@ -21,10 +21,10 @@ Jede importierte Datei wird per SHA-256 gehasht. Der Hash bestimmt den Speicherp
 
 ```
 storage/a1/b2/a1b2c3d4e5f6.../
-  original.pdf      -- Originaldatei
-  metadata.json     -- Extrahierte + angereicherte Metadaten
-  cover.jpg          -- Cover (max 800x1200)
-  fulltext.txt       -- Volltext für Suchindex
+  original.pdf      - Originaldatei
+  metadata.json     - Extrahierte + angereicherte Metadaten
+  cover.jpg          - Cover (max 800x1200)
+  fulltext.txt       - Volltext für Suchindex
 ```
 
 Vorteile:
@@ -95,13 +95,13 @@ JSON-API für Project Gutenberg. Ermöglicht Suche und Import gemeinfreier Büch
 
 ---
 
-## KI-Kategorisierung (LM Studio)
+## KI-Einordnung
 
-Optional kann ein lokales LLM über LM Studio Bücher automatisch kategorisieren. Die KI analysiert Titel, Autor und einen Textauszug und schlägt Kategorien mit Konfidenzwerten vor.
+Optional ordnet ein Sprachmodell auf einem eigenen Rechner Bücher in Regale ein. Die KI analysiert Titel, Autor und einen Textauszug und schlägt Kategorien mit Konfidenzwerten vor.
 
-- OpenAI-kompatible API
+- Schnittstelle unter /v1
 - Konfigurierbare URL, Modell, Temperatur und System-Prompt
-- Läuft vollständig lokal -- keine Daten an externe KI-Dienste
+- Läuft vollständig lokal - keine Daten an externe KI-Dienste
 
 ---
 
@@ -119,7 +119,7 @@ Optional kann ein lokales LLM über LM Studio Bücher automatisch kategorisieren
 ## Sicherheit
 
 ### Mount-Schutz
-Beim ersten Start legt das Backend eine Marker-Datei `.buecherfreunde` im Storage- und Datenbank-Verzeichnis an. Bei jedem weiteren Start wird geprüft, ob die Verzeichnisse korrekt gemountet sind. Fehlt die Marker-Datei, startet das Backend nicht -- das verhindert, dass bei nicht gemounteter Festplatte eine leere Datenbank auf der SD-Karte angelegt wird.
+Beim ersten Start legt das Backend eine Marker-Datei `.buecherfreunde` im Storage- und Datenbank-Verzeichnis an. Bei jedem weiteren Start wird geprüft, ob die Verzeichnisse korrekt gemountet sind. Fehlt die Marker-Datei, startet das Backend nicht - das verhindert, dass bei nicht gemounteter Festplatte eine leere Datenbank auf der SD-Karte angelegt wird.
 
 ### Token-Authentifizierung
 Jeder API-Aufruf vom Frontend trägt einen Bearer-Token. Das Token wird beim ersten Start generiert und in der .env-Datei gespeichert.
@@ -129,10 +129,10 @@ Jeder API-Aufruf vom Frontend trägt einen Bearer-Token. Das Token wird beim ers
 ## Externe Quellen
 
 - [AGPL-3.0 Lizenz](https://www.gnu.org/licenses/agpl-3.0.html)
-- [Project Gutenberg](https://www.gutenberg.org/) -- Gemeinfreie Bücher
-- [Gutendex API](https://gutendex.com/) -- JSON-API für Gutenberg
-- [Open Library](https://openlibrary.org/) -- Offene Bibliotheksdatenbank
-- [SQLite FTS5](https://www.sqlite.org/fts5.html) -- Volltextsuche
-- [PyMuPDF](https://pymupdf.readthedocs.io/) -- PDF-Verarbeitung
-- [foliate-js](https://github.com/nicolo-ribaudo/foliate-js) -- EPUB-Reader
+- [Project Gutenberg](https://www.gutenberg.org/) - Gemeinfreie Bücher
+- [Gutendex API](https://gutendex.com/) - JSON-API für Gutenberg
+- [Open Library](https://openlibrary.org/) - Offene Bibliotheksdatenbank
+- [SQLite FTS5](https://www.sqlite.org/fts5.html) - Volltextsuche
+- [PyMuPDF](https://pymupdf.readthedocs.io/) - PDF-Verarbeitung
+- [foliate-js](https://github.com/nicolo-ribaudo/foliate-js) - EPUB-Reader
 

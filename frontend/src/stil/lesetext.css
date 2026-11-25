@@ -1,0 +1,37 @@
+/* Text und Markdown auf dem Blatt */
+.textbuch .blatt { width: 100%; justify-self: center; background: var(--blattgrund); color: var(--blatttinte); overflow-wrap: break-word; }
+.textbuch .blatt.ohne-grund { box-shadow: none; }
+.leser .seiten.textbuch { grid-template-columns: minmax(0, var(--lesebreite)); }
+.schlichttext { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.blatt mark { color: inherit; border-radius: 2px; box-shadow: none; }
+.markdown > :first-child { margin-top: 0; }
+.markdown :is(h1, h2, h3, h4, h5, h6) { font-family: inherit; font-weight: 600; line-height: 1.25; margin: 1.4em 0 .6em; }
+.markdown h1 { font-size: 1.8em; }
+.markdown h2 { font-size: 1.45em; }
+.markdown h3 { font-size: 1.2em; }
+.markdown :is(h4, h5, h6) { font-size: 1.05em; }
+.markdown :is(p, ul, ol, pre, blockquote, table) { margin: 0 0 .9em; }
+.markdown p + p { margin-top: 0; }
+.markdown :is(ul, ol) { padding-left: 1.5em; }
+.markdown ul { list-style: disc; }
+.markdown li { margin-bottom: .25em; }
+.markdown blockquote { padding-left: 1em; border-left: 3px solid currentColor; opacity: .85; }
+.markdown a { color: inherit; text-decoration: underline; }
+.markdown hr { border: 0; border-top: 1px solid currentColor; opacity: .3; margin: 1.5em 0; }
+.markdown img { max-width: 100%; height: auto; }
+.markdown code { font: 400 .88em/1.5 var(--codeschrift); padding: .1em .3em; border-radius: 3px; background: color-mix(in srgb, currentColor 10%, transparent); hyphens: none; }
+.markdown pre { position: relative; padding: .875em 1em; border-radius: var(--r2); background: #14201e; color: #e8efe9; white-space: pre-wrap; overflow-wrap: anywhere; }
+.markdown pre code { padding: 0; background: none; color: inherit; }
+.markdown table { max-width: 100%; border-collapse: collapse; overflow-wrap: anywhere; }
+.markdown :is(th, td) { padding: .375em .625em; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); text-align: left; }
+.code-kopieren { position: absolute; top: .375rem; right: .375rem; width: 2rem; height: 2rem; display: grid; place-items: center; border-radius: var(--r1); color: #e8efe9; background: rgb(255 255 255 / .12); }
+.code-kopieren:hover { background: rgb(255 255 255 / .24); }
+.hljs-keyword, .hljs-selector-tag, .hljs-tag, .hljs-name, .hljs-symbol { color: #ffa87d; }
+.hljs-string, .hljs-regexp { color: #f2dd8a; }
+.hljs-number, .hljs-literal, .hljs-section { color: #c9b3ff; }
+.hljs-comment { color: #93a8a2; font-style: italic; }
+.hljs-function, .hljs-title, .hljs-meta, .hljs-attr, .hljs-attribute, .hljs-selector-class { color: #8fe0a8; }
+.hljs-built_in, .hljs-type, .hljs-selector-id, .hljs-doctag, .hljs-property { color: #86d6e8; }
+.hljs-params, .hljs-variable { color: #ffd09b; }
+.hljs-addition { color: #8fe0a8; background: rgb(80 250 123 / .12); }
+.hljs-deletion { color: #ff9b94; background: rgb(255 85 85 / .12); }

@@ -7,7 +7,7 @@
 .raster > .breit { grid-column: 1 / -1; }
 .karte { padding: .875rem; display: grid; gap: .625rem; align-content: start; grid-template-columns: minmax(0, 1fr); }
 .karte > h2 { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: .5rem; }
-.karte > h2 i { color: var(--messing); width: 1.125rem; text-align: center; }
+.karte > h2 > i { color: var(--messing); width: 1.125rem; text-align: center; }
 .stelle { display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: .625rem; padding: .4375rem 0; border-top: 1px solid var(--linie); font-size: .9375rem; }
 .stelle:first-of-type { border-top: 0; }
 .stelle > i { background: var(--f, var(--messing)); align-self: stretch; }

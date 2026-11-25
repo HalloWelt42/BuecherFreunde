@@ -28,7 +28,7 @@ BücherFreunde kommuniziert nur in folgenden Fällen mit externen Servern:
 | Wikipedia/Wikidata | wikidata.org | Autorennamen, ISBN | Biografien, Fotos, Werklisten | Ja (.env) |
 | Gutendex | gutendex.com | Suchbegriffe | Buchdaten, Dateien | Ja (nicht nutzen) |
 | GitHub | raw.githubusercontent.com | Nichts Personenbezogenes | Versionsnummer | Ja (ignorieren) |
-| LM Studio | Konfigurierbar | Titel, Autor, Textauszug | Kategorie-Vorschläge | Ja (.env) |
+| KI-Dienst im Haus | Konfigurierbar | Titel, Autor, Textauszug | Kategorie-Vorschläge | Ja (.env) |
 
 Alle externen Verbindungen können in den Einstellungen oder der `.env`-Datei einzeln deaktiviert werden. Die Anwendung funktioniert vollständig offline.
 

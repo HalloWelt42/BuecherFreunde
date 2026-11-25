@@ -6,6 +6,8 @@ export interface Frage {
   folgen?: string[];
   ja: string;
   symbol?: string;
+  /** false: nichts geht verloren, der Knopf bleibt ruhig */
+  gefahr?: boolean;
 }
 
 class Rueckfrage {

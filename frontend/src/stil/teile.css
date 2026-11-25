@@ -16,7 +16,7 @@
 .segment button[aria-pressed="true"] { background: var(--gewaehlt); color: var(--tinte); box-shadow: inset 0 1px 0 var(--spiegel), 0 1px 2px rgb(var(--schatten) / .24); }
 .chip { text-decoration: none; display: inline-flex; align-items: center; gap: .375rem; min-height: 1.875rem; padding: .125rem .5625rem; border-radius: var(--r2); font-size: .875rem; font-weight: 500; color: var(--tinte-2); background: var(--platte); box-shadow: 0 0 0 1px var(--linie); }
 button.chip:hover, a.chip:hover { color: var(--tinte); box-shadow: 0 0 0 1px rgb(var(--kante) / .7); }
-.chip[aria-pressed="true"] { background: var(--messing-hauch); color: var(--tinte); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--messing) 50%, transparent); }
+.chip[aria-pressed="true"], .chip[aria-current="page"] { background: var(--messing-hauch); color: var(--tinte); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--messing) 50%, transparent); }
 .reihe { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .schiebt { margin-left: auto; }
 .leise { color: var(--tinte-3); font-size: .875rem; }

@@ -8,7 +8,7 @@
  * während Vorlesen oder Hochladen. Je Serverfassung nur ein selbsttätiger Versuch (Merker in der Sitzung), damit ein
  * hängender Zwischenspeicher keine Schleife auslöst; dazwischen zeigt ein Band einen Knopf.
  */
-import { tts } from "./stores/tts.svelte.js";
+import { vorlesen } from "./stand/vorlesen.svelte";
 import { hochladenLaeuft } from "./api/client";
 
 export const OBERFLAECHE_FASSUNG = __FASSUNG__;
@@ -22,7 +22,7 @@ type Anlass = "start" | "takt" | "ortswechsel" | "sichtbar";
 
 /** Nichts, was ein Neuladen abbrechen würde. */
 function ruhig() {
-  return !tts.aktiv && !hochladenLaeuft();
+  return !vorlesen.aktiv && !hochladenLaeuft();
 }
 
 function erlaubt(neu: string): boolean {

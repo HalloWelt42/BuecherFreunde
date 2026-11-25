@@ -1,0 +1,25 @@
+// Regeln der Ergänzung: Arten, Summen und die Eigenheiten der Vorschau am Server
+import type { Ergaenzungsart, Ergaenzungsregal, Ergaenzungsvorschau } from "../../../lib/api/imports";
+
+export const ARTEN: { art: Ergaenzungsart; text: string; symbol: string; was: string }[] = [
+  { art: "cover", text: "Umschläge", symbol: "image", was: "Bücher ohne Umschlag bekommen den ersten passenden aus ihrer Datei." },
+  { art: "isbn", text: "ISBN", symbol: "barcode", was: "Bücher ohne ISBN werden nach einer durchsucht, die Nummer wird eingetragen." },
+  { art: "metadaten", text: "Angaben", symbol: "cloud-arrow-down", was: "Bücher mit ISBN bekommen fehlende Angaben aus dem Verzeichnis Open Library." },
+  { art: "volltext", text: "Volltext", symbol: "file-lines", was: "Alle gewählten Bücher werden geprüft, fehlender Volltext wird neu gelesen." },
+];
+
+/** Regalauswahl "Ohne Regal": am Server die 0 */
+export const OHNE_REGAL = 0;
+
+/** Wie viele Bücher drankommen. Der Volltext prüft jedes Buch; er fehlt in der Summe des Servers (Fehler 40). */
+export function betroffen(v: Ergaenzungsvorschau | null, arten: Ergaenzungsart[], regal: number | null, regale: Ergaenzungsregal[]): number {
+  if (!v || !arten.length) return 0;
+  const volltext = arten.includes("volltext") ? (v.typen.volltext ?? 0) : 0;
+  // Für "Ohne Regal" zählt die Vorschau 0, die Regalliste kennt die Zahl
+  const ohne = regal === OHNE_REGAL ? (regale.find((r) => r.id === null)?.anzahl ?? 0) : 0;
+  return Math.max(v.gesamt, volltext, ohne);
+}
+
+export function regalwerte(regale: Ergaenzungsregal[]): [string, string][] {
+  return [["", "Alle Regale"], ...regale.map((r) => [String(r.id ?? OHNE_REGAL), `${r.id === null ? "Ohne Regal" : r.name} (${r.anzahl})`] as [string, string])];
+}

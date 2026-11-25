@@ -21,6 +21,8 @@ export interface Lesewerte {
   blattTransparent?: boolean;
   scrollPct?: number;
   breite?: number;
+  /** Ansicht und Zoom am Telefon, getrennt von denen des Rechners */
+  telefon?: { ansicht?: string; zoom?: number };
 }
 
 export interface Lesestand {

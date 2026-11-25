@@ -26,7 +26,7 @@
 {/snippet}
 
 {#if href}
-  <a class="chip" {href} title={titel} {onclick}>{@render inhalt()}</a>
+  <a class="chip" {href} title={titel} aria-current={gedrueckt ? "page" : undefined} {onclick}>{@render inhalt()}</a>
 {:else if onclick}
   <button class="chip" type="button" aria-pressed={gedrueckt} title={titel} disabled={gesperrt} {onclick}>{@render inhalt()}</button>
 {:else}

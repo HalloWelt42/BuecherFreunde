@@ -10,6 +10,8 @@
   $effect(() => {
     const f = fenster;
     f?.showModal?.();
+    // Nicht das Schließen-Zeichen: ein markiertes Feld oder das Fenster selbst bekommt den Fokus
+    (f?.querySelector<HTMLElement>("[data-fokus]") ?? f)?.focus();
     const ab = beiEsc(() => onschliessen());
     return () => {
       ab();
@@ -19,7 +21,7 @@
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions, a11y_autofocus -->
-<dialog autofocus class="fenster glas dicht" style:--fenster={breite} bind:this={fenster} aria-label={titel} oncancel={(e) => (e.preventDefault(), onschliessen())} onclick={(e) => e.target === fenster && onschliessen()}>
+<dialog tabindex="-1" class="fenster glas dicht" style:--fenster={breite} bind:this={fenster} aria-label={titel} oncancel={(e) => (e.preventDefault(), onschliessen())} onclick={(e) => e.target === fenster && onschliessen()}>
   <div class="fenster-innen">
     <header class="reihe"><h2>{titel}</h2><span class="schiebt"><Knopf text="Schließen" symbol="xmark" nur klein frei onclick={onschliessen} /></span></header>
     <div class="fenster-mitte rollen">{@render children()}</div>

@@ -12,7 +12,7 @@
     {#snippet fuss()}
       <span class="schiebt reihe">
         <Knopf text="Abbrechen" onclick={() => rueckfrage.antworte(false)} />
-        <Knopf text={f.ja} symbol={f.symbol ?? "trash"} klasse="gefahr" onclick={() => rueckfrage.antworte(true)} />
+        <Knopf text={f.ja} symbol={f.symbol ?? "trash"} klasse={f.gefahr === false ? "" : "gefahr"} haupt={f.gefahr === false} onclick={() => rueckfrage.antworte(true)} />
       </span>
     {/snippet}
   </Fenster>

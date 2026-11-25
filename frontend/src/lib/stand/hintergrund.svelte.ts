@@ -38,7 +38,7 @@ class Hintergrund {
 
   async hochladen(datei: File): Promise<void> {
     const daten = new FormData();
-    daten.append("file", datei);
+    daten.append("datei", datei);
     await upload("/api/config/design/hintergrund", daten);
     await this.laden();
   }

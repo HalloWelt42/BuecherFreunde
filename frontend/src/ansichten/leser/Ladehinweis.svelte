@@ -1,0 +1,22 @@
+<script lang="ts">
+  // Wartet der Leser lange oder scheitert er, gibt es die Datei auch direkt
+  import Knopf from "../../lib/teile/Knopf.svelte";
+  import Zustand from "../../lib/teile/Zustand.svelte";
+  let { fehler, adresse, name, onerneut }: { fehler: string; adresse: string; name: string; onerneut: () => void } = $props();
+
+  const GEDULD_MS = 4000;
+  let langsam = $state(false);
+  $effect(() => {
+    const uhr = setTimeout(() => (langsam = true), GEDULD_MS);
+    return () => clearTimeout(uhr);
+  });
+</script>
+
+<div class="lesehinweis">
+  <Zustand art={fehler ? "fehler" : "laedt"} text={fehler || (langsam ? "Das dauert länger. Die Datei lässt sich auch direkt öffnen." : "Buch wird geladen")} onerneut={fehler ? onerneut : undefined}>
+    {#if fehler || langsam}
+      <Knopf text="Im Browser öffnen" symbol="up-right-from-square" klein extern href={adresse} />
+      <Knopf text="Herunterladen" symbol="download" klein href={adresse} download={name} />
+    {/if}
+  </Zustand>
+</div>

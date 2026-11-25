@@ -28,11 +28,11 @@ BücherFreunde stellt keine eigenen Buchinhalte bereit. Die Software verwaltet a
 
 BücherFreunde kann optional folgende externe Dienste nutzen:
 
-- **Open Library** (openlibrary.org) -- Metadaten-Anreicherung
-- **Google Books** (googleapis.com) -- Metadaten und Cover
-- **Wikipedia/Wikidata** (wikidata.org) -- Autoren-Informationen
-- **Gutendex** (gutendex.com) -- Gemeinfreie Bücher von Project Gutenberg
-- **LM Studio** (konfigurierbar) -- Lokale KI-Kategorisierung
+- **Open Library** (openlibrary.org) - Metadaten-Anreicherung
+- **Google Books** (googleapis.com) - Metadaten und Cover
+- **Wikipedia/Wikidata** (wikidata.org) - Autoren-Informationen
+- **Gutendex** (gutendex.com) - Gemeinfreie Bücher von Project Gutenberg
+- **KI-Dienst im Haus** (konfigurierbar) - Einordnung in Regale
 
 Für die Nutzung dieser Dienste gelten deren jeweilige Nutzungsbedingungen. Alle externen Verbindungen können in den Einstellungen deaktiviert werden.
 

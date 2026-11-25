@@ -7,7 +7,10 @@ class Wahl {
   buch = $state<Buch | null>(null);
   #farben = $state<Record<number, Dreiklang>>({});
 
-  licht = $derived<Dreiklang>((this.buch && this.#farben[this.buch.id]) || VORGABE[0]);
+  /** Ansichten mit eigenem Bild (Autorenseite) leihen dem Licht ihre Farben, solange sie offen sind */
+  geliehen = $state<Dreiklang | null>(null);
+
+  licht = $derived<Dreiklang>(this.geliehen ?? (this.buch && this.#farben[this.buch.id]) ?? VORGABE[0]);
 
   waehle(buch: Buch): void {
     this.buch = buch;
@@ -16,6 +19,10 @@ class Wahl {
   /** Nur setzen, wenn noch nichts gewählt ist (erste Liste der Sitzung) */
   falls(buch: Buch | undefined): void {
     if (buch && !this.buch) this.buch = buch;
+  }
+
+  farbenVon(id: number): Dreiklang | undefined {
+    return this.#farben[id];
   }
 
   kenntFarben(id: number): boolean {

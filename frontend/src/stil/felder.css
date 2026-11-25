@@ -16,7 +16,7 @@ textarea.eingabe { height: auto; min-height: 5rem; padding: .5rem .625rem; resiz
 .haekchen input:checked::after { content: ""; width: .5rem; height: .25rem; margin-top: -.125rem; border: solid var(--auf-messing); border-width: 0 0 2px 2px; transform: rotate(-45deg); }
 .regler { display: grid; gap: .25rem; font-size: .875rem; color: var(--tinte-2); }
 .regler-kopf { display: flex; justify-content: space-between; gap: .5rem; }
-.regler input { -webkit-appearance: none; appearance: none; width: 100%; height: 1.5rem; margin: 0; background: none; cursor: pointer; }
+.regler input { padding: 0; box-shadow: none; -webkit-appearance: none; appearance: none; width: 100%; height: 1.5rem; margin: 0; background: none; cursor: pointer; }
 .regler input::-webkit-slider-runnable-track { height: .375rem; border-radius: 3px; background: linear-gradient(90deg, var(--messing-flaeche) var(--anteil), var(--vertieft-2) var(--anteil)); }
 .regler input::-moz-range-track { height: .375rem; border-radius: 3px; background: linear-gradient(90deg, var(--messing-flaeche) var(--anteil), var(--vertieft-2) var(--anteil)); }
 .regler input::-webkit-slider-thumb { -webkit-appearance: none; width: 1.125rem; height: 1.125rem; margin-top: -.375rem; border-radius: 50%; background: var(--messing-flaeche); box-shadow: 0 0 0 2px rgb(var(--glas) / .9), 0 1px 3px rgb(0 0 0 / .4); }
@@ -25,6 +25,7 @@ textarea.eingabe { height: auto; min-height: 5rem; padding: .5rem .625rem; resiz
 .knopf.gefahr:hover { background: #8d1711; }
 .fenster { position: fixed; inset: 0; margin: auto; padding: 0; border: 0; color: var(--tinte); width: min(var(--fenster, 34rem), calc(100vw - 2rem)); max-width: none; max-height: min(46rem, calc(100dvh - 2rem)); overflow: hidden; }
 .fenster:not([open]) { display: none; }
+.fenster:focus-visible { outline: none; }
 .fenster::backdrop { background: rgb(0 0 0 / .42); }
 .fenster-innen { display: flex; flex-direction: column; max-height: inherit; }
 .fenster header { flex: none; padding: .75rem .75rem .5rem .875rem; flex-wrap: nowrap; }
