@@ -45,14 +45,9 @@ def _ensure_directories() -> None:
         settings.database_dir,
         settings.backup_dir,
     ]
-    # external_dir nur erstellen wenn konfiguriert und erreichbar
-    ext = settings.external_dir
-    if ext.exists() or ext.parent.exists():
-        dirs.append(ext)
-    else:
-        logger.warning(
-            "External-Verzeichnis %s nicht erreichbar - wird übersprungen", ext
-        )
+    # Die externe Sammlung gehört der App nicht: nur benutzen, wenn es sie gibt, nie anlegen
+    if not settings.external_dir.exists():
+        logger.info("Keine externe Sammlung unter %s", settings.external_dir)
 
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)

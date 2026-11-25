@@ -75,6 +75,9 @@ async def _uebernehmen(v: aiosqlite.Connection) -> None:
     if alt:
         await v.execute("VACUUM main")
         logger.info("Suchindex aus dem Bestand gelöst, Bestand verkleinert")
+    if fehlt or alt:
+        for schema in ("main", "suche"):
+            await v.execute(f"PRAGMA {schema}.wal_checkpoint(TRUNCATE)")      # das Protokoll der Übernahme ist so groß wie der Index
 
 
 async def neu_bauen(v: aiosqlite.Connection, text_von) -> int:
