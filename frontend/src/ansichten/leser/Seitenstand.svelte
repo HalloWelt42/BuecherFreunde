@@ -14,10 +14,26 @@
 <span class="stand zahl klein">
   <span class="nicht-schmal">Seite</span>
   <input class="seitenzahl" inputmode="numeric" aria-label="Seite" value={seite} onfocus={(e) => e.currentTarget.select()} onchange={setze} onkeydown={(e) => e.key === "Enter" && e.currentTarget.blur()} />
-  <span>von {zahl(gesamt)}{gedruckt ? `, gedruckt ${gedruckt}` : ""}</span>
+  <span class="von"><span>von {zahl(gesamt)}{#if gedruckt}<span class="nicht-schmal">,</span>{/if}</span>{#if gedruckt}<span class="nebenbei">gedruckt {gedruckt}</span>{/if}</span>
 </span>
 
 <style>
+  .von {
+    display: flex;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+  /* Am Telefon steht die gedruckte Zahl darunter, so bleibt Platz für den Schalter */
+  @container app (max-width: 720px) {
+    .von {
+      flex-direction: column;
+      gap: 0;
+      line-height: 1.2;
+    }
+    .nebenbei {
+      font-size: 0.75rem;
+    }
+  }
   @container app (max-width: 430px) {
     .nicht-schmal {
       display: none;

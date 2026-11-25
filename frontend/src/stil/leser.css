@@ -91,6 +91,9 @@
   .leseleiste.unten .sprung { flex: 1 1 0; min-width: 0; }
   .seitenfeld { top: 4.5rem; max-height: calc(100% - 9.25rem); }
 }
+/* Schalter des Formats: wo das Wort keinen Platz hat, trägt das Zeichen allein; der Name bleibt für Vorleseprogramme */
+@container app (max-width: 374px) { .leseleiste:has(.nebenbei) .umschalter span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); } .leseleiste:has(.nebenbei) .knopf.umschalter { width: 2.75rem; padding: 0; } }
+@container app (max-width: 22rem) { .leseleiste .umschalter span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); } .leseleiste .knopf.umschalter { width: 2.75rem; padding: 0; } }
 /* Telefon quer: die Höhe gehört dem Buch */
 @media (max-height: 30rem) {
   .schale.ohne-leiste.ohne-vorschau:has(.leser) { grid-template: minmax(0, 1fr) / minmax(0, 1fr); gap: 0; padding: 0; }

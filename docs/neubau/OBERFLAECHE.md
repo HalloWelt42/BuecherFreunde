@@ -201,6 +201,7 @@ Vorschläge, Suchsprache, Markieren, Notizen, Vorlesen.
 |---|---|---|
 | Suche mit Auszügen, Weiterlesen (8), zuletzt gesucht (12) | /search | ja |
 | Buch mit Lesen, von vorn, Herunterladen, Beschreibung | Buchseite | ja |
+| Umschalter Text und Original in der unteren Leiste (BF-15), dieselbe Seite, je Gerät gemerkt | `Fussleiste`, `PdfLeser` | ja (360, 390, 430, sehr groß) |
 | Leser mit Original, nur Text, Zoom, Papier, Blättern, Verzeichnis; im Querformat gehört die Höhe dem Buch | Leser | ja |
 | Tippziele 44, Eingaben ab 16, nichts unter 12 | `stil/breiten.css` | ja |
 

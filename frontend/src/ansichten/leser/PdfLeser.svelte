@@ -20,6 +20,7 @@
   import { geraet } from "../../lib/stand/geraet.svelte";
   import type { BuchEinzeln } from "../../lib/typen";
   import Fussleiste from "./Fussleiste.svelte";
+  import Knopf from "../../lib/teile/Knopf.svelte";
   import Ladehinweis from "./Ladehinweis.svelte";
   import Leserahmen from "./Leserahmen.svelte";
   import PdfDarstellung from "./PdfDarstellung.svelte";
@@ -211,8 +212,12 @@
   {/snippet}
 
   {#snippet fuss()}
-    <Fussleiste {anteil} anAnfang={nurText ? textstand.amAnfang : seite <= 1 && !rest.oben} amEnde={nurText ? textstand.amEnde : seite >= gesamt && !rest.unten} onzurueck={zurueck} onvor={vor} onanteil={(a) => geheZu(Math.round(1 + a * (gesamt - 1)))}>
+    <Fussleiste {anteil} anAnfang={nurText ? textstand.amAnfang : seite <= 1 && !rest.oben} amEnde={nurText ? textstand.amEnde : seite >= gesamt && !rest.unten} onzurueck={zurueck} onvor={vor} onanteil={(a) => geheZu(Math.round(1 + a * (gesamt - 1)))} schalter={geraet.telefon ? umschalter : undefined}>
       <Seitenstand {seite} {gesamt} gedruckt={gedruckt.zahl} onseite={geheZu} />
     </Fussleiste>
   {/snippet}
 </Leserahmen>
+
+{#snippet umschalter()}
+  <Knopf klasse="umschalter" text={nurText ? "Original" : "Text"} symbol={nurText ? "file-pdf" : "align-left"} titel={nurText ? "Seiten des Originals" : "Als Text lesen"} klein onclick={schalteText} />
+{/snippet}
