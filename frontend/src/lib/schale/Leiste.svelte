@@ -35,6 +35,8 @@
     {@render schalter("hat_isbn", "true", "Bücher", "book", z.buecher_mit_isbn)}
     {@render schalter("hat_isbn", "false", "Dokumente", "file-lines", z.dokumente)}
     <Punkt text="Autoren" symbol="users" zahl={z.autoren} href="/authors" hier={route.path.startsWith("/author")} onclick={zu} />
+    <!-- Am Telefon hat die untere Leiste dafür Vollbild (BF-33) -->
+    <span class="nur-telefon"><Punkt text="Hinzufügen" symbol="plus" href="/import" hier={route.path === "/import"} onclick={zu} /></span>
 
     <h2>Lesen</h2>
     {@render schalter("weiterlesen", "true", "Weiterlesen", "book-open", z.weiterlesen)}

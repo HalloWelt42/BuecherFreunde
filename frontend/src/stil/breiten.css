@@ -1,4 +1,4 @@
-.suchfeld-mobil, .nur-schmal, .nur-kompakt { display: none; }
+.suchfeld-mobil, .nur-schmal, .nur-kompakt, .nur-telefon { display: none; }
 /* Breiten der App: unter 1180 ohne Vorschau, unter 900 schmale Leiste aus, unter 720 eigene Telefonansicht */
 @container app (max-width: 1180px) {
   .schale, .schale.ohne-vorschau { grid-template-columns: 15.25rem minmax(0, 1fr); }
@@ -31,6 +31,8 @@
   .tafel button, .tafel a { text-decoration: none; text-align: center; display: grid; justify-items: center; gap: .125rem; padding: .5rem 0 .4375rem; font-size: .75rem; font-weight: 500; color: var(--tinte-2); min-height: 3.5rem; }
   .tafel i { font-size: 1.1875rem; }
   .tafel a[aria-current="page"], .tafel button[aria-current="page"] { color: var(--messing); }
+  .tafel button:disabled { opacity: .45; cursor: default; }
+  .nur-telefon { display: contents; }
   .kopf .suche, .kopf .nur-breit, .kopf .nicht-telefon, .kopf .knopf.leisteknopf { display: none; }
   .kopf .zeichen { flex: 1; min-width: 0; }
   .kopf > .knopf { flex: none; }
