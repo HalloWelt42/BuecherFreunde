@@ -1,6 +1,7 @@
 <script lang="ts">
   import { rueckfrage } from "../stand/rueckfrage.svelte";
   import Fenster from "./Fenster.svelte";
+  import Haekchen from "./Haekchen.svelte";
   import Knopf from "./Knopf.svelte";
 </script>
 
@@ -15,6 +16,7 @@
         <ul class="mulde dateiliste">{#each f.liste.eintraege as eintrag, n (n)}<li class="pfad">{eintrag}</li>{/each}</ul>
       </div>
     {/if}
+    {#if f.wahl}{@const wahl = f.wahl}<Haekchen text={wahl.text} an={wahl.an} onwahl={(an) => wahl.onwahl(an)} />{/if}
     {#snippet fuss()}
       <span class="schiebt reihe">
         <Knopf text={f.nein ?? "Abbrechen"} onclick={() => rueckfrage.antworte(false)} />

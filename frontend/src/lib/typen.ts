@@ -283,6 +283,8 @@ export interface Buch {
   alter_quelle?: string;
   /** So viele Dateien Begleitmaterial (BF-81) */
   material?: number;
+  /** Die Prüfung der Originale fand die Datei nicht (BF-82); null: das Original ist da oder ungeprüft */
+  original?: { text: string; geprueft_am: string | null } | null;
 }
 
 /** Eine Datei des Buchs (BF-80): das Original oder ein weiteres Format */

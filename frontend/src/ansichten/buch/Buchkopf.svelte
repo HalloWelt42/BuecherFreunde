@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { datum, formatName, groesse, sprache, tagWort, zahl } from "../../lib/format";
+  import { datum, datumZeit, formatName, groesse, sprache, tagWort, zahl } from "../../lib/format";
   import { leseKnopf, lesestand, leseweise, schriftprobe, standText } from "../../lib/lesestand";
   import { arten } from "../../lib/stand/arten.svelte";
   import { familie } from "../../lib/stand/familie.svelte";
@@ -11,6 +11,7 @@
   import Merkmalsknoepfe from "../../lib/teile/Merkmalsknoepfe.svelte";
   import Segment from "../../lib/teile/Segment.svelte";
   import Sterne from "../../lib/teile/Sterne.svelte";
+  import Symbol from "../../lib/teile/Symbol.svelte";
   import Umschlag from "../../lib/teile/Umschlag.svelte";
   import type { BuchEinzeln, Umschlagart } from "../../lib/typen";
   import Fassungslabels from "./Fassungslabels.svelte";
@@ -94,6 +95,8 @@
         <p>
           {#each buch.authors as a, n (a.id)}{#if n}, {/if}<a class="autor" href="/author/{a.id}">{a.name}</a>{:else}{buch.author}{/each}{#if buch.year}, {buch.year}{/if}
         </p>
+        <!-- Das Original fehlt nach der Prüfung (BF-82): das Buch bleibt, seine Datei lässt sich später hochladen -->
+        {#if buch.original}<p class="marke-text warn"><Symbol name="file-circle-exclamation" /><span>Original fehlt: {buch.original.text}{#if buch.original.geprueft_am}, geprüft {datumZeit(buch.original.geprueft_am)}{/if}</span></p>{/if}
       </div>
       <div class="reihe">
         <Sterne wert={buch.rating} onwahl={(n) => void bewerte(n)} /><Merkmalsknoepfe {buch} {onneu} />

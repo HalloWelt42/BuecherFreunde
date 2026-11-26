@@ -1,8 +1,10 @@
 <script lang="ts">
   import Karte from "../../lib/teile/Karte.svelte";
+  import { anschluesse } from "../../lib/stand/anschluesse.svelte";
   import { lesestoff } from "../../lib/stand/lesestoff.svelte";
   import Dienste from "./Dienste.svelte";
   import OhneNetz from "./OhneNetz.svelte";
+  import Persoenlich from "./Persoenlich.svelte";
   import Orte from "./Orte.svelte";
   import Schluessel from "./Schluessel.svelte";
   import Verbindungsliste from "./Verbindungsliste.svelte";
@@ -11,7 +13,8 @@
 </script>
 
 <div class="raster">
-  <Karte titel="Verbindungen" symbol="plug"><Verbindungsliste /></Karte>
+  <!-- Mit Kellerwolke darunter der Schalter für das Persönliche dort (BF-82) -->
+  <Karte titel="Verbindungen" symbol="plug"><Verbindungsliste />{#if anschluesse.inWolke}<Persoenlich />{/if}</Karte>
   <Karte titel="Orte" symbol="hard-drive"><Orte /></Karte>
   <!-- Nur mit Dienst im Hintergrund (gebaute App über https) -->
   {#if lesestoff.stand}<Karte titel="Ohne Netz lesen" symbol="wifi"><OhneNetz /></Karte>{/if}

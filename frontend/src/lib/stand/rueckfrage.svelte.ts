@@ -12,6 +12,8 @@ export interface Frage {
   symbol?: string;
   /** false: nichts geht verloren, der Knopf bleibt ruhig */
   gefahr?: boolean;
+  /** Eine Wahl dazu, als Haken unter den Folgen (etwa: vorhandene Dateien in den Papierkorb, BF-82); gilt nur mit Ja */
+  wahl?: { text: string; an: boolean; onwahl: (an: boolean) => void };
 }
 
 class Rueckfrage {
