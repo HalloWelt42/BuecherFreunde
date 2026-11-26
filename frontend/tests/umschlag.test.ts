@@ -90,9 +90,9 @@ describe("Zuordnung", () => {
 describe("Titel bleiben im Feld", () => {
   const TITEL = [
     "Kurz",
-    "Das Herz des Mörders",
-    "Analyzing Contextual Bias of Program Execution",
-    "Basiswissen Medizinische Software: Aus- und Weiterbildung zum Certified Professional for Medical Software",
+    "Das Lied der Gezeiten",
+    "Messungen an verteilten Speichern im Dauerbetrieb",
+    "Grundkurs Softwaretechnik: Entwurf, Prüfung und Betrieb großer Anwendungen in Verwaltung und Industrie",
     "Donaudampfschifffahrtsgesellschaftskapitän und andere Wörter",
     "T".repeat(80),
     "日本語の非常に長いタイトルで改行がないテキストです",
@@ -191,13 +191,13 @@ describe("Titel bleiben im Feld", () => {
 });
 
 describe("Umschlag", () => {
-  const buch = { id: 11, title: "Blau wie das Glück", author: "Nora Roberts", gattung: "liebesroman", cover_path: "11.jpg", file_format: "epub" };
+  const buch = { id: 11, title: "Sommer am Leuchtturm", author: "Lena Hofer", gattung: "liebesroman", cover_path: "11.jpg", file_format: "epub" };
 
   it("gestaltet zeigt das Blatt, kein Bild", () => {
     const { container } = render(Umschlag, { props: { buch: { ...buch, umschlag: "gestaltet" } } });
     expect(container.querySelector(".umschlag svg")).not.toBeNull();
     expect(container.querySelector(".umschlag img")).toBeNull();
-    expect(container.querySelector(".umschlag")?.textContent).toContain("Nora Roberts");
+    expect(container.querySelector(".umschlag")?.textContent).toContain("Lena Hofer");
   });
 
   it("Titelseite zeigt das Bild vom Server", () => {
@@ -217,7 +217,7 @@ describe("Umschlag", () => {
 
 describe("Buchkopf", () => {
   const buch: BuchEinzeln = {
-    id: 21, hash: "", title: "Das Herz des Mörders", author: "J. D. Robb", publisher: "", file_format: "epub", file_size: 414000, cover_path: "21.jpg", page_count: 31, year: 2010,
+    id: 21, hash: "", title: "Das Lied der Gezeiten", author: "Mara Lindqvist", publisher: "", file_format: "epub", file_size: 414000, cover_path: "21.jpg", page_count: 31, year: 2010,
     isbn: "", typ: "", gattung: "krimi", umschlag: "gestaltet", umschlag_schlicht: true, umschlag_wahl: "", sammlung_id: null, band_nummer: "", is_favorite: false,
     is_to_read: false, rating: 0, reading_position: "", last_read_at: null, categories: [], sammlung: null, created_at: "", updated_at: "", language: "", description: "",
     file_name: "", authors: [],
