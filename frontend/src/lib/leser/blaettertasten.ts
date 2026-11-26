@@ -1,6 +1,6 @@
 // Tasten aller Leser. Beim Blättern bewegen auch Leertaste, Pfeil hoch und Pfeil runter einen Schirm; beim Scrollen gehören
 // sie der Fläche.
-import { schreibtGerade } from "../flucht";
+import { imEigenenFenster, schreibtGerade } from "../flucht";
 import { istBedienbar } from "./bedienbar";
 import type { Leseart } from "./fluss/fluss";
 
@@ -19,7 +19,7 @@ export interface Tastengriffe {
 
 /** true, wenn die Taste hier etwas bewirkt hat */
 export function blaettertaste(e: KeyboardEvent, art: Leseart, tun: Tastengriffe): boolean {
-  if (schreibtGerade(e) || e.metaKey || e.ctrlKey || e.altKey || document.querySelector("dialog[open]")) return false;
+  if (schreibtGerade(e) || imEigenenFenster(e) || e.metaKey || e.ctrlKey || e.altKey || document.querySelector("dialog[open]")) return false;
   const griff = waehle(e, art, tun);
   if (!griff) return false;
   e.preventDefault();

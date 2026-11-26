@@ -7,6 +7,10 @@
   import type { PdfBuch } from "../../lib/leser/pdf/dokument";
   import { Pdfmarkierungen } from "../../lib/leser/pdf/markierung";
   import { blattbreite, hoechsteSeitenbreite } from "../../lib/leser/leseraum.svelte";
+  import type { Codestellenstand } from "../../lib/leser/codestellen.svelte";
+  import type { Codestelle } from "../../lib/api/ausfuehren";
+  import { gedruckteSeite } from "../../lib/leser/pdf/dokument";
+  import Codeebene from "./Codeebene.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
   import { einpassen, geblaettert, nachbarn, sichtbareSeiten, type Ansicht, type Seitenrest } from "../../lib/leser/pdf/zoom";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
@@ -31,8 +35,11 @@
     onrest: (rest: Seitenrest) => void;
     /** Eine Seite ist samt Textebene gezeichnet */
     onbeschriftet: (nr: number) => void;
+    /** Codestellen mit Taste (BF-29); ohne Sandbox keine */
+    codestellen?: Codestellenstand | null;
+    oncode?: (s: Codestelle) => void;
   }
-  let { sitzung, pdf, ansicht, zoom, seite, fundstelle, fundseite, onseite, onmass, onrest, onbeschriftet }: Eigenschaften = $props();
+  let { sitzung, pdf, ansicht, zoom, seite, fundstelle, fundseite, onseite, onmass, onrest, onbeschriftet, codestellen = null, oncode = () => {} }: Eigenschaften = $props();
 
   /** So viel der letzten Zeilen bleibt stehen, wenn eine hohe Seite in Abschnitten geblättert wird */
   const UEBERLAPP = 48;
@@ -66,9 +73,14 @@
     return Math.min(1, Math.max(0, (oben - r.top) / r.height));
   }
 
+  /** Maß der Anzeige, für die Ebene der Codestellen */
+  let massJetzt = $state(1);
+  const seitenname = (nr: number) => codestellen?.seitenname(nr) ?? (gedruckteSeite(pdf, nr) || String(nr));
+
   async function rechne() {
     if (!anzeige) return;
     const mass = zoom ?? passend(ansicht) ?? anzeige.mass;
+    massJetzt = mass;
     // Ändert sich das Maß beim Rollen (Feld daneben, andere Breite), bleibt die Stelle in der Seite, wo sie war
     const anteil = blaettert ? 0 : durchgerollt(seite);
     Object.assign(anzeige, { mass, ansicht, seite });
@@ -282,13 +294,20 @@
   });
 </script>
 
+{#snippet code(nr: number)}
+  {#if codestellen}
+    {@const stellen = codestellen.aufSeite(nr)}
+    {#if stellen.length}<Codeebene buch={sitzung.buch.id} {nr} {stellen} mass={massJetzt} {seitenname} onoeffne={oncode} />{/if}
+  {/if}
+{/snippet}
+
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div class="seiten pdf rollen" class:blaettert tabindex="0" role="document" aria-label="Seiten" bind:this={flaeche} onscroll={gerollt}>
   {#if blaettert}
     {#each boegen as b (b[0])}
-      <div class="bogen" class:wartet={b[0] !== bogen[0]}>{#each b as nr (nr)}<div class="pdfseite" data-seite={nr}><span class="nummer">{nr}</span></div>{/each}</div>
+      <div class="bogen" class:wartet={b[0] !== bogen[0]}>{#each b as nr (nr)}<div class="pdfseite" data-seite={nr}><span class="nummer">{nr}</span>{@render code(nr)}</div>{/each}</div>
     {/each}
   {:else}
-    {#each { length: pdf.seiten } as _, n (n)}<div class="pdfseite" data-seite={n + 1}><span class="nummer">{n + 1}</span></div>{/each}
+    {#each { length: pdf.seiten } as _, n (n)}<div class="pdfseite" data-seite={n + 1}><span class="nummer">{n + 1}</span>{@render code(n + 1)}</div>{/each}
   {/if}
 </div>

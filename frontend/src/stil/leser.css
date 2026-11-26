@@ -149,3 +149,20 @@
 }
 /* Sehr große Schrift am Telefon: der Stand bricht um, die Pfeile bleiben */
 @container app (max-width: 22rem) { .leseleiste.unten .stand, .leseleiste.unten .stand > span { white-space: normal; line-height: 1.15; } .leseleiste b { display: none; } .leseleiste.oben { justify-content: space-between; } .tastenraster { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Codestellen (BF-29): Taste, wo der Code beginnt, Marke der Fortsetzung, Streifen am Listing im Fenster. Lage aus dem
+   Server (Punkte der Seite, oben links) mal Maß der Anzeige. */
+.codestelle { position: absolute; z-index: 2; left: calc(var(--x0) * var(--mass) * 1px); top: calc(var(--y0) * var(--mass) * 1px); width: calc((var(--x1) - var(--x0)) * var(--mass) * 1px); height: calc((var(--y1) - var(--y0)) * var(--mass) * 1px); pointer-events: none; }
+.codestelle.offen::before { content: ""; position: absolute; left: -11px; top: 6px; bottom: 6px; width: 4px; background: var(--messing-flaeche); box-shadow: 0 0 10px color-mix(in srgb, var(--messing-flaeche) 70%, transparent); }
+.codestelle.offen.oben-offen::before { top: 0; }
+.codestelle.offen.unten-offen::before { bottom: 0; }
+.codetaste { position: absolute; pointer-events: auto; top: 0; right: 12px; transform: translateY(-50%); display: inline-flex; align-items: center; gap: .4375rem; height: 1.875rem; padding: 0 .6875rem 0 .5rem; border-radius: var(--r2); font: 600 .875rem var(--schrift); white-space: nowrap; background: linear-gradient(180deg, color-mix(in srgb, var(--messing-flaeche) 86%, #fff), var(--messing-flaeche)); color: var(--auf-messing); box-shadow: inset 0 1px 0 rgb(255 255 255 / .45), 0 0 0 1px color-mix(in srgb, var(--messing-flaeche) 70%, #000), 0 6px 16px -6px color-mix(in srgb, var(--messing-flaeche) 85%, transparent); }
+.codetaste:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--messing-flaeche) 76%, #fff), color-mix(in srgb, var(--messing-flaeche) 94%, #fff)); }
+.codetaste .spr { font-weight: 500; opacity: .85; display: inline-flex; gap: .3125rem; align-items: center; padding-left: .4375rem; border-left: 1px solid rgb(255 255 255 / .35); }
+.codetaste .auszug { font-size: .8125rem; }
+.codetaste .led { margin-left: .125rem; }
+.codetaste.weiter { height: 1.625rem; font-size: .8125rem; font-weight: 500; background: rgb(var(--glas) / .92); color: var(--tinte); box-shadow: 0 0 0 1px color-mix(in srgb, var(--messing) 45%, transparent), 0 4px 12px -6px rgb(var(--schatten) / .5); right: auto; left: 12px; }
+.codetaste.weiter i { color: var(--messing); }
+/* In der Textansicht steht die Taste in der Titelzeile des Codes, nicht auf seiner Kante */
+.codetaste.fest { position: static; transform: none; margin-left: auto; }
+/* Am Telefon Tippziele wie überall (stil/breiten.css) */
+@container app (max-width: 720px) { .codetaste, .codetaste.weiter { height: 2.75rem; } }

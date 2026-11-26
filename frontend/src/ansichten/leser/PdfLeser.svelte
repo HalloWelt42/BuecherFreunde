@@ -8,6 +8,11 @@
   import { ladefehler, type Ladefehler } from "../../lib/leser/ladefehler";
   import { leseart } from "../../lib/leser/leseart.svelte";
   import { blattbreite } from "../../lib/leser/leseraum.svelte";
+  import { Codestellenstand, listingAus } from "../../lib/leser/codestellen.svelte";
+  import type { Codestelle } from "../../lib/api/ausfuehren";
+  import { anschluesse } from "../../lib/stand/anschluesse.svelte";
+  import { ausfuehren } from "../../lib/stand/ausfuehren.svelte";
+  import { gedruckteSeite } from "../../lib/leser/pdf/dokument";
   import { ladePdf, verzeichnis, type PdfBuch } from "../../lib/leser/pdf/dokument";
   import { Pdfquelle } from "../../lib/leser/pdf/lesequelle";
   import type { Randeintrag } from "../../lib/leser/randmarken";
@@ -241,7 +246,18 @@
   });
 
   const aufraeumen = speicher.starte();
+  // Codestellen mit Taste, nur mit der Sandbox (BF-29); geholt um die Seite, an der man liest
+  const codestellen = untrack(() => anschluesse.jetzt.ausfuehren) ? new Codestellenstand(untrack(() => buch.id), true, (nr) => (pdf ? gedruckteSeite(pdf, nr) : "")) : null;
+  $effect(() => codestellen?.lade(seite));
+  async function oeffneCode(s: Codestelle) {
+    const seiten = [...new Set(s.teile.map((t) => t.seite).filter((n): n is number => n !== null))];
+    const namen = await Promise.all([seiten[0], seiten.at(-1)].filter((n) => n !== undefined).map((n) => codestellen?.seitennameGewiss(n!) ?? String(n)));
+    const lage = seiten.length > 1 ? `${namen[0]}-${namen[1]}` : (namen[0] ?? "");
+    ausfuehren.oeffne(listingAus(s, buch, `/book/${buch.id}/read?page=${seiten[0] ?? seite}`, lage));
+  }
+
   onDestroy(() => {
+    codestellen?.beende();
     aufraeumen();
     if (vorlesen.quelle && vorlesen.quelle === sitzung.quelle) vorlesen.halt();
     void pdf?.doc.loadingTask.destroy();
@@ -261,9 +277,9 @@
   {#if !pdf}
     <Ladehinweis {fehler} adresse={dateiUrl(buch.id)} name={buch.file_name || buch.title} onerneut={() => void lade()} />
   {:else if nurText}
-    <Textansicht bind:this={text} {sitzung} {art} startSeite={seite} {fundstelle} grund={farben.bg} tinte={farben.fg} onstand={(s) => { textstand = s; if (s.seite !== seite) gelesen(s.seite); }} onoriginal={schalteText} onmitte={() => sitzung.tippeMitte()} belegt={(p) => sitzung.belegt(p)} onbeschriftet={() => (sitzung.quelle as Pdfquelle | null)?.gezeichnet()} />
+    <Textansicht bind:this={text} {sitzung} {art} startSeite={seite} {fundstelle} grund={farben.bg} tinte={farben.fg} onstand={(s) => { textstand = s; if (s.seite !== seite) gelesen(s.seite); }} onoriginal={schalteText} onmitte={() => sitzung.tippeMitte()} belegt={(p) => sitzung.belegt(p)} onbeschriftet={() => (sitzung.quelle as Pdfquelle | null)?.gezeichnet()} {codestellen} oncode={oeffneCode} seitenname={(nr) => codestellen?.seitenname(nr) ?? String(nr)} />
   {:else}
-    <PdfSeiten bind:this={seiten} {sitzung} {pdf} {ansicht} {zoom} {seite} {fundstelle} {fundseite} onseite={gelesen} onmass={(m) => (mass = m)} onrest={(r) => (rest = r)} onbeschriftet={(nr) => (sitzung.quelle as Pdfquelle | null)?.gezeichnet(nr)} />
+    <PdfSeiten bind:this={seiten} {sitzung} {pdf} {ansicht} {zoom} {seite} {fundstelle} {fundseite} onseite={gelesen} onmass={(m) => (mass = m)} onrest={(r) => (rest = r)} onbeschriftet={(nr) => (sitzung.quelle as Pdfquelle | null)?.gezeichnet(nr)} {codestellen} oncode={oeffneCode} />
   {/if}
 
   {#snippet darstellung()}

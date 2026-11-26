@@ -177,6 +177,15 @@ export class EpubAnzeige {
     this.stile(this.darstellung);
   }
 
+  /** Die Dokumente der gezeigten Kapitel mit der Lage ihres Rahmens im Fenster (Codestellen, BF-29) */
+  dokumente(): { doc: Document; x: number; y: number }[] {
+    const inhalte = (this.#view?.renderer?.getContents() ?? []) as { doc: Document }[];
+    return inhalte.map(({ doc }) => {
+      const r = (doc.defaultView?.frameElement as HTMLElement | null)?.getBoundingClientRect();
+      return { doc, x: r?.left ?? 0, y: r?.top ?? 0 };
+    });
+  }
+
   get ansicht(): View | null {
     return this.#view;
   }

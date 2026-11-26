@@ -11,6 +11,7 @@ import { schale } from "../stand/schale.svelte";
 import { vorlesen } from "../stand/vorlesen.svelte";
 import type { BuchEinzeln, Etikett, Markierung, Notiz } from "../typen";
 import type { Buchquelle } from "../vorlesen/typen";
+import type { Codestelle } from "../api/ausfuehren";
 import type { Randeintrag } from "./randmarken";
 import type { Kasten } from "./fokus";
 import type { Leseart } from "./fluss/fluss";
@@ -28,6 +29,14 @@ export interface Randort {
   lage(e: Randeintrag): number | null;
   /** Rechte Kante des Blatts im Fenster */
   kante(): number | null;
+}
+
+/** Wo die Codestellen eines Texts stehen (Markdown, Text, EPUB; BF-29): der Leser des Formats weiß es */
+export interface Codeort {
+  /** Die Codeblöcke auf dem Schirm, je mit der Stelle, dem wievielten Teil und der Lage im Fenster */
+  orte(): { stelle: Codestelle; teil: number; lage: DOMRect }[];
+  /** Ein Listing ins Fenster Ausführen */
+  oeffne(stelle: Codestelle): void;
 }
 
 /** Was die Lesehilfen vom Leser des Formats brauchen */
@@ -77,6 +86,8 @@ export class Lesesitzung {
   /** Woraus vorgelesen wird; der Leser des Formats setzt sie, sobald das Buch steht */
   quelle = $state.raw<Buchquelle | null>(null);
   rand = $state.raw<Randort | null>(null);
+  /** Codestellen mit Taste in Texten; null ohne Sandbox oder im PDF (dort hängen sie an der Seite) */
+  code = $state.raw<Codeort | null>(null);
   hilfe = $state.raw<Hilfeort | null>(null);
   /** Farben des Blatts, für Voreinstellungen */
   farbwahl = $state.raw<{ jetzt(): { fg: string; bg: string }; setze(fg: string, bg: string): void } | null>(null);

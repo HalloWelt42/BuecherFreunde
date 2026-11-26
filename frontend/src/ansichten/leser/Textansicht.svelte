@@ -23,6 +23,10 @@
   import { schale } from "../../lib/stand/schale.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Bildlupe from "./Bildlupe.svelte";
+  import Codetaste from "./Codetaste.svelte";
+  import type { Codestellenstand } from "../../lib/leser/codestellen.svelte";
+  import type { Codestelle } from "../../lib/api/ausfuehren";
+  import { ausfuehren } from "../../lib/stand/ausfuehren.svelte";
 
   interface Eigenschaften {
     sitzung: Lesesitzung;
@@ -38,8 +42,12 @@
     belegt: (punkt: { x: number; y: number }) => boolean;
     /** Der Text hat sich geändert (nachgeladen, umgebrochen) */
     onbeschriftet: () => void;
+    /** Codestellen mit Taste (BF-29); ohne Sandbox keine */
+    codestellen?: Codestellenstand | null;
+    oncode?: (s: Codestelle) => void;
+    seitenname?: (nr: number) => string;
   }
-  let { sitzung, art, startSeite, fundstelle, grund, tinte, onstand, onoriginal, onmitte, belegt, onbeschriftet }: Eigenschaften = $props();
+  let { sitzung, art, startSeite, fundstelle, grund, tinte, onstand, onoriginal, onmitte, belegt, onbeschriftet, codestellen = null, oncode = () => {}, seitenname = String }: Eigenschaften = $props();
 
   let flaeche: HTMLElement | undefined = $state();
   let blatt: HTMLElement | undefined = $state();
@@ -281,9 +289,15 @@
                 {#each b.inhalt as t, j (j)}{#if t.art === "bild"}{@render abbildung(s.nr, t, "")}{:else}<p>{t.text}</p>{/if}{/each}
               </aside>
             {:else if b.art === "code"}
-              <!-- Codestelle als Code statt als Bildausschnitt; den Titel trägt nur der erste Teil -->
-              <div class="codeteil" data-kennung={b.kennung} data-teil={b.teil}>
-                {#if !b.teil && b.titel}<b class="codetitel">{b.titel}</b>{/if}
+              <!-- Codestelle als Code statt als Bildausschnitt; den Titel und die Taste trägt der erste Teil, jeder weitere
+                   die Marke der Fortsetzung (BF-29) -->
+              {@const stelle = codestellen?.stelle(b.kennung ?? "") ?? null}
+              <div class="codeteil" class:offen={!!stelle && ausfuehren.istOffen(sitzung.buch.id, stelle.kennung)} data-kennung={b.kennung} data-teil={b.teil}>
+                {#if !b.teil && (b.titel || stelle)}
+                  <div class="codekopf"><b class="codetitel">{b.titel}</b>{#if stelle}<Codetaste {stelle} fest onoeffne={() => oncode(stelle)} />{/if}</div>
+                {:else if b.teil && stelle}
+                  <div class="codekopf"><Codetaste {stelle} fest weiterVon={seitenname(stelle.teile[0].seite ?? s.nr)} onoeffne={() => oncode(stelle)} /></div>
+                {/if}
                 <pre><code>{(b.zeilen ?? []).join("\n")}</code></pre>
               </div>
             {:else}<p>{b.text}</p>{/if}
@@ -339,11 +353,31 @@
   .codeteil {
     margin: 1em 0;
   }
+  .codekopf {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.375rem;
+  }
+  .codekopf :global(.codetaste.fest) {
+    height: 2.75rem;
+    font-size: 0.875rem;
+  }
+  .codekopf :global(.codetaste.weiter) {
+    margin-left: 0;
+  }
   .codetitel {
     display: block;
-    margin-bottom: 0.25em;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font: 600 0.85em var(--schrift);
     hyphens: none;
+  }
+  /* Im Fenster offen: Ring um den Code wie die Streifen im Original */
+  .codeteil.offen pre {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--messing-flaeche) 75%, transparent);
   }
   .codeteil pre {
     margin: 0;

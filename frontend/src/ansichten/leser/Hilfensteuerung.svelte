@@ -1,7 +1,7 @@
 <script lang="ts">
   // Die Lesehilfen am Rechner ohne eigene Fläche: Tastenkürzel, Lineal mit den Pfeilen, Ruhe, Zeiger, Voreinstellung je Buch.
   // Sichtbar ist nur die Fokusschicht.
-  import { schreibtGerade } from "../../lib/flucht";
+  import { imEigenenFenster, schreibtGerade } from "../../lib/flucht";
   import { lesehilfen, type Fokusart } from "../../lib/leser/lesehilfen.svelte";
   import { selbstlauf } from "../../lib/leser/selbstlauf.svelte";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
@@ -58,7 +58,7 @@
   }
 
   function taste(e: KeyboardEvent): boolean {
-    if (schale.telefon || schreibtGerade(e) || e.ctrlKey || e.metaKey || e.altKey || document.querySelector("dialog[open]")) return false;
+    if (schale.telefon || schreibtGerade(e) || imEigenenFenster(e) || e.ctrlKey || e.metaKey || e.altKey || document.querySelector("dialog[open]")) return false;
     zuletzt = Date.now();
     const f = lesehilfen.fokus;
     const tun: Record<string, () => void> = {

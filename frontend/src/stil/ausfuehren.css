@@ -1,0 +1,122 @@
+/* Ausführen (BF-29): Fenster am Rechner, Leiste, Blatt am Telefon. Nur im nachgeladenen Teil (lib/schale/Ausfuehrfenster).
+   Die Bausteine des Appkerns (Editor) lesen dessen Marken; hier, an genau einer Stelle, stehen sie für die Glaswelt.
+   Die Farben des Editors bleiben die der Codeschmiede (editor-marken.css), gewählt über data-ed nach dem Thema der App. */
+@import "appkern-oberflaeche/editor-marken.css";
+
+:is(.ausfuehrfenster, .ausfuehrleiste, .blatt-sheet) {
+  --akzent: var(--messing);
+  --text: var(--tinte);
+  --text-2: var(--tinte-2);
+  --text-3: var(--tinte-3);
+  --rand: var(--linie);
+  --flaeche: rgb(var(--glas));
+  --gefahr: var(--schlecht);
+  --schrift-code: var(--codeschrift);
+  --schrift-zahl: var(--schrift);
+  --a1: .25rem; --a2: .5rem; --a3: .75rem;
+  --gross: 1rem; --klein: .875rem; --marke: .8125rem;
+}
+
+/* Fenster: frei verschiebbar wie Nachschlagen und Assistent */
+.schwebefenster.ausfuehrfenster { right: 1rem; bottom: auto; top: 8.5rem; max-height: calc(100% - 13rem); width: 42rem; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+/* Unter dem Kopf teilen sich Editor und Debugger die Höhe. Wird es eng (große Schrift, kleines Fenster), wird erst der
+   Editor kleiner und rollt in sich, dann rollt der ganze Inhalt: abgeschnitten wird nichts. */
+.ausfuehrfenster > .koerper { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+.ausfuehrfenster > .koerper > :is(.werkzeug, .fuss) { flex: none; }
+.ausfuehrfenster > header > i { color: var(--messing); }
+.ausfuehrfenster > header .name { display: flex; flex-direction: column; line-height: 1.2; }
+.ausfuehrfenster > header .name span { font-weight: 400; font-size: .875rem; color: var(--tinte-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ausfuehrfenster .werkzeug { display: flex; align-items: center; gap: .375rem; padding: 0 .5rem .5rem; flex-wrap: wrap; }
+.ausfuehrfenster .werkzeug .lage { display: inline-flex; align-items: center; gap: .4375rem; font-size: .875rem; color: var(--tinte-2); margin-left: auto; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ausfuehrfenster kbd { font: 500 .75rem var(--schrift); opacity: .8; margin-left: .125rem; }
+/* Sprache und Fassung als Chip, wählbar */
+.sprachwahl { position: relative; cursor: pointer; }
+.sprachwahl select { appearance: none; border: 0; background: none; font: inherit; color: inherit; padding: 0; cursor: pointer; }
+.sprachwahl:hover { color: var(--tinte); box-shadow: 0 0 0 1px rgb(var(--kante) / .7); }
+
+.ausfuehrfenster .flaeche { flex: 0 1 auto; display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); min-height: 14rem; max-height: 26rem; margin: 0 .5rem; border-radius: var(--r2); overflow: hidden; box-shadow: 0 0 0 1px var(--linie); background: var(--ed-grund); }
+.ausfuehrfenster .dateien { display: flex; align-items: stretch; background: var(--ed-rand); font-size: .875rem; min-width: 0; overflow: hidden; }
+.ausfuehrfenster .dateien .datei { display: inline-flex; align-items: center; gap: .25rem; padding: 0 .5rem 0 0; color: var(--ed-nr); font-family: var(--codeschrift); font-size: .8125rem; white-space: nowrap; border-right: 1px solid color-mix(in srgb, var(--ed-linie) 60%, transparent); min-width: 0; }
+.ausfuehrfenster .dateien .datei > button:first-child { display: inline-flex; align-items: center; gap: .4375rem; padding: .375rem 0 .375rem .75rem; color: inherit; font: inherit; }
+.ausfuehrfenster .dateien .datei.an { background: var(--ed-grund); color: var(--ed-text); box-shadow: inset 0 2px 0 var(--messing-flaeche); padding-right: .75rem; }
+.schwebefenster.ausfuehrfenster.abgelegt { display: none; }
+.ausfuehrfenster .dateien .x { font-size: .75rem; opacity: .6; padding: 0 .125rem; }
+.ausfuehrfenster .dateien .x:hover { opacity: 1; }
+.ausfuehrfenster .dateien .geaendert { width: .4375rem; height: .4375rem; border-radius: 50%; background: var(--ed-geaendert); flex: none; }
+.ausfuehrfenster .dateien .rest { margin-left: auto; display: flex; align-items: center; gap: .375rem; padding: 0 .625rem; color: var(--ed-nr); font-family: var(--schrift); white-space: nowrap; }
+.ausfuehrfenster .editorplatz { min-height: 0; overflow: hidden; }
+.ausfuehrfenster .editorplatz[hidden] { display: none; }
+/* Die gezeigte Zeile wie im Entwurf: Messing hinterlegt, links ein Streifen */
+.ausfuehrfenster .cm-line.cm-zeilen-marke { background: color-mix(in srgb, var(--messing-flaeche) 16%, transparent); box-shadow: inset 3px 0 0 var(--messing-flaeche); }
+
+/* Debugger unter dem Editor */
+.dbg-bereich { flex: 1 0 auto; display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); min-height: 0; margin: .625rem .5rem 0; }
+.dbg-bereich > .kopfzeile { display: flex; align-items: center; gap: .375rem; padding-bottom: .375rem; flex-wrap: wrap; }
+.dbg-bereich .steuer { display: flex; align-items: center; gap: 2px; }
+.dbg-bereich .steuer .knopf { width: 2rem; height: 2rem; padding: 0; font-size: .875rem; }
+.dbg-bereich .steuer .trenner { width: 1px; height: 1.25rem; background: var(--linie); margin: 0 .25rem; }
+.dbg-bereich .verborgen { visibility: hidden; }
+.dbg-bereich .schrittzahl { font-size: .875rem; color: var(--tinte-2); white-space: nowrap; min-width: 5.5rem; text-align: right; }
+.dbg-bereich .seite { display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; }
+.dbg-bereich .zeitleiste { position: relative; height: .5rem; border-radius: 3px; background: var(--vertieft-2); margin: .125rem 0 .5rem; cursor: pointer; }
+.dbg-bereich .zeitleiste > span { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--messing-flaeche) 75%, #fff), var(--messing-flaeche)); }
+.dbg-bereich .zeitleiste > i { position: absolute; top: -3px; width: 3px; height: .875rem; margin-left: -1px; border-radius: 1px; background: var(--ed-haltepunkt); }
+.dbg-bereich .debug { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: .5rem; min-height: 0; overflow: auto; }
+.dbg-bereich .rechts { display: grid; gap: .5rem; align-content: start; min-width: 0; }
+.dbg-bereich h4 { font-size: .8125rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--tinte-3); margin: 0 0 .25rem; }
+:is(.dbg-bereich, .blatt-sheet) .feldchen { padding: .5rem .625rem; border-radius: var(--r2); background: var(--platte); box-shadow: inset 0 1px 0 var(--platte-licht), 0 0 0 1px var(--linie); min-width: 0; }
+:is(.dbg-bereich, .blatt-sheet) .werte { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); gap: 2px .625rem; font: 400 .875rem/1.55 var(--codeschrift); margin: 0; }
+:is(.dbg-bereich, .blatt-sheet) .werte dt { color: var(--ed-feld); }
+:is(.dbg-bereich, .blatt-sheet) .werte .typ { color: var(--tinte-3); font: 500 .8125rem/1.7 var(--schrift); }
+:is(.dbg-bereich, .blatt-sheet) .werte dd { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:is(.dbg-bereich, .blatt-sheet) .werte .neu { color: var(--ed-geaendert); font-weight: 700; }
+.dbg-bereich .stapel { display: grid; gap: 2px; }
+.dbg-bereich .stapel li { display: flex; justify-content: space-between; gap: .5rem; padding: .1875rem .375rem; border-radius: var(--r1); font: 400 .875rem var(--codeschrift); }
+.dbg-bereich .stapel li.aktiv { background: var(--messing-hauch); }
+.dbg-bereich .stapel span { color: var(--tinte-3); font-family: var(--schrift); font-size: .8125rem; }
+:is(.dbg-bereich, .blatt-sheet) .konsole { margin: 0; padding: .375rem .5rem; border-radius: var(--r1); background: var(--ed-konsole); color: var(--ed-konsole-text); font: 400 .875rem/1.5 var(--codeschrift); white-space: pre-wrap; overflow-wrap: anywhere; min-height: 2.5rem; }
+:is(.dbg-bereich, .blatt-sheet) .konsole .leer { opacity: .6; font-style: italic; font-family: var(--schrift); }
+.dbg-bereich .ausgabeseite { display: grid; gap: .5rem; align-content: start; overflow: auto; min-height: 0; }
+:is(.dbg-bereich, .blatt-sheet) .meldung-lauf { display: flex; gap: .5rem; align-items: baseline; padding: .5rem .625rem; border-radius: var(--r2); font-size: .875rem; background: color-mix(in srgb, var(--schlecht) 10%, transparent); }
+:is(.dbg-bereich, .blatt-sheet) .meldung-lauf i { color: var(--schlecht); }
+:is(.dbg-bereich, .blatt-sheet) .hinweise { display: flex; gap: .5rem; align-items: baseline; padding: .5rem .625rem; border-radius: var(--r2); font-size: .875rem; background: color-mix(in srgb, var(--warn) 10%, transparent); }
+:is(.dbg-bereich, .blatt-sheet) .hinweise pre { margin: 0; font: 400 .8125rem/1.5 var(--codeschrift); white-space: pre-wrap; overflow-wrap: anywhere; }
+.dbg-bereich .veraltet { display: flex; align-items: center; gap: .5rem; font-size: .875rem; color: var(--tinte-2); margin-bottom: .375rem; }
+.ausfuehrfenster .fuss { display: flex; align-items: center; gap: .5rem; padding: .375rem .75rem .5rem; font-size: .875rem; color: var(--tinte-3); }
+
+/* Als Leiste abgelegt: bleibt, wie es war, nur zusammengelegt */
+.ausfuehrleiste { position: absolute; z-index: 60; right: 1rem; bottom: 4.5rem; display: flex; align-items: center; gap: .5rem; padding: .375rem .375rem .375rem .625rem; font-size: .875rem; }
+.ausfuehrleiste > i { color: var(--messing); }
+.ausfuehrleiste b { font: 500 .875rem var(--codeschrift); }
+
+/* Telefon: Blatt unten über der Tafel, ausführen und Schritte ansehen ohne Editor; Haltepunkt per Tippen auf die Nummer */
+.blatt-sheet { position: absolute; z-index: 60; left: .375rem; right: .375rem; bottom: 4rem; height: 24.5rem; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto auto minmax(0, 1fr); overflow: hidden; }
+.blatt-sheet .zug { width: 2.5rem; height: .25rem; border-radius: 2px; background: var(--linie); margin: .375rem auto 0; }
+.blatt-sheet header { display: flex; align-items: center; gap: .5rem; padding: .25rem .375rem .25rem .75rem; }
+.blatt-sheet header .titel { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.blatt-sheet header .titel b { font: 600 .9375rem var(--codeschrift); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.blatt-sheet header .titel span { font-size: .875rem; color: var(--tinte-3); }
+.blatt-sheet .knopf { height: 2.75rem; }
+.blatt-sheet .knopf.nur { width: 2.75rem; }
+.blatt-sheet .griffe { display: flex; gap: .25rem; padding: 0 .5rem .5rem; }
+.blatt-sheet .griffe .knopf.nur { flex: 1; width: auto; }
+.blatt-sheet .griffe .knopf.haupt { flex: 1.4; }
+.blatt-sheet .wahl { padding: 0 .5rem .375rem; }
+.blatt-sheet .wahl .segment { display: flex; }
+.blatt-sheet .wahl .segment button { flex: 1; justify-content: center; height: 2.5rem; display: flex; align-items: center; gap: .375rem; }
+.blatt-sheet .inhalt { overflow: auto; padding: 0 .5rem .5rem; display: grid; gap: .5rem; align-content: start; min-height: 0; }
+.blatt-sheet .zeilen { min-height: calc(5 * 1.6em + .75rem); overflow-y: hidden; margin: 0; padding: .375rem 0; border-radius: var(--r2); box-shadow: 0 0 0 1px var(--ed-linie); background: var(--ed-grund); color: var(--ed-text); font: 400 .8125rem/1.6 var(--codeschrift); font-variant-ligatures: none; tab-size: 4; overflow-x: auto; }
+.blatt-sheet .zeilen .z { display: flex; padding-right: .75rem; white-space: pre; }
+.blatt-sheet .zeilen .nr { flex: none; width: 2.25rem; padding-right: .625rem; text-align: right; color: var(--ed-nr); user-select: none; position: relative; cursor: pointer; }
+.blatt-sheet .zeilen .z.halt .nr::before { content: ""; position: absolute; left: .25rem; top: 50%; width: .625rem; height: .625rem; margin-top: -.3125rem; border-radius: 50%; background: var(--ed-haltepunkt); }
+.blatt-sheet .zeilen .z.jetzt { background: color-mix(in srgb, var(--messing-flaeche) 16%, transparent); box-shadow: inset 3px 0 0 var(--messing-flaeche); }
+.blatt-sheet .zeilen .z.jetzt .nr { color: var(--ed-text); font-weight: 700; }
+.blatt-sheet .werte { grid-template-columns: repeat(2, max-content minmax(0, 1fr)); gap: 2px .5rem; font-size: .875rem; }
+/* Farben im Code wie im Editor der Codeschmiede (Färbung über highlight.js, Namen auf die Marken des Editors) */
+.blatt-sheet .zeilen :is(.hljs-keyword, .hljs-literal) { color: var(--ed-kw); font-weight: 700; }
+.blatt-sheet .zeilen .hljs-string { color: var(--ed-str); }
+.blatt-sheet .zeilen .hljs-number { color: var(--ed-zahl); }
+.blatt-sheet .zeilen .hljs-comment { color: var(--ed-kom); font-style: italic; }
+.blatt-sheet .zeilen :is(.hljs-title, .hljs-function, .hljs-built_in) { color: var(--ed-fn); }
+.blatt-sheet .zeilen .hljs-property { color: var(--ed-feld); }
+.blatt-sheet .zeilen .hljs-meta { color: var(--ed-dekorator); }

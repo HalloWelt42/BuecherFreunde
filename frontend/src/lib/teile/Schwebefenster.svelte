@@ -18,6 +18,8 @@
     /** Unter diesem Namen ist der Ort gemerkt */
     merkname: string;
     titel: string;
+    /** Zweite Zeile im Kopf unter dem Titel, etwa woher der Inhalt stammt */
+    untertitel?: string;
     symbol: string;
     /** Versatz gegenüber der Ecke unten rechts, damit mehrere Fenster nicht aufeinander liegen */
     stufe?: number;
@@ -26,8 +28,10 @@
     knoepfe?: Snippet;
     onschliessen: () => void;
     children: Snippet;
+    /** Weitere Merkmale des Fensters, etwa data-ed für die Farben des Editors */
+    [merkmal: `data-${string}`]: string | undefined;
   }
-  let { merkname, titel, symbol, stufe = 0, klasse = "", zusatz, knoepfe, onschliessen, children }: Eigenschaften = $props();
+  let { merkname, titel, untertitel = "", symbol, stufe = 0, klasse = "", zusatz, knoepfe, onschliessen, children, ...merkmale }: Eigenschaften = $props();
 
   const MIND_B = 220;
   const MIND_H = 140;
@@ -76,6 +80,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <section
+  {...merkmale}
   class="schwebefenster glas dicht {klasse}"
   aria-label={titel}
   bind:this={fenster}
@@ -90,7 +95,7 @@
   style:height={ort ? `${ort.h}px` : undefined}
 >
   <header class:zieht onpointerdown={verschiebe}>
-    <Symbol name={symbol} /><span class="name">{titel}</span>
+    <Symbol name={symbol} />{#if untertitel}<span class="name"><b>{titel}</b><span>{untertitel}</span></span>{:else}<span class="name">{titel}</span>{/if}
     {@render zusatz?.()}
     <span class="schiebt reihe eng">
       {@render knoepfe?.()}

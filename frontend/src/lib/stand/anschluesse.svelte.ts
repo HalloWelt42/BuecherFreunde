@@ -12,9 +12,11 @@ export interface Anschluesse {
   nachschlag_art: "nachschlag" | "netz" | "";
   ki: boolean;
   vorlesen: boolean;
+  /** Sandbox der Codeschmiede: Codestellen ausführen (BF-29); ohne sie keine Taste und kein Editor im Bau */
+  ausfuehren: boolean;
 }
 
-const OHNE: Anschluesse = { ablage: "geraet", anmeldung: "kellerwolke", bedeutung: false, assistent: "", nachschlag: "", nachschlag_art: "", ki: false, vorlesen: false };
+const OHNE: Anschluesse = { ablage: "geraet", anmeldung: "kellerwolke", bedeutung: false, assistent: "", nachschlag: "", nachschlag_art: "", ki: false, vorlesen: false, ausfuehren: false };
 
 class Anschlussstand {
   jetzt = $state<Anschluesse>(OHNE);

@@ -30,6 +30,10 @@
   import Ladehinweis from "./Ladehinweis.svelte";
   import Leserahmen from "./Leserahmen.svelte";
   import Trefferleiste from "./Trefferleiste.svelte";
+  import { Codestellenstand, listingAus } from "../../lib/leser/codestellen.svelte";
+  import { codebloecke } from "../../lib/leser/text/codeorte";
+  import { anschluesse } from "../../lib/stand/anschluesse.svelte";
+  import { ausfuehren } from "../../lib/stand/ausfuehren.svelte";
 
   let { buch, ziel, sitzung, onzurueck }: { buch: BuchEinzeln; ziel: Leseziel; sitzung: Lesesitzung; onzurueck: () => void } = $props();
 
@@ -57,6 +61,19 @@
   let treffer = $state(0);
   let trefferNr = $state(-1);
   let anzeige: EpubAnzeige | null = null;
+
+  // Codestellen mit Taste, nur mit der Sandbox (BF-29): die Codeblöcke in den gezeigten Kapiteln; der Rückweg führt an die
+  // Stelle, an der man beim Öffnen las
+  const codestellen = untrack(() => anschluesse.jetzt.ausfuehren) ? new Codestellenstand(untrack(() => buch.id), false) : null;
+  $effect(() => {
+    if (!codestellen || !bereit) return;
+    codestellen.lade();
+    const stellen = codestellen.alle;
+    sitzung.code = !stellen.length ? null : {
+      orte: () => (anzeige?.dokumente() ?? []).flatMap(({ doc, x, y }) => codebloecke(doc, stellen, { x, y })),
+      oeffne: (s) => ausfuehren.oeffne(listingAus(s, buch, `/book/${buch.id}/read${stand.cfi ? `?cfi=${encodeURIComponent(stand.cfi)}` : ""}`)),
+    };
+  });
   let quelle: Epubquelle | null = null;
 
   let prozent = $derived(Math.round(stand.anteil * 100));
@@ -231,6 +248,8 @@
     sitzung.rand = null;
     sitzung.hilfe = null;
     sitzung.farbwahl = null;
+    sitzung.code = null;
+    codestellen?.beende();
     anzeige?.schliesse();
     sitzung.griffe = null;
   });

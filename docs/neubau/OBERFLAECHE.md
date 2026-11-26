@@ -210,6 +210,24 @@ Blätter (PDF, MD, TXT, Vorgabe Scrollen), einmal für Bücher mit eigenem Umbru
 | Ansicht eines PDF, die für dieses Buch gewählt wurde, geht vor der Wahl des Geräts | `PdfLeser` | ja |
 | Großer Text (2,7 MB) | `Schlichttext`, `text/bloecke` | steht nach 1,5 s, 15 ms je Schritt |
 
+### Ausführen (BF-29)
+
+Nach dem Entwurf `ausfuehren.html`: Listings aus dem Buch laufen in der Sandbox der Codeschmiede. Nur mit Anschluss (`anschluesse.ausfuehren`);
+ohne ihn gibt es keine Taste, und Editor wie Debugger sind nicht im Bau der Startseite: das Fenster lädt sie erst beim ersten Öffnen
+(`Schale` importiert `Ausfuehrfenster` bei Bedarf, darin `appkern-oberflaeche/code`). Die Marken des Appkerns stehen an einer Stelle für
+die Glaswelt (`stil/ausfuehren.css`), die Farben des Editors bleiben die der Codeschmiede, gewählt nach dem Thema der App.
+
+| Teil | Ort | Geprüft |
+|---|---|---|
+| Codestellen vom Server (`/api/books/{id}/codestellen`): im PDF in Fenstern von 40 Seiten, sonst fürs ganze Buch; läuft die Erkennung oder die Vorprüfung noch, fragt der Leser später wieder | `leser/codestellen` | Tests, Probe |
+| Taste, wo der Code beginnt, mit Sprache und Vorprüfung als Punkt (grün: läuft für sich, sonst "Auszug" mit kurzem Grund); jeder weitere Teil "Fortsetzung von S. n" | `Codetaste` | ja |
+| PDF Original: Ebene je Seite aus den Rechtecken des Servers, Streifen am offenen Listing; PDF als Text: Taste im Kopf des Codes (Feld `kennung`), Ring am offenen | `Codeebene`, `Textansicht` | 1440 und 390, hell und dunkel |
+| MD, TXT, EPUB: eine Ebene über dem Buch, der Leser des Formats nennt die Blöcke auf dem Schirm (`Codeort` der Sitzung); im TXT die Zeile des Zauns | `Codetastenebene`, `text/codeorte` | MD, TXT, EPUB geblättert |
+| Fenster: verschiebbar wie Nachschlagen, ein Tab je Listing, Kopie je Buch und Stelle (Zurücksetzen mit Rückfrage), Sprache und Fassung (PHP wie in Nachschlag), Ausführen mit Cmd/Strg Enter, als Leiste ablegen; nichts geht beim Blättern oder Seitenwechsel verloren | `Ausfuehrfenster`, `stand/ausfuehren`, `ausfuehren/fassungen` | ja |
+| Debugger: Lauf aufzeichnen, Schritt vor und zurück, Haltepunkte, Zeitleiste, Variablen mit Art, Aufrufe, Ausgabe bis hier | `ausfuehren/arbeit`, `Debugansicht` | ja |
+| Telefon: Blatt ohne Editor, ausführen und Schritte, fünf Zeilen um die gezeigte, Haltepunkt per Tippen auf die Nummer | `Telefonblatt`, `ausfuehren/zeilen` | 390 |
+| Große Schrift: wird es eng, wird erst der Editor kleiner, dann rollt der Inhalt des Fensters; nichts abgeschnitten | `stil/ausfuehren.css` | Sehr groß, 1440 x 900 und 760, 390 |
+
 ## 15 und 16 Hinzufügen
 
 | Funktion | Neu | Geprüft |

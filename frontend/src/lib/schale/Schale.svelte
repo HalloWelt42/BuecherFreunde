@@ -18,6 +18,9 @@
   import Schnellnotiz from "./Schnellnotiz.svelte";
   import Kontextmenue from "../teile/Kontextmenue.svelte";
   import { kontextmenue } from "../stand/kontextmenue.svelte";
+  import { ausfuehren } from "../stand/ausfuehren.svelte";
+  // Editor und Debugger kommen erst, wenn jemand ausführt (BF-29); ohne Anschluss nie
+  const ausfuehrfenster = () => import("./Ausfuehrfenster.svelte");
   import Schwebefeld from "./Schwebefeld.svelte";
   import Tafel from "./Tafel.svelte";
   import Vorschau from "./Vorschau.svelte";
@@ -66,6 +69,7 @@
 {#if kontextmenue.offen}{#key kontextmenue.offen}<Kontextmenue />{/key}{/if}
 {#if nachschlag.offen}<Nachschlagefenster />{/if}
 {#if gespraech.offen}<Assistentenfenster />{/if}
+{#if ausfuehren.offen && anschluesse.jetzt.ausfuehren}{#await ausfuehrfenster() then { default: Fenster }}<Fenster />{/await}{/if}
 
 <style>
   .hinweis {

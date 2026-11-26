@@ -86,6 +86,12 @@ if (typeof document !== "undefined") {
   document.addEventListener("keydown", taste);
 }
 
+/** In einem Fenster mit eigener Bedienung (Ausführen) gehören ihm die Tasten, nie dem Leser dahinter (Blättern, Hilfen). */
+export function imEigenenFenster(e: Event): boolean {
+  const ziel = e.target as (Node & { closest?: (s: string) => Element | null }) | null;
+  return !!ziel?.closest?.("[data-eigene-tasten]");
+}
+
 /** Liegt der Fokus in einem Feld, gehören ihm die Tasten. */
 export function schreibtGerade(e: Event): boolean {
   const ziel = e.target instanceof HTMLElement ? e.target : null;
