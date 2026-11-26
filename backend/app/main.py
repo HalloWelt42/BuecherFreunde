@@ -21,6 +21,7 @@ from backend.app.api.books import router as books_router
 from backend.app.api.categories import router as categories_router
 from backend.app.api.config import router as config_router
 from backend.app.api.einordnung import router as einordnung_router
+from backend.app.api.katalog import router as katalog_router
 from backend.app.api.gutenberg import router as gutenberg_router
 from backend.app.api.imports import router as imports_router
 from backend.app.api.metadata import router as metadata_router
@@ -44,6 +45,8 @@ from backend.app.codestellen.dienst import codestellen
 from backend.app.codestellen.vorpruefung import vorpruefer
 from backend.app.services import bedeutung, gespraech, nachschlagen, pflege
 from backend.app.services.ausfuehren import sandbox
+from backend.app.katalog.bestandslauf import bestandslauf
+from backend.app.katalog.einordnen import einordner as katalog_einordner
 from backend.app.services.einordnung import einordner
 from backend.app.services.ki import ki
 from backend.app.services.sammlungsfinder import sammlungsfinder
@@ -93,6 +96,8 @@ async def lifespan(app: FastAPI):
     umschlagpruefung.nach_runde.append(einordner.anstossen)
     umschlagpruefung.starten()
     einordner.starten()
+    await katalog_einordner.nach_neustart()           # ein laufendes Einordnen geht am letzten fertigen Stapel weiter
+    await bestandslauf.nach_neustart()
     im_hintergrund = [asyncio.create_task(pflege.laufen()), asyncio.create_task(eingangsordner.laufen()), asyncio.create_task(nachschlagen.vorwaermen())]
     yield
     for lauf in im_hintergrund:
@@ -100,6 +105,8 @@ async def lifespan(app: FastAPI):
     await annahme.stoppen()
     await vorpruefer.stoppen()
     await einordner.stoppen()
+    await katalog_einordner.stoppen()
+    await bestandslauf.stoppen()
     await sammlungsfinder.stoppen()
     await umschlagpruefung.stoppen()
     await codestellen.stoppen()
@@ -136,6 +143,7 @@ app.include_router(categories_router)
 app.include_router(collections_router)
 app.include_router(config_router)
 app.include_router(einordnung_router)
+app.include_router(katalog_router)
 app.include_router(fundus_router)
 app.include_router(gutenberg_router)
 app.include_router(helfer_router)

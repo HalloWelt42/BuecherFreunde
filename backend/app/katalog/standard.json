@@ -1,0 +1,1073 @@
+{
+ "fassung": 1,
+ "bereiche": [
+  {
+   "schluessel": "romane",
+   "name": "Romane",
+   "zeichen": "feather",
+   "farbe": "#8e44ad",
+   "beschreibung": "Erzählende Literatur aller Gattungen, Lyrik und Drama",
+   "arten": [""],
+   "kategorien": [
+    {
+     "schluessel": "romane/roman",
+     "name": "Romane und Erzählungen",
+     "zeichen": "book-open",
+     "ki_beschreibung": "Erzählende Literatur der Gegenwart und Unterhaltungsliteratur, die in keine engere Gattung passt: Romane, Erzählungen, Novellen, Kurzgeschichten",
+     "regeln": {
+      "sachgruppen": ["B"],
+      "schlagworte": ["Roman", "Erzählung", "Erzählungen", "Novelle", "Kurzgeschichte", "Belletristik", "Gegenwartsliteratur", "Fiction", "Novel", "Short stories", "Literary fiction"],
+      "titelwoerter": ["Roman", "Erzählungen", "Novelle", "A Novel"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "romane/krimi",
+     "name": "Krimi und Thriller",
+     "zeichen": "magnifying-glass",
+     "ki_beschreibung": "Kriminalromane, Detektivgeschichten, Thriller und Spannungsromane um Verbrechen, Ermittlungen und Gefahr",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Kriminalroman", "Krimi", "Kriminalerzählung", "Detektivroman", "Thriller", "Psychothriller", "Spannung", "Crime fiction", "Detective and mystery stories", "Mystery fiction", "Thrillers", "Suspense fiction"],
+      "titelwoerter": ["Krimi", "Kommissar", "Mord", "Mörder", "Thriller", "Murder", "Detective"],
+      "verlage": []
+     },
+     "teile": [
+      {
+       "schluessel": "romane/kriminalroman",
+       "name": "Krimis",
+       "zeichen": "fingerprint",
+       "ki_beschreibung": "Kriminalromane und Detektivgeschichten: ein Verbrechen wird aufgeklärt, meist von Polizei oder Ermittlern",
+       "regeln": {
+        "sachgruppen": [],
+        "schlagworte": ["Kriminalroman", "Krimi", "Kriminalerzählung", "Detektivroman", "Regionalkrimi", "Crime fiction", "Detective and mystery stories", "Mystery fiction"],
+        "titelwoerter": ["Krimi", "Kommissar", "Kommissarin", "Mord", "Detective", "Murder"],
+        "verlage": []
+       }
+      },
+      {
+       "schluessel": "romane/thriller",
+       "name": "Thriller",
+       "zeichen": "user-secret",
+       "ki_beschreibung": "Thriller und Spannungsromane: Verfolgung, Verschwörung, Agenten, Psychothriller",
+       "regeln": {
+        "sachgruppen": [],
+        "schlagworte": ["Thriller", "Psychothriller", "Politthriller", "Spionageroman", "Agentenroman", "Thrillers", "Suspense fiction", "Spy stories"],
+        "titelwoerter": ["Thriller", "Verschwörung", "Agent", "Conspiracy"],
+        "verlage": []
+       }
+      }
+     ]
+    },
+    {
+     "schluessel": "romane/fantasy",
+     "name": "Fantasy",
+     "zeichen": "dragon",
+     "ki_beschreibung": "Fantasy: erfundene Welten, Magie, Drachen, Elfen, Sagen und Heldenreisen",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Fantasy", "Fantasy-Literatur", "High Fantasy", "Urban Fantasy", "Magie", "Fantasy fiction", "Magic"],
+      "titelwoerter": ["Drachen", "Zauberer", "Elfen", "Magier", "Dragon", "Wizard", "Sorcer"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "romane/science-fiction",
+     "name": "Science-Fiction",
+     "zeichen": "rocket",
+     "ki_beschreibung": "Science-Fiction: Zukunft, Raumfahrt, fremde Planeten, Roboter, Zeitreisen, Dystopien",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Science-Fiction", "Science Fiction", "Zukunftsroman", "Dystopie", "Raumfahrt", "Zeitreise", "Space opera", "Dystopias", "Time travel"],
+      "titelwoerter": ["Raumschiff", "Galaxis", "Galaxie", "Starship", "Galaxy", "Roboter", "Robot"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "romane/historisch",
+     "name": "Historische Romane",
+     "zeichen": "chess-rook",
+     "ki_beschreibung": "Historische Romane: Handlung in einer vergangenen Zeit, etwa Antike, Mittelalter oder einem früheren Jahrhundert",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Historischer Roman", "Historische Romane", "Historical fiction"],
+      "titelwoerter": ["Kaiserin", "Königin", "Ritter", "Pharao", "Gladiator"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "romane/liebe",
+     "name": "Liebesromane",
+     "zeichen": "heart",
+     "ki_beschreibung": "Liebesromane und Romanzen: im Mittelpunkt steht eine Liebesgeschichte",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Liebesroman", "Liebesgeschichte", "Romanze", "Frauenroman", "Love stories", "Romance fiction", "Romance"],
+      "titelwoerter": ["Liebe", "Love", "Hochzeit", "Wedding"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "romane/klassiker",
+     "name": "Klassiker",
+     "zeichen": "scroll",
+     "ki_beschreibung": "Klassiker der Weltliteratur: ältere Werke, die als Kanon gelten, meist vor der Mitte des 20. Jahrhunderts",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Klassiker", "Klassische Literatur", "Weltliteratur", "Classics", "Classic literature"],
+      "titelwoerter": ["Gesammelte Werke", "Sämtliche Werke", "Complete Works"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "romane/horror",
+     "name": "Horror und Grusel",
+     "zeichen": "ghost",
+     "ki_beschreibung": "Horror und Grusel: Schauerromane, Gespenster, Vampire, übernatürliche Bedrohung",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Horror", "Horrorliteratur", "Schauerroman", "Gruselgeschichte", "Vampir", "Horror fiction", "Ghost stories", "Horror tales", "Vampires"],
+      "titelwoerter": ["Vampir", "Vampire", "Gespenst", "Horror", "Grusel"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "romane/humor",
+     "name": "Humor und Satire",
+     "zeichen": "face-laugh-squint",
+     "ki_beschreibung": "Humor und Satire: komische Romane, Glossen, Satiren und heitere Geschichten",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Humor", "Satire", "Humoristische Darstellung", "Komik", "Glosse", "Humorous fiction", "Humorous stories", "Satire, Humorous"],
+      "titelwoerter": ["Satire", "Glossen"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "romane/lyrik",
+     "name": "Lyrik und Drama",
+     "zeichen": "pen-fancy",
+     "ki_beschreibung": "Gedichte, Balladen und Theaterstücke als Texte",
+     "regeln": {
+      "sachgruppen": ["811", "812", "821", "822", "831", "832", "841", "842", "851", "852", "861", "862"],
+      "schlagworte": ["Lyrik", "Gedicht", "Gedichte", "Ballade", "Drama", "Theaterstück", "Poetry", "Poems", "Plays", "Drama (Literature)"],
+      "titelwoerter": ["Gedichte", "Balladen", "Lyrik", "Poems", "Poetry", "Sonette"],
+      "verlage": []
+     }
+    }
+   ]
+  },
+  {
+   "schluessel": "kinder",
+   "name": "Kinder und Jugend",
+   "zeichen": "children",
+   "farbe": "#b35900",
+   "beschreibung": "Bücher für Kinder und Jugendliche, erzählend und zum Lernen",
+   "arten": [""],
+   "kategorien": [
+    {
+     "schluessel": "kinder/bilderbuch",
+     "name": "Bilderbücher",
+     "zeichen": "shapes",
+     "ki_beschreibung": "Bilderbücher und Vorlesebücher für kleine Kinder, mit viel Bild und wenig Text",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Bilderbuch", "Pappbilderbuch", "Vorlesebuch", "Picture books", "Board books"],
+      "titelwoerter": ["Bilderbuch", "Vorlesebuch", "Gute Nacht", "Picture Book"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "kinder/kinderbuch",
+     "name": "Kinderbücher",
+     "zeichen": "child",
+     "ki_beschreibung": "Erzählende Bücher für Kinder im Grundschulalter: Kinderromane, Geschichten, Erstlesebücher",
+     "regeln": {
+      "sachgruppen": ["K"],
+      "schlagworte": ["Kinderbuch", "Kinderliteratur", "Kinderroman", "Kindergeschichte", "Erstlesebuch", "Children's stories", "Children's literature", "Juvenile fiction"],
+      "titelwoerter": ["Kinderbuch", "Erstleser", "Kindergeschichten", "Vorlesegeschichten"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "kinder/jugendbuch",
+     "name": "Jugendbücher",
+     "zeichen": "book-open-reader",
+     "ki_beschreibung": "Bücher für Jugendliche: Jugendromane, Erwachsenwerden, Schule und Freundschaft aus Sicht junger Menschen",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Jugendbuch", "Jugendliteratur", "Jugendroman", "Young adult fiction", "Coming of age", "Teenagers"],
+      "titelwoerter": ["Jugendbuch", "Young Adult"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "kinder/sachbuch",
+     "name": "Kindersachbücher",
+     "zeichen": "puzzle-piece",
+     "ki_beschreibung": "Sachbücher für Kinder: Wissen kindgerecht erklärt, Natur, Technik, Geschichte für junge Leser",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Kindersachbuch", "Sachbilderbuch", "Juvenile nonfiction", "Juvenile literature"],
+      "titelwoerter": ["für Kinder", "for Kids", "for Children", "Kinderlexikon", "Entdecke"],
+      "verlage": []
+     }
+    }
+   ]
+  },
+  {
+   "schluessel": "wissen",
+   "name": "Wissen",
+   "zeichen": "lightbulb",
+   "farbe": "#0e7563",
+   "beschreibung": "Geschichte, Philosophie, Religion, Gesellschaft, Natur und Wissenschaft",
+   "arten": [""],
+   "kategorien": [
+    {
+     "schluessel": "wissen/geschichte",
+     "name": "Geschichte",
+     "zeichen": "hourglass-half",
+     "ki_beschreibung": "Geschichte als Sachbuch: Epochen, Länder, Kriege, Kulturgeschichte, Zeitgeschichte",
+     "regeln": {
+      "sachgruppen": ["900", "93", "94", "95", "96", "97", "98", "99"],
+      "schlagworte": ["Geschichte", "Geschichtsschreibung", "Kulturgeschichte", "Zeitgeschichte", "Mittelalter", "Antike", "Weltkrieg", "History", "World history", "Middle Ages", "World War"],
+      "titelwoerter": ["Geschichte der", "Geschichte des", "History of", "Weltkrieg", "World War", "Mittelalter", "Antike"],
+      "verlage": []
+     },
+     "teile": [
+      {
+       "schluessel": "wissen/antike",
+       "name": "Antike und Mittelalter",
+       "zeichen": "building-columns",
+       "ki_beschreibung": "Geschichte von der Frühzeit über Antike, Griechen und Römer bis zum Ende des Mittelalters",
+       "regeln": {
+        "sachgruppen": ["930"],
+        "schlagworte": ["Antike", "Altertum", "Römisches Reich", "Griechenland", "Mittelalter", "Kreuzzüge", "Ancient history", "Rome", "Greece", "Middle Ages", "Crusades"],
+        "titelwoerter": ["Antike", "Römer", "Rom", "Mittelalter", "Kreuzzug", "Ancient", "Medieval"],
+        "verlage": []
+       }
+      },
+      {
+       "schluessel": "wissen/neuzeit",
+       "name": "Neuzeit",
+       "zeichen": "landmark",
+       "ki_beschreibung": "Geschichte von der Renaissance bis zum Ersten Weltkrieg: Entdeckungen, Reformation, Revolutionen, Kaiserreiche",
+       "regeln": {
+        "sachgruppen": [],
+        "schlagworte": ["Neuzeit", "Frühe Neuzeit", "Renaissance", "Reformation", "Aufklärung", "Französische Revolution", "Kolonialismus", "Early modern history", "Modern history", "Colonialism"],
+        "titelwoerter": ["Renaissance", "Reformation", "Revolution", "Kaiserreich", "Napoleon"],
+        "verlage": []
+       }
+      },
+      {
+       "schluessel": "wissen/zeitgeschichte",
+       "name": "Zeitgeschichte",
+       "zeichen": "clock-rotate-left",
+       "ki_beschreibung": "Geschichte seit dem Ersten Weltkrieg: Weltkriege, Nationalsozialismus, Kalter Krieg, Gegenwart",
+       "regeln": {
+        "sachgruppen": [],
+        "schlagworte": ["Zeitgeschichte", "Erster Weltkrieg", "Zweiter Weltkrieg", "Weltkrieg", "Nationalsozialismus", "Kalter Krieg", "Holocaust", "DDR", "World War, 1914-1918", "World War, 1939-1945", "Cold War"],
+        "titelwoerter": ["Weltkrieg", "Nationalsozialismus", "Drittes Reich", "Kalter Krieg", "World War", "Cold War", "DDR"],
+        "verlage": []
+       }
+      }
+     ]
+    },
+    {
+     "schluessel": "wissen/philosophie",
+     "name": "Philosophie",
+     "zeichen": "infinity",
+     "ki_beschreibung": "Philosophie: Denker, Ethik, Erkenntnis, Logik, Sinnfragen, philosophische Werke und Einführungen",
+     "regeln": {
+      "sachgruppen": ["100", "11", "12", "14", "16", "17", "18", "19"],
+      "schlagworte": ["Philosophie", "Ethik", "Erkenntnistheorie", "Metaphysik", "Moral", "Philosophy", "Ethics", "Metaphysics"],
+      "titelwoerter": ["Philosophie", "Philosophy", "Ethik", "Ethics", "Vom Sinn", "Stoizismus", "Stoic"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "wissen/religion",
+     "name": "Religion und Spiritualität",
+     "zeichen": "hands-praying",
+     "ki_beschreibung": "Religionen, Theologie, heilige Schriften, Glaube, Spiritualität und Esoterik",
+     "regeln": {
+      "sachgruppen": ["13", "2"],
+      "schlagworte": ["Religion", "Theologie", "Christentum", "Bibel", "Islam", "Judentum", "Buddhismus", "Hinduismus", "Spiritualität", "Esoterik", "Glaube", "Theology", "Christianity", "Bible", "Judaism", "Buddhism", "Spirituality", "Body, Mind & Spirit"],
+      "titelwoerter": ["Bibel", "Bible", "Theologie", "Theology", "Koran", "Buddhismus", "Spiritualität"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "wissen/psychologie",
+     "name": "Psychologie",
+     "zeichen": "brain",
+     "ki_beschreibung": "Psychologie als Wissenschaft: Denken, Fühlen, Verhalten, Psychotherapie, psychische Erkrankungen",
+     "regeln": {
+      "sachgruppen": ["15"],
+      "schlagworte": ["Psychologie", "Psychotherapie", "Psychoanalyse", "Psychiatrie", "Kognition", "Psychology", "Psychotherapy", "Psychoanalysis", "Cognition"],
+      "titelwoerter": ["Psychologie", "Psychology", "Psychotherapie", "Psychotherapy"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "wissen/gesellschaft",
+     "name": "Gesellschaft und Politik",
+     "zeichen": "people-group",
+     "ki_beschreibung": "Gesellschaft, Politik, Soziologie, Medien, Umwelt- und Sozialfragen, Militär",
+     "regeln": {
+      "sachgruppen": ["300", "32", "35", "36", "39", "070"],
+      "schlagworte": ["Politik", "Gesellschaft", "Soziologie", "Demokratie", "Migration", "Feminismus", "Medien", "Journalismus", "Politics", "Society", "Sociology", "Democracy", "Feminism", "Journalism", "Social science", "Political science"],
+      "titelwoerter": ["Politik", "Gesellschaft", "Demokratie", "Politics", "Society", "Democracy"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "wissen/naturwissenschaften",
+     "name": "Naturwissenschaften",
+     "zeichen": "flask",
+     "ki_beschreibung": "Naturwissenschaften: Physik, Astronomie, Chemie, Biologie, Geowissenschaften, Klima und Umwelt",
+     "regeln": {
+      "sachgruppen": ["500", "52", "53", "54", "55", "56", "57", "58", "59", "333.7"],
+      "schlagworte": ["Naturwissenschaften", "Physik", "Astronomie", "Chemie", "Biologie", "Evolution", "Genetik", "Ökologie", "Geologie", "Klimawandel", "Science", "Physics", "Astronomy", "Chemistry", "Biology", "Genetics", "Ecology", "Geology", "Climate change"],
+      "titelwoerter": ["Physik", "Chemie", "Biologie", "Physics", "Chemistry", "Biology", "Universum", "Universe", "Kosmos", "Evolution"],
+      "verlage": []
+     },
+     "teile": [
+      {
+       "schluessel": "wissen/physik",
+       "name": "Physik und Astronomie",
+       "zeichen": "atom",
+       "ki_beschreibung": "Physik und Astronomie: Mechanik, Quanten, Relativität, Sterne, Planeten, Kosmologie",
+       "regeln": {
+        "sachgruppen": ["52", "53"],
+        "schlagworte": ["Physik", "Astronomie", "Astrophysik", "Kosmologie", "Quantenphysik", "Relativitätstheorie", "Physics", "Astronomy", "Astrophysics", "Cosmology", "Quantum theory"],
+        "titelwoerter": ["Physik", "Physics", "Quanten", "Quantum", "Universum", "Universe", "Kosmos", "Sterne", "Astronomie"],
+        "verlage": []
+       }
+      },
+      {
+       "schluessel": "wissen/chemie",
+       "name": "Chemie",
+       "zeichen": "vial",
+       "ki_beschreibung": "Chemie und Biochemie: Stoffe, Reaktionen, Labor",
+       "regeln": {
+        "sachgruppen": ["54"],
+        "schlagworte": ["Chemie", "Biochemie", "Organische Chemie", "Chemistry", "Biochemistry"],
+        "titelwoerter": ["Chemie", "Chemistry", "Biochemie"],
+        "verlage": []
+       }
+      },
+      {
+       "schluessel": "wissen/biologie",
+       "name": "Biologie",
+       "zeichen": "dna",
+       "ki_beschreibung": "Biologie: Leben, Zellen, Genetik, Evolution, Pflanzen und Tiere aus Sicht der Wissenschaft",
+       "regeln": {
+        "sachgruppen": ["56", "57", "58", "59"],
+        "schlagworte": ["Biologie", "Genetik", "Evolution", "Botanik", "Zoologie", "Mikrobiologie", "Biology", "Genetics", "Botany", "Zoology"],
+        "titelwoerter": ["Biologie", "Biology", "Evolution", "Genetik", "Gene"],
+        "verlage": []
+       }
+      },
+      {
+       "schluessel": "wissen/erde",
+       "name": "Erde und Umwelt",
+       "zeichen": "earth-europe",
+       "ki_beschreibung": "Geowissenschaften, Wetter, Klima, Ökologie und Umweltschutz",
+       "regeln": {
+        "sachgruppen": ["55", "333.7"],
+        "schlagworte": ["Geologie", "Geowissenschaften", "Meteorologie", "Klima", "Klimawandel", "Ökologie", "Umweltschutz", "Geology", "Earth sciences", "Climate change", "Ecology", "Environment"],
+        "titelwoerter": ["Klima", "Climate", "Umwelt", "Ökologie", "Geologie", "Vulkan"],
+        "verlage": []
+       }
+      }
+     ]
+    },
+    {
+     "schluessel": "wissen/mathematik",
+     "name": "Mathematik",
+     "zeichen": "square-root-variable",
+     "ki_beschreibung": "Mathematik und Statistik: Lehrbücher, Einführungen, Sachbücher über Zahlen",
+     "regeln": {
+      "sachgruppen": ["51", "310"],
+      "schlagworte": ["Mathematik", "Statistik", "Algebra", "Analysis", "Geometrie", "Stochastik", "Mathematics", "Statistics", "Geometry", "Probability"],
+      "titelwoerter": ["Mathematik", "Mathematics", "Mathe", "Statistik", "Statistics", "Algebra", "Geometrie", "Geometry"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "wissen/medizin",
+     "name": "Medizin",
+     "zeichen": "stethoscope",
+     "ki_beschreibung": "Medizin als Fach: Anatomie, Krankheiten, Pflege, Pharmakologie, Lehrbücher für Ärzte und Pflegende",
+     "regeln": {
+      "sachgruppen": ["61"],
+      "schlagworte": ["Medizin", "Anatomie", "Krankheit", "Pharmakologie", "Pflege", "Chirurgie", "Medicine", "Anatomy", "Diseases", "Nursing", "Surgery", "Medical"],
+      "titelwoerter": ["Medizin", "Medicine", "Medical", "Anatomie", "Anatomy", "Pflege"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "wissen/sprache",
+     "name": "Sprache und Literatur",
+     "zeichen": "language",
+     "ki_beschreibung": "Sprachwissenschaft und Literaturwissenschaft: Grammatik, Sprachgeschichte, Deutungen und Geschichte der Literatur",
+     "regeln": {
+      "sachgruppen": ["4", "801", "808", "809"],
+      "schlagworte": ["Sprachwissenschaft", "Linguistik", "Literaturwissenschaft", "Germanistik", "Grammatik", "Rhetorik", "Linguistics", "Literary criticism", "Grammar", "Rhetoric", "Language arts"],
+      "titelwoerter": ["Grammatik", "Grammar", "Rhetorik", "Rhetoric", "Literaturgeschichte", "Linguistik"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "wissen/biografien",
+     "name": "Biografien",
+     "zeichen": "id-card",
+     "ki_beschreibung": "Lebensgeschichten: Biografien, Autobiografien, Memoiren und Erinnerungen",
+     "regeln": {
+      "sachgruppen": ["92"],
+      "schlagworte": ["Biografie", "Biographie", "Autobiografie", "Autobiographie", "Memoiren", "Erinnerungen", "Biography", "Autobiography", "Memoirs"],
+      "titelwoerter": ["Biografie", "Biographie", "Biography", "Memoiren", "Memoirs", "Mein Leben", "My Life", "Erinnerungen"],
+      "verlage": []
+     }
+    }
+   ]
+  },
+  {
+   "schluessel": "technik",
+   "name": "Technik",
+   "zeichen": "microchip",
+   "farbe": "#2f6fb3",
+   "beschreibung": "Informatik, Elektronik, Ingenieurwesen, Handwerk und Fahrzeuge",
+   "arten": [""],
+   "kategorien": [
+    {
+     "schluessel": "technik/informatik",
+     "name": "Informatik",
+     "zeichen": "code",
+     "ki_beschreibung": "Informatik: Programmierung, Softwareentwicklung, Web, Netzwerke, Betriebssysteme, Datenbanken, KI, IT-Sicherheit",
+     "regeln": {
+      "sachgruppen": ["004", "005", "006"],
+      "schlagworte": ["Informatik", "Programmierung", "Softwareentwicklung", "Datenverarbeitung", "Computer", "Internet", "Computer science", "Programming", "Software engineering", "Computer software", "Computers"],
+      "titelwoerter": ["Python", "Java", "JavaScript", "programmier", "Programming", "Linux", "Software", "Computer", "Algorithm", "SQL"],
+      "verlage": []
+     },
+     "teile": [
+      {
+       "schluessel": "technik/programmierung",
+       "name": "Programmierung",
+       "zeichen": "laptop-code",
+       "ki_beschreibung": "Programmieren und Softwareentwicklung: Programmiersprachen, Entwurf, Testen, saubere Programme",
+       "regeln": {
+        "sachgruppen": ["005.1", "005.2", "005.3"],
+        "schlagworte": ["Programmierung", "Programmiersprache", "Softwareentwicklung", "Objektorientierte Programmierung", "Programming", "Programming languages", "Software engineering"],
+        "titelwoerter": ["Python", "Java", "Kotlin", "C++", "C#", "programmier", "Programming", "Clean Code", "Entwurfsmuster", "Design Patterns", "Refactoring"],
+        "verlage": []
+       }
+      },
+      {
+       "schluessel": "technik/web",
+       "name": "Webentwicklung",
+       "zeichen": "globe",
+       "ki_beschreibung": "Webseiten und Webanwendungen: HTML, CSS, JavaScript, Gestaltung für das Netz",
+       "regeln": {
+        "sachgruppen": ["006.7"],
+        "schlagworte": ["World Wide Web", "Webdesign", "Webentwicklung", "HTML", "CSS", "JavaScript", "Web design", "Web development", "Web sites"],
+        "titelwoerter": ["HTML", "CSS", "JavaScript", "Webdesign", "Webentwicklung", "Web Development", "Webseiten", "Websites"],
+        "verlage": []
+       }
+      },
+      {
+       "schluessel": "technik/netzwerke",
+       "name": "Netzwerke und Systeme",
+       "zeichen": "network-wired",
+       "ki_beschreibung": "Rechnernetze, Betriebssysteme, Server und Systemverwaltung",
+       "regeln": {
+        "sachgruppen": ["004.6", "005.4"],
+        "schlagworte": ["Rechnernetz", "Netzwerk", "Betriebssystem", "Linux", "Unix", "Systemadministration", "Server", "Computer networks", "Operating systems", "System administration", "Cloud computing"],
+        "titelwoerter": ["Netzwerk", "Network", "Linux", "Unix", "Server", "Administration", "Betriebssystem"],
+        "verlage": []
+       }
+      },
+      {
+       "schluessel": "technik/daten",
+       "name": "Daten und KI",
+       "zeichen": "database",
+       "ki_beschreibung": "Datenbanken, Datenanalyse, maschinelles Lernen und künstliche Intelligenz",
+       "regeln": {
+        "sachgruppen": ["005.7", "006.3"],
+        "schlagworte": ["Datenbank", "Datenbanksystem", "SQL", "Künstliche Intelligenz", "Maschinelles Lernen", "Data Science", "Big Data", "Database", "Artificial intelligence", "Machine learning", "Data mining"],
+        "titelwoerter": ["SQL", "Datenbank", "Database", "Machine Learning", "Deep Learning", "Künstliche Intelligenz", "Data Science", "Daten"],
+        "verlage": []
+       }
+      },
+      {
+       "schluessel": "technik/sicherheit",
+       "name": "IT-Sicherheit",
+       "zeichen": "shield-halved",
+       "ki_beschreibung": "Sicherheit in der Informatik: Angriffe, Verschlüsselung, Datenschutz, Absichern von Systemen",
+       "regeln": {
+        "sachgruppen": ["005.8"],
+        "schlagworte": ["Computersicherheit", "IT-Sicherheit", "Datenschutz", "Kryptologie", "Hacker", "Computer security", "Cryptography", "Hacking"],
+        "titelwoerter": ["Hacking", "Hacker", "IT-Sicherheit", "Kryptografie", "Cryptography", "Security"],
+        "verlage": []
+       }
+      }
+     ]
+    },
+    {
+     "schluessel": "technik/elektronik",
+     "name": "Elektronik und Elektrotechnik",
+     "zeichen": "plug",
+     "ki_beschreibung": "Elektronik, Elektrotechnik, Schaltungen, Mikrocontroller, Funk und Energie",
+     "regeln": {
+      "sachgruppen": ["621.3"],
+      "schlagworte": ["Elektronik", "Elektrotechnik", "Mikrocontroller", "Schaltung", "Digitaltechnik", "Funktechnik", "Electronics", "Electrical engineering", "Microcontrollers"],
+      "titelwoerter": ["Elektronik", "Electronics", "Elektrotechnik", "Mikrocontroller", "Schaltungen", "Löten"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "technik/ingenieurwesen",
+     "name": "Ingenieurwesen",
+     "zeichen": "gears",
+     "ki_beschreibung": "Ingenieurwesen und Maschinenbau: Mechanik, Werkstoffe, Konstruktion, Fertigung, Verfahrenstechnik",
+     "regeln": {
+      "sachgruppen": ["62", "66", "67"],
+      "schlagworte": ["Ingenieurwissenschaften", "Maschinenbau", "Technische Mechanik", "Werkstoffkunde", "Konstruktion", "Fertigung", "Verfahrenstechnik", "Engineering", "Mechanical engineering", "Manufacturing"],
+      "titelwoerter": ["Maschinenbau", "Engineering", "Technische Mechanik", "Werkstoff", "Konstruktion"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "technik/handwerk",
+     "name": "Handwerk und Bauen",
+     "zeichen": "hammer",
+     "ki_beschreibung": "Handwerk, Heimwerken, Reparieren, Holzarbeiten, Hausbau und Renovieren",
+     "regeln": {
+      "sachgruppen": ["68", "69", "624"],
+      "schlagworte": ["Handwerk", "Heimwerken", "Holzbearbeitung", "Tischlerei", "Reparatur", "Bauwesen", "Hausbau", "Renovierung", "Do it yourself", "Woodworking", "House construction", "Home improvement"],
+      "titelwoerter": ["Heimwerk", "Handwerk", "Selbermachen", "Holzbearbeitung", "Woodworking", "Reparieren", "Hausbau", "Renovieren"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "technik/fahrzeuge",
+     "name": "Fahrzeuge und Verkehr",
+     "zeichen": "car",
+     "ki_beschreibung": "Autos, Motorräder, Eisenbahn, Flugzeuge, Schiffe und Fahrräder: Technik, Geschichte, Pflege",
+     "regeln": {
+      "sachgruppen": ["629"],
+      "schlagworte": ["Kraftfahrzeug", "Automobil", "Auto", "Motorrad", "Eisenbahn", "Luftfahrt", "Schifffahrt", "Fahrrad", "Automobiles", "Motorcycles", "Railroads", "Aeronautics", "Bicycles", "Transportation"],
+      "titelwoerter": ["Automobil", "Autos", "Motorrad", "Eisenbahn", "Lokomotive", "Flugzeug", "Fahrrad"],
+      "verlage": []
+     }
+    }
+   ]
+  },
+  {
+   "schluessel": "wirtschaft",
+   "name": "Wirtschaft und Recht",
+   "zeichen": "briefcase",
+   "farbe": "#8a6d00",
+   "beschreibung": "Unternehmen, Geld, Wirtschaft, Beruf und Recht",
+   "arten": [""],
+   "kategorien": [
+    {
+     "schluessel": "wirtschaft/management",
+     "name": "Unternehmen und Marketing",
+     "zeichen": "user-tie",
+     "ki_beschreibung": "Unternehmensführung, Management, Projekte, Gründung, Marketing, Verkauf und Handel",
+     "regeln": {
+      "sachgruppen": ["65", "38"],
+      "schlagworte": ["Management", "Unternehmensführung", "Führung", "Projektmanagement", "Unternehmen", "Existenzgründung", "Marketing", "Vertrieb", "Verkauf", "Werbung", "Leadership", "Project management", "Business", "Advertising", "Sales"],
+      "titelwoerter": ["Management", "Führung", "Leadership", "Projektmanagement", "Business", "Unternehmen", "Startup", "Gründ", "Marketing", "Verkaufen", "Vertrieb"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "wirtschaft/volkswirtschaft",
+     "name": "Volkswirtschaft",
+     "zeichen": "chart-line",
+     "ki_beschreibung": "Volkswirtschaft und Wirtschaftspolitik: Märkte, Konjunktur, Globalisierung, Wirtschaftsgeschichte",
+     "regeln": {
+      "sachgruppen": ["330", "331", "334", "335", "337", "338", "339"],
+      "schlagworte": ["Volkswirtschaft", "Volkswirtschaftslehre", "Wirtschaftspolitik", "Ökonomie", "Wirtschaft", "Globalisierung", "Kapitalismus", "Economics", "Economic policy", "Globalization"],
+      "titelwoerter": ["Ökonomie", "Economics", "Volkswirtschaft", "Kapitalismus", "Wirtschaft"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "wirtschaft/finanzen",
+     "name": "Geld und Finanzen",
+     "zeichen": "coins",
+     "ki_beschreibung": "Geld, Geldanlage, Börse, Steuern, Buchführung und Rechnungswesen",
+     "regeln": {
+      "sachgruppen": ["332", "336", "657"],
+      "schlagworte": ["Finanzen", "Geldanlage", "Investition", "Börse", "Aktie", "Steuer", "Buchführung", "Rechnungswesen", "Personal finance", "Investments", "Finance", "Accounting", "Taxation"],
+      "titelwoerter": ["Geld", "Finanzen", "Aktien", "Börse", "Steuererklärung", "Investieren", "Money", "Finance", "Vermögen", "Buchhaltung", "Buchführung"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "wirtschaft/recht",
+     "name": "Recht",
+     "zeichen": "scale-balanced",
+     "ki_beschreibung": "Recht: Gesetze, Kommentare, Rechtsratgeber, Strafrecht, Zivilrecht, Arbeits- und Mietrecht",
+     "regeln": {
+      "sachgruppen": ["34"],
+      "schlagworte": ["Recht", "Gesetz", "Rechtsprechung", "Strafrecht", "Zivilrecht", "Arbeitsrecht", "Mietrecht", "Erbrecht", "Verfassung", "Law", "Legislation", "Criminal law"],
+      "titelwoerter": ["Gesetz", "Strafrecht", "Zivilrecht", "Arbeitsrecht", "Mietrecht", "Erbrecht", "Familienrecht", "Verfassung"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "wirtschaft/beruf",
+     "name": "Beruf und Karriere",
+     "zeichen": "arrow-trend-up",
+     "ki_beschreibung": "Beruf, Bewerbung, Karriere, Arbeitsalltag und Zeitmanagement",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Beruf", "Karriere", "Bewerbung", "Arbeitswelt", "Berufsorientierung", "Zeitmanagement", "Career", "Job hunting", "Time management"],
+      "titelwoerter": ["Bewerbung", "Karriere", "Career", "Vorstellungsgespräch", "Beruf", "Zeitmanagement"],
+      "verlage": []
+     }
+    }
+   ]
+  },
+  {
+   "schluessel": "kultur",
+   "name": "Kunst und Kultur",
+   "zeichen": "masks-theater",
+   "farbe": "#c0392b",
+   "beschreibung": "Bildende Kunst, Architektur, Musik, Film, Theater und Fotografie",
+   "arten": [""],
+   "kategorien": [
+    {
+     "schluessel": "kultur/kunst",
+     "name": "Bildende Kunst",
+     "zeichen": "palette",
+     "ki_beschreibung": "Malerei, Zeichnen, Bildhauerei, Kunstgeschichte, Künstler und Ausstellungen",
+     "regeln": {
+      "sachgruppen": ["700", "709", "73", "75", "76"],
+      "schlagworte": ["Kunst", "Malerei", "Bildhauerei", "Zeichnen", "Kunstgeschichte", "Art", "Painting", "Sculpture", "Drawing", "Art history"],
+      "titelwoerter": ["Malerei", "Zeichnen", "Aquarell", "Painting", "Drawing", "Kunstgeschichte", "Kunst der", "Art of"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "kultur/architektur",
+     "name": "Architektur und Design",
+     "zeichen": "compass-drafting",
+     "ki_beschreibung": "Architektur, Städtebau, Gestaltung, Grafikdesign, Typografie, Mode und Wohnen",
+     "regeln": {
+      "sachgruppen": ["71", "72", "740", "745", "746", "747", "748", "749"],
+      "schlagworte": ["Architektur", "Städtebau", "Design", "Grafikdesign", "Typografie", "Innenarchitektur", "Mode", "Architecture", "Graphic design", "Typography", "Interior design", "Fashion"],
+      "titelwoerter": ["Architektur", "Architecture", "Design", "Typografie", "Typography"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "kultur/musik",
+     "name": "Musik",
+     "zeichen": "music",
+     "ki_beschreibung": "Musik: Musikgeschichte, Komponisten, Bands, Musiktheorie, Noten und Instrumente",
+     "regeln": {
+      "sachgruppen": ["78"],
+      "schlagworte": ["Musik", "Komponist", "Oper", "Jazz", "Rockmusik", "Popmusik", "Musiktheorie", "Musikinstrument", "Music", "Composers", "Opera", "Rock music"],
+      "titelwoerter": ["Musik", "Music", "Gitarre", "Guitar", "Klavier", "Piano", "Jazz", "Oper", "Songbook", "Noten"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "kultur/film",
+     "name": "Film und Theater",
+     "zeichen": "film",
+     "ki_beschreibung": "Film, Kino, Fernsehen, Theater, Tanz und Bühne",
+     "regeln": {
+      "sachgruppen": ["791", "792"],
+      "schlagworte": ["Film", "Kino", "Fernsehen", "Filmgeschichte", "Drehbuch", "Theater", "Schauspiel", "Tanz", "Ballett", "Motion pictures", "Television", "Theater", "Dance", "Performing arts"],
+      "titelwoerter": ["Film", "Kino", "Movie", "Cinema", "Drehbuch", "Theater", "Theatre", "Schauspiel", "Ballett"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "kultur/fotografie",
+     "name": "Fotografie",
+     "zeichen": "camera-retro",
+     "ki_beschreibung": "Fotografie: Technik des Fotografierens, Bildgestaltung, Fotobände",
+     "regeln": {
+      "sachgruppen": ["77"],
+      "schlagworte": ["Fotografie", "Photographie", "Digitalfotografie", "Photography", "Digital photography"],
+      "titelwoerter": ["Fotografie", "Photographie", "Photography", "Fotografieren", "Kamera"],
+      "verlage": []
+     }
+    }
+   ]
+  },
+  {
+   "schluessel": "leben",
+   "name": "Leben",
+   "zeichen": "mug-hot",
+   "farbe": "#257047",
+   "beschreibung": "Kochen, Gesundheit, Familie, Garten, Reisen, Sport und Freizeit",
+   "arten": [""],
+   "kategorien": [
+    {
+     "schluessel": "leben/kochen",
+     "name": "Kochen und Backen",
+     "zeichen": "utensils",
+     "ki_beschreibung": "Kochbücher, Rezepte, Backen, Getränke und Haushalt",
+     "regeln": {
+      "sachgruppen": ["640", "641"],
+      "schlagworte": ["Kochen", "Kochbuch", "Backen", "Rezept", "Vegetarische Küche", "Vegane Küche", "Cooking", "Baking", "Recipes", "Cookbooks"],
+      "titelwoerter": ["Kochen", "Kochbuch", "Backen", "Rezepte", "Cooking", "Baking", "Recipes", "Cookbook", "Küche"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "leben/gesundheit",
+     "name": "Gesundheit und Ernährung",
+     "zeichen": "heart-pulse",
+     "ki_beschreibung": "Gesund leben: Ernährung, Bewegung, Schlaf, Yoga, Meditation, Ratgeber zu Beschwerden",
+     "regeln": {
+      "sachgruppen": ["613"],
+      "schlagworte": ["Gesundheit", "Ernährung", "Diät", "Abnehmen", "Yoga", "Meditation", "Achtsamkeit", "Health", "Nutrition", "Diet", "Mindfulness"],
+      "titelwoerter": ["Gesund", "Gesundheit", "Ernährung", "Diät", "Abnehmen", "Health", "Healthy", "Yoga", "Meditation", "Achtsam"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "leben/ratgeber",
+     "name": "Ratgeber und Lebenshilfe",
+     "zeichen": "hand-holding-heart",
+     "ki_beschreibung": "Lebenshilfe und Selbsthilfe: Glück, Erfolg, Kommunikation, Persönlichkeit, Gewohnheiten",
+     "regeln": {
+      "sachgruppen": ["158"],
+      "schlagworte": ["Lebenshilfe", "Ratgeber", "Selbsthilfe", "Persönlichkeitsentwicklung", "Glück", "Erfolg", "Motivation", "Kommunikation", "Self-help", "Self-actualization", "Success", "Happiness"],
+      "titelwoerter": ["Ratgeber", "Glück", "Erfolg", "Selbstvertrauen", "Gelassenheit", "Happiness", "Success", "Mindset", "Gewohnheiten", "Habits"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "leben/familie",
+     "name": "Familie und Erziehung",
+     "zeichen": "baby-carriage",
+     "ki_beschreibung": "Familie, Partnerschaft, Schwangerschaft, Erziehung und Leben mit Kindern",
+     "regeln": {
+      "sachgruppen": ["649", "306.8"],
+      "schlagworte": ["Familie", "Erziehung", "Kindererziehung", "Elternschaft", "Schwangerschaft", "Partnerschaft", "Beziehung", "Parenting", "Pregnancy", "Child rearing", "Families", "Family"],
+      "titelwoerter": ["Eltern", "Erziehung", "Schwangerschaft", "Baby", "Parenting", "Kinder erziehen"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "leben/garten",
+     "name": "Garten, Natur und Tiere",
+     "zeichen": "seedling",
+     "ki_beschreibung": "Garten, Pflanzen, Naturführer, Haustiere und Tierhaltung",
+     "regeln": {
+      "sachgruppen": ["63"],
+      "schlagworte": ["Garten", "Gartenbau", "Gärtnern", "Zimmerpflanzen", "Naturführer", "Haustier", "Hund", "Katze", "Pferd", "Gardening", "Pets", "Dogs", "Cats", "Horses", "Nature"],
+      "titelwoerter": ["Garten", "Gärtnern", "Gartenbau", "Zimmerpflanzen", "Hundeerziehung", "Katzen", "Pferde", "Gardening", "Vögel"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "leben/reisen",
+     "name": "Reisen",
+     "zeichen": "suitcase-rolling",
+     "ki_beschreibung": "Reiseführer, Reiseberichte, Wanderführer, Länder und Städte zum Besuchen",
+     "regeln": {
+      "sachgruppen": ["91"],
+      "schlagworte": ["Reise", "Reiseführer", "Reisebericht", "Wandern", "Wanderführer", "Tourismus", "Stadtführer", "Travel", "Guidebooks", "Hiking"],
+      "titelwoerter": ["Reise", "Reiseführer", "Wandern", "Wanderführer", "Travel", "Urlaub", "Rundreise"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "leben/sport",
+     "name": "Sport und Fitness",
+     "zeichen": "futbol",
+     "ki_beschreibung": "Sport, Training, Fitness, Laufen, Fußball und Kampfsport",
+     "regeln": {
+      "sachgruppen": ["796"],
+      "schlagworte": ["Sport", "Fußball", "Laufen", "Radsport", "Training", "Fitness", "Kampfsport", "Schwimmen", "Sports", "Soccer", "Running", "Physical fitness", "Martial arts"],
+      "titelwoerter": ["Sport", "Fußball", "Laufen", "Marathon", "Fitness", "Soccer", "Running", "Krafttraining"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "leben/hobby",
+     "name": "Hobby und Spiele",
+     "zeichen": "dice",
+     "ki_beschreibung": "Spiele, Schach, Rätsel, Basteln, Handarbeit, Modellbau und Sammeln",
+     "regeln": {
+      "sachgruppen": ["790", "793", "794", "795"],
+      "schlagworte": ["Spiel", "Spiele", "Brettspiel", "Schach", "Rätsel", "Basteln", "Handarbeit", "Stricken", "Häkeln", "Nähen", "Modellbau", "Sammeln", "Games", "Chess", "Puzzles", "Handicraft", "Knitting", "Crafts", "Hobbies"],
+      "titelwoerter": ["Schach", "Chess", "Rätsel", "Stricken", "Häkeln", "Nähen", "Basteln", "Spiele", "Knitting", "Crochet", "Modellbau"],
+      "verlage": []
+     }
+    }
+   ]
+  },
+  {
+   "schluessel": "lernen",
+   "name": "Lernen",
+   "zeichen": "graduation-cap",
+   "farbe": "#7a5230",
+   "beschreibung": "Schule, Sprachen lernen, Studium und Nachschlagewerke",
+   "arten": [""],
+   "kategorien": [
+    {
+     "schluessel": "lernen/schule",
+     "name": "Schule und Unterricht",
+     "zeichen": "school",
+     "ki_beschreibung": "Schulbücher, Lernhilfen, Prüfungsvorbereitung, Unterricht und Pädagogik",
+     "regeln": {
+      "sachgruppen": ["S", "37"],
+      "schlagworte": ["Schulbuch", "Unterricht", "Schule", "Lehrbuch", "Pädagogik", "Didaktik", "Abitur", "Prüfungsvorbereitung", "Lernhilfe", "Textbooks", "Education", "Teaching"],
+      "titelwoerter": ["Schulbuch", "Abitur", "Lernhilfe", "Arbeitsheft", "Übungsbuch", "Lehrbuch", "Prüfungsvorbereitung"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "lernen/sprachen",
+     "name": "Sprachen lernen",
+     "zeichen": "comments",
+     "ki_beschreibung": "Fremdsprachen lernen: Sprachkurse, Wortschatz, Grammatik zum Üben, Sprachführer",
+     "regeln": {
+      "sachgruppen": ["418", "428", "438", "448", "458", "468", "478", "488", "498"],
+      "schlagworte": ["Sprachkurs", "Fremdsprache", "Sprachlehrbuch", "Wortschatz", "Deutsch als Fremdsprache", "Language learning", "Vocabulary", "Conversation and phrase books", "Foreign language study"],
+      "titelwoerter": ["Sprachkurs", "Wortschatz", "Vokabeln", "Sprachführer", "Konversation", "Englisch lernen", "Spanisch lernen", "Französisch lernen", "Italienisch lernen", "Deutsch als Fremdsprache"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "lernen/studium",
+     "name": "Studium und Lerntechnik",
+     "zeichen": "user-graduate",
+     "ki_beschreibung": "Ratgeber zum Studieren und Lernen: wissenschaftliches Arbeiten, Lerntechnik, Prüfungen an der Hochschule",
+     "regeln": {
+      "sachgruppen": ["378"],
+      "schlagworte": ["Wissenschaftliches Arbeiten", "Studium", "Hochschule", "Lerntechnik", "Academic writing", "Study skills", "Research methods", "Study aids"],
+      "titelwoerter": ["Wissenschaftliches Arbeiten", "Studium", "Lerntechnik", "Richtig lernen", "Study Skills"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "lernen/nachschlagen",
+     "name": "Wörterbücher und Nachschlagewerke",
+     "zeichen": "book-atlas",
+     "ki_beschreibung": "Wörterbücher, Lexika, Enzyklopädien, Atlanten und andere Nachschlagewerke",
+     "regeln": {
+      "sachgruppen": ["030", "413", "423", "433", "443", "453", "463"],
+      "schlagworte": ["Wörterbuch", "Lexikon", "Enzyklopädie", "Nachschlagewerk", "Atlas", "Dictionary", "Dictionaries", "Encyclopedias", "Reference"],
+      "titelwoerter": ["Wörterbuch", "Lexikon", "Enzyklopädie", "Dictionary", "Encyclopedia"],
+      "verlage": []
+     }
+    }
+   ]
+  },
+  {
+   "schluessel": "comics",
+   "name": "Comics",
+   "zeichen": "comment-dots",
+   "farbe": "#b8236e",
+   "beschreibung": "Comics, Manga, Graphic Novels und Cartoons",
+   "arten": [""],
+   "kategorien": [
+    {
+     "schluessel": "comics/comic",
+     "name": "Comics und Cartoons",
+     "zeichen": "burst",
+     "ki_beschreibung": "Comics, Comicalben, Superhelden, Cartoons und Karikaturen",
+     "regeln": {
+      "sachgruppen": ["741.5"],
+      "schlagworte": ["Comic", "Comics", "Bildgeschichte", "Superhelden", "Cartoon", "Karikatur", "Comic books, strips, etc.", "Superheroes", "Cartoons", "Caricatures"],
+      "titelwoerter": ["Comic", "Comics", "Cartoon", "Cartoons", "Karikatur"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "comics/manga",
+     "name": "Manga",
+     "zeichen": "torii-gate",
+     "ki_beschreibung": "Manga und Comics im japanischen Stil",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Manga", "Anime"],
+      "titelwoerter": ["Manga"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "comics/graphic-novel",
+     "name": "Graphic Novels",
+     "zeichen": "pen-nib",
+     "ki_beschreibung": "Graphic Novels: Romane und Sachgeschichten als gezeichnete Bildgeschichte",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Graphic Novel", "Graphic novels", "Bildroman"],
+      "titelwoerter": ["Graphic Novel"],
+      "verlage": []
+     }
+    }
+   ]
+  },
+  {
+   "schluessel": "besonderes",
+   "name": "Besonderes",
+   "zeichen": "file-lines",
+   "farbe": "#5f6673",
+   "beschreibung": "Alles, was kein Buch ist",
+   "arten": ["dokument", "heft", "katalog", "broschuere"],
+   "kategorien": [
+    {
+     "schluessel": "besonderes/gebrauchsanleitungen",
+     "name": "Gebrauchsanleitungen",
+     "zeichen": "screwdriver-wrench",
+     "ki_beschreibung": "Die Art des Dokuments: Gebrauchsanleitung zu einem Gerät oder Haushaltsgegenstand, etwa Bedienungsanleitung, Kurzanleitung oder Benutzerhandbuch eines Produkts; keine Fachbücher",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Bedienungsanleitung", "Gebrauchsanweisung", "Gebrauchsanleitung", "Benutzerhandbuch", "Kurzanleitung", "User manual", "Owner's manual", "Instruction manual", "Quick start guide"],
+      "titelwoerter": ["Bedienungsanleitung", "Gebrauchsanweisung", "Gebrauchsanleitung", "Benutzerhandbuch", "Kurzanleitung", "User Manual", "Owner's Manual", "Instruction Manual", "Quick Start", "Instructions for use"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "besonderes/datenblaetter",
+     "name": "Datenblätter",
+     "zeichen": "table-list",
+     "ki_beschreibung": "Die Art des Dokuments: Datenblatt oder Spezifikation eines Bauteils, Geräts oder Stoffs, mit technischen Werten; kein Handbuch",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Datenblatt", "Spezifikation", "Technische Daten", "Datasheet", "Data sheet", "Specification"],
+      "titelwoerter": ["Datenblatt", "Datasheet", "Data Sheet", "Spezifikation", "Specification", "Technische Daten"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "besonderes/handbuecher",
+     "name": "Handbücher und Referenzen",
+     "zeichen": "book-bookmark",
+     "ki_beschreibung": "Die Art des Dokuments: technisches Handbuch oder Referenz zum Nachschlagen, etwa Programmierhandbuch, Referenzhandbuch oder Handbuch einer Software oder Anlage",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Handbuch", "Referenzhandbuch", "Programmierhandbuch", "Technisches Handbuch", "Reference manual", "Programming manual", "Technical manual", "Handbook"],
+      "titelwoerter": ["Handbuch", "Referenzhandbuch", "Programmierhandbuch", "Reference Manual", "Reference Guide", "Programming Manual", "Technical Manual", "Handbook"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "besonderes/belege",
+     "name": "Belege und Rechnungen",
+     "zeichen": "receipt",
+     "ki_beschreibung": "Die Art des Dokuments: Beleg, Rechnung, Quittung, Kontoauszug oder Bescheid",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Rechnung", "Beleg", "Quittung", "Kontoauszug", "Bescheid", "Invoice", "Receipt", "Bank statement"],
+      "titelwoerter": ["Rechnung", "Beleg", "Quittung", "Kontoauszug", "Bescheid", "Invoice", "Receipt"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "besonderes/vertraege",
+     "name": "Verträge",
+     "zeichen": "file-contract",
+     "ki_beschreibung": "Die Art des Dokuments: Vertrag, Vereinbarung, Police oder allgemeine Geschäftsbedingungen",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Vertrag", "Vereinbarung", "Versicherungspolice", "Geschäftsbedingungen", "Contract", "Agreement"],
+      "titelwoerter": ["Vertrag", "Vereinbarung", "Mietvertrag", "Arbeitsvertrag", "Kaufvertrag", "Police", "Contract", "Agreement"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "besonderes/urkunden",
+     "name": "Zeugnisse und Urkunden",
+     "zeichen": "award",
+     "ki_beschreibung": "Die Art des Dokuments: Zeugnis, Urkunde, Zertifikat, Bescheinigung oder Nachweis",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Zeugnis", "Urkunde", "Zertifikat", "Bescheinigung", "Nachweis", "Certificate", "Diploma"],
+      "titelwoerter": ["Zeugnis", "Urkunde", "Zertifikat", "Bescheinigung", "Nachweis", "Certificate"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "besonderes/formulare",
+     "name": "Formulare",
+     "zeichen": "clipboard-list",
+     "ki_beschreibung": "Die Art des Dokuments: Formular, Antrag oder Vordruck zum Ausfüllen",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Formular", "Antrag", "Vordruck", "Form", "Application form"],
+      "titelwoerter": ["Formular", "Antrag", "Vordruck", "Application Form"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "besonderes/kataloge",
+     "name": "Kataloge und Prospekte",
+     "zeichen": "tags",
+     "ki_beschreibung": "Die Art des Dokuments: Produktkatalog, Prospekt, Broschüre, Preisliste oder Flyer",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Katalog", "Produktkatalog", "Verkaufskatalog", "Prospekt", "Broschüre", "Preisliste", "Catalog", "Catalogs", "Brochure"],
+      "titelwoerter": ["Katalog", "Catalog", "Catalogue", "Prospekt", "Preisliste", "Broschüre", "Flyer"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "besonderes/zeitschriften",
+     "name": "Zeitschriften und Hefte",
+     "zeichen": "newspaper",
+     "ki_beschreibung": "Die Art des Dokuments: Ausgabe einer Zeitschrift, eines Magazins, einer Zeitung oder eines Hefts",
+     "regeln": {
+      "sachgruppen": ["050"],
+      "schlagworte": ["Zeitschrift", "Magazin", "Zeitung", "Periodikum", "Heft", "Periodicals", "Magazines", "Newspapers"],
+      "titelwoerter": ["Magazin", "Magazine", "Zeitschrift", "Ausgabe", "Heft"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "besonderes/folien",
+     "name": "Folien und Vorträge",
+     "zeichen": "person-chalkboard",
+     "ki_beschreibung": "Die Art des Dokuments: Folien, Präsentation oder Unterlagen zu einem Vortrag oder einer Vorlesung",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Präsentation", "Vortrag", "Folien", "Vorlesung", "Presentation", "Slides", "Lecture"],
+      "titelwoerter": ["Folien", "Vortrag", "Präsentation", "Vorlesung", "Slides", "Lecture", "Presentation"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "besonderes/skripte",
+     "name": "Skripte und Abschlussarbeiten",
+     "zeichen": "file-pen",
+     "ki_beschreibung": "Die Art des Dokuments: Skript zu einer Lehrveranstaltung oder eine Abschlussarbeit, etwa Bachelorarbeit, Masterarbeit, Diplomarbeit oder Dissertation",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Skript", "Hochschulschrift", "Dissertation", "Abschlussarbeit", "Bachelorarbeit", "Masterarbeit", "Diplomarbeit", "Seminararbeit", "Thesis", "Dissertations, Academic", "Lecture notes"],
+      "titelwoerter": ["Skript", "Dissertation", "Bachelorarbeit", "Masterarbeit", "Diplomarbeit", "Seminararbeit", "Hausarbeit", "Thesis", "Lecture Notes"],
+      "verlage": []
+     }
+    },
+    {
+     "schluessel": "besonderes/projekte",
+     "name": "Projektdokumentationen",
+     "zeichen": "diagram-project",
+     "ki_beschreibung": "Die Art des Dokuments: Dokumentation eines Projekts, etwa Projektarbeit, Pflichtenheft, Lastenheft, Konzept, Projektbericht oder Abschlussbericht; keine Skripte und keine Abschlussarbeiten",
+     "regeln": {
+      "sachgruppen": [],
+      "schlagworte": ["Projektdokumentation", "Projektarbeit", "Pflichtenheft", "Lastenheft", "Konzept", "Projektbericht", "Abschlussbericht", "Project documentation", "Specification", "Requirements", "Design document"],
+      "titelwoerter": ["Projektdokumentation", "Projektarbeit", "Pflichtenheft", "Lastenheft", "Konzept", "Projektbericht", "Abschlussbericht", "Project Documentation", "Requirements", "Design Document"],
+      "verlage": []
+     }
+    }
+   ]
+  }
+ ]
+}

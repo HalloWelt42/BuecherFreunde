@@ -54,6 +54,19 @@ VERSATZ = 100_000_000                    # Einträge überspringen
 AUSWAHL_HOECHSTENS = 10_000              # so viele Nummern in einer Anfrage (Sammelaktionen, Zuordnungen)
 SAMMLUNG_ALS_EINTRAG_AB = 2              # ab so vielen Büchern darf eine Sammlung in der Liste ein Eintrag sein (BF-66)
 SAMMLUNG_ALS_EINTRAG_BIS = 1000          # die größte Grenze, die man dafür einstellen kann
+# Katalog (BF-69)
+KATALOG_NAME = 100                       # Name eines Bereichs oder einer Kategorie
+KATALOG_BESCHREIBUNG = 1_000             # Beschreibung eines Bereichs
+KI_BESCHREIBUNG = 2_000                  # was in eine Kategorie gehört, für die KI
+KATALOG_SCHLUESSEL = 100
+REGELWERT = 100                          # ein Wert einer Regel, etwa ein Schlagwort
+REGELWERTE = 300                         # so viele Werte je Art einer Regel
+BEREICHE_HOECHSTENS = 50
+KATEGORIEN_JE_BEREICH = 300
+TEILE_HOECHSTENS = 50
+KATALOG_STAPEL_BIS = 20_000              # Titel je Stapel eines Laufs
+KI_JE_ANFRAGE_BIS = 200                  # Bücher je Anfrage an die KI
+KATALOG_TEILEN_BIS = 1_000_000
 
 
 def _bis_naechstes_jahr(jahr: int) -> int:
@@ -66,6 +79,10 @@ def _farbe(wert: str) -> str:
     if not re.fullmatch(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})", wert):
         raise ValueError("keine Farbe wie #3366ff")
     return wert
+
+
+def _farbe_oder_leer(wert: str) -> str:
+    return _farbe(wert) if wert else wert
 
 
 def _pflicht(hoechstens: int) -> StringConstraints:
@@ -85,11 +102,16 @@ Jahr = Annotated[int, Ge(JAHR_AB), AfterValidator(_bis_naechstes_jahr)]
 Lebensjahr = Annotated[int, Ge(LEBENSJAHR_AB), AfterValidator(_bis_naechstes_jahr)]
 Seiten = Annotated[int, Ge(0), Le(SEITEN_HOECHSTENS)]
 Prozent = Annotated[float, Ge(0), Le(100)]
+Sicherheit = Annotated[int, Ge(0), Le(100)]
+Stapelgroesse = Annotated[int, Ge(1), Le(KATALOG_STAPEL_BIS)]
+KiJeAnfrage = Annotated[int, Ge(1), Le(KI_JE_ANFRAGE_BIS)]
+TeilenAb = Annotated[int, Ge(1), Le(KATALOG_TEILEN_BIS)]
 Sortierung = Annotated[int, Ge(-SORTIERUNG), Le(SORTIERUNG)]
 AlsEintragAb = Annotated[int, Ge(SAMMLUNG_ALS_EINTRAG_AB), Le(SAMMLUNG_ALS_EINTRAG_BIS)]
 
 # Formen
 Farbe = Annotated[str, AfterValidator(_farbe)]
+FarbeOderLeer = Annotated[str, StringConstraints(strip_whitespace=True), AfterValidator(_farbe_oder_leer)]
 Isbn = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^[0-9Xx -]{0,20}$")]
 Symbol = Annotated[str, StringConstraints(strip_whitespace=True, max_length=SYMBOL, pattern=r"^[a-z0-9-]*$")]
 
@@ -103,6 +125,8 @@ Autorname = Annotated[str, _pflicht(AUTORNAME)]
 Leseposition = Annotated[str, _pflicht(LESEPOSITION)]
 Stelle = Annotated[str, _pflicht(STELLE)]
 Promptname = Annotated[str, _pflicht(PROMPT_NAME)]
+Katalogname = Annotated[str, _pflicht(KATALOG_NAME)]
+Regelwert = Annotated[str, _pflicht(REGELWERT)]
 Prompt = Annotated[str, _pflicht(PROMPT)]
 
 # Texte, die leer sein dürfen
@@ -121,3 +145,5 @@ Biografie = Annotated[str, _frei(BIOGRAFIE)]
 Herkunft = Annotated[str, _frei(HERKUNFT)]
 Adresse = Annotated[str, _frei(ADRESSE)]
 Promptbeschreibung = Annotated[str, _frei(PROMPT_BESCHREIBUNG)]
+Bereichsbeschreibung = Annotated[str, _frei(KATALOG_BESCHREIBUNG)]
+KiBeschreibung = Annotated[str, _frei(KI_BESCHREIBUNG)]

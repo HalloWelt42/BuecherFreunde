@@ -63,6 +63,14 @@ class Settings(BaseSettings):
     # Sammlungen finden (BF-66): Reihen aus Titeln und Dateinamen, geprüft von der lokalen KI
     sammlung_vorschlag_ab: int = Field(default=3, ge=2)          # ab so vielen Büchern einer Reihe ein Vorschlag
     sammlungen_finden_abstand_s: float = Field(default=5, ge=0)  # Pause zwischen zwei Anfragen an die KI
+    # Katalog (BF-69): Vorgaben; was in den Einstellungen (app_settings, katalog/einstellungen.py) steht, gilt vor ihnen
+    katalog_stapel: int = Field(default=500, ge=1)               # so viele Titel je Stapel eines Laufs
+    katalog_ki_je_anfrage: int = Field(default=40, ge=1)         # so viele Bücher je Anfrage an die KI
+    katalog_sicher_ab: int = Field(default=80, ge=0, le=100)     # so sichere Vorschläge sind vorab angehakt
+    katalog_teilen_ab: int = Field(default=300, ge=1)            # über so vielen Treffern wird eine Kategorie im Entwurf geteilt
+    # nur hier einstellbar:
+    katalog_abstand_s: float = Field(default=5, ge=0)            # Pause zwischen zwei Anfragen an die KI
+    katalog_neu_ab: int = Field(default=3, ge=1)                 # ab so vielen Büchern zählt ein Schlagwort ohne Kategorie als häufig
 
     # Quellen für Angaben zu Büchern und Autoren (backend/app/quellen), jede freiwillig und ohne Schlüssel.
     # Google Books antwortet seit 2026 nur noch mit eigenem Schlüssel

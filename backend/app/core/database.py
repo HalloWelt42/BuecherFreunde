@@ -376,6 +376,41 @@ CREATE TABLE IF NOT EXISTS sammlung_vorschlag_buch ( -- die Bücher eines Vorsch
     band TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (vorschlag_id, buch_id)
 );
+CREATE TABLE IF NOT EXISTS katalog_lauf (           -- Einordnen und Entwurf aus dem Bestand (katalog/lauf.py, BF-69)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    art TEXT NOT NULL,                               -- einordnen, bestand
+    stand TEXT NOT NULL DEFAULT 'laeuft',            -- laeuft, pause, fertig, fehler; laeuft geht nach einem Neustart weiter
+    stapel INTEGER NOT NULL DEFAULT 0,               -- fertige Stapel
+    stapel_gesamt INTEGER NOT NULL DEFAULT 0,
+    stapel_groesse INTEGER NOT NULL DEFAULT 0,
+    nach_buch INTEGER NOT NULL DEFAULT 0,            -- das letzte Buch des letzten fertigen Stapels; dahinter geht es weiter
+    regeln INTEGER NOT NULL DEFAULT 0,               -- Vorschläge mit einer Regel
+    ki INTEGER NOT NULL DEFAULT 0,                   -- Vorschläge der KI
+    ohne_vorschlag INTEGER NOT NULL DEFAULT 0,       -- Bücher ohne Vorschlag
+    schritt TEXT NOT NULL DEFAULT '',
+    grund TEXT NOT NULL DEFAULT '',
+    begonnen TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    geaendert TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE TABLE IF NOT EXISTS katalog_vorschlag (      -- ein Buch in einer Kategorie des Katalogs, gefunden von Regel oder KI
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    quelle TEXT NOT NULL,                            -- regel, ki, beide
+    gruende TEXT NOT NULL DEFAULT '[]',              -- JSON: kurze deutsche Sätze
+    sicherheit INTEGER NOT NULL DEFAULT 0,           -- 0 bis 100
+    stand TEXT NOT NULL DEFAULT 'offen',             -- offen, angenommen, abgelehnt; abgelehnte kommen nie wieder
+    lauf_id INTEGER DEFAULT NULL REFERENCES katalog_lauf(id) ON DELETE SET NULL,
+    angelegt_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    UNIQUE (book_id, category_id)
+);
+CREATE INDEX IF NOT EXISTS idx_katalog_vorschlag_kategorie ON katalog_vorschlag(category_id, stand);
+CREATE TABLE IF NOT EXISTS katalog_alt_vorschlag (  -- was die KI je altem Regal vorschlägt (katalog/alt.py)
+    regal_id INTEGER PRIMARY KEY REFERENCES categories(id) ON DELETE CASCADE,
+    kategorie_id INTEGER DEFAULT NULL REFERENCES categories(id) ON DELETE CASCADE,   -- leer: Schlagwort am Buch
+    grund TEXT NOT NULL DEFAULT '',
+    geprueft_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
 CREATE INDEX IF NOT EXISTS idx_aufnahme_stand ON aufnahme(stand);
 CREATE INDEX IF NOT EXISTS idx_aufnahme_sha ON aufnahme(sha256);
 """
@@ -393,6 +428,14 @@ NEUBAU_SPALTEN: tuple[tuple[str, str, str], ...] = (
     ("books", "umschlag_geprueft", "INTEGER NOT NULL DEFAULT 0"),  # der umschlag_stand, zu dem der Befund gehört
     ("books", "einordnung", "TEXT NOT NULL DEFAULT ''"),           # wer Art und Gattung bestimmt hat: leer offen, ki, hand
     ("sammlung_vorschlag", "ki_zweifel", "INTEGER NOT NULL DEFAULT 0"),  # die KI hält es für keine Reihe (BF-66)
+    # Katalog (BF-69, docs/neubau/KATALOG.md): Bereiche und Kategorien stehen neben den Regalen in categories
+    ("categories", "art", "TEXT NOT NULL DEFAULT 'regal'"),        # bereich, kategorie, regal
+    ("categories", "schluessel", "TEXT NOT NULL DEFAULT ''"),      # fester Schlüssel aus dem Katalog; leer bei Regalen
+    ("categories", "regeln", "TEXT NOT NULL DEFAULT '{}'"),        # JSON {sachgruppen, schlagworte, titelwoerter, verlage}
+    ("categories", "ki_beschreibung", "TEXT NOT NULL DEFAULT ''"), # was in die Kategorie gehört, für die KI
+    ("categories", "verborgen", "INTEGER NOT NULL DEFAULT 0"),     # 1: ohne Bücher, nicht in der Leiste
+    ("categories", "herkunft", "TEXT NOT NULL DEFAULT ''"),        # standard, geteilt, neu, eigen
+    ("categories", "arten", "TEXT NOT NULL DEFAULT '[\"\"]'"),      # Bereich: JSON, für welche Arten (books.typ) er gilt; "" Buch
 )
 
 

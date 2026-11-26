@@ -29,6 +29,8 @@ from backend.app.codestellen.dienst import codestellen
 from backend.app.ablage.antwort import FEHLT, original_antwort
 from backend.app.annahme.eintragen import autoren_verknuepfen
 from backend.app.services import buch_loeschen, buchliste, buchsuche, deckblatt, sammlungen, schnellfilter
+from backend.app.katalog import kategorien as katalog_kategorien
+from backend.app.katalog.merkmale import IN_KATEGORIE
 from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover, save_fulltext
 from backend.app.models.grenzen import AUSWAHL_HOECHSTENS, GROESSTE_ZAHL, JAHR_BIS, LEBENSJAHR_AB, LISTENSEITE, SEITEN_HOECHSTENS, Index, Nr
 
@@ -44,14 +46,8 @@ def listenspalten(tabelle: str = "b") -> str:
 
 
 async def _get_book_categories(book_id: int) -> list[dict]:
-    """Lädt Kategorien eines Buches."""
-    rows = await db.fetch_all(
-        """SELECT c.id, c.name, c.slug FROM categories c
-           JOIN book_categories bc ON bc.category_id = c.id
-           WHERE bc.book_id = ?""",
-        (book_id,),
-    )
-    return rows
+    """Kategorien und Regale eines Buchs, je mit Art, Zeichen, Farbe und Bereich (BF-69)."""
+    return await katalog_kategorien.kategorien_eines_buchs(book_id)
 
 
 async def _get_book_sammlung(book: dict) -> dict | None:
@@ -187,6 +183,7 @@ async def list_books(
     sammlung: Nr | None = Query(None, description="Sammlungs-ID Filter"),
     ohne_sammlung: bool | None = Query(None, description="True: nur Bücher ohne Sammlung, False: nur die in einer"),
     nicht_kategorie: Nr | None = Query(None, description="Nur Bücher, die nicht in diesem Regal stehen"),
+    ohne_kategorie: bool | None = Query(None, description="True: nur Bücher in keiner Kategorie des Katalogs, False: nur die in einer"),
     typ: str | None = Query(None, description="Typ-Filter (dokument, heft, katalog, broschuere)"),
     favorit: bool | None = Query(None, description="Nur Favoriten"),
     zu_lesen: bool | None = Query(None, description="Nur Zum-Lesen"),
@@ -235,6 +232,9 @@ async def list_books(
     if nicht_kategorie is not None:
         conditions.append("b.id NOT IN (SELECT book_id FROM book_categories WHERE category_id = ?)")
         params.append(nicht_kategorie)
+
+    if ohne_kategorie is not None:
+        conditions.append(f"{'NOT ' if ohne_kategorie else ''}{IN_KATEGORIE}")
 
     if typ is not None and typ.strip():
         conditions.append("b.typ = ?")

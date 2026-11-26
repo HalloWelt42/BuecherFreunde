@@ -32,10 +32,16 @@ FELDER = {
     "position_percent": "Position", "icon": "Symbol", "sort_order": "Reihenfolge", "spezial": "Besonders",
     "position": "Leseposition", "bewertung": "Bewertung", "book_ids": "Bücher", "aktion": "Aktion", "wert": "Wert",
     "biography": "Biografie", "birth_year": "Geburtsjahr", "death_year": "Sterbejahr", "nationality": "Herkunft",
-    "website": "Website", "wikidata_id": "Wikidata", "wikipedia_url": "Wikipedia", "kategorien": "Regale",
+    "website": "Website", "wikidata_id": "Wikidata", "wikipedia_url": "Wikipedia", "kategorien": "Kategorien",
     "system_prompt": "Anweisung", "temperatur": "Temperatur", "max_tokens": "Länge der Antwort", "beschreibung": "Beschreibung",
     "seite": "Seite", "pro_seite": "Einträge je Seite", "limit": "Anzahl", "offset": "Versatz", "q": "Suche",
     "groesse": "Größe", "sha256": "Prüfsumme", "quelle": "Quelle", "stand": "Zustand",
+    # Katalog (BF-69)
+    "bereiche": "Bereiche", "schluessel": "Schlüssel", "zeichen": "Zeichen", "farbe": "Farbe", "ki_beschreibung": "Beschreibung für die KI",
+    "regeln": "Regeln", "sachgruppen": "Sachgruppen", "schlagworte": "Schlagworte", "titelwoerter": "Titelwörter", "verlage": "Verlage",
+    "verborgen": "Verborgen", "herkunft": "Herkunft", "teile": "Teile", "arten": "Arten", "bereich_id": "Bereich", "weg": "Weg",
+    "ids": "Auswahl", "ziel": "Ziel", "kategorie_id": "Kategorie", "stapel": "Stapel", "fassung": "Fassung", "kategorie": "Kategorie",
+    "ki_je_anfrage": "Bücher je Anfrage", "sicher_ab": "Vorab angehakt ab", "teilen_ab": "Teilen ab",
 }
 
 

@@ -1,4 +1,5 @@
-"""API-Endpunkte für Kategorien."""
+"""API-Endpunkte für Regale (`categories` mit `art` regal). Bereiche und Kategorien des Katalogs (BF-69) haben ihre Wege
+unter /api/katalog; Bücher hinein und hinaus geht für beide hier."""
 
 import re
 
@@ -46,8 +47,9 @@ class CategoryUpdate(BaseModel):
 
 
 async def _freier_slug(name: str, ausser: int | None = None) -> str:
-    """Ein Name gehört genau einem Regal (409 sonst); fällt nur das Kürzel zusammen ("Sci-Fi", "Sci Fi"), wird gezählt."""
-    if await db.fetch_one("SELECT id FROM categories WHERE name = ? COLLATE NOCASE AND id IS NOT ?", (name, ausser)):
+    """Ein Name gehört genau einem Regal (409 sonst); fällt nur das Kürzel zusammen ("Sci-Fi", "Sci Fi"), wird gezählt.
+    Kategorien des Katalogs dürfen wie ein Regal heißen."""
+    if await db.fetch_one("SELECT id FROM categories WHERE name = ? COLLATE NOCASE AND art = 'regal' AND id IS NOT ?", (name, ausser)):
         raise HTTPException(status_code=409, detail=DOPPELT)
     grund = _slugify(name) or "regal"
     slug, zaehler = grund, 2
@@ -56,15 +58,22 @@ async def _freier_slug(name: str, ausser: int | None = None) -> str:
     return slug
 
 
+async def _regal(nr: int) -> None:
+    """Nur Regale; Bereiche und Kategorien des Katalogs ändert und löscht /api/katalog (nach den Folgen)."""
+    if not await db.fetch_one("SELECT id FROM categories WHERE id = ? AND art = 'regal'", (nr,)):
+        raise HTTPException(status_code=404, detail=FEHLT)
+
+
 @router.get("")
 async def list_categories(_token: str = Depends(verify_token)):
-    """Gibt alle Kategorien als flache Liste mit Buchanzahl zurück."""
+    """Alle Regale als flache Liste mit Buchanzahl (ohne Bereiche und Kategorien des Katalogs)."""
     rows = await db.fetch_all(
         """SELECT c.id, c.name, c.slug, c.description, c.color, c.icon,
                   c.sort_order, c.spezial,
                   COUNT(bc.book_id) as buch_anzahl
            FROM categories c
            LEFT JOIN book_categories bc ON bc.category_id = c.id
+           WHERE c.art = 'regal'
            GROUP BY c.id
            ORDER BY c.sort_order, c.name"""
     )
@@ -89,8 +98,8 @@ async def create_category(data: CategoryCreate, _token: str = Depends(verify_tok
 async def update_category(
     category_id: Nr, data: CategoryUpdate, _token: str = Depends(verify_token)
 ):
-    """Aktualisiert eine Kategorie."""
-    await vorhanden.eintrag("categories", category_id, FEHLT, "id")
+    """Aktualisiert ein Regal."""
+    await _regal(category_id)
     updates = data.model_dump(exclude_none=True)
     if "name" in updates:
         updates["slug"] = await _freier_slug(updates["name"], category_id)
@@ -110,8 +119,8 @@ async def update_category(
 
 @router.delete("/{category_id}")
 async def delete_category(category_id: Nr, _token: str = Depends(verify_token)):
-    """Löscht eine Kategorie (Bücher bleiben erhalten)."""
-    await vorhanden.eintrag("categories", category_id, FEHLT, "id")
+    """Löscht ein Regal (Bücher bleiben erhalten)."""
+    await _regal(category_id)
 
     await db.execute("DELETE FROM book_categories WHERE category_id = ?", (category_id,))
     await db.execute("DELETE FROM categories WHERE id = ?", (category_id,))
