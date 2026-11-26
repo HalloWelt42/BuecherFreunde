@@ -22,12 +22,10 @@ from backend.app.models.textansicht import TextBaustein, TextSeite, TextSeitenAn
 from backend.app.services.textansicht import Baustein, Codeteil, abbildung_png, seiten_lesen
 import fitz
 
-from backend.app.ablage import originale
 from backend.app.codestellen.dienst import codestellen
 from backend.app.ablage.antwort import FEHLT, original_antwort
-from backend.app.ablage.wolke import wolke
 from backend.app.annahme.eintragen import autoren_verknuepfen
-from backend.app.services import buchsuche, deckblatt, schnellfilter
+from backend.app.services import buch_loeschen, buchsuche, deckblatt, schnellfilter
 from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover, save_fulltext
 from backend.app.models.grenzen import AUSWAHL_HOECHSTENS, GROESSTE_ZAHL, JAHR_BIS, LEBENSJAHR_AB, LISTENSEITE, SEITEN_HOECHSTENS, Index, Nr
 
@@ -473,32 +471,23 @@ async def update_book(
     return await get_book(book_id)
 
 
-@router.delete("/{book_id}")
-async def delete_book(
-    book_id: Nr,
-    datei_loeschen: bool = Query(False, description="Auch die Datei im Speicher löschen"),
-    _token: str = Depends(verify_token),
-):
-    """Löscht ein Buch aus der Datenbank."""
-    book = await db.fetch_one("SELECT hash FROM books WHERE id = ?", (book_id,))
-    if not book:
+@router.get("/{book_id}/loeschfolgen", response_model=buch_loeschen.Folgen)
+async def loeschfolgen(book_id: Nr, _token: str = Depends(verify_token)):
+    """Was verloren geht, wenn das Buch gelöscht wird (BF-60): für die Rückfrage vor dem Löschen."""
+    f = await buch_loeschen.folgen(book_id)
+    if f is None:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+    return f
 
-    await db.execute("DELETE FROM books WHERE id = ?", (book_id,))
-    await db.commit()
 
-    if datei_loeschen:
-        from backend.app.services.storage import delete_stored_file, get_sidecar_path
-
-        ablage = await asyncio.to_thread(originale.eintrag, book["hash"])
-        if ablage and wolke.bereit:
-            # in den Papierkorb der Kellerwolke, der Begleiter geht mit; endgültig löscht nur das Konto
-            await wolke.rufe("DELETE", f"/api/v1/ablage/knoten/{ablage['knoten']}")
-            await db.execute("DELETE FROM ablage_datei WHERE hash = ?", (book["hash"],))
-            await db.commit()
-        get_sidecar_path(book["hash"], "cover.jpg").unlink(missing_ok=True)
-        delete_stored_file(book["hash"])
-
+@router.delete("/{book_id}")
+async def delete_book(book_id: Nr, _token: str = Depends(verify_token)):
+    """Löscht ein Buch mit allem, was an ihm hängt; die Datei geht in den Papierkorb der Kellerwolke (BF-60)."""
+    try:
+        if not await buch_loeschen.loeschen(book_id):
+            raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+    except buch_loeschen.NichtGeloescht as f:
+        raise HTTPException(status_code=502, detail=f"Nicht gelöscht, das Buch bleibt: {f}") from f
     return {"geloescht": True, "id": book_id}
 
 

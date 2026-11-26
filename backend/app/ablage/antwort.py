@@ -18,7 +18,8 @@ from backend.app.services.storage import get_storage_path, ist_original
 FEHLT = "Dieses Buch liegt noch nicht in der Kellerwolke"
 
 
-def _auf_dem_geraet(file_hash: str) -> Path | None:
+def auf_dem_geraet(file_hash: str) -> Path | None:
+    """Das Original, wenn es auf dem Gerät liegt (Ablage ohne Kellerwolke oder noch im Zwischenlager)."""
     ordner = get_storage_path(file_hash)
     kandidaten = [f for f in ordner.iterdir() if ist_original(f)] if ordner.exists() else []
     zwischen = settings.zwischen_dir / "original" / file_hash
@@ -28,7 +29,7 @@ def _auf_dem_geraet(file_hash: str) -> Path | None:
 
 async def original_antwort(request: Request, file_hash: str, art: str, name: str, herunterladen: bool = False) -> Response:
     weise = "attachment" if herunterladen else "inline"
-    da = _auf_dem_geraet(file_hash)
+    da = auf_dem_geraet(file_hash)
     if da is not None:
         return FileResponse(da, media_type=art, filename=name, headers={"Accept-Ranges": "bytes"}, content_disposition_type=weise)
     ablage = originale.eintrag(file_hash)

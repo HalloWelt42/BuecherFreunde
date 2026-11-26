@@ -1,7 +1,7 @@
 // Bücher: Liste, Einzelnes, Umschlag, Datei, Text
-import { get, patch, post } from "./client";
+import { del, get, patch, post } from "./client";
 import type { Parameter } from "./client";
-import type { Buch, BuchEinzeln, BuchListe } from "../typen";
+import type { Buch, BuchEinzeln, BuchListe, Loeschfolgen } from "../typen";
 
 export interface Buchtreffer {
   seite: number;
@@ -20,6 +20,8 @@ export interface Suchschalter {
 export const listeBooks = (params: Parameter): Promise<BuchListe> => get("/api/books", params);
 export const holeBuch = (id: number): Promise<BuchEinzeln> => get(`/api/books/${id}`);
 export const aehnlicheBuecher = (id: number): Promise<{ vom_autor: Buch[]; in_kategorie: Buch[] }> => get(`/api/books/${id}/aehnliche`);
+export const loeschfolgen = (id: number): Promise<Loeschfolgen> => get(`/api/books/${id}/loeschfolgen`);
+export const loescheBuch = (id: number): Promise<{ geloescht: boolean; id: number }> => del(`/api/books/${id}`);
 export const aktualisiereBuch = (id: number, daten: Record<string, unknown>): Promise<BuchEinzeln> => patch(`/api/books/${id}`, daten);
 export const bulkAction = (buecher: number[], aktion: string, wert: unknown): Promise<{ betroffen: number }> => post("/api/books/bulk", { book_ids: buecher, aktion, wert });
 export const umschlagNeu = (id: number): Promise<any> => post(`/api/books/${id}/cover/neu-extrahieren`);

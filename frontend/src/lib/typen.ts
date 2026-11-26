@@ -61,6 +61,22 @@ export interface Buch {
   updated_at: string;
 }
 
+/** Was mit einem Buch verloren geht (BF-60, GET /api/books/{id}/loeschfolgen) */
+export interface Loeschfolgen {
+  titel: string;
+  autor: string;
+  notizen: number;
+  markierungen: number;
+  etiketten: number;
+  lesestand: boolean;
+  vorlesestelle: boolean;
+  regale: number;
+  /** papierkorb: kommt in den Papierkorb der Kellerwolke; sonst liegt sie nur hier und ist danach fort */
+  datei: { pfad: string; groesse: number; papierkorb: boolean } | null;
+  /** Abschnitte der Suche nach Bedeutung; null ohne Anschluss */
+  abschnitte: number | null;
+}
+
 export interface BuchEinzeln extends Buch {
   language: string;
   description: string;

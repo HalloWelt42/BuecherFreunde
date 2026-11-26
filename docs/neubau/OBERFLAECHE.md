@@ -87,6 +87,7 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 | Lesestand mit Papier, Ansicht, Schrift, Schriftprobe, auch für Text (24) | Buchkopf, `lib/lesestand` | ja |
 | Autoren als Verweise, Verlag, Angaben, Datei | Buchkopf | ja |
 | Bewertung, Favorit, Lesesofa, Gelesen | Buchkopf, Vorschau | ja |
+| Buch löschen (BF-60): Taste mit Abstand hinter Gelesen, Rückfrage mit allen Folgen des Buchs vom Server, Datei in den Papierkorb der Kellerwolke, danach zurück zur Bibliothek samt Filter | Buchkopf, `buch/loeschen` | Tests, Betrieb mit eigenem Probebuch |
 | Bearbeiten: alle Felder, Typ, Sammlung, Band; Eingaben bleiben bei Fehlern (5) | `BuchBearbeiten` | ja |
 | ISBN im Text suchen und übernehmen | `Isbnsuche` | Suche ja, Übernehmen nein (keine ISBN im Probebestand) |
 | Einordnung durch die KI mit Prozenten | Fenster "Vorschlag der KI" | Fehlerweg ja, Vorschläge nein |
@@ -167,6 +168,8 @@ für die offene Seite auf Höhe ihrer Stelle, sie gehen beim Rollen mit; schmal 
 Anteil im Buch. Dicht liegende rücken untereinander, bei sehr vielen fassen sie sich zusammen (Zahl), nie übereinander, auch nicht über
 breite. Am Telefon 6 Pixel schmal (30 und 64 hoch) am Rand, Tippfläche 44, die nur ein Tippen genau dort fängt; Wischen und Auswählen gehen
 durch. Überfahren oder Tippen klappt die Karte auf (Text, Art, Stelle), noch ein Tippen öffnet Notizen und Markierungen, schmale springen.
+Aufgeklappt hat die Karte Bearbeiten und Löschen (BF-61), bei mehreren Einträgen "Alle zeigen"; Rechtsklick auf eine Marke zeigt das
+eigene Menü mit Hinspringen, Bearbeiten und Löschen. Löschen fragt immer erst nach, wie im Feld Notizen und Markierungen.
 
 | Teil | Ort | Geprüft |
 |---|---|---|

@@ -5,7 +5,8 @@
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import type { Aufteilung } from "../../lib/leser/leseraum.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
-  import type { Markierung } from "../../lib/typen";
+  import { kontext, type Eintrag } from "../../lib/stand/kontextmenue.svelte";
+  import type { Etikett, Markierung, Notiz } from "../../lib/typen";
 
   let { sitzung, rahmen, raum, feld }: { sitzung: Lesesitzung; rahmen: HTMLElement; raum: Aufteilung; feld?: HTMLElement } = $props();
 
@@ -79,6 +80,27 @@
     else g?.zurStelle(e.seite ? `S.${e.seite}` : e.ort, e.cfi, e.prozent ?? 0);
   }
 
+  function zumFeld() {
+    offen = "";
+    sitzung.feld = "stellen";
+  }
+
+  /** Löschen fragt immer erst nach (Lesesitzung); entfernt wird genau der gezeigte Eintrag (BF-61) */
+  function loesche(e: Randeintrag) {
+    offen = "";
+    if (e.art === "Markierung") void sitzung.loescheMarkierung(e.quelle as Markierung);
+    else if (e.art === "Notiz") void sitzung.loescheNotiz(e.quelle as Notiz);
+    else void sitzung.loescheEtikett(e.quelle as Etikett);
+  }
+
+  /** Eigenes Menü auf einer Marke; bei mehreren Einträgen gibt es Löschen nur im Feld, damit man nie den falschen trifft */
+  const menue = (g: Gelegt<Randeintrag>) => (): Eintrag[] => {
+    const e = g.eintraege[0];
+    const hin: Eintrag = { text: "Hinspringen", symbol: "arrow-right", tun: () => springe(e) };
+    if (g.eintraege.length > 1) return [hin, { text: "Alle zeigen", symbol: "list", tun: zumFeld }];
+    return [hin, { text: "Bearbeiten", symbol: "pen", tun: zumFeld }, { text: "Löschen", symbol: "trash", tun: () => loesche(e) }];
+  };
+
   /** Erstes Tippen klappt auf, das zweite öffnet zum Bearbeiten; schmale springen gleich */
   function tippe(g: Gelegt<Randeintrag>, nah: boolean) {
     const e = g.eintraege[0];
@@ -97,6 +119,7 @@
       return;
     }
     sitzung.randtreffer = (x, y) => {
+      if (document.elementFromPoint(x, y)?.closest(".randkarte.auf")) return false;      // die Tasten der offenen Karte
       const r = rahmen.getBoundingClientRect();
       if (x < r.right - TIPPZONE || x > r.right) return false;
       const treffer = (liste: Gelegt<Randeintrag>[], h: number) => liste.find((g) => y >= r.top + g.y - 7 && y <= r.top + g.y + h + 7);
@@ -117,16 +140,27 @@
 <div class="randmarken" class:telefon aria-label="Marken am Rand" role="group" style:--links="{lage.links}px">
   {#each lage.fern as g (g.eintraege[0].schluessel)}
     {@const e = g.eintraege[0]}
-    <button type="button" class="randmarke fern" style:top="{g.y}px" style:--f={e.farbe} style:--auf={schriftAuf(e.farbe)} title={titel(g)} aria-label="{titel(g)}, hinspringen" tabindex={telefon ? -1 : 0} onclick={() => tippe(g, false)}>{#if g.eintraege.length > 1 && !telefon}<span class:laengs={g.eintraege.length >= 100} class:eng={g.eintraege.length >= 10000}>{g.eintraege.length}</span>{/if}</button>
+    <button type="button" class="randmarke fern" style:top="{g.y}px" style:--f={e.farbe} style:--auf={schriftAuf(e.farbe)} title={titel(g)} aria-label="{titel(g)}, hinspringen" tabindex={telefon ? -1 : 0} onclick={() => tippe(g, false)} use:kontext={menue(g)}>{#if g.eintraege.length > 1 && !telefon}<span class:laengs={g.eintraege.length >= 100} class:eng={g.eintraege.length >= 10000}>{g.eintraege.length}</span>{/if}</button>
   {/each}
   {#each lage.hier as g, n (g.eintraege[0].schluessel)}
     {@const e = g.eintraege[0]}
-    <button type="button" class="randmarke hier" class:auf={offen === e.schluessel} style:top="{g.y}px" style:--f={e.farbe} style:--auf={schriftAuf(e.farbe)} aria-label={titel(g)} aria-expanded={offen === e.schluessel} tabindex={telefon ? -1 : 0} onclick={() => tippe(g, true)}>
+    <button type="button" class="randmarke hier" class:auf={offen === e.schluessel} style:top="{g.y}px" style:--f={e.farbe} style:--auf={schriftAuf(e.farbe)} aria-label={titel(g)} aria-expanded={offen === e.schluessel} tabindex={telefon ? -1 : 0} onclick={() => tippe(g, true)} use:kontext={menue(g)}>
       {#if !telefon}<span class="nummer">{g.eintraege.length > 1 ? `${n + 1}+` : n + 1}</span>{/if}
     </button>
     <div class="randkarte" class:nach-links={nachLinks} class:auf={offen === e.schluessel} style:top="{g.y}px" style:--f={e.farbe} style:--auf={schriftAuf(e.farbe)} role="note">
       <span class="text">{e.text}</span>
       <small>{e.art}, {e.ort}{g.eintraege.length > 1 ? `, und ${g.eintraege.length - 1} weitere` : ""}</small>
+      {#if offen === e.schluessel}
+        <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+        <span class="tun" onclick={(ev) => ev.stopPropagation()}>
+          {#if g.eintraege.length > 1}
+            <button type="button" onclick={zumFeld}><i class="fa-solid fa-list" aria-hidden="true"></i>Alle zeigen</button>
+          {:else}
+            <button type="button" onclick={zumFeld}><i class="fa-solid fa-pen" aria-hidden="true"></i>Bearbeiten</button>
+            <button type="button" onclick={() => loesche(e)}><i class="fa-solid fa-trash" aria-hidden="true"></i>Löschen</button>
+          {/if}
+        </span>
+      {/if}
     </div>
   {/each}
 </div>
@@ -208,6 +242,35 @@
   .randkarte.auf {
     visibility: visible;
   }
+  /* Aufgeklappt hat die Karte Tasten in ihrer eigenen Tinte (BF-61, Entwurf loeschen-entfernen) */
+  .randkarte.auf {
+    pointer-events: auto;
+  }
+  .tun {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-top: 0.5rem;
+  }
+  .tun button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 1.875rem;
+    padding: 0 0.5625rem;
+    border: 0;
+    border-radius: var(--r1);
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: inherit;
+    background: rgb(0 0 0 / 0.1);
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18);
+    cursor: pointer;
+  }
+  .tun button:hover {
+    background: rgb(0 0 0 / 0.18);
+  }
   .randkarte.nach-links {
     left: auto;
     right: calc(100% - var(--links) + 4px);
@@ -232,5 +295,10 @@
     max-width: min(15rem, calc(100% - 3rem));
     border-radius: 6px;
     font-size: 0.9375rem;
+  }
+  .telefon .tun button {
+    min-height: 2.5rem;
+    padding: 0 0.75rem;
+    font-size: 0.875rem;
   }
 </style>

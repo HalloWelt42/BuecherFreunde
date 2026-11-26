@@ -9,6 +9,7 @@
   import Umschlag from "../../lib/teile/Umschlag.svelte";
   import type { BuchEinzeln } from "../../lib/typen";
   import Regalchips from "./Regalchips.svelte";
+  import { buchLoeschen } from "./loeschen";
 
   let { buch, onneu, ongeaendert }: { buch: BuchEinzeln; onneu: (neu: Partial<BuchEinzeln>) => void; ongeaendert: () => void } = $props();
 
@@ -45,7 +46,10 @@
           {#each buch.authors as a, n (a.id)}{#if n}, {/if}<a class="autor" href="/author/{a.id}">{a.name}</a>{:else}{buch.author}{/each}{#if buch.year}, {buch.year}{/if}
         </p>
       </div>
-      <div class="reihe"><Sterne wert={buch.rating} onwahl={(n) => void bewerte(n)} /><Merkmalsknoepfe {buch} {onneu} /></div>
+      <div class="reihe">
+        <Sterne wert={buch.rating} onwahl={(n) => void bewerte(n)} /><Merkmalsknoepfe {buch} {onneu} />
+        <span class="loeschen"><Knopf text="Buch löschen" symbol="trash" nur onclick={() => void buchLoeschen(buch.id)} /></span>
+      </div>
       <div class="reihe">
         <Knopf text={leseKnopf(buch)} symbol="book-open" haupt href={leseAdresse(buch.id)} />
         <Knopf text="Von vorn" symbol="backward-step" href={leseAdresse(buch.id, { restart: 1 })} />
@@ -67,6 +71,10 @@
 </section>
 
 <style>
+  /* Abstand, damit man Löschen nicht statt Gelesen trifft; ausgelöst wird ohnehin erst nach der Rückfrage (BF-60) */
+  .loeschen {
+    margin-left: 0.5rem;
+  }
   .autor {
     color: inherit;
     text-decoration-color: var(--linie);

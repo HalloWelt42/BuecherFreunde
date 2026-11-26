@@ -19,7 +19,7 @@ def test_ordner_nur_mit_begleitern_hat_kein_original_auf_dem_geraet(tmp_path: Pa
         (ordner / name).write_text("{}")
     monkeypatch.setattr(antwort, "get_storage_path", lambda h: ordner)
     monkeypatch.setattr(antwort.settings, "zwischen_dir", tmp_path / "zwischen")
-    assert antwort._auf_dem_geraet("abcd") is None
+    assert antwort.auf_dem_geraet("abcd") is None
     (ordner / "buch.pdf").write_bytes(b"%PDF-1.4")
-    assert antwort._auf_dem_geraet("abcd") == ordner / "buch.pdf"
+    assert antwort.auf_dem_geraet("abcd") == ordner / "buch.pdf"
     assert storage.get_original_file("abcd", storage_dir=tmp_path) == ordner / "buch.pdf"
