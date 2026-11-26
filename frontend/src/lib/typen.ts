@@ -74,6 +74,8 @@ export interface BuchListe {
   seite: number;
   pro_seite: number;
   seiten_gesamt: number;
+  /** Nur mit Schnellfilter: wie viele es ohne ihn wären */
+  gesamt_ohne_suche?: number | null;
 }
 
 export interface Zahlen {

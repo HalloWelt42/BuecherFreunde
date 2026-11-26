@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { anzahl } from "../../lib/format";
+  import { anzahl, vonGesamt } from "../../lib/format";
+  import Schnellfilterchip from "../../lib/schale/Schnellfilterchip.svelte";
+  import Suchfeld from "../../lib/schale/Suchfeld.svelte";
   import { auswahl } from "../../lib/stand/auswahl.svelte";
   import { buecher, sortierungen, type Sortierung } from "../../lib/stand/buecher.svelte";
   import { filter } from "../../lib/stand/filter.svelte";
@@ -11,6 +13,7 @@
   import Auswahlleiste from "./Auswahlleiste.svelte";
   import Filterfeld from "./Filterfeld.svelte";
   import { regalansicht, regalarten } from "./ansicht.svelte";
+  import { regalfilter } from "./schnellfilter";
   import { titelDerFilter } from "./titel";
 
   let filterOffen = $state(false);
@@ -28,9 +31,11 @@
 </script>
 
 <div class="werkzeug">
+  <Suchfeld id="suchfeld-m" klasse="suchfeld-mobil" />
   <h1>{titelDerFilter()}</h1>
-  <span class="leise zahl">{buecher.geladen ? anzahl(buecher.gesamt, "Buch", "Bücher") : ""}</span>
+  <span class="leise zahl">{!buecher.geladen ? "" : filter.wert("q") ? vonGesamt(buecher.gesamt, buecher.ohneSuche) : anzahl(buecher.gesamt, "Buch", "Bücher")}</span>
   <span class="filter reihe">
+    <Schnellfilterchip ziel={regalfilter} />
     <Chip text="PDF" gedrueckt={filter.hat("file_format", "pdf")} onclick={() => filter.schalte("file_format", "pdf")} />
     <Chip text="EPUB" gedrueckt={filter.hat("file_format", "epub")} onclick={() => filter.schalte("file_format", "epub")} />
     <Chip text="Text" titel="TXT und Markdown" gedrueckt={mitText} onclick={schalteText} />

@@ -99,3 +99,5 @@ class BookListResponse(BaseModel):
     seite: int
     pro_seite: int
     seiten_gesamt: int
+    # Nur mit Schnellfilter: wie viele die Liste ohne ihn hätte
+    gesamt_ohne_suche: int | None = None

@@ -2,11 +2,14 @@
   import { onMount } from "svelte";
   import { loescheVerwaiste, resyncAutoren } from "../../lib/api/authors";
   import { anzahl, zahl } from "../../lib/format";
-  import { rollstand, vergissRollstand } from "../../lib/rollstand";
+  import { rollstand } from "../../lib/rollstand";
+  import Schnellfilterchip from "../../lib/schale/Schnellfilterchip.svelte";
+  import Suchfeld from "../../lib/schale/Suchfeld.svelte";
   import { autorenabgleich } from "../../lib/stand/autorenabgleich.svelte";
   import { bestand } from "../../lib/stand/bestand.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
   import { frage } from "../../lib/stand/rueckfrage.svelte";
+  import { schnellfilter } from "../../lib/stand/schnellfilter.svelte";
   import Chip from "../../lib/teile/Chip.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Nachlader from "../../lib/teile/Nachlader.svelte";
@@ -14,7 +17,7 @@
   import Abgleich from "./Abgleich.svelte";
   import Autorbild from "./Autorbild.svelte";
   import { lebensdaten } from "./angaben";
-  import { autorenansicht as ansicht, autorsortierungen, type Autorsortierung } from "./liste.svelte";
+  import { autorenansicht as ansicht, autorenfilter, autorsortierungen, type Autorsortierung } from "./liste.svelte";
 
   const WARTE_MS = 300;
   let uhr: ReturnType<typeof setTimeout> | undefined;
@@ -29,13 +32,11 @@
     void (ansicht.geladen ? ansicht.auffrischen() : ansicht.laden());
     return bestand.beiAenderung(() => void ansicht.auffrischen());
   });
+  $effect(() => schnellfilter.biete(autorenfilter));
 
   function sucht() {
     clearTimeout(uhr);
-    uhr = setTimeout(() => {
-      vergissRollstand("/authors");
-      void ansicht.laden();
-    }, WARTE_MS);
+    uhr = setTimeout(() => ansicht.filtere(ansicht.suche), WARTE_MS);
   }
 
   function pfeil(nach: Autorsortierung): string {
@@ -89,6 +90,7 @@
 </script>
 
 <div class="werkzeug">
+  <Suchfeld id="suchfeld-m" klasse="suchfeld-mobil" />
   <h1>Autoren</h1>
   {#if s}<span class="leise zahl">{zahl(s.gesamt)}, davon {zahl(s.mit_eintrag)} mit Eintrag</span>{/if}
   <span class="reihe schiebt">
@@ -99,7 +101,8 @@
 
 <div class="inhalt rollen" use:rollstand={"/authors"}>
   <div class="reihe">
-    <input class="eingabe autorensuche" type="search" placeholder="Autor suchen" aria-label="Autor suchen" bind:value={ansicht.suche} oninput={sucht} />
+    <!-- Als Schnellfilter übernimmt das Suchfeld die Suche nach dem Namen -->
+    {#if schnellfilter.filtert}<Schnellfilterchip ziel={autorenfilter} />{:else}<input class="eingabe autorensuche" type="search" placeholder="Autor suchen" aria-label="Autor suchen" bind:value={ansicht.suche} oninput={sucht} />{/if}
     {#each autorsortierungen as [nach, text] (nach)}<Chip {text} symbol={pfeil(nach)} titel="Nach {text} sortieren, noch einmal dreht die Richtung" gedrueckt={ansicht.sortierung === nach} onclick={() => ansicht.sortiere(nach)} />{/each}
     <span class="reihe schiebt">
       {#if s}<span class="leise zahl">{zahl(s.mit_foto)} mit Foto, {zahl(s.mit_biografie)} mit Biografie{offen ? `, ${zahl(offen)} offen` : ""}</span>{/if}
@@ -114,7 +117,7 @@
     <Zustand art="laedt" text="Autoren werden geladen" />
   {:else if !ansicht.autoren.length}
     <Zustand text={ansicht.suche.trim() ? `Kein Autor heißt wie "${ansicht.suche.trim()}".` : "Noch keine Autoren. Sie entstehen aus den Angaben der Bücher."}>
-      {#if ansicht.suche.trim()}<Knopf text="Suche leeren" symbol="xmark" klein onclick={() => { ansicht.suche = ""; void ansicht.laden(); }} />{/if}
+      {#if ansicht.suche.trim()}<Knopf text={schnellfilter.filtert ? "Filter leeren" : "Suche leeren"} symbol="xmark" klein onclick={() => schnellfilter.leere(autorenfilter)} />{/if}
     </Zustand>
   {/if}
 

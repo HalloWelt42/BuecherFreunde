@@ -3,6 +3,8 @@
   import { bestand } from "../../lib/stand/bestand.svelte";
   import { buecher } from "../../lib/stand/buecher.svelte";
   import { filter } from "../../lib/stand/filter.svelte";
+  import { schnellfilter } from "../../lib/stand/schnellfilter.svelte";
+  import { suche } from "../../lib/stand/suche.svelte";
   import { wahl } from "../../lib/stand/wahl.svelte";
   import { rollstand } from "../../lib/rollstand";
   import Knopf from "../../lib/teile/Knopf.svelte";
@@ -10,6 +12,7 @@
   import Zustand from "../../lib/teile/Zustand.svelte";
   import { untrack } from "svelte";
   import { regalansicht } from "./ansicht.svelte";
+  import { regalfilter } from "./schnellfilter";
   import Detailliste from "./Detailliste.svelte";
   import Liste from "./Liste.svelte";
   import Regal from "./Regal.svelte";
@@ -18,6 +21,7 @@
 
   let art = $derived(regalansicht.art);
   let leer = $derived(buecher.geladen && !buecher.laedt && !buecher.fehler && !buecher.liste.length);
+  let wort = $derived(filter.wert("q"));
 
   // Andere Filter: Liste von vorn. Beim Zurückkommen steht dieselbe Liste schon da und wird nur aufgefrischt.
   let zuletzt = buecher.kennung;
@@ -31,6 +35,7 @@
   });
 
   $effect(() => bestand.beiAenderung(() => void buecher.auffrischen()));
+  $effect(() => schnellfilter.biete(regalfilter));
   $effect(() => wahl.falls(buecher.liste[0]));
   // Der Bearbeitungsmodus gehört zu dieser Ansicht
   $effect(() => () => auswahl.modus(false));
@@ -39,10 +44,15 @@
 <Werkzeugzeile />
 
 <div class="inhalt rollen" use:rollstand={`/?${filter.kennung}`}>
-  {#if !filter.aktiv && !auswahl.bearbeiten}<Weiterlesen />{/if}
+  {#if !filter.aktiv && !wort && !auswahl.bearbeiten}<Weiterlesen />{/if}
 
   {#if buecher.fehler}
     <Zustand art="fehler" text={buecher.fehler} onerneut={() => void buecher.laden()} />
+  {:else if leer && wort}
+    <Zustand text={`Kein Buch passt zu "${wort}".`}>
+      <Knopf text="Filter leeren" symbol="xmark" klein onclick={() => schnellfilter.leere(regalfilter)} />
+      <Knopf text="In allen Büchern suchen" symbol="magnifying-glass" klein onclick={() => suche.suche(wort)} />
+    </Zustand>
   {:else if leer && filter.aktiv}
     <Zustand text="Kein Buch passt zu diesen Filtern."><Knopf text="Filter aufheben" symbol="xmark" klein onclick={() => filter.leere()} /></Zustand>
   {:else if leer}

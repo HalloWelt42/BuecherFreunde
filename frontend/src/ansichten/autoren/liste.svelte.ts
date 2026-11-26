@@ -1,5 +1,7 @@
 // Autorenliste: bleibt stehen, wenn man von einer Autorenseite zurückkommt
 import { autorenStatistik, holeAutoren, type Autor, type Autorenstatistik } from "../../lib/api/authors";
+import { vergissRollstand } from "../../lib/rollstand";
+import type { Filterziel } from "../../lib/stand/schnellfilter.svelte";
 
 export type Autorsortierung = "name" | "buecher" | "datum";
 
@@ -31,6 +33,13 @@ class Autorenansicht {
       return a;
     });
     void this.zaehlen();
+  }
+
+  /** Neues Suchwort: die Liste von vorn */
+  filtere(wort: string): void {
+    this.suche = wort;
+    vergissRollstand("/authors");
+    void this.laden();
   }
 
   async mehr(): Promise<void> {
@@ -93,3 +102,18 @@ class Autorenansicht {
 }
 
 export const autorenansicht = new Autorenansicht();
+
+/** Als Schnellfilter grenzt das Suchfeld die Autoren nach dem Namen ein, über die Suche der Liste */
+export const autorenfilter: Filterziel = {
+  get wort() {
+    return autorenansicht.suche.trim();
+  },
+  hinweis: "Name",
+  get treffer() {
+    return autorenansicht.geladen ? autorenansicht.gesamt : null;
+  },
+  get gesamt() {
+    return autorenansicht.statistik?.gesamt ?? null;
+  },
+  filtere: (wort) => autorenansicht.filtere(wort),
+};

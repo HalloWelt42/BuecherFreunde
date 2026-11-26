@@ -19,6 +19,8 @@ const gemerkt = liesJson<{ by?: Sortierung; dir?: Richtung }>(SORT_SCHLUESSEL, {
 class Buecher {
   liste = $state<Buch[]>([]);
   gesamt = $state(0);
+  /** Wie viele es ohne Schnellfilter wären */
+  ohneSuche = $state(0);
   laedt = $state(false);
   fehler = $state("");
   geladen = $state(false);
@@ -31,7 +33,7 @@ class Buecher {
 
   #parameter(seite: number, jeSeite = JE_SEITE): Record<string, string | number | boolean> {
     const p: Record<string, string | number | boolean> = { seite, pro_seite: jeSeite, sortierung: this.sortierung, richtung: this.richtung };
-    const uebersetzt: [string, string][] = [["category", "kategorie"], ["sammlung", "sammlung"], ["file_format", "format"], ["min_rating", "bewertung_min"], ["is_favorite", "favorit"], ["is_to_read", "zu_lesen"], ["gelesen", "gelesen"], ["hat_isbn", "hat_isbn"], ["hat_highlights", "hat_highlights"], ["hat_labels", "hat_labels"], ["weiterlesen", "weiterlesen"]];
+    const uebersetzt: [string, string][] = [["category", "kategorie"], ["sammlung", "sammlung"], ["file_format", "format"], ["min_rating", "bewertung_min"], ["is_favorite", "favorit"], ["is_to_read", "zu_lesen"], ["gelesen", "gelesen"], ["hat_isbn", "hat_isbn"], ["hat_highlights", "hat_highlights"], ["hat_labels", "hat_labels"], ["weiterlesen", "weiterlesen"], ["q", "suche"]];
     for (const [von, zu] of uebersetzt) {
       // Alte Adressen können bei Sammlung und Bewertung mehrere Werte tragen; der Server kennt dort nur einen
       const w = ["sammlung", "min_rating"].includes(von) ? filter.werte(von)[0] : filter.wert(von);
@@ -71,6 +73,7 @@ class Buecher {
       const bekannt = new Set(anhaengen ? this.liste.map((b) => b.id) : []);
       this.liste = anhaengen ? [...this.liste, ...antwort.buecher.filter((b) => !bekannt.has(b.id))] : antwort.buecher;
       this.gesamt = antwort.gesamt;
+      this.ohneSuche = antwort.gesamt_ohne_suche ?? antwort.gesamt;
       this.#seite = seite;
     } catch (e) {
       if (lauf === this.#lauf) this.fehler = e instanceof Error ? e.message : String(e);

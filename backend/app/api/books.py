@@ -21,7 +21,7 @@ from backend.app.ablage import originale
 from backend.app.ablage.antwort import FEHLT, original_antwort
 from backend.app.ablage.wolke import wolke
 from backend.app.annahme.eintragen import autoren_verknuepfen
-from backend.app.services import deckblatt
+from backend.app.services import deckblatt, schnellfilter
 from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover, save_fulltext
 
 router = APIRouter(prefix="/api/books", tags=["Bücher"])
@@ -182,6 +182,7 @@ async def list_books(
     verlag: str | None = Query(None, description="Verlag-Filter (exakter Match oder LIKE)"),
     jahr_von: int | None = Query(None, description="Erscheinungsjahr ab"),
     jahr_bis: int | None = Query(None, description="Erscheinungsjahr bis"),
+    suche: str | None = Query(None, description="Schnellfilter: jedes Wort in Titel, Autor, ISBN oder Etikett"),
     sortierung: str = Query("titel", description="Sortierung: titel, autor, datum, bewertung, größe, jahr, verlag"),
     richtung: str = Query("asc", description="Sortierrichtung: asc, desc"),
 ):
@@ -271,6 +272,15 @@ async def list_books(
 
     where = " AND ".join(conditions) if conditions else "1=1"
 
+    # Schnellfilter zuletzt: die Zahl davor sagt, wie viele die Ansicht ohne ihn zeigt
+    gesamt_ohne_suche = None
+    filter_sql, filter_werte = schnellfilter.bedingung(suche)
+    if filter_sql:
+        ohne_row = await db.fetch_one(f"SELECT COUNT(*) as total FROM books b WHERE {where}", tuple(params))
+        gesamt_ohne_suche = ohne_row["total"] if ohne_row else 0
+        where = f"{where} AND {filter_sql}"
+        params.extend(filter_werte)
+
     # Sortierung
     sort_map = {
         "titel": "b.title COLLATE NOCASE",
@@ -313,6 +323,7 @@ async def list_books(
         seite=seite,
         pro_seite=pro_seite,
         seiten_gesamt=math.ceil(gesamt / pro_seite) if gesamt > 0 else 0,
+        gesamt_ohne_suche=gesamt_ohne_suche,
     )
 
 

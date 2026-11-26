@@ -5,12 +5,17 @@
   import Knopf from "../teile/Knopf.svelte";
   import Symbol from "../teile/Symbol.svelte";
 
-  let { verlauf, vorschlaege, gewaehlt, onsuche, onoeffne }: { verlauf: string[] | null; vorschlaege: Vorschlag[]; gewaehlt: number; onsuche: (wort: string) => void; onoeffne: (v: Vorschlag) => void } = $props();
+  /** ueberall: aus dem Schnellfilter heraus nur die eine Zeile, die in allen Büchern sucht */
+  let { verlauf, vorschlaege, ueberall = "", gewaehlt, onsuche, onoeffne }: { verlauf: string[] | null; vorschlaege: Vorschlag[]; ueberall?: string; gewaehlt: number; onsuche: (wort: string) => void; onoeffne: (v: Vorschlag) => void } = $props();
 </script>
 
 <div class="liste glas dicht">
   <div class="rollen innen">
-  {#if verlauf}
+  {#if ueberall}
+    <div class="eintrag" class:gewaehlt={gewaehlt === 0}>
+      <button type="button" class="haupt" onclick={() => onsuche(ueberall)}><Symbol name="magnifying-glass" /><span>In allen Büchern suchen <span class="leise">{ueberall}</span></span></button>
+    </div>
+  {:else if verlauf}
     <div class="reihe kopfzeile"><span class="leise">Zuletzt gesucht</span><span class="schiebt"><Knopf text="Verlauf löschen" symbol="trash" klein frei onclick={() => suche.leere()} /></span></div>
     {#each verlauf as wort, n (wort)}
       <div class="eintrag" class:gewaehlt={n === gewaehlt}>

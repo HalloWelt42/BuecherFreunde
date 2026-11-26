@@ -5,7 +5,8 @@ import { lies, merke } from "../speicher";
 const SCHLUESSEL = "lib_filter";
 /** Mehrere Werte zugleich, mit Komma getrennt */
 const MEHRERE = ["category", "file_format"];
-const BEKANNT = ["category", "sammlung", "file_format", "min_rating", "is_favorite", "is_to_read", "gelesen", "hat_isbn", "hat_highlights", "weiterlesen", "hat_labels"];
+/** q ist der Schnellfilter (Titel, Autor, ISBN, Etikett), ein Filter wie die anderen */
+const BEKANNT = ["category", "sammlung", "file_format", "min_rating", "is_favorite", "is_to_read", "gelesen", "hat_isbn", "hat_highlights", "weiterlesen", "hat_labels", "q"];
 
 class Filter {
   #werte = $derived.by(() => {
@@ -19,7 +20,8 @@ class Filter {
     return aus;
   });
 
-  aktiv = $derived(this.#werte.size > 0);
+  /** Ist ein Filter der Ansicht gesetzt? Der Schnellfilter zählt nicht mit, er grenzt die Ansicht nur ein */
+  aktiv = $derived([...this.#werte.keys()].some((k) => k !== "q"));
   /** Adressteil ohne Fragezeichen, stabil sortiert: ändert er sich, lädt die Liste neu */
   kennung = $derived([...this.#werte].map(([k, w]) => `${k}=${w}`).join("&"));
 
@@ -45,20 +47,21 @@ class Filter {
     this.setze(schluessel, (jetzt.includes(wert) ? jetzt.filter((w) => w !== wert) : [...jetzt, wert]).join(","));
   }
 
-  setze(schluessel: string, wert: string): void {
+  /** ersetzen: derselbe Schritt im Verlauf (ein Wort wächst beim Tippen), sonst ein neuer */
+  setze(schluessel: string, wert: string, ersetzen = false): void {
     const p = new URLSearchParams([...this.#werte]);
     if (wert) p.set(schluessel, wert);
     else p.delete(schluessel);
-    this.#gehe(p.toString());
+    this.#gehe(p.toString(), ersetzen);
   }
 
   leere(): void {
     this.#gehe("");
   }
 
-  #gehe(qs: string): void {
+  #gehe(qs: string, ersetzen = false): void {
     merke(SCHLUESSEL, qs);
-    navigate(qs ? `/?${qs}` : "/");
+    navigate(qs ? `/?${qs}` : "/", ersetzen);
   }
 
   /** Zurück zur Bibliothek, so wie sie zuletzt gefiltert war */

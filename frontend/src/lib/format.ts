@@ -6,6 +6,11 @@ export function zahl(n: number | null | undefined): string {
   return zahlen.format(n ?? 0);
 }
 
+/** "12 von 340": was ein Filter von der ganzen Liste übrig lässt */
+export function vonGesamt(teil: number, ganz: number): string {
+  return `${zahl(teil)} von ${zahl(ganz)}`;
+}
+
 /** "1 Buch", "12 Bücher" */
 export function anzahl(n: number, eins: string, viele: string): string {
   return `${zahl(n)} ${n === 1 ? eins : viele}`;
