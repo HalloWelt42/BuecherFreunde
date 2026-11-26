@@ -2,15 +2,16 @@
      farbiges Stück vom Minutenzeiger bis zum Punkt am Rand; daneben dezent der Rest und die Gesamtzeit des Tages. Alles ändert sich
      nur einmal je Minute, am Minutenwechsel der Uhr des Geräts; bei reduzierter Bewegung springen die Zeiger ohne Übergang.
      klein: in der Kopfzeile beim Lesen, nur mit den zwölf Stundenstrichen. mitText: ab Stufe Erstes Lesen. onsage: die Uhr ist
-     eine Taste und sagt, was sie zeigt. -->
+     eine Taste und sagt, was sie zeigt ("Es ist vier Uhr", "fünfunddreißig", "Noch fünfundzwanzig Minuten"). -->
 <script lang="ts">
   import { untrack } from "svelte";
+  import { uhrfolge, type Ansagefolge } from "./ansagen";
   import { dauerText } from "./datum";
   import type { Lesezeituhr } from "./lesezeit.svelte";
   import { minutentakt } from "./minutentakt.svelte";
   import { minutenBis, MINUTENZEIGER, ort, RAND, restMinuten, STUNDENZEIGER, striche, stueckMinuten, stueckPfad, uhrtext, zahlen, zeigerwinkel } from "./uhr";
 
-  let { uhr, klein = false, mitText = true, ruheAb = null, onsage }: { uhr: Lesezeituhr; klein?: boolean; mitText?: boolean; ruheAb?: string | null; onsage?: (text: string) => void } = $props();
+  let { uhr, klein = false, mitText = true, ruheAb = null, onsage }: { uhr: Lesezeituhr; klein?: boolean; mitText?: boolean; ruheAb?: string | null; onsage?: (folge: Ansagefolge) => void } = $props();
 
   $effect(() => minutentakt.beobachte());
 
@@ -46,7 +47,7 @@
 
 {#if bild}
   {@const text = uhrtext(bild.stunde, bild.minute, bild.rest)}
-  <svelte:element this={onsage ? "button" : "span"} class="k-uhr" class:k-uhr-klein={klein} type={onsage ? "button" : undefined} onclick={onsage ? () => onsage(text) : undefined} role={onsage ? undefined : "group"}>
+  <svelte:element this={onsage ? "button" : "span"} class="k-uhr" class:k-uhr-klein={klein} type={onsage ? "button" : undefined} onclick={onsage ? () => onsage(uhrfolge(bild.stunde, bild.minute, bild.rest)) : undefined} role={onsage ? undefined : "group"}>
     <svg viewBox="0 0 100 100" role="img" aria-label={text}>
       <circle cx="50" cy="50" r="47.5" class="u-blatt" />
       {#if bild.dauer >= 60}

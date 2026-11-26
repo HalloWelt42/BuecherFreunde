@@ -3,6 +3,7 @@
   // selbst; im Vorlesealter wählt es aus Vorschlägen, die beim Antippen vorgesprochen werden (lib/kind/ansage.svelte.ts).
   import { untrack } from "svelte";
   import { ansage } from "../../lib/kind/ansage.svelte";
+  import { HINWEIS, KATZE, katzenvorschlag, TASTE } from "../../lib/kind/ansagen";
   import { ladeStufen } from "../../lib/api/familie";
   import { KATZENNAMEN } from "../../lib/kind/ich";
   import Katze from "../../lib/kind/Katze.svelte";
@@ -36,10 +37,10 @@
   function waehle(vorschlag: string) {
     name = vorschlag;
     // Der Name wird vorgesprochen, damit auch wer noch nicht liest weiß, was er wählt
-    void ansage.taste(vorschlag);
+    void ansage.taste([katzenvorschlag(vorschlag)]);
   }
 
-  $effect(() => untrack(() => void ansage.hinweis(selbst ? "Wie soll deine Katze heißen? Tippe den Namen ein." : "Wie soll deine Katze heißen? Tippe einen Namen an.")));
+  $effect(() => untrack(() => void ansage.hinweis([HINWEIS.katzeBenennen])));
 
   async function fertig() {
     const neu = name.trim().slice(0, HOECHSTENS);
@@ -49,7 +50,8 @@
     try {
       await ichstand.katzenname(neu);
       onzurueck();
-      void ansage.hinweis(`Deine Katze heißt jetzt ${neu}.`);
+      // Der Ton des neuen Namens entsteht erst am Server; bis dahin bleibt diese Ansage still
+      void ansage.hinweis([KATZE]);
     } catch (e) {
       fehler = e instanceof Error ? e.message : String(e);
     } finally {
@@ -62,7 +64,7 @@
 <header class="k-kopf">
   <Wer profil={ich.profil} />
   <div class="k-rechts">
-    <button class="k-taste rund" type="button" aria-label="Zum Regal" onclick={() => (onzurueck(), void ansage.taste("Zum Regal"))}><i class="fa-solid fa-house" aria-hidden="true"></i></button>
+    <button class="k-taste rund" type="button" aria-label="Zum Regal" onclick={() => (onzurueck(), void ansage.taste([TASTE.zumRegal]))}><i class="fa-solid fa-house" aria-hidden="true"></i></button>
   </div>
 </header>
 
@@ -75,7 +77,7 @@
       <div class="k-vorschlaege" role="radiogroup" aria-label="Namen für die Katze">
         {#each vorschlaege as v (v)}
           <button class="k-taste quer" class:an={name === v} type="button" role="radio" aria-checked={name === v} onclick={() => waehle(v)}>
-            {#if ansage.tasten}<i class="fa-solid fa-volume-high" aria-hidden="true"></i>{/if}{v}
+            {#if ansage.tasten && ansage.eintraege([katzenvorschlag(v)])}<i class="fa-solid fa-volume-high" aria-hidden="true"></i>{/if}{v}
           </button>
         {/each}
       </div>

@@ -3,9 +3,8 @@
      nie über ihr (credit-mode="external", Lizenz Punkt 2: mindestens gleichwertig sichtbar). Zustände: wach im Regal, schläft
      beim Lesen (eingeschlafen hält sie still und nimmt kein Tippen an), ruht auf dem Ruheschirm (schläft, lässt sich streicheln). -->
 <script lang="ts">
-  import "samtpfote/src/lib/widget.js";
   import type { Samtpfote } from "samtpfote/src/lib/widget.js";
-  import schnurrton from "samtpfote/public/audio/schnurren.mp3?url";
+  import { NENNUNG, SCHNURREN } from "./samtpfote";
   import { darstellung } from "../stand/darstellung.svelte";
   import type { Katzenzustand } from "./typen";
 
@@ -51,10 +50,10 @@
     coat={fell}
     lighting={nacht ? "night" : "neutral"}
     sleep-after={zustand === "wach" ? undefined : "5"}
-    sound-src={schnurren ? schnurrton : undefined}
+    sound-src={schnurren ? SCHNURREN : undefined}
     volume="35"
     inert={zustand === "schlaeft"}
     aria-label={zustand === "schlaeft" ? `${wort} schläft` : undefined}
   ></samt-pfote>
-  <span class="k-nennung">hallowelt42 / samtpfote</span>
+  <span class="k-nennung">{NENNUNG}</span>
 </div>

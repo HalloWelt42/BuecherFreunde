@@ -8,6 +8,7 @@
   import { holeBuch, coverUrl } from "../../lib/api/books";
   import { toggleFavorit } from "../../lib/api/user-data";
   import { ansage } from "../../lib/kind/ansage.svelte";
+  import { HINWEIS, noch, TASTE } from "../../lib/kind/ansagen";
   import type { Kinderquelle } from "../../lib/kind/inhalt";
   import { Kinderlesestand } from "../../lib/kind/leser.svelte";
   import type { Lesezeituhr } from "../../lib/kind/lesezeit.svelte";
@@ -19,7 +20,6 @@
   import { ladeSilbentrenner, silbentrennerBereit } from "../../lib/kind/silben";
   import { kindangabenAus, kinderlesewerte } from "../../lib/kind/stelle";
   import { lesetasten, steuertVorlesen, tastenansage, tastenbild, type Lesetaste, type Tastenstand } from "../../lib/kind/tasten";
-  import { uhrtext } from "../../lib/kind/uhr";
   import type { Ich, Kinderstelle, Wort } from "../../lib/kind/typen";
   import { lesewerte } from "../../lib/lesestand";
   import { buchort, Positionsspeicher } from "../../lib/leser/position";
@@ -229,7 +229,7 @@
     if (richtung > 0) await s.weiter();
     else await s.zurueck();
     if (ruhte || (lief && s.amEnde)) vorlesen.halt();
-    await ansage.taste(richtung > 0 ? "Weiter" : "Zurück", true);
+    await ansage.taste([richtung > 0 ? TASTE.weiter : TASTE.zurueck], true);
     if (lief && !s.amEnde && !uhr.faellig) liesVor();
   }
 
@@ -260,10 +260,10 @@
     const vorher = vorlesestand();
     if (vorher === "laeuft") {
       vorlesen.pausiere();
-      void ansage.taste(tastenansage("vorlesen", stand_(), vorher), true);
+      void ansage.taste([tastenansage("vorlesen", stand_(), vorher)], true);
       return;
     }
-    await ansage.taste(tastenansage("vorlesen", { ...stand_(), vorlesen: "laeuft" }, vorher), true);
+    await ansage.taste([tastenansage("vorlesen", { ...stand_(), vorlesen: "laeuft" }, vorher)], true);
     if (vorher === "ruht" && liestVor) vorlesen.weiter();
     else liesVor();
   }
@@ -300,7 +300,7 @@
     if (!uhr.hinweis || hinweisGezeigt || ich.profil.stufe === "vorlesen") return;
     hinweisGezeigt = true;
     grosserHinweis = true;
-    untrack(() => void ansage.hinweis(`Gleich ist die Lesezeit um. Noch ${Math.max(1, Math.ceil((uhr.rest ?? 0) / 60))} Minuten.`));
+    untrack(() => void ansage.hinweis([HINWEIS.lesezeitBald, noch(Math.ceil((uhr.rest ?? 0) / 60))]));
     setTimeout(() => (grosserHinweis = false), HINWEIS_MS);
   });
 
@@ -312,7 +312,7 @@
       fertig = true;
       s.lesezeichen = null;
       void merkeStelle(s.stelle);
-      void ansage.hinweis("Fertig! Du hast das Buch zu Ende gelesen.");
+      void ansage.hinweis([HINWEIS.buchFertig]);
     });
   });
 
@@ -339,19 +339,19 @@
       if (markierungen) markierungen.anfang = null;
     } else if (t === "notiz") notizen = true;
     await tick();
-    void ansage.taste(tastenansage(t, stand_()), steuertVorlesen(t));
+    void ansage.taste([tastenansage(t, stand_())], steuertVorlesen(t));
   }
 
   function zumRegal() {
     onzurueck();
     // Erst wenn der Leser weg ist und das Vorlesen schweigt
-    void tick().then(() => ansage.taste("Zum Regal"));
+    void tick().then(() => ansage.taste([TASTE.zumRegal]));
   }
 
   async function lieblingUmschalten() {
     try {
       lieblingsbuch = (await toggleFavorit(id)).ist_favorit;
-      void ansage.taste(lieblingsbuch ? "Lieblingsbuch" : "Kein Lieblingsbuch mehr");
+      void ansage.taste([lieblingsbuch ? TASTE.lieblingsbuch : TASTE.keinLieblingsbuch]);
     } catch (e) {
       melde.schlecht(e);
     }
@@ -391,7 +391,7 @@
 <header class="k-kopf">
   <span class="k-buchname"><i class="fa-solid fa-book-open" aria-hidden="true"></i><span>{buch?.title ?? ""}{seitenname ? `, ${seitenname}` : ""}</span></span>
   <div class="k-rechts">
-    <Kinderuhr {uhr} ruheAb={ich.lesezeit.ruhe_ab} klein mitText={ich.profil.stufe !== "vorlesen"} onsage={(text) => void ansage.hinweis(text)} />
+    <Kinderuhr {uhr} ruheAb={ich.lesezeit.ruhe_ab} klein mitText={ich.profil.stufe !== "vorlesen"} onsage={(folge) => void ansage.hinweis(folge)} />
     {#if ich.katze.an}<Katze name={ich.katze.name} zustand="schlaeft" groesse="clamp(3rem, 6.5vw, 4.25rem)" />{/if}
     <button class="k-taste rund" type="button" aria-label="Zum Regal" onclick={zumRegal}><i class="fa-solid fa-house" aria-hidden="true"></i></button>
   </div>

@@ -22,6 +22,11 @@ declare module "samtpfote/public/audio/schnurren.mp3?url" {
   export default adresse;
 }
 
+declare module "samtpfote/LIZENZ.txt?url&no-inline" {
+  const adresse: string;
+  export default adresse;
+}
+
 // Ergänzt die Angaben in lib/leser/fremd.d.ts: ein Buch öffnen, ohne es anzuzeigen
 declare module "foliate-js/view.js" {
   export interface FoliateAbschnitt {

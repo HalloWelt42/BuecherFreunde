@@ -3,6 +3,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { ansage } from "../../lib/kind/ansage.svelte";
+  import { HINWEIS, RUHEZEIT, TASTE } from "../../lib/kind/ansagen";
   import Katze from "../../lib/kind/Katze.svelte";
   import { weiterAb } from "../../lib/kind/lesezeit.svelte";
   import type { Ich, Lesezeitstand } from "../../lib/kind/typen";
@@ -11,14 +12,13 @@
 
   let wann = $derived(weiterAb(lesezeit.ruhe_bis, new Date()));
   let wer = $derived(ich.katze.an ? `${ich.katze.name || "Die Katze"} schläft schon.` : "");
-  let satz = $derived(`Jetzt ruhen die Bücher. ${wer} ${wann} geht es weiter.`.replace(/\s+/g, " "));
-
   // Einmal, wenn die Ruhe beginnt
-  $effect(() => untrack(() => void ansage.hinweis(satz)));
+  $effect(() => untrack(() => void ansage.hinweis([lesezeit.ruht ? RUHEZEIT : HINWEIS.lesezeitUm])));
 
   function schloss() {
     onschloss();
-    void ansage.hinweis("Frag Mama oder Papa.");
+    void ansage.taste([TASTE.schloss]);
+    void ansage.hinweis([HINWEIS.fragEltern]);
   }
 </script>
 

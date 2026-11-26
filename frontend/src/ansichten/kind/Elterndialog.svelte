@@ -2,6 +2,7 @@
   // Hinter dem Schloss, für die Eltern: was sie sehen (auch für das Kind), das Profil verlassen (auf einem fest gestellten Gerät nur mit der Eltern-PIN,
   // POST /api/familie/verlassen) und die Darstellung des Geräts (Hell, Dunkel, System; Schriftgröße), dauerhaft gemerkt.
   import { ladeFamilie, verlasseProfil } from "../../lib/api/familie";
+  import { LIZENZ, NENNUNG } from "../../lib/kind/samtpfote";
   import { darstellung, wahlen } from "../../lib/stand/darstellung.svelte";
 
   let { einblick = [], onverlassen, onschliessen }: { einblick?: string[]; onverlassen: () => void; onschliessen: () => void } = $props();
@@ -102,5 +103,6 @@
         {/each}
       </div>
     </div>
+    <p class="k-einblick"><i class="fa-solid fa-cat" aria-hidden="true"></i><span>Die Katze ist {NENNUNG}. <a href={LIZENZ} target="_blank" rel="noopener">Nutzungsbedingungen</a></span></p>
   </div>
 </div>

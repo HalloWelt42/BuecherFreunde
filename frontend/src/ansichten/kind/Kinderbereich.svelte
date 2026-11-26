@@ -91,7 +91,12 @@
   // Ansagen, wie die Eltern sie für dieses Kind eingestellt haben
   $effect(() => {
     if (ich) ansage.stelle(ich.darstellung.hinweise_sprechen, ich.darstellung.tasten_ansagen);
-    return () => ansage.stoppe();
+  });
+  // Die Töne der Ansagen dieses Kindes; neu, wenn ein anderes Kind liest
+  $effect(() => {
+    if (!ich?.profil.id) return;
+    untrack(() => void ansage.lade());
+    return () => ansage.beende();
   });
 
   // Jede Bedienung zählt als Lesen, solange der Leser offen ist; das erste Antippen gibt die Ansagen frei

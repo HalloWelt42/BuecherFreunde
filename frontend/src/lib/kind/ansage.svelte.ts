@@ -1,25 +1,43 @@
 // Ansagen im Kinderbereich (BF-78, Entwurf Runde 4): die einzige Stelle, an der etwas gesprochen wird, das kein Vorlesen ist.
-// Hinweise (Lesezeit, fünf Minuten vorher, Ruhezeit, Schloss, Katze benennen, leere Regale) und nach dem Druck jede Taste und
-// jeder Umschlag mit ihrem Namen. Je Kind abschaltbar (Lesehilfen hinweise_sprechen und tasten_ansagen).
+// Hinweise (Lesezeit, fünf Minuten vorher, Ruhezeit, Schloss, Katze benennen, leere Regale, Ende des Buchs) und nach dem Druck
+// jede Taste und jeder Umschlag mit ihrem Namen. Je Kind abschaltbar (Lesehilfen hinweise_sprechen und tasten_ansagen).
+//
+// Töne: fertige Sätze in der Stimme, die die Eltern nach einer Probe gewählt haben (GET /api/familie/ansagen), je Schlüssel
+// (lib/kind/ansagen.ts). Eine Ansage ist eine Folge von Schlüsseln, die ohne Pause hintereinander klingen (die Uhr: "Es ist vier
+// Uhr", "fünfunddreißig", "Noch fünfundzwanzig Minuten"). Töne werden bei Bedarf geholt und je Seite gemerkt. Fehlt ein Ton
+// (der Auftrag läuft noch), bleibt die Ansage still; nur wenn die Eltern die Stimme des Geräts gewählt haben, spricht sie den Text.
 //
 // Regeln: Eine neue Ansage beendet die laufende, es gibt keine Warteschlange. Über das Vorlesen wird nie gesprochen; während
 // des Vorlesens sagen nur die Tasten an, die den Vorlesestrom selbst steuern, und wer sie bedient, lässt das Vorlesen erst
 // danach weiterklingen (fertig()). Die Ansage kommt nach der Wirkung der Taste. Vor dem ersten Antippen bleibt alles still.
-//
-// Ton: der Satz vom Server (POST /api/vorlesen/ansage, dort zwischengespeichert), hier je Seite gemerkt; fehlt der Weg oder
-// ist der Sprechdienst nicht bereit (503), spricht die Stimme des Geräts.
-import { anfrage, ApiError } from "../api/client";
-import { anschluesse } from "../stand/anschluesse.svelte";
+import { anfrage, get } from "../api/client";
 import { vorlesen } from "../stand/vorlesen.svelte";
-import { saetze } from "../vorlesen/saetze";
 import { stilleAdresse } from "../vorlesen/ton";
 import { geraetDa, geraetestimmen, Geraetesprecher } from "../vorlesen/geraet";
+import type { Ansagefolge } from "./ansagen";
 
-/** Ton vom Server; "fehlt": den Weg gibt es nicht (für immer zur Stimme des Geräts), "spaeter": gerade nicht bereit */
-export type Ansageton = Blob | "fehlt" | "spaeter";
+export interface Ansageeintrag {
+  text: string;
+  /** Leer: der Ton ist noch nicht fertig */
+  url: string;
+}
+
+/** GET /api/familie/ansagen */
+export interface Ansagekatalog {
+  /** Die Stimme, die die Eltern gewählt haben; "geraet": die Stimme des Geräts */
+  stimme: string;
+  fertig: number;
+  gesamt: number;
+  /** Der Auftrag, die Töne zu sprechen, läuft noch */
+  laeuft: boolean;
+  eintraege: Record<string, Ansageeintrag>;
+}
+
+export const GERAETESTIMME = "geraet";
 
 export interface Tonquelle {
-  hole(text: string, abbruch: AbortSignal): Promise<Ansageton>;
+  katalog(): Promise<Ansagekatalog>;
+  hole(url: string): Promise<Blob>;
   spiele(ton: Blob, abbruch: AbortSignal): Promise<void>;
   /** Mit der Stimme des Geräts */
   sprich(text: string, abbruch: AbortSignal): Promise<void>;
@@ -30,20 +48,19 @@ export interface Tonquelle {
 /** Klingt gerade Vorlesen? */
 export type Vorlesenklingt = () => boolean;
 
-/** So viele Sätze merkt sich die Seite */
-const VORRAT = 80;
-/** So lang darf ein Satz für den Server sein */
-const SATZ_HOECHSTENS = 300;
 /** Länger wartet niemand auf das Ende einer Ansage */
 const HOECHSTENS_MS = 4000;
+/** So oft wird nachgefragt, solange die Töne noch entstehen */
+const NACHFRAGE_MS = 30_000;
 
 export class Ansage {
   hinweise = $state(false);
   tasten = $state(false);
+  katalog = $state.raw<Ansagekatalog | null>(null);
   #frei = false;
   #laufend: { abbruch: AbortController; fertig: Promise<void> } | null = null;
-  #toene = new Map<string, Blob>();
-  #ohneDienst = false;
+  #toene = new Map<string, Promise<Blob>>();
+  #nachfrage: ReturnType<typeof setTimeout> | undefined;
 
   constructor(private quelle: Tonquelle, private klingt: Vorlesenklingt) {}
 
@@ -52,6 +69,23 @@ export class Ansage {
     this.hinweise = hinweise;
     this.tasten = tasten;
     if (!hinweise && !tasten) this.stoppe();
+  }
+
+  /** Die Töne des Kindes; solange sie entstehen, wird nachgefragt */
+  async lade(): Promise<void> {
+    clearTimeout(this.#nachfrage);
+    try {
+      this.katalog = await this.quelle.katalog();
+    } catch {
+      // ohne Antwort bleibt, was bekannt ist
+    }
+    if (!this.katalog || this.katalog.laeuft) this.#nachfrage = setTimeout(() => void this.lade(), NACHFRAGE_MS);
+  }
+
+  /** Nicht mehr nachfragen (der Bereich ist weg) */
+  beende(): void {
+    clearTimeout(this.#nachfrage);
+    this.stoppe();
   }
 
   /** Das erste Antippen: ab jetzt darf es klingen. Im Tippen rufen. */
@@ -66,15 +100,15 @@ export class Ansage {
   }
 
   /** Ein Hinweis; nie über dem Vorlesen */
-  hinweis(text: string): Promise<void> {
+  hinweis(folge: Ansagefolge): Promise<void> {
     if (!this.hinweise || this.klingt()) return Promise.resolve();
-    return this.#sage(text);
+    return this.#sage(folge);
   }
 
   /** Nach dem Druck einer Taste; strom: sie steuert das Vorlesen selbst und darf auch während des Vorlesens kurz ansagen */
-  taste(text: string, strom = false): Promise<void> {
+  taste(folge: Ansagefolge, strom = false): Promise<void> {
     if (!this.tasten || (this.klingt() && !strom)) return Promise.resolve();
-    return this.#sage(text);
+    return this.#sage(folge);
   }
 
   /** Bis die laufende Ansage zu Ende ist (höchstens ein paar Sekunden) */
@@ -88,12 +122,22 @@ export class Ansage {
     this.#laufend = null;
   }
 
-  #sage(text: string): Promise<void> {
-    const satz = text.trim();
-    if (!this.#frei || !satz) return Promise.resolve();
+  /** Die Einträge einer Folge; null, wenn einer fehlt oder noch keinen Ton hat */
+  eintraege(folge: Ansagefolge): Ansageeintrag[] | null {
+    const k = this.katalog;
+    if (!k || !folge.length) return null;
+    const geraet = k.stimme === GERAETESTIMME;
+    const teile = folge.map((s) => k.eintraege[s]);
+    return teile.every((t) => t && (geraet ? t.text : t.url)) ? teile : null;
+  }
+
+  #sage(folge: Ansagefolge): Promise<void> {
+    const teile = this.eintraege(folge);
+    // Fehlt ein Ton, bleibt diese Ansage still; die laufende endet trotzdem, eine neue Taste gilt
     this.stoppe();
+    if (!this.#frei || !teile) return Promise.resolve();
     const abbruch = new AbortController();
-    const fertig = this.#klinge(satz, abbruch.signal).catch(() => undefined);
+    const fertig = this.#klinge(teile, abbruch.signal).catch(() => undefined);
     const lauf = { abbruch, fertig };
     this.#laufend = lauf;
     void fertig.then(() => {
@@ -102,33 +146,28 @@ export class Ansage {
     return fertig;
   }
 
-  /** Satz für Satz: der Server nimmt je Ansage genau einen Satz mit höchstens 300 Zeichen */
-  async #klinge(text: string, abbruch: AbortSignal): Promise<void> {
-    for (const satz of saetze(text)) {
+  async #klinge(teile: Ansageeintrag[], abbruch: AbortSignal): Promise<void> {
+    if (this.katalog?.stimme === GERAETESTIMME) return this.quelle.sprich(teile.map((t) => t.text).join(" "), abbruch);
+    // Erst alle Töne, dann ohne Pause hintereinander
+    const toene = await Promise.all(teile.map((t) => this.#ton(t.url)));
+    for (const ton of toene) {
       if (abbruch.aborted) return;
-      await this.#klingeSatz(satz.slice(0, SATZ_HOECHSTENS), abbruch);
+      await this.quelle.spiele(ton, abbruch);
     }
   }
 
-  async #klingeSatz(satz: string, abbruch: AbortSignal): Promise<void> {
-    const ton: Ansageton = this.#toene.get(satz) ?? (this.#ohneDienst ? "fehlt" : await this.quelle.hole(satz, abbruch).catch((): Ansageton => "spaeter"));
-    if (abbruch.aborted) return;
-    if (ton instanceof Blob) {
-      this.#merke(satz, ton);
-      return this.quelle.spiele(ton, abbruch);
+  #ton(url: string): Promise<Blob> {
+    let t = this.#toene.get(url);
+    if (!t) {
+      t = this.quelle.hole(url);
+      t.catch(() => this.#toene.delete(url));
+      this.#toene.set(url, t);
     }
-    if (ton === "fehlt") this.#ohneDienst = true;
-    return this.quelle.sprich(satz, abbruch);
-  }
-
-  #merke(satz: string, ton: Blob): void {
-    this.#toene.delete(satz);
-    this.#toene.set(satz, ton);
-    if (this.#toene.size > VORRAT) this.#toene.delete(this.#toene.keys().next().value!);
+    return t;
   }
 }
 
-/** Der Ton im Browser: ein eigenes Tonelement, der Sprechdienst über den Server, sonst die Stimmen des Geräts */
+/** Der Ton im Browser: ein eigenes Tonelement, sonst die Stimmen des Geräts */
 class Browserton implements Tonquelle {
   #element: HTMLAudioElement | null = null;
   #geraet = new Geraetesprecher();
@@ -138,22 +177,18 @@ class Browserton implements Tonquelle {
     return this.#element;
   }
 
+  katalog(): Promise<Ansagekatalog> {
+    return get<Ansagekatalog>("/api/familie/ansagen");
+  }
+
+  async hole(url: string): Promise<Blob> {
+    return (await anfrage(url)).blob();
+  }
+
   entsperre(): void {
     const t = this.#ton();
     t.src = stilleAdresse();
     void t.play().catch(() => undefined);
-  }
-
-  async hole(text: string, abbruch: AbortSignal): Promise<Ansageton> {
-    if (!anschluesse.jetzt.vorlesen) return "fehlt";
-    const stimme = vorlesen.stimme.startsWith("dienst:") ? vorlesen.stimme.slice("dienst:".length) : "";
-    try {
-      const antwort = await anfrage("/api/vorlesen/ansage", { method: "POST", body: JSON.stringify(stimme ? { text, stimme } : { text }), signal: abbruch });
-      return await antwort.blob();
-    } catch (e) {
-      if (e instanceof ApiError && (e.status === 404 || e.status === 405)) return "fehlt";
-      return "spaeter";
-    }
   }
 
   spiele(ton: Blob, abbruch: AbortSignal): Promise<void> {

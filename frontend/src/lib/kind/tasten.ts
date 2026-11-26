@@ -1,5 +1,6 @@
 // Die Tasten des Kinderlesers an einer Stelle: welche es gibt, wie sie heißen, welches Symbol sie tragen und was sie nach dem
 // Druck ansagen. Welche erscheinen, entscheiden allein die Fähigkeiten vom Server und die Lesehilfen, die die Eltern erlauben.
+import { TASTE } from "./ansagen";
 import type { Faehigkeit, Kinderdarstellung } from "./typen";
 
 export type Lesetaste = "zurueck" | "merken" | "vorlesen" | "silben" | "zeile" | "stift" | "notiz" | "weiter";
@@ -59,24 +60,28 @@ export function tastenbild(t: Lesetaste, s: Tastenstand): Tastenbild {
 }
 
 /**
- * Was eine Taste ansagt; s ist der Stand nach ihrer Wirkung. Schalter sagen, wie sie nun stehen; die Taste Vorlesen sagt,
- * was jetzt geschieht: anfangen ("Vorlesen"), anhalten ("Pause"), weiterhören ("Weiter").
+ * Was eine Taste ansagt (Schlüssel aus lib/kind/ansagen.ts); s ist der Stand nach ihrer Wirkung. Schalter sagen, wie sie nun
+ * stehen; die Taste Vorlesen sagt, was jetzt geschieht: anfangen ("Vorlesen"), anhalten ("Pause"), weiterhören ("Weiter hören").
  */
 export function tastenansage(t: Lesetaste, s: Tastenstand, vorlesenVorher: Tastenstand["vorlesen"] = s.vorlesen): string {
   switch (t) {
     case "vorlesen":
-      if (s.vorlesen === "ruht") return "Pause";
-      return vorlesenVorher === "ruht" ? "Weiter" : "Vorlesen";
+      if (s.vorlesen === "ruht") return TASTE.pause;
+      return vorlesenVorher === "ruht" ? TASTE.weiterHoeren : TASTE.vorlesen;
     case "silben":
-      return s.silben ? "Silben an" : "Silben aus";
+      return s.silben ? TASTE.silbenAn : TASTE.silbenAus;
     case "zeile":
-      return s.zeile ? "Zeile an" : "Zeile aus";
+      return s.zeile ? TASTE.zeileAn : TASTE.zeileAus;
     case "stift":
-      return s.stift ? "Stift an" : "Stift aus";
+      return s.stift ? TASTE.stiftAn : TASTE.stiftAus;
     case "merken":
-      return s.gemerkt ? "Gemerkt" : "Lesezeichen weg";
-    default:
-      return tastenbild(t, s).name;
+      return s.gemerkt ? TASTE.gemerkt : TASTE.lesezeichenWeg;
+    case "zurueck":
+      return TASTE.zurueck;
+    case "weiter":
+      return TASTE.weiter;
+    case "notiz":
+      return TASTE.notiz;
   }
 }
 
