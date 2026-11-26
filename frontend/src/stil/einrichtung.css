@@ -1,0 +1,132 @@
+/* Assistent der Ersteinrichtung (BF-82, Entwurf einrichtung-1). Die Vorsilbe ew- hält alle Teile der Einrichtung beisammen.
+   Er ist die Karte der Anmeldung, breiter: Kopf, Fortschritt und Fuß stehen, nur der Schritt rollt. Am Telefon füllt er den
+   Schirm wie die Schale. Wieder geöffnet steht er in der Bühne. */
+.anmeldung.ew-einrichtung { position: relative; z-index: 1; height: 100%; display: grid; place-items: center; padding: 1rem; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+.anmeldekarte.ew-assistent { width: min(54rem, 100%); max-height: 100%; display: flex; flex-direction: column; gap: 0; padding: 0; }
+.ew-assistent .anmeldelogo svg { display: block; width: 2.25rem; height: 2.25rem; }
+.ew-assistent > * { flex: none; }
+.ew-assistent > header { padding: 1rem 1.25rem .75rem; flex-wrap: nowrap; }
+.ew-assistent > header h1 { font-size: 1.25rem; hyphens: auto; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.ew-assistent > .ew-darstellung { margin: 0 1.25rem .75rem; }
+.ew-fortschritt { display: grid; gap: .375rem; padding: 0 1.25rem .75rem; border-bottom: 1px solid var(--linie); }
+.ew-schrittkopf { display: flex; align-items: baseline; gap: .25rem .5rem; flex-wrap: wrap; }
+.ew-schrittkopf h2 { font-size: 1.0625rem; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.ew-schrittkopf > .zahl { margin-left: auto; }
+.ew-schritte > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ew-schritte > .jetzt { color: var(--tinte); font-weight: 600; }
+.ew-assistent > .ew-schritt { flex: 1 1 auto; min-height: 0; padding: 1rem 1.25rem 1.25rem; display: grid; gap: .875rem; align-content: start; grid-template-columns: minmax(0, 1fr); }
+.ew-fuss { display: flex; align-items: center; gap: .5rem; padding: .75rem 1.25rem; border-top: 1px solid var(--linie); }
+.ew-fuss > .ew-rechts { margin-left: auto; display: flex; gap: .5rem; min-width: 0; }
+/* In der Bühne der Schale (wieder geöffnet): dieselben Teile zwischen Werkzeug und Fuß */
+.buehne > .ew-fortschritt { padding: .625rem .75rem .75rem; }
+.buehne > .ew-fuss { padding: .625rem .75rem; }
+.buehne > .ew-schritt { display: grid; gap: .875rem; align-content: start; grid-template-columns: minmax(0, 1fr); }
+/* Darstellung im Kopf und Wahlen über die ganze Breite: gleich breite Felder */
+.ew-voll > .segment { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; justify-self: stretch; }
+.ew-voll > .segment button { white-space: normal; height: auto; min-height: 1.875rem; line-height: 1.2; padding: .25rem; text-align: center; }
+.ew-darstellung { gap: .625rem; }
+.ew-darstellung .feld { justify-items: stretch; }
+@container app (max-width: 720px) {
+  .anmeldung.ew-einrichtung { padding: 0; place-items: stretch; }
+  .anmeldekarte.ew-assistent { width: 100%; height: 100%; max-height: none; border-radius: 0; box-shadow: none; padding-top: env(safe-area-inset-top, 0px); }
+  .ew-assistent.glas::before { display: none; }
+  .ew-assistent > header, .ew-fortschritt, .ew-assistent > .ew-schritt, .ew-fuss { padding-inline: var(--rand-seite); }
+  .ew-assistent > .ew-darstellung { margin-inline: var(--rand-seite); }
+  .ew-schritte { display: none; }
+  /* Zurück nur als Zeichen, Überspringen und Weiter in gleich breiten Feldern */
+  .ew-fuss .ew-zurueck { width: 2.75rem; padding: 0; flex: none; }
+  .ew-fuss .ew-zurueck > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .ew-fuss > .ew-rechts { flex: 1 1 auto; }
+  .ew-fuss > .ew-rechts > .knopf { flex: 1 1 0; min-width: 0; }
+}
+@container app (max-width: 26rem) { .ew-vier > .segment { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container app (max-width: 20rem) {
+  .ew-assistent > header h1 { font-size: 1.0625rem; }
+  /* Sehr große Schrift am Telefon: auch Überspringen nur als Zeichen, der Name bleibt für Vorleseprogramme */
+  .ew-fuss > .ew-rechts > .ew-ueberspringen { flex: none; width: 2.75rem; padding: 0; }
+  .ew-fuss .ew-ueberspringen > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .ew-schluessel > .knopf { width: 2.75rem; padding: 0; flex: none; }
+  .ew-schluessel > .knopf > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* Kacheln im Raster, gleich breite Spalten; die ganze Kachel ist die Taste (wie "Andere Quellen") */
+.ew-kacheln { display: grid; gap: .75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ew-kacheln.drei { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+button.katalogweg { color: inherit; text-align: left; }
+button.katalogweg:hover { box-shadow: inset 0 1px 0 var(--platte-licht), 0 0 0 1px rgb(var(--kante) / .7); }
+button.katalogweg[aria-pressed="true"] { background: var(--messing-hauch); box-shadow: 0 0 0 2px var(--messing); }
+/* Zeichen, Titel und Marke oder Pfeil stehen in einer Zeile; ein langer Titel bricht in seiner Spalte um */
+.ew-kachel .wegkopf { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
+.ew-kachel .wegkopf b { min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
+.ew-kachel .wegkopf > .ew-pfeil { color: var(--tinte-3); }
+@container app (max-width: 56rem) { .ew-kacheln.drei { grid-template-columns: minmax(0, 1fr); } }
+@container app (max-width: 40rem) { .ew-kacheln { grid-template-columns: minmax(0, 1fr); } }
+
+/* Inhalte der Schritte aus vorhandenen Teilen */
+.ew-gruppe-kopf { display: flex; align-items: center; gap: .5rem; font-size: .875rem; font-weight: 600; color: var(--tinte-2); padding: .25rem 0; }
+.ew-gruppe-kopf > i { color: var(--messing); }
+.ew-liste > .stelle { padding-inline: .25rem; }
+.ew-warnfeld { display: grid; gap: .5rem; padding: .625rem .75rem; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--schlecht) 55%, transparent); }
+.ew-tasten2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.ew-tasten2 .knopf { min-width: 0; }
+.ew-schluessel { display: flex; align-items: center; gap: .5rem; min-height: 2.25rem; padding: 0 .25rem 0 .625rem; }
+.ew-schluessel > .knopf { margin-left: auto; }
+.ew-pruefzeile { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .875rem; }
+.ew-pruefzeile .lampe, .ew-ergebnis .lampe { font-size: .9375rem; }
+.ew-ergebnis { display: grid; gap: .25rem; min-width: 0; overflow-wrap: anywhere; }
+.ew-hinweiszeile { display: grid; grid-template-columns: 1.125rem minmax(0, 1fr); gap: .375rem; }
+.ew-hinweiszeile > i { padding-top: .1875rem; }
+.ew-wartet { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .625rem; align-items: center; padding: .5rem .75rem; }
+.ew-wartet > i { color: var(--info); }
+.ew-wartet .name { min-width: 0; overflow-wrap: anywhere; }
+.ew-uebersicht { display: grid; gap: .25rem; }
+.ew-uebersicht .stelle { grid-template-columns: auto minmax(0, 1fr) minmax(0, 11rem); padding-inline: .25rem; }
+.ew-uebersicht .stelle.ohne-ziel { grid-template-columns: auto minmax(0, 1fr); }
+.ew-uebersicht .ew-ziel { width: 100%; justify-content: flex-start; }
+.ew-uebersicht h3 + .stelle { border-top: 0; }
+.ew-waehlbar { width: 100%; text-align: left; padding: .5rem; border-radius: var(--r1); }
+.ew-waehlbar:hover { background: var(--hauch); }
+.ew-waehlbar[aria-pressed="true"] { background: var(--messing-hauch); }
+.ew-waehlbar + .ew-waehlbar { border-top: 1px solid var(--linie); }
+.ew-waehlbar .marke { width: 1.625rem; height: 1.625rem; border-radius: 50%; display: grid; place-items: center; font-size: .8125rem; color: transparent; background: var(--vertieft); box-shadow: inset 0 0 0 1px var(--linie); }
+.ew-waehlbar .marke.an { background: var(--messing-flaeche); color: var(--auf-messing); }
+.ew-zaehler { display: grid; gap: .5rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ew-zaehl { display: grid; gap: .125rem; align-content: start; padding: .625rem .75rem; min-width: 0; }
+.ew-zaehl b { font-size: 1.375rem; font-weight: 600; line-height: 1.2; }
+.ew-zaehl .leise { overflow-wrap: anywhere; hyphens: auto; }
+.ew-auftrag { display: grid; gap: .5rem; padding: .75rem; }
+.ew-auftrag > .reihe b { font-weight: 600; }
+.ew-teile { display: grid; gap: .5rem; padding-top: .5rem; border-top: 1px solid var(--linie); }
+.ew-teil { display: grid; grid-template-columns: 1.375rem minmax(0, 10rem) minmax(0, 1fr) minmax(0, 12rem); gap: .625rem; align-items: center; font-size: .9375rem; }
+.ew-teil > i { color: var(--tinte-3); text-align: center; }
+.ew-teil > .name { min-width: 0; overflow-wrap: anywhere; }
+.ew-teil > .zahl { text-align: right; }
+/* In einer Karte (Zurückspielen unter Wartung) ist es schmal: der Balken steht unter Name und Zahl */
+.karte .ew-teil { grid-template-columns: 1.375rem minmax(0, 1fr) auto; row-gap: .25rem; }
+.karte .ew-teil > .balken { grid-column: 2 / -1; grid-row: 2; }
+.ew-buchzeile { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr) auto; gap: .625rem; align-items: center; padding: .375rem .5rem; border-radius: var(--r1); background: var(--platte); box-shadow: 0 0 0 1px var(--linie); font-size: .875rem; }
+.ew-buchzeile .umschlag { aspect-ratio: 2 / 3; border-radius: 2px; }
+.ew-buchzeile .umschlag svg { height: 100%; }
+.ew-buchzeile .ew-mitte { display: grid; min-width: 0; }
+.ew-buchzeile .ew-mitte b { font-weight: 600; overflow-wrap: anywhere; }
+.ew-buchzeile .ew-mitte small { color: var(--tinte-3); font-size: .8125rem; overflow-wrap: anywhere; }
+.ew-buchzeile .ew-dateizeichen { display: grid; place-items: center; aspect-ratio: 2 / 3; border-radius: 2px; background: var(--vertieft-2); color: var(--tinte-2); box-shadow: inset 0 0 0 1px var(--linie); }
+.ew-buecher { display: grid; gap: 2px; }
+.ew-profilchips { display: flex; flex-wrap: wrap; gap: .375rem; }
+.ew-aenderung.haekchen { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .625rem; align-items: center; padding: .5rem .625rem; font-size: .9375rem; }
+.ew-aenderung > span { min-width: 0; overflow-wrap: anywhere; }
+.ew-ordnerzeile > .eingabe { flex: 1 1 14rem; width: auto; }
+@container app (max-width: 720px) {
+  .ew-teil { grid-template-columns: 1.375rem minmax(0, 1fr) auto; row-gap: .25rem; }
+  .ew-teil > .balken { grid-column: 2 / -1; grid-row: 2; }
+  .ew-uebersicht .stelle { grid-template-columns: auto minmax(0, 1fr) 2.75rem; }
+  .ew-uebersicht .ew-ziel { width: 2.75rem; padding: 0; justify-content: center; }
+  .ew-uebersicht .ew-ziel > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+@container app (max-width: 20rem) {
+  .ew-zaehler { grid-template-columns: minmax(0, 1fr); }
+  .ew-zaehl { grid-template-columns: auto minmax(0, 1fr); align-items: baseline; column-gap: .625rem; }
+  .ew-tasten2 { grid-template-columns: minmax(0, 1fr); }
+  .ew-buchzeile { grid-template-columns: 2.25rem minmax(0, 1fr); }
+  .ew-buchzeile > .knopf { grid-column: 2; justify-self: start; }
+}

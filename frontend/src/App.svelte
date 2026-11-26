@@ -4,6 +4,7 @@
   import { hasToken, oeffneInhalte, onAuthError, onProfilFehlt, beiTokenWechsel, beiProfilWechsel } from "./lib/api/client";
   import { fassungVerfolgen, vielleichtNeuLaden } from "./lib/fassung.svelte";
   import { anschluesse } from "./lib/stand/anschluesse.svelte";
+  import { einrichtung } from "./lib/stand/einrichtung.svelte";
   import { familie } from "./lib/stand/familie.svelte";
   import { ich } from "./lib/stand/ich.svelte";
   import { filter } from "./lib/stand/filter.svelte";
@@ -21,6 +22,8 @@
   import Bibliothek from "./ansichten/bibliothek/Bibliothek.svelte";
   import Buchseite from "./ansichten/buch/Buchseite.svelte";
   import Danke from "./ansichten/danke/Danke.svelte";
+  import Einrichtung from "./ansichten/einrichtung/Einrichtung.svelte";
+  import Wartungsassistent from "./ansichten/einrichtung/Wartungsassistent.svelte";
   import Profilwahl from "./ansichten/familie/Profilwahl.svelte";
   import Kinderbereich from "./ansichten/kind/Kinderbereich.svelte";
   import { nutztKinderbereich } from "./lib/kind/ich";
@@ -61,6 +64,7 @@
     { muster: "/zuordnen/:art/:id", ansicht: Zuordnen },
     { muster: "/import", ansicht: Hinzufuegen },
     { muster: "/import/vorschau/:id", ansicht: Vorschau },
+    { muster: "/settings/einrichtung", ansicht: Wartungsassistent },
     { muster: "/settings/*", ansicht: Einstellungen },
     { muster: "/settings", ansicht: Einstellungen },
     { muster: "/danke", ansicht: Danke },
@@ -72,7 +76,9 @@
    * "Wer liest?" oder gleich das gemerkte Profil), kommt die Bibliothek auf den Schirm.
    */
   let offen = $state(false);
-  if (hasToken()) void Promise.all([oeffneInhalte(), anschluesse.laden(), familie.starte()]).then(() => (offen = true));
+  // Vor der Anmeldung fragt die Seite, ob eine neue Installation den Assistenten zeigt (BF-82); dann kommt er statt der Anmeldung
+  if (hasToken()) void Promise.all([oeffneInhalte(), anschluesse.laden(), familie.starte(), einrichtung.laden()]).then(() => (offen = true));
+  else void einrichtung.laden();
 
   let ziel = $derived.by(() => {
     for (const z of ziele) {
@@ -127,6 +133,9 @@
       <Profilwahl />
     {:else if familie.phase === "fehler"}
       <main class="familienfehler"><Zustand art="fehler" text={familie.fehler} onerneut={() => void familie.starte()} /></main>
+    {:else if familie.phase === "bereit" && einrichtung.ersteinrichtung}
+      <!-- Die Ersteinrichtung ist noch offen: der Assistent geht nach der Anmeldung am nächsten Schritt weiter -->
+      <Einrichtung angemeldet />
     {:else if familie.phase === "bereit" && ich.jetzt && nutztKinderbereich(ich.jetzt)}
       <!-- Ein Kind sieht statt der Schale seinen eigenen, einfacheren Bereich -->
       <Kinderbereich ich={ich.jetzt} onverlassen={() => void familie.neuBeginnen()} />
@@ -135,8 +144,8 @@
         {#key schluessel}<ziel.ansicht params={ziel.params} />{/key}
       </Schale>
     {/if}
-  {:else if !angemeldet}
-    <Anmeldung onerfolg={nachAnmeldung} />
+  {:else if !angemeldet && einrichtung.geladen}
+    {#if einrichtung.ersteinrichtung}<Einrichtung angemeldet={false} />{:else}<Anmeldung onerfolg={nachAnmeldung} />{/if}
   {/if}
   <Fassungsband />
   <Netzband />

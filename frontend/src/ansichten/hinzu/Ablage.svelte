@@ -9,6 +9,9 @@
   import Symbol from "../../lib/teile/Symbol.svelte";
   import { brauchbar, gezogeneDateien } from "./dateien";
 
+  /** Nach dem Hochladen: zur Vorschau; der Assistent der Einrichtung bleibt stehen und zeigt sie als wartend (BF-82) */
+  let { nachVorschau = (id: string) => navigate(`/import/vorschau/${id}`) }: { nachVorschau?: (id: string) => void } = $props();
+
   const SCHLUESSEL = "annahme.anreichern";
   let feld: HTMLInputElement | undefined = $state();
   let ueber = $state(false);
@@ -22,7 +25,7 @@
   async function nimm(dateien: File[]) {
     if (!dateien.length) return melde.info("Keine Datei dabei");
     try {
-      navigate(`/import/vorschau/${await annahme.nimmAn(dateien, ergaenzen)}`);
+      nachVorschau(await annahme.nimmAn(dateien, ergaenzen));
     } catch (e) {
       melde.schlecht(e, "Nicht hochgeladen");
     }
