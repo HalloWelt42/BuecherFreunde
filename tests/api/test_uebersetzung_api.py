@@ -82,7 +82,8 @@ async def test_start_und_stand(client, test_db, uebersetzer):
     assert r.status_code == 200
     s = r.json()
     assert s["stand"] == "laeuft" and [x["name"] for x in s["stationen"]] == STATIONEN and {x["stand"] for x in s["stationen"]} == {"wartet"}
-    assert s["kapitel"] == [] and s["zahlen"] == {"bloecke": 0, "uebersetzt": 0, "bestanden": 0, "nachgearbeitet": 0, "offen": 0}
+    assert s["kapitel"] == [] and s["zahlen"] == {"bloecke": 0, "uebersetzt": 0, "bestanden": 0, "nachgearbeitet": 0, "offen": 0,
+                                                     "verworfen": 0}
     fid = s["id"]
     assert (await client.post(f"/api/books/{buch}/fassungen/de")).json()["id"] == fid     # noch einmal: dieselbe Fassung
     await Uebersetzungslauf(ki).runde()
@@ -93,7 +94,7 @@ async def test_start_und_stand(client, test_db, uebersetzer):
     assert [(k["nr"], k["titel"], k["stand"], k["bloecke"], k["fertig"], k["geschaetzt"]) for k in s["kapitel"]] == [
         (2, "Getting Started", "fertig", 15, 15, False), (3, "Watering the Beds", "fertig", 5, 5, False),
         (4, "Inhaltsverzeichnis", "fertig", 3, 3, False), (5, "Inhaltsverzeichnis", "fertig", 2, 2, False)]
-    assert s["zahlen"] == {"bloecke": 25, "uebersetzt": 25, "bestanden": 25, "nachgearbeitet": 0, "offen": 0}
+    assert s["zahlen"] == {"bloecke": 25, "uebersetzt": 25, "bestanden": 25, "nachgearbeitet": 0, "offen": 0, "verworfen": 0}
     assert s["kapitel_jetzt"] is None and s["block_jetzt"] is None
     assert (await client.get("/api/fassungen/999/stand")).status_code == 404
 
@@ -118,7 +119,7 @@ async def test_anrede_je_buch_beim_start(client, test_db, uebersetzer, leitstell
     assert any('mit "Sie" an' in t for t in systeme) and not any('mit "du" an' in t for t in systeme)
     # der Satz mit du besteht die Prüfung Anrede nicht, auch nicht nach den Nacharbeiten
     [offen] = (await client.get(f"/api/fassungen/{fid}/bericht")).json()["offen"]
-    assert offen["kennung"] == "2.3" and [b["art"] for b in offen["befunde"]] == ["anrede"]
+    assert offen["kennung"] == "2.3" and [b["art"] for b in offen["befunde"]] == ["anrede", "antwort"]
     assert offen["befunde"][0]["text"] == 'Der Leser wird mit "Sie" angesprochen, hier steht "du"'
 
 
@@ -312,3 +313,31 @@ async def test_begriff_fuer_alle_buecher(client, test_db, uebersetzer):
     eigener = await client.post(f"/api/books/{buch}/begriffe", json={"englisch": "beds", "bleibt": True})
     assert eigener.status_code == 201
     assert "bed" in [b["englisch"] for b in (await client.get("/api/begriffe")).json()]
+
+
+async def test_fragwuerdige_begriffe_entfernen(client, test_db, uebersetzer):
+    """Fragwürdige Einträge gelten nicht; entfernt werden nur die, die die Vorschau zeigte und die noch fragwürdig sind, und
+    neu übersetzt wird dafür nichts. Wer einen fragwürdigen Eintrag ändert, macht ihn zu einem von Hand, der gilt."""
+    buch, fid = await fertig_uebersetzt(client, test_db, uebersetzer)
+    await test_db.execute_many("INSERT INTO begriff (buch_id, englisch, deutsch, bleibt, herkunft, fragwuerdig) VALUES (?, ?, ?, ?, ?, ?)", [
+        (buch, "Watering", "", 1, "regel", "Kein Name nach der Regel"), (buch, "tank", "Behälter", 0, "ki", "Überschrift statt Fachbegriff"),
+        (buch, "water", "Wasser", 0, "ki", "Gewöhnliches englisches Wort"), (buch, "soil", "Erde", 0, "ki", "")])
+    await test_db.commit()
+    ids = {b["englisch"]: b["id"] for b in (await client.get(f"/api/books/{buch}/begriffe")).json()}
+    assert [b.englisch for b in await begriffsliste.gelten(buch) if b.englisch in ids] == ["pump", "soil"]
+
+    r = await client.patch(f"/api/begriffe/{ids['water']}", json={"deutsch": "gießen | Wasser"})   # geändert: gilt, von Hand
+    assert (r.json()["fragwuerdig"], r.json()["herkunft"]) == ("", "hand")
+    await Uebersetzungslauf(ki).runde()
+    r = await client.post(f"/api/books/{buch}/begriffe/fragwuerdige/entfernen", json={"ids": [ids["Watering"], ids["tank"], ids["water"], ids["soil"]]})
+    assert r.status_code == 200 and sorted(r.json()["entfernt"]) == sorted([ids["Watering"], ids["tank"]])
+    assert sorted(b["englisch"] for b in (await client.get(f"/api/books/{buch}/begriffe")).json()) == ["pump", "soil", "water"]
+    assert {z.stand for z in await fassungen.bloecke(fid)} <= {"bestanden", "nachgearbeitet"}       # nichts wartet
+    assert (await client.post(f"/api/books/{buch}/begriffe/fragwuerdige/entfernen", json={"ids": []})).status_code == 422
+    assert (await client.post("/api/books/999/begriffe/fragwuerdige/entfernen", json={"ids": [1]})).status_code == 404
+
+    # einzeln entfernt: auch dann wird nichts neu übersetzt
+    await test_db.execute("UPDATE begriff SET fragwuerdig = 'Gewöhnliches englisches Wort' WHERE id = ?", (ids["soil"],))
+    await test_db.commit()
+    assert (await client.delete(f"/api/begriffe/{ids['soil']}")).status_code == 200
+    assert {z.stand for z in await fassungen.bloecke(fid)} <= {"bestanden", "nachgearbeitet"}

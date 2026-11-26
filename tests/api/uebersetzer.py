@@ -99,8 +99,8 @@ DEUTSCH_PDF = {
     "<t1>2 Watering the Beds</t1>": "<t1>2 Die Beete gießen</t1>",
     "<t1>2.1 Morning Rounds</t1>": "<t1>2.1 Runden am Morgen</t1>",
 }
-VORSCHLAG = [{"englisch": "pump", "bleibt": False, "deutsch": "Pumpe", "grund": "Das deutsche Wort ist üblich"},
-             {"englisch": "garbage collector", "bleibt": True, "deutsch": "", "grund": "Steht nicht im Buch"}]
+VORSCHLAG = [{"englisch": "pump", "bleibt": False, "deutsch": "Pumpe", "nur_deutsch": False, "grund": "Das deutsche Wort ist üblich"},
+             {"englisch": "garbage collector", "bleibt": True, "deutsch": "", "nur_deutsch": False, "grund": "Steht nicht im Buch"}]
 IN_ORDNUNG = {"in_ordnung": True, "art": "", "grund": "", "stelle": ""}
 
 

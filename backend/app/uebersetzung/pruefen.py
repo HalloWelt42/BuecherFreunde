@@ -6,10 +6,10 @@ ist, ohne neue Anfrage noch einmal (services/uebersetzungslauf.py).
 |---|---|
 | Marken | jede Marke genau einmal, gleiche Schachtelung, keine fremde Auszeichnung |
 | Zahlen | dieselben Zahlen nach Angleichen der Tausender- und Dezimalzeichen (zahlen.py) |
-| Einheiten | dieselben Einheiten, keine von selbst zugefügte Umrechnung; englische Einheitennamen in der vereinbarten Form |
+| Einheiten | dieselben Einheiten, keine von selbst zugefügte Umrechnung; englische Einheitennamen in der vereinbarten Form; eine Zahl gleich hinter dem Satzende ist ein Fußnotenzeichen und trägt keine Einheit (12].1 A logical: kein Ampere) |
 | Bezeichner | Adressen, Dateinamen, Pfade, Aufrufe, Bezeichner, Optionen, Versionen und Abkürzungen unverändert (außer sie stehen mit deutscher Form in der Begriffsliste) |
-| Begriffe | jeder Begriff mit "bleibt" steht da, jeder mit deutscher Form in dieser Form, gebeugt oder in einem zusammengesetzten Wort |
-| Sprache | kein englischer Satz übrig (Begriffe und Bezeichner ausgenommen), nichts unübersetzt stehen gelassen |
+| Begriffe | jeder Begriff mit "bleibt" steht da, jeder mit deutscher Form in einer erlaubten Form, gebeugt oder in einem zusammengesetzten Wort; was nur Teil eines längeren Begriffs der Liste ist, zählt für diesen |
+| Sprache | kein englischer Satz übrig (Begriffe und Bezeichner ausgenommen), nichts unübersetzt stehen gelassen (`unuebersetzt`: unverändert mit mindestens drei Wörtern oder einem gewöhnlichen englischen Wort außer Begriffen, Namen und Bezeichnern) |
 | Länge | Verhältnis Deutsch zu Englisch in den Grenzen, ab einer Mindestlänge des Originals |
 | Vollständigkeit | gleich viele Sätze, Abweichung höchstens eins |
 | Zeichen | echte Umlaute, gerade Anführungszeichen, keine Sonderstriche, keine Zeichenreferenz als Text (zeichen.py) |
@@ -31,6 +31,7 @@ from backend.app.uebersetzung import marken, zahlen, zeichen
 from backend.app.uebersetzung.begriffe import fuer_text, im_deutschen, muster_deutsch, muster_einheit, muster_englisch
 from backend.app.uebersetzung.modelle import Anrede, Befund, Befundart, Begriff, Laengengrenzen
 from backend.app.uebersetzung.sprache import STOPP_EN, englischer_satz, saetze, woerter
+from backend.app.uebersetzung.vorgaben import alltagswoerter, in_liste
 
 DATEIENDUNGEN = ("py|pyc|js|mjs|ts|tsx|jsx|json|yaml|yml|toml|ini|cfg|conf|txt|md|rst|html|htm|xhtml|css|scss|xml|csv|tsv|sh|"
                  "bash|zsh|ps1|bat|c|h|cc|cpp|hpp|cs|java|kt|go|rs|rb|php|pl|swift|sql|db|log|lock|env|zip|tar|gz|tgz|bz2|"
@@ -48,7 +49,7 @@ BEZEICHNER = (
     re.compile(r"(?<![\w-])--?[A-Za-z][\w-]*"),                                              # Option
     re.compile(r"\bv\d+(?:\.\d+)+\b|\b\d+\.\d+\.\d+(?:[-+.]\w+)*\b"),                         # Version
 )
-FASSUNG = 2
+FASSUNG = 3
 ABKUERZUNG = re.compile(r"\b[A-Z][A-Z0-9]{1,9}s?\b")
 #: ein Wort aus zwei groß geschriebenen gewöhnlichen Wörtern (CrossPlatform, InGame), wie es ein verlorener Bindestrich hinterlässt
 ZWEI_WOERTER = re.compile(r"[A-Z][a-z]{1,}[A-Z][a-z]{1,}")
@@ -63,6 +64,8 @@ EINHEITEN_MEHR = ("km", "cm", "mm", "\u00b5m", "\u03bcm", "nm", "kg", "mg", "ms"
 EINHEIT = re.compile(r"(?<=\d)(?:[ \u00a0\u202f]?(?P<mehr>" + "|".join(sorted(map(re.escape, EINHEITEN_MEHR), key=len, reverse=True))
                      + r")|[ \u00a0\u202f](?P<eins>[smghlVWABK]))(?![\w])|(?<=\d)[ \u00a0\u202f]?(?P<prozent>%)")
 PROZENT_WORT = re.compile(r"(?<=\d)[ \u00a0\u202f]Prozent\b")
+#: eine Zahl gleich hinter dem Ende eines Satzes oder einer Klammer ist ein Fußnotenzeichen, keine Menge: "[bit 12].1 A logical"
+FUSSNOTENZEICHEN = re.compile(r"(?:(?<=[^\W\d_][.!?;:,)\]])|(?<=[)\]][.!?;:,]))\d+(?=[ \u00a0\u202f])")
 UNUEBERSETZT_AB = 3                                  # so viele Wörter ohne Begriffe und Bezeichner, damit Gleichheit auffällt
 
 
@@ -90,6 +93,7 @@ def pruefe_zahlen(original: str, deutsch: str, **_: object) -> list[Befund]:
 
 
 def _einheiten(text: str, prozent_als_wort: bool) -> Counter[str]:
+    text = FUSSNOTENZEICHEN.sub(" ", text)
     n = Counter(m.group("mehr") or m.group("eins") or m.group("prozent") for m in EINHEIT.finditer(text))
     if prozent_als_wort:
         n["%"] += len(PROZENT_WORT.findall(text))
@@ -209,14 +213,25 @@ def _uebernommene_klammern(original: str, deutsch: str) -> list[str]:
     return aus
 
 
+def unuebersetzt(original: str, deutsch: str, begriffe: list[Begriff]) -> bool:
+    """Ob ein Block unverändert zurückkam, obwohl er Englisch trägt: ohne Begriffe, die englisch bleiben, Namen mit ihrer
+    Abkürzung und Bezeichner bleiben mindestens `UNUEBERSETZT_AB` Wörter oder ein gewöhnliches englisches Wort
+    (Introduction, Basics). Ein Name oder Code für sich ist nicht unübersetzt. Verglichen wird mit geraden Zeichen, wie jede
+    Antwort sie bekommt: ein abgeschriebener Block mit Gedankenstrich (" \u2014 #SS \u2014 ") ist danach nicht mehr zeichengleich."""
+    en, de = marken.klartext(original), marken.klartext(deutsch)
+    if zeichen.gerade(en) != zeichen.gerade(de):
+        return False
+    rest = woerter(_ohne_festes(en, begriffe, namen_mit_kuerzel(en)))
+    return len(rest) >= UNUEBERSETZT_AB or any(in_liste(w, alltagswoerter()) for w in rest)
+
+
 def pruefe_sprache(original: str, deutsch: str, begriffe: list[Begriff], **_: object) -> list[Befund]:
     en, de = marken.klartext(original), marken.klartext(deutsch)
-    namen = namen_mit_kuerzel(en)
-    rest = _ohne_festes(de, begriffe, namen)
+    rest = _ohne_festes(de, begriffe, namen_mit_kuerzel(en))
     for uebernommen in sorted(_uebernommene_klammern(original, deutsch), key=len, reverse=True):
         rest = rest.replace(uebernommen, " ")
     aus = [_befund("sprache", "Ein englischer Satz ist übrig", s) for s in saetze(rest) if englischer_satz(s)]
-    if not aus and en == de and len(woerter(_ohne_festes(en, begriffe, namen))) >= UNUEBERSETZT_AB:
+    if not aus and unuebersetzt(original, deutsch, begriffe):
         aus.append(_befund("sprache", "Der Block ist unübersetzt", de[:120]))
     return aus
 

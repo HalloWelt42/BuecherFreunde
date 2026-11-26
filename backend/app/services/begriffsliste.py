@@ -3,32 +3,29 @@
 Herkunft: `vorgabe` (aus uebersetzung/vorgaben.json, einmal je Fassung der Vorgaben eingespielt), `regel` und `ki` (vom Lauf
 beim ersten Übersetzen eines Buchs), `hand` (angelegt oder geändert vom Nutzer; daran ändert kein Lauf mehr etwas). Was
 für ein Buch gilt: die Liste für alle, darüber die des Buchs (begriffe.gelten). Eine Änderung markiert nur die Blöcke zum
-Neuübersetzen, in denen der Begriff vorkommt (fassungen.neu_markieren)."""
+Neuübersetzen, in denen der Begriff vorkommt (fassungen.neu_markieren).
+
+Fragwürdig (`fragwuerdig`, mit Grund) ist ein Eintrag von Regel oder KI, der die Regeln der Begriffsliste von heute nicht
+besteht (begriffe.fragwuerdig); geprüft wird beim Anlegen der Liste und wenn sich die festen Prüfungen ändern. Er bleibt in
+der Liste, gilt aber nicht: weder das Modell noch die Prüfung bekommt ihn, bis der Nutzer ihn ändert (dann gilt er, von
+Hand) oder entfernt (dann wird nichts neu übersetzt, er galt ja nicht). Gelöscht wird nie von selbst."""
 
 from __future__ import annotations
 
 import json
 import logging
-from functools import lru_cache
-from pathlib import Path
 
 from backend.app.core.database import db
 from backend.app.models.fassung import BegriffAenderung, BegriffEintrag, BegriffNeu
 from backend.app.services import fassungen
 from backend.app.uebersetzung import begriffe as regeln
-from backend.app.uebersetzung import marken
+from backend.app.uebersetzung import marken, vorgaben
+from backend.app.uebersetzung.begriffe import Buchtext
 from backend.app.uebersetzung.modelle import Begriff, Kandidat
 
 logger = logging.getLogger("buecherfreunde.begriffsliste")
-VORGABEN = Path(__file__).resolve().parent.parent / "uebersetzung" / "vorgaben.json"
 VORGABEN_STAND = "begriffe_vorgaben"                 # Schlüssel in app_settings: die zuletzt eingespielte Fassung
-SPALTEN = "id, englisch, deutsch, bleibt, herkunft, stellen, grund, art"
-
-
-@lru_cache(maxsize=1)
-def alltagswoerter() -> frozenset[str]:
-    """Gewöhnliche englische Wörter aus vorgaben.json: ein Vorschlag "bleibt englisch" nur aus ihnen wird verworfen."""
-    return frozenset(w.lower() for w in json.loads(VORGABEN.read_text(encoding="utf-8")).get("alltagswoerter", []))
+SPALTEN = "id, englisch, deutsch, bleibt, herkunft, stellen, grund, art, fragwuerdig"
 
 
 def _eintrag(z: dict) -> BegriffEintrag:
@@ -49,15 +46,41 @@ async def eintrag(bid: int) -> tuple[BegriffEintrag, int | None] | None:
 
 
 async def gelten(buch_id: int) -> list[Begriff]:
-    """Die Liste, die für ein Buch gilt."""
-    def als(e: BegriffEintrag) -> Begriff:
-        return Begriff(englisch=e.englisch, deutsch=e.deutsch, bleibt=e.bleibt, art=e.art)
-    return regeln.gelten([als(e) for e in await liste(None)], [als(e) for e in await liste(buch_id)])
+    """Die Liste, die für ein Buch gilt; fragwürdige Einträge gelten nicht."""
+    def als(eintraege: list[BegriffEintrag]) -> list[Begriff]:
+        return [Begriff(englisch=e.englisch, deutsch=e.deutsch, bleibt=e.bleibt, art=e.art) for e in eintraege if not e.fragwuerdig]
+    return regeln.gelten(als(await liste(None)), als(await liste(buch_id)))
 
 
 async def vorhandene(buch_id: int) -> set[str]:
-    """Die englischen Begriffe (klein), die für ein Buch schon in einer Liste stehen."""
-    return {b.englisch.lower() for b in await gelten(buch_id)}
+    """Die englischen Begriffe (klein), die für ein Buch schon in einer Liste stehen, fragwürdige mitgezählt."""
+    return {e.englisch.lower() for e in [*await liste(None), *await liste(buch_id)]}
+
+
+async def fragwuerdige_markieren(buch_id: int, text: Buchtext) -> int:
+    """Prüft die Einträge von Regel und KI eines Buchs nach den Regeln von heute: wer sie nicht besteht, wird mit Grund
+    fragwürdig, wer sie (wieder) besteht, nicht mehr. Gibt zurück, wie viele fragwürdig sind."""
+    eintraege = [e for e in await liste(buch_id) if e.herkunft in ("regel", "ki")]
+    gruende = regeln.fragwuerdig([Kandidat(englisch=e.englisch, deutsch=e.deutsch, bleibt=e.bleibt, herkunft=e.herkunft)
+                                  for e in eintraege], text, vorgaben.alltagswoerter(), vorgaben.englisch_im_fach())
+    geaendert = [(gruende.get(e.englisch.lower(), ""), e.id) for e in eintraege if gruende.get(e.englisch.lower(), "") != e.fragwuerdig]
+    await db.execute_many("UPDATE begriff SET fragwuerdig = ? WHERE id = ?", geaendert)
+    if geaendert:
+        logger.info("Begriffsliste von Buch %d nach den Regeln geprüft: %d fragwürdig", buch_id, len(gruende))
+    return len(gruende)
+
+
+async def fragwuerdige_entfernen(buch_id: int, ids: list[int]) -> list[int]:
+    """Entfernt die genannten fragwürdigen Einträge eines Buchs (was inzwischen nicht mehr fragwürdig ist, bleibt). Neu
+    übersetzt wird dafür nichts: sie galten nicht. Gibt die entfernten zurück."""
+    if not ids:
+        return []
+    marke = ",".join("?" * len(ids))
+    zeilen = await db.fetch_all(f"SELECT id FROM begriff WHERE buch_id = ? AND fragwuerdig != '' AND id IN ({marke})", (buch_id, *ids))
+    weg = [z["id"] for z in zeilen]
+    if weg:
+        await db.execute(f"DELETE FROM begriff WHERE id IN ({','.join('?' * len(weg))})", tuple(weg))
+    return weg
 
 
 async def kandidaten_merken(buch_id: int, kandidaten: list[Kandidat]) -> int:
@@ -117,7 +140,7 @@ async def aendern(bid: int, aenderung: BegriffAenderung) -> BegriffEintrag | Non
         raise ValueError("Ein Begriff bleibt englisch oder hat eine deutsche Form")
     stellen = await _stellen(buch_id, neu.englisch) if neu.englisch != alt.englisch else alt.stellen
     await db.execute("UPDATE begriff SET englisch = ?, deutsch = ?, bleibt = ?, art = ?, grund = ?, stellen = ?, herkunft = 'hand', "
-                     "geaendert_am = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?",
+                     "fragwuerdig = '', geaendert_am = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') WHERE id = ?",
                      (neu.englisch, neu.deutsch, int(neu.bleibt), neu.art, neu.grund, stellen, bid))
     await _markieren(buch_id, list(dict.fromkeys([alt.englisch, neu.englisch])))
     e = await eintrag(bid)
@@ -125,18 +148,20 @@ async def aendern(bid: int, aenderung: BegriffAenderung) -> BegriffEintrag | Non
 
 
 async def loeschen(bid: int) -> bool:
+    """Ein Eintrag weg; die Blöcke mit ihm werden neu übersetzt, außer er war fragwürdig (dann galt er nicht)."""
     vorher = await eintrag(bid)
     if vorher is None:
         return False
     await db.execute("DELETE FROM begriff WHERE id = ?", (bid,))
-    await _markieren(vorher[1], [vorher[0].englisch])
+    if not vorher[0].fragwuerdig:
+        await _markieren(vorher[1], [vorher[0].englisch])
     return True
 
 
 async def vorgaben_einspielen() -> int:
     """Die allgemeine Liste aus vorgaben.json, einmal je Fassung der Datei; was der Nutzer gelöscht hat, kommt erst mit
     einer neuen Fassung wieder. Gibt zurück, wie viele Einträge neu sind."""
-    daten = json.loads(VORGABEN.read_text(encoding="utf-8"))
+    daten = json.loads(vorgaben.DATEI.read_text(encoding="utf-8"))
     stand = await db.fetch_one("SELECT value FROM app_settings WHERE key = ?", (VORGABEN_STAND,))
     if stand is not None and stand["value"] == str(daten["fassung"]):
         return 0

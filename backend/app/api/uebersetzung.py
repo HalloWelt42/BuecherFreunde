@@ -13,7 +13,7 @@ from backend.app.core.auth import verify_token, verify_token_inhalt
 from backend.app.core.database import db
 from backend.app.models.fassung import (
     BegriffAenderung, BegriffEintrag, BegriffNeu, Bericht, BlockAktion, BlockAntwort, FassungEintrag, FassungStand, FassungStart,
-    Fassungswahl, Folgen, LaufEintrag, Lesestand, LesestandNeu, Zielsprache,
+    Fassungswahl, Folgen, FragwuerdigeEntfernt, FragwuerdigeWeg, LaufEintrag, Lesestand, LesestandNeu, Zielsprache,
 )
 from backend.app.models.grenzen import Nr
 from backend.app.services import begriffsliste, fassung_ablage, fassung_lesen, fassungen, fassungsstand
@@ -214,6 +214,17 @@ async def begriff_anlegen(buch_id: Nr, neu: BegriffNeu) -> BegriffEintrag:
     e = await begriffsliste.anlegen(buch_id, neu)
     await _gebucht_und_angestossen()
     return e
+
+
+@router.post("/api/books/{buch_id}/begriffe/fragwuerdige/entfernen", response_model=FragwuerdigeEntfernt,
+             dependencies=[Depends(verify_token)])
+async def fragwuerdige_entfernen(buch_id: Nr, weg: FragwuerdigeWeg) -> FragwuerdigeEntfernt:
+    """Entfernt die genannten fragwürdigen Einträge (die, die die Vorschau zeigte); was inzwischen nicht mehr fragwürdig ist,
+    bleibt. Neu übersetzt wird dafür nichts, sie galten nicht."""
+    await _buch(buch_id)
+    entfernt = await begriffsliste.fragwuerdige_entfernen(buch_id, weg.ids)
+    await db.commit()
+    return FragwuerdigeEntfernt(entfernt=entfernt)
 
 
 @router.get("/api/begriffe", response_model=list[BegriffEintrag], dependencies=[Depends(verify_token)])

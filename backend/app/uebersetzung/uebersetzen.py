@@ -4,7 +4,10 @@ Eine Portion sind Blöcke bis etwa `zeichen` Zeichen oder `hoechstens` Blöcke, 
 Kapitelüberschrift, die Begriffe, die in der Portion vorkommen, und die letzten zwei Sätze davor als Zusammenhang; die
 Antwort ist ein JSON-Schema mit genau so vielen Texten wie Blöcken. Gleiche Blöcke einer Portion gehen einmal hinaus.
 Passt die Antwort nicht (Anzahl, Form), wird die Portion halbiert, bis einzelne Blöcke übrig sind; liefert die KI auch für
-einen einzelnen nichts Brauchbares, steht er ohne Übersetzung da (None) und geht in die Nacharbeit.
+einen einzelnen nichts Brauchbares, steht er ohne Übersetzung da (None) und geht in die Nacharbeit. Kommt ein Block
+unverändert englisch zurück (pruefen.unuebersetzt), wird er gleich einzeln mit eigener Anweisung neu angefragt
+(anweisungen.UNUEBERSETZT); in der Nacharbeit bekommt ein solcher Block dieselbe Anweisung statt seiner "früheren
+Übersetzung", denn die Kopie des Originals als frühere Übersetzung lädt das Modell nur ein, sie noch einmal abzuschreiben.
 
 Das Modell sieht den Text als Zeichen (marken.fuer_modell); jede Übersetzung kommt mit geraden Zeichen (zeichen.gerade) in
 der Schreibweise der Vorlagen zurück (marken.aus_modell); geprüft wird sie vom Rufer (pruefen.py)."""
@@ -20,6 +23,7 @@ from pydantic import BaseModel, Field
 from backend.app.uebersetzung import anweisungen, marken
 from backend.app.uebersetzung.begriffe import fuer_text
 from backend.app.uebersetzung.modelle import Anfrage, Anrede, Befund, Begriff, Block, Unbrauchbar
+from backend.app.uebersetzung.pruefen import unuebersetzt
 from backend.app.uebersetzung.sprache import saetze
 from backend.app.uebersetzung.zeichen import gerade
 
@@ -105,14 +109,37 @@ async def uebersetzen(anfrage: Anfrage, bloecke: Sequence[Block], auftrag: Auftr
         hinten = [b for b in bloecke if b.vorlage in eindeutig[mitte:]]
         aus = await uebersetzen(anfrage, vorn, auftrag, vorher)
         return aus | await uebersetzen(anfrage, hinten, auftrag, [*vorher, *vorn])
+    for v, text in list(je_vorlage.items()):
+        if unuebersetzt(v, text, auftrag.begriffe):
+            davor = [*vorher, *bloecke[:next(i for i, b in enumerate(bloecke) if b.vorlage == v)]]
+            je_vorlage[v] = await _noch_einmal(anfrage, v, auftrag, davor) or text
     return {b.kennung: je_vorlage[b.vorlage] for b in bloecke}
+
+
+async def _noch_einmal(anfrage: Anfrage, vorlage: str, auftrag: Auftrag, vorher: Sequence[Block], maengel: list[str] | None = None,
+                       schema_name: str = "uebersetzung") -> str | None:
+    """Ein Block, der unverändert englisch zurückkam, einzeln mit der Anweisung dafür; None, wenn nichts Brauchbares kam."""
+    try:
+        roh = await anfrage(anweisungen.uebersetzen(1, auftrag.anrede, unuebersetzt=True),
+                            _nachricht(auftrag, [vorlage], vorher, {"maengel": maengel} if maengel else None),
+                            schema_name=schema_name, schema=anweisungen.schema_texte(1), titel=auftrag.titel, modell=auftrag.modell)
+        return marken.aus_modell(texte_aus(roh, 1)[0], vorlage)
+    except Unbrauchbar:
+        return None
+
+
+def _maengel(befunde: list[Befund]) -> list[str]:
+    return [b.text + (f" (Stelle: {b.stelle})" if b.stelle else "") for b in befunde]
 
 
 async def nacharbeiten(anfrage: Anfrage, block: Block, frueher: str, befunde: list[Befund], auftrag: Auftrag,
                        vorher: Sequence[Block] = ()) -> str | None:
-    """Ein Block noch einmal, mit der früheren Übersetzung und ihren Mängeln im Auftrag; None, wenn nichts Brauchbares kam."""
-    beanstandet = {"uebersetzung": marken.fuer_modell(frueher),
-                   "maengel": [b.text + (f" (Stelle: {b.stelle})" if b.stelle else "") for b in befunde]}
+    """Ein Block noch einmal, mit der früheren Übersetzung und ihren Mängeln im Auftrag; None, wenn nichts Brauchbares kam.
+    War die frühere Übersetzung das unveränderte Original, geht sie nicht mit, nur ihre Mängel und die Anweisung für einen
+    unübersetzten Block."""
+    if unuebersetzt(block.vorlage, frueher, auftrag.begriffe):
+        return await _noch_einmal(anfrage, block.vorlage, auftrag, vorher, _maengel(befunde), schema_name="nacharbeit")
+    beanstandet = {"uebersetzung": marken.fuer_modell(frueher), "maengel": _maengel(befunde)}
     try:
         roh = await anfrage(anweisungen.uebersetzen(1, auftrag.anrede, nacharbeit=True),
                             _nachricht(auftrag, [block.vorlage], vorher, beanstandet), schema_name="nacharbeit",

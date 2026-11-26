@@ -54,7 +54,8 @@ async def test_ganze_kette_mit_halbieren_nacharbeit_und_bericht(client, test_db,
     zeilen = {z.kennung: z for z in await fassungen.bloecke(fid)}
     assert len(zeilen) == 25
     assert (zeilen["2.2"].stand, zeilen["2.2"].nacharbeiten, zeilen["2.2"].versuche) == ("offen", 2, 3)
-    assert [(b.art, b.quelle) for b in zeilen["2.2"].befunde] == [("zahlen", "pruefung")]
+    assert [(b.art, b.quelle) for b in zeilen["2.2"].befunde] == [("zahlen", "pruefung"), ("antwort", "pruefung")]
+    assert zeilen["2.2"].befunde[1].text == "Die Nacharbeit kam unverändert zurück; die Mängel bestehen weiter"
     assert (zeilen["2.8"].stand, zeilen["2.8"].nacharbeiten, zeilen["2.8"].uebersetzung) == ("nachgearbeitet", 1, DEUTSCH[MARKE])
     assert (zeilen["2.13"].stand, zeilen["2.13"].uebersetzung) == ("nachgearbeitet", DEUTSCH[ENGLISCH])
     assert (zeilen["3.4"].stand, zeilen["3.4"].nacharbeiten, zeilen["3.4"].geprueft) == ("nachgearbeitet", 1, True)
@@ -72,16 +73,23 @@ async def test_ganze_kette_mit_halbieren_nacharbeit_und_bericht(client, test_db,
     nacharbeit = [d for a, d in u.beantwortet if a == "nacharbeit" and d["bloecke"] == [MANGEL]][0]
     assert nacharbeit["beanstandet"] == {"uebersetzung": DEUTSCH[MANGEL], "maengel": ["Der Kasten ist nicht erhöht (Stelle: erhöhter)"]}
     assert Counter(v for v in u.gesendet("nacharbeit")) == {ZAHL: 2, MARKE: 1, ENGLISCH: 1, MANGEL: 1}
+    # unverändert englisch zurück: gleich einzeln mit der Anweisung dafür, in der Nacharbeit ohne die Kopie als frühere Übersetzung
+    einzeln = [json.loads(r.content) for r in chats if json.loads(json.loads(r.content)["messages"][1]["content"]).get("bloecke") == [ENGLISCH]]
+    assert [k["response_format"]["json_schema"]["name"] for k in einzeln] == ["uebersetzung", "nacharbeit"]
+    assert all("unverändert englisch zurück" in k["messages"][0]["content"] for k in einzeln)
+    assert "uebersetzung" not in json.loads(einzeln[1]["messages"][1]["content"])["beanstandet"]
 
     # Begriffe: Regel und KI; was nicht im Buch steht, kam nicht in die Liste
     begriffe = (await client.get(f"/api/books/{buch}/begriffe")).json()
-    assert [(b["englisch"], b["deutsch"], b["bleibt"], b["herkunft"], b["stellen"]) for b in begriffe] == [("pump", "Pumpe", False, "ki", 1)]
+    assert [(b["englisch"], b["deutsch"], b["bleibt"], b["herkunft"], b["stellen"], b["fragwuerdig"]) for b in begriffe] == [
+        ("pump", "Pumpe | pump", False, "ki", 1, "")]                       # das englische Wort ist als zweite Form erlaubt
     assert u.beantwortet[0][0] == "begriffe" and u.beantwortet[0][1]["verzeichnis"] == [
         "Getting Started", "Watering the Beds", "Inhaltsverzeichnis", "Inhaltsverzeichnis"]
 
     # Bericht: die offene Stelle mit Original, Übersetzung und Befund
     bericht = (await client.get(f"/api/fassungen/{fid}/bericht")).json()
-    assert bericht["zahlen"] == {"bloecke": 25, "uebersetzt": 24, "bestanden": 21, "nachgearbeitet": 3, "offen": 1}
+    assert bericht["zahlen"] == {"bloecke": 25, "uebersetzt": 24, "bestanden": 21, "nachgearbeitet": 3, "offen": 1, "verworfen": 0}
+    assert bericht["begriffe_fragwuerdig"] == []
     [offen] = bericht["offen"]
     assert {k: offen[k] for k in ("kennung", "kapitel", "ort", "seite_original", "original", "deutsch")} == {
         "kennung": "2.2", "kapitel": 2, "ort": "Getting Started, Absatz 2", "seite_original": None, "original": ZAHL, "deutsch": FALSCHE_ZAHL}
@@ -151,6 +159,45 @@ async def test_geaenderte_pruefungen_pruefen_neu_ohne_neu_zu_uebersetzen(client,
     assert neu[0][1]["beanstandet"]["maengel"] == ['Der Leser wird mit "du" angesprochen, hier steht "Sie" (Stelle: bevor Sie)']
     assert sorted(p["deutsch"] for _, d in neu if _ == "pruefung" for p in d["paare"]) == sorted(
         [DEUTSCH["Call <x1/> before you start the <t2>pump</t2> & check the <t3>next chapter</t3> for details."], DEUTSCH["Water early, water deep."]])
+
+
+async def test_geaenderte_regeln_kennzeichnen_fragwuerdige_begriffe_und_verwerfen_einwaende(client, test_db, uebersetzer):
+    """Beim Neuprüfen nach geänderten Regeln: Einträge von Regel und KI, die die Regeln von heute nicht bestehen, werden
+    fragwürdig (mit Grund, in Liste und Bericht) und gelten nicht, gelöscht wird nichts; Einträge von Hand bleiben, wie sie
+    sind. Eine offene Stelle, die nur an einem Einwand des Prüfers über Begriffe scheiterte, geht wieder zum Prüfer; Einwände
+    anderer Art werden verworfen und gezählt."""
+    u = uebersetzer
+    buch = await probebuch(test_db)
+    fid = await starten(client, buch)
+    await Uebersetzungslauf(ki).runde()
+    await test_db.execute_many("INSERT INTO begriff (buch_id, englisch, deutsch, bleibt, herkunft, grund) VALUES (?, ?, ?, ?, ?, ?)", [
+        (buch, "Watering", "", 1, "regel", "Name"),                               # groß nur in Überschrift und Verzeichnis
+        (buch, "beds", "Beete", 0, "ki", "üblich"),                               # steht nur in Überschriften: kein Begriff
+        (buch, "tank", "", 1, "hand", "so gewollt"),                              # von Hand: fasst keine Regel an
+    ])
+    await _block_aendern(test_db, fid, "3.2", stand="offen", nacharbeiten=2,
+                         befunde=[Befund(art="begriff", quelle="ki", text="Water muss laut Begriffsliste englisch bleiben")])
+    await test_db.execute("UPDATE fassung SET geprueft_mit = '2:0.8:1.8:60' WHERE id = ?", (fid,))
+    await test_db.commit()
+    u.maengel[DEUTSCH["Water early, water deep."]] = {"in_ordnung": False, "art": "anderes", "grund": "gießen schreibt man groß",
+                                                      "stelle": "gießen"}
+
+    assert (await client.post(f"/api/books/{buch}/fassungen/de")).json()["stand"] == "laeuft"
+    vorher = len(u.beantwortet)
+    await Uebersetzungslauf(ki).runde()
+
+    begriffe = {b["englisch"]: b for b in (await client.get(f"/api/books/{buch}/begriffe")).json()}
+    assert begriffe["Watering"]["fragwuerdig"] == "Kein Name nach der Regel: im Fließtext nicht oft genug mitten im Satz groß"
+    assert begriffe["beds"]["fragwuerdig"] == "Überschrift statt Fachbegriff: steht nur in Überschriften und Titelzeilen"
+    assert begriffe["tank"]["fragwuerdig"] == "" and begriffe["pump"]["fragwuerdig"] == ""
+    zeilen = {z.kennung: z for z in await fassungen.bloecke(fid)}
+    assert (zeilen["3.2"].stand, zeilen["3.2"].befunde, zeilen["3.2"].geprueft) == ("nachgearbeitet", [], True)
+    assert {z.stand for z in zeilen.values()} == {"bestanden", "nachgearbeitet"}             # die fragwürdigen galten nicht
+    assert [a for a, _ in u.beantwortet[vorher:]] == ["pruefung"]                             # nichts neu übersetzt
+    bericht = (await client.get(f"/api/fassungen/{fid}/bericht")).json()
+    assert bericht["zahlen"]["verworfen"] == 2                                               # der alte Einwand und der neue
+    assert [b["englisch"] for b in bericht["begriffe_fragwuerdig"]] == ["beds", "Watering"]
+    assert (await fassungen.holen(fid)).stand == "fertig"
 
 
 async def test_zwischenspeicher_uebersetzt_wiederkehrendes_einmal(client, test_db, uebersetzer):

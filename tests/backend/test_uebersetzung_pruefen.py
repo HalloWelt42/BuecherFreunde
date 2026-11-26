@@ -8,7 +8,7 @@ from backend.app.uebersetzung.marken import aus_modell, fuer_modell, gesichert
 from backend.app.uebersetzung.modelle import Begriff, Laengengrenzen
 from backend.app.uebersetzung.pruefen import (
     bezeichner, pruefe_anrede, pruefe_begriffe, pruefe_bezeichner, pruefe_einheiten, pruefe_laenge, pruefe_marken, pruefe_sprache,
-    pruefe_vollstaendigkeit, pruefe_zahlen, pruefe_zeichen, pruefen,
+    pruefe_vollstaendigkeit, pruefe_zahlen, pruefe_zeichen, pruefen, unuebersetzt,
 )
 from backend.app.uebersetzung.sprache import buch_ist_englisch, englischer_satz, ist_englisch, saetze
 from backend.app.uebersetzung.zeichen import gerade
@@ -138,6 +138,9 @@ def test_zahlen_werte_beider_schreibweisen():
     ("The road is 3 miles long.", "Die Straße ist 3 Meilen lang."),
     ("Wait 5 s.", "Warte 5 s."),
     ("In the 1990s it was slow.", "In den 1990ern war es langsam."),                        # kein s für Sekunden
+    ("Set the flag, BIT.LA[bit 12].<t1>1</t1> A small robot uses it.",                     # Fußnotenzeichen, kein Ampere
+     "Setze das Flag, BIT.LA[Bit 12].<t1>1</t1> Ein kleiner Roboter nutzt es."),
+    ("See BNDx.<t1>2</t1> A bed is chosen.", "Siehe BNDx.<t1>2</t1> Ein Beet wird gewählt."),
 ])
 def test_einheiten_gut(original, deutsch):
     assert pruefe_einheiten(original, deutsch, begriffe=BEGRIFFE) == []
@@ -148,6 +151,7 @@ def test_einheiten_gut(original, deutsch):
     ("The log is 3 GB.", "Das Protokoll hat 3 MB.", "GB fehlt"),
     ("The pipe is 5 feet long.", "Das Rohr ist 5 feet lang.", "nicht als Fuß"),
     ("It holds 50% more.", "Es fasst 50 mehr.", "% fehlt"),
+    ("The pump draws 5 A. Then it rests.", "Die Pumpe zieht 5. Dann ruht sie.", "A fehlt"),              # Ampere bleibt Ampere
 ])
 def test_einheiten_schlecht(original, deutsch, im_text):
     befunde = pruefe_einheiten(original, deutsch, begriffe=BEGRIFFE)
@@ -282,6 +286,44 @@ def test_begriffe_schlecht_trotz_beugung(original, deutsch, im_text):
         assert im_text in befund.text
 
 
+RAND = [Begriff(englisch="5-Level Paging", bleibt=True), Begriff(englisch="IA-32e mode", bleibt=True),
+        Begriff(englisch="x86-64", bleibt=True), Begriff(englisch="C++", bleibt=True), Begriff(englisch=".NET", bleibt=True),
+        Begriff(englisch="paging", deutsch="Seitenverwaltung"), Begriff(englisch="server", bleibt=True)]
+
+
+@pytest.mark.parametrize("original, deutsch", [
+    ("It uses 5-level paging.", "Er nutzt 5-Level Paging."),
+    ("It uses 5- level paging.", "Er nutzt 5-Level-Paging."),                              # Zeilenumbruch im PDF, Bindestrich
+    ("It uses 5\u2013level paging.", "Er nutzt 5-Level Paging."),                          # Strich im Original
+    ("(5-level paging) is new.", "(5-Level Paging) ist neu."),
+    ("Enter IA-32e mode now.", "Wechsle jetzt in den IA-32e mode."),
+    ("It runs on x86-64.", "Es läuft auf x86-64."),
+    ("Write C++ code.", "Schreibe C++-Code."),
+    ("Use .NET here.", "Nutze hier .NET."),
+    # Teil eines längeren Begriffs: paging in 5-level paging zählt für den längeren, nicht für sich
+    ("With 5-level paging the hierarchy grows.", "Mit 5-Level Paging wächst die Hierarchie."),
+    # Server bleibt englisch, auch vorn und hinten in einem zusammengesetzten Wort
+    ("Scale the server infrastructure.", "Skaliere die Serverinfrastruktur."),
+    ("Each web server answers.", "Jeder Webserver antwortet."),
+])
+def test_begriffe_an_wortgrenzen_mit_ziffern_und_zeichen(original, deutsch):
+    assert pruefe_begriffe(original, deutsch, begriffe=RAND) == []
+
+
+@pytest.mark.parametrize("original, deutsch, im_text", [
+    ("It uses 5-level paging.", "Er nutzt die 5-Level Seitenverwaltung.", "5-Level Paging bleibt englisch"),
+    ("Enter IA-32e mode now.", "Wechsle jetzt in den IA-32-Modus.", "IA-32e mode bleibt englisch"),
+    ("It runs on x86-64.", "Es läuft auf x86.", "x86-64 bleibt englisch"),
+    ("Write C++ code.", "Schreibe C-Code.", "C++ bleibt englisch"),
+    ("Use .NET here.", "Nutze hier NETZ.", ".NET bleibt englisch"),
+    ("With 5-level paging and paging alone.", "Mit 5-Level Paging und Paging allein.", "paging heißt hier Seitenverwaltung"),
+    ("Scale the server.", "Skaliere den Service.", "server bleibt englisch"),            # Serv steckt nicht in Service
+])
+def test_begriffe_an_wortgrenzen_schlecht(original, deutsch, im_text):
+    [befund] = pruefe_begriffe(original, deutsch, begriffe=RAND)
+    assert im_text in befund.text
+
+
 # -- Sprache ------------------------------------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("original, deutsch", [
@@ -289,9 +331,18 @@ def test_begriffe_schlecht_trotz_beugung(original, deutsch, im_text):
     ("See <t1>The Art of the Garden</t1> for more.", "Mehr dazu in <t1>The Art of the Garden</t1>."),   # ein Titel bleibt
     ("Each thread is cheap.", "Jeder Thread ist billig."),
     ("Python", "Python"),                                                                  # nur ein Name
+    ("<t1>5-Level Paging</t1>", "<t1>5-Level Paging</t1>"),                                  # nur ein Begriff, der bleibt
 ])
 def test_sprache_gut(original, deutsch):
-    assert pruefe_sprache(original, deutsch, begriffe=BEGRIFFE) == []
+    assert pruefe_sprache(original, deutsch, begriffe=[*BEGRIFFE, *RAND]) == []
+
+
+def test_unveraendert_mit_gedankenstrich_ist_unuebersetzt():
+    """Jede Antwort bekommt gerade Zeichen: ein abgeschriebener Block mit Gedankenstrich ist danach nicht mehr zeichengleich und
+    gilt trotzdem als unübersetzt."""
+    en = "A tank fault \u2014 #TF \u2014 occurs if the lid is open."
+    assert unuebersetzt(en, gerade(en), []) and unuebersetzt("Introduction", "Introduction", [])
+    assert not unuebersetzt("Gardenix", "Gardenix", []) and not unuebersetzt(en, "Ein Tankfehler tritt auf.", [])
 
 
 @pytest.mark.parametrize("original, deutsch, stelle", [
@@ -300,6 +351,8 @@ def test_sprache_gut(original, deutsch):
     ("You should check the filter before the first run.", "You should check the filter before the first run.",
      "You should check the filter before the first run."),
     ("Check the green filter now", "Check the green filter now", "Check the green filter now"),          # unübersetzt
+    ("<t1>2.1 5-Level Paging: Introduction</t1>", "<t1>2.1 5-Level Paging: Introduction</t1>",           # ein Alltagswort
+     "2.1 5-Level Paging: Introduction"),
 ])
 def test_sprache_schlecht(original, deutsch, stelle):
     [befund] = pruefe_sprache(original, deutsch, begriffe=BEGRIFFE)

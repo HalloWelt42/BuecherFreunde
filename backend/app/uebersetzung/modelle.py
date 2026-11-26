@@ -9,12 +9,14 @@ from pydantic import BaseModel, Field
 
 from backend.app.uebersetzung.bloecke import Art
 
-#: Arten von Befunden: die zehn festen Prüfungen, eine unbrauchbare Antwort, die Arten des KI-Prüfers
+#: Arten von Befunden: die zehn festen Prüfungen, eine unbrauchbare Antwort, die Arten des KI-Prüfers (begriff und grammatik
+#: stehen nur noch in Befunden aus der Zeit, als der Prüfer auch darüber urteilte; sie gelten nicht mehr, pruefer.py)
 Befundart = Literal["marken", "zahlen", "einheiten", "bezeichner", "begriffe", "sprache", "laenge", "vollstaendigkeit", "zeichen",
                     "anrede", "antwort", "sinn", "ausgelassen", "hinzugefuegt", "begriff", "grammatik", "pruefer"]
 #: wie der Leser angesprochen wird; ein Buch bleibt durchgehend bei einer
 Anrede = Literal["du", "Sie"]
-KI_ARTEN: tuple[Befundart, ...] = ("sinn", "ausgelassen", "hinzugefuegt", "begriff", "grammatik")
+#: worüber der KI-Prüfer urteilt; Begriffe, Schreibung, Zeichen und Anrede prüfen die festen Prüfungen
+KI_ARTEN: tuple[Befundart, ...] = ("sinn", "ausgelassen", "hinzugefuegt")
 
 
 class Befund(BaseModel):

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, StringConstraints, model_validator
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 
-from backend.app.models.grenzen import BEGRIFF, BEGRIFF_GRUND, BLOCKTEXT, Leseposition
+from backend.app.models.grenzen import AUSWAHL_HOECHSTENS, BEGRIFF, BEGRIFF_GRUND, BLOCKTEXT, Leseposition, Nr
 from backend.app.uebersetzung.modelle import Anrede, Befund
 
 Stand = Literal["laeuft", "pause", "teilweise", "fertig", "fehler"]
@@ -123,6 +123,7 @@ class Zahlen(BaseModel):
     bestanden: int = 0                               # im ersten Versuch durch alle Prüfungen
     nachgearbeitet: int = 0                          # nach Nacharbeit durch alle Prüfungen
     offen: int = 0                                   # im Original, im Bericht
+    verworfen: int = 0                               # Einwände des KI-Prüfers anderer Art (Begriffe, Schreibung), die nicht gelten
 
 
 class FassungStand(BaseModel):
@@ -155,6 +156,7 @@ class OffeneStelle(BaseModel):
 class Bericht(BaseModel):
     zahlen: Zahlen
     offen: list[OffeneStelle]
+    begriffe_fragwuerdig: list[BegriffEintrag] = Field(default_factory=list)   # gelten nicht, bis der Nutzer entscheidet
 
 
 class BlockAktion(BaseModel):
@@ -184,6 +186,16 @@ class BegriffEintrag(BaseModel):
     stellen: int
     grund: str
     art: Begriffsart = "begriff"
+    fragwuerdig: str = ""                            # warum ein Eintrag von Regel oder KI die Regeln nicht besteht; leer: gilt
+
+
+class FragwuerdigeWeg(BaseModel):
+    """Welche fragwürdigen Einträge eines Buchs weg sollen: die, die die Vorschau zeigte."""
+    ids: list[Nr] = Field(min_length=1, max_length=AUSWAHL_HOECHSTENS)
+
+
+class FragwuerdigeEntfernt(BaseModel):
+    entfernt: list[int]                              # was inzwischen nicht mehr fragwürdig ist, bleibt
 
 
 Englisch = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=BEGRIFF)]

@@ -82,6 +82,7 @@ class FassungZeile(BaseModel):
     anweisung: int = 0
     anrede: Anrede = "du"
     geprueft_mit: str = ""
+    pruefer_verworfen: int = 0
     begonnen: str | None = None
     bisher_s: float = 0
     angelegt_am: str
@@ -372,6 +373,12 @@ async def satz(f: FassungZeile, mit_hinweis: bool = True) -> Satz:
 def epub_bauen(b: Buchangaben, original: bytes, s: Satz) -> bytes:
     """Die deutsche Fassung aus dem Original und dem Satz, immer ein EPUB (im Faden rufen)."""
     return werk_aus(b, original).setzen(s)
+
+
+async def verworfen_zaehlen(fid: int, n: int) -> None:
+    """Einwände des KI-Prüfers, die nicht gelten (Begriffe, Schreibung, Anrede), an der Fassung zählen."""
+    if n:
+        await db.execute("UPDATE fassung SET pruefer_verworfen = pruefer_verworfen + ? WHERE id = ?", (n, fid))
 
 
 # -- Aktionen an einem Block --------------------------------------------------------------------------------------------------

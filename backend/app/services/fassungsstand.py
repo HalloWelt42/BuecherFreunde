@@ -23,7 +23,7 @@ from backend.app.services import begriffsliste, fassung_ablage, fassungen
 from backend.app.services.fassungen import BlockZeile, Buchangaben, FassungZeile
 from backend.app.services.ki import ki
 from backend.app.services.uebersetzungslauf import uebersetzungslauf
-from backend.app.uebersetzung import begriffe, marken
+from backend.app.uebersetzung import begriffe, marken, vorgaben
 from backend.app.uebersetzung.sprache import buch_ist_englisch
 from backend.app.uebersetzung.werk import FORMATE, NichtLesbar
 
@@ -56,10 +56,10 @@ async def tempo(f: FassungZeile | None = None) -> float:
 
 # -- Zahlen -------------------------------------------------------------------------------------------------------------------
 
-def zahlen_aus(zeilen: list[BlockZeile]) -> Zahlen:
+def zahlen_aus(zeilen: list[BlockZeile], verworfen: int = 0) -> Zahlen:
     n = Counter(z.stand for z in zeilen)
     return Zahlen(bloecke=len(zeilen), uebersetzt=sum(n[s] for s in MIT_DEUTSCH), bestanden=n["bestanden"],
-                  nachgearbeitet=n["nachgearbeitet"], offen=n["offen"])
+                  nachgearbeitet=n["nachgearbeitet"], offen=n["offen"], verworfen=verworfen)
 
 
 def _kapitel_fertig(zeilen: list[BlockZeile]) -> bool:
@@ -145,7 +145,7 @@ async def folgen(b: Buchangaben, sprache: str = "de") -> Folgen:
     dauer = _seiten(offen) * s_je_seite
     seiten = werk.seiten if werk.seiten is not None else math.ceil(_seiten(sum(x.woerter for x in bloecke)))
     return Folgen(seiten=seiten, kapitel=len(werk.kapitel()), bloecke=len(bloecke),
-                  begriffe=len(vorhanden) + len(begriffe.namen(bloecke, vorhanden)), abbildungen=werk.abbildungen,
+                  begriffe=len(vorhanden) + len(begriffe.namen(bloecke, vorhanden, vorgaben.alltagswoerter())), abbildungen=werk.abbildungen,
                   dauer_s=round(dauer, 1), fertig_gegen=_um(dauer), tempo_s_je_seite=round(s_je_seite, 1),
                   ablage=await fassung_ablage.ort(sprache, b), anrede=anrede, geht=True)
 
@@ -198,18 +198,21 @@ async def stand(f: FassungZeile) -> FassungStand:
     return FassungStand(id=f.id, stand=f.stand, begonnen=f.begonnen, bisher_s=round(f.bisher_s, 1), noch_s=round(noch, 1),
                         fertig_gegen=_um(noch) if f.stand == "laeuft" else None, tempo_s_je_seite=round(s_je_seite, 1),
                         kapitel_jetzt=jetzt.kapitel if jetzt else None, block_jetzt=jetzt.block if jetzt else None,
-                        stationen=_stationen(f, zeilen, jetzt.station if jetzt else None), kapitel=kapitel, zahlen=zahlen_aus(zeilen),
+                        stationen=_stationen(f, zeilen, jetzt.station if jetzt else None), kapitel=kapitel,
+                        zahlen=zahlen_aus(zeilen, f.pruefer_verworfen),
                         grund=f.grund)
 
 
 # -- Bericht ------------------------------------------------------------------------------------------------------------------
 
 async def bericht(f: FassungZeile) -> Bericht:
+    """Zahlen, jede offene Stelle und die fragwürdigen Einträge der Begriffsliste (sie gelten nicht, bis der Nutzer entscheidet)."""
     zeilen = await fassungen.bloecke(f.id)
     titel = {k.nr: k.titel for k in await fassungen.kapitel(f.id)}
     offen = [OffeneStelle(kennung=z.kennung, kapitel=z.kapitel, ort=f"{titel.get(z.kapitel, z.kapitel)}, {ARTWORT.get(z.art, z.art)} {z.nr}",
                           seite_original=z.seite, seite_gedruckt=z.seite_gedruckt, original=z.vorlage, deutsch=z.uebersetzung,
                           befunde=z.befunde)
              for z in zeilen if z.stand == "offen"]
-    return Bericht(zahlen=zahlen_aus(zeilen), offen=offen)
+    fragwuerdig = [e for e in await begriffsliste.liste(f.buch_id) if e.fragwuerdig]
+    return Bericht(zahlen=zahlen_aus(zeilen, f.pruefer_verworfen), offen=offen, begriffe_fragwuerdig=fragwuerdig)
 

@@ -91,18 +91,28 @@ Je Buch eine Liste im Format `begriffe`, `einheiten`, `regeln` (wie in den Buchp
 Bücher.
 
 1. **Regeln:** Inline-Code, Bezeichner (CamelCase, snake_case, Aufrufe `name()`), Abkürzungen in Großbuchstaben,
-   Dateinamen, Befehle, Versionen und Produktnamen (gleich geschrieben über das ganze Buch, groß am Satzanfang und mitten
-   im Satz) bleiben.
+   Dateinamen, Befehle, Versionen und Produktnamen bleiben. Namen kommen nur aus dem Fließtext: gleich geschrieben über das
+   ganze Buch, nie klein, mindestens dreimal mitten im Satz groß (nicht gleich nach einem Doppelpunkt). Überschriften und
+   Titelzeilen (Einträge im Verzeichnis, Tabellenköpfe, Zeilen aus lauter großen Wörtern ohne Punkt am Ende) zählen nicht,
+   gewöhnliche Wörter (`alltagswoerter` in vorgaben.json) sind nie Namen.
 2. **KI-Vorschlag:** Aus Inhaltsverzeichnis, Stichwortverzeichnis und Stichproben schlägt die KI Fachbegriffe vor, je mit
-   "bleibt englisch" oder "auf Deutsch: ..." und kurzem Grund (Thread bleibt, Listing bleibt, Event Loop bleibt). Englisch
-   bleiben nur Fachbegriffe und Namen von Produkten, Bibliotheken, Befehlen und Dateien; gewöhnliche Wörter werden
-   übersetzt. Ein Vorschlag "bleibt englisch" aus lauter Alltagswörtern (`alltagswoerter` in vorgaben.json) wird verworfen.
+   "bleibt englisch" oder einer oder mehreren deutschen Formen und kurzem Grund. Fachbegriffe, die im deutschen Fachtext
+   gebräuchlich englisch bleiben (Paging, Cache, Interrupt, Thread, Exception als Fachwort), bleiben englisch; eine deutsche
+   Form nur, wenn sie im Fach üblich ist. Neben der deutschen Form gilt das englische Wort als erlaubte Form, außer die KI
+   verbietet es (`nur_deutsch`). Verworfen wird: "bleibt englisch" aus lauter Alltagswörtern, eine deutsche Form für ein
+   Fachwort aus `englisch_im_fach` (vorgaben.json), wenn die vereinbarte Form es nicht trägt, und eine Überschrift statt eines
+   Begriffs (steht nur in Überschriften und Titelzeilen).
 3. **Pflege:** Die Liste ist an der Buchseite einsehbar und änderbar. Eine Änderung markiert nur die betroffenen Blöcke zum
    Neuübersetzen.
+4. **Fragwürdig:** Ein Eintrag von Regel oder KI, der die Regeln von heute nicht besteht (beim Anlegen der Liste und bei jeder
+   neuen Fassung der Prüfungen geprüft), wird mit Grund gekennzeichnet, nie gelöscht. Er gilt nicht (weder das Modell noch
+   die Prüfung bekommt ihn), bis der Nutzer ihn ändert (dann gilt er, von Hand) oder entfernt; "Fragwürdige entfernen" in
+   der Begriffsliste nennt vorher jeden mit Grund und fragt nach. Entfernen übersetzt nichts neu, er galt ja nicht.
 
 Eine deutsche Form darf mehrere erlaubte Formen tragen, mit `|` getrennt ("KI | künstliche Intelligenz"); die erste ist die
 vereinbarte, die das Modell bekommt, die Prüfung nimmt jede. Abkürzungen mit üblicher deutscher Entsprechung (AI: KI) stehen
-in der Liste für alle Bücher; andere Abkürzungen bleiben.
+in der Liste für alle Bücher; andere Abkürzungen bleiben. Liegt die Stelle eines Begriffs ganz in der eines längeren Begriffs
+der Liste (paging in 5-level paging), zählt sie nur für den längeren, beim Auftrag an das Modell wie in der Prüfung.
 
 ## Übersetzen
 
@@ -110,6 +120,12 @@ in der Liste für alle Bücher; andere Abkürzungen bleiben.
   Begriffsliste für diese Portion und die letzten zwei Sätze davor als Zusammenhang.
 - Antwort als JSON-Schema mit genau so vielen Texten wie Blöcken, temperature 0, Priorität Hintergrund.
 - Passt die Antwort nicht (Anzahl, Format), wird die Portion halbiert, dann einzeln versucht.
+- Kommt ein Block unverändert englisch zurück, wird er gleich einzeln mit eigener Anweisung neu angefragt ("kam eben
+  unverändert englisch zurück, übersetze jeden Satz"). Verglichen wird mit geraden Zeichen, wie jede Antwort sie bekommt: ein
+  abgeschriebener Absatz mit Gedankenstrich ist sonst nicht zeichengleich. In der Nacharbeit geht die Kopie des Originals
+  nie als "frühere Übersetzung" mit, nur ihre Mängel und dieselbe Anweisung.
+- Kommt eine Nacharbeit unverändert zurück, steht das als Befund dabei; so ist die nächste Nacharbeit (Temperatur 0) nicht
+  wörtlich dieselbe Anfrage.
 - Zwischenspeicher je Block über die Prüfsumme aus Text, Begriffsliste und Fassung der Anweisung: Wiederkehrendes
   (Kopfzeilen, gleiche Absätze) wird einmal übersetzt.
 
@@ -121,24 +137,30 @@ in der Liste für alle Bücher; andere Abkürzungen bleiben.
 |---|---|
 | Marken | jede Marke genau einmal, gleiche Schachtelung, keine fremde Auszeichnung |
 | Zahlen | dieselben Zahlen, nach Angleichen der Tausender- und Dezimalzeichen (16,000 = 16.000; 1.5 = 1,5) |
-| Einheiten | dieselben Einheiten, keine von selbst zugefügte Umrechnung |
+| Einheiten | dieselben Einheiten, keine von selbst zugefügte Umrechnung; eine Zahl gleich hinter dem Satzende ist ein Fußnotenzeichen ("[bit 12].1 A logical": kein Ampere) |
 | Bezeichner | Inline-Code, Bezeichner, Adressen und Dateinamen unverändert; eine Abkürzung nur, wenn sie keine deutsche Form in der Begriffsliste hat; Wörter aus zwei großen Wörtern in Überschriftzeilen (ein verlorener Bindestrich: CrossPlatform) nicht |
-| Begriffe | jeder Begriff mit "bleibt" steht da, jeder mit Übersetzung in einer erlaubten Form, gebeugt (ansprechender Spiele) oder als Teil eines zusammengesetzten Worts (Spieleplattformen); kurze Stämme nur an Wortgrenzen |
-| Sprache | kein englischer Satz übrig (Stoppwörter je Satz, Begriffe, Code und Namen mit ihrer Abkürzung ausgenommen) |
+| Begriffe | jeder Begriff mit "bleibt" steht da, jeder mit Übersetzung in einer erlaubten Form, gebeugt (ansprechender Spiele) oder als Teil eines zusammengesetzten Worts (Spieleplattformen, Serverleistung); kurze Stämme nur an Wortgrenzen; Ziffern und Zeichen am Rand gehören zum Begriff (5-Level Paging, IA-32e mode, x86-64, C++, .NET) |
+| Sprache | kein englischer Satz übrig (Stoppwörter je Satz, Begriffe, Code und Namen mit ihrer Abkürzung ausgenommen); ein unverändert gebliebener Block ist unübersetzt, wenn danach drei Wörter oder ein Alltagswort bleiben (5-Level Paging: Introduction) |
 | Länge | Verhältnis Deutsch zu Englisch zwischen 0,8 und 1,8 je Block |
 | Vollständigkeit | gleiche Zahl an Sätzen, nichts ausgelassen, nichts hinzugefügt (Abweichung höchstens eins) |
 | Zeichen | echte Umlaute, gerade Anführungszeichen, keine Sonderstriche, keine Zeichenreferenz als Text (`&lt;` statt `<`) |
 | Anrede | durchgehend die Anrede der Fassung: bei du kein Sie, Ihnen, Ihr im Satzinneren (am Satzanfang nur, wenn das Original den Leser anspricht und ein Verb in der Mehrzahl folgt), bei Sie kein du, dich, dir, dein |
 
 Ändert sich die Fassung der festen Prüfungen (`pruefen.FASSUNG`, mit den Grenzen der Länge in `fassung.geprueft_mit`),
-prüft der nächste Durchgang alles, was die KI übersetzt hat, ohne neue Anfrage noch einmal: was besteht, bleibt; eine
-offene Stelle, die nur an den festen Prüfungen scheiterte, geht zum KI-Prüfer; was neu durchfällt, geht mit vollen
-Nacharbeiten in die Nacharbeit. Texte und Annahmen des Nutzers bleiben. Eine fertige Fassung läuft dafür beim Start wieder.
+prüft der nächste Durchgang zuerst die Begriffsliste nach den Regeln von heute (fragwürdige Einträge gelten nicht), dann
+alles, was die KI übersetzt hat, ohne neue Anfrage noch einmal: was besteht, bleibt; eine offene Stelle, die nur an den
+festen Prüfungen oder an einem Einwand des Prüfers scheiterte, der nicht mehr gilt, geht zum KI-Prüfer; was neu durchfällt,
+geht mit vollen Nacharbeiten in die Nacharbeit. Texte und Annahmen des Nutzers bleiben. Eine fertige Fassung läuft dafür beim
+Start wieder.
 
 **KI-Prüfer:** Nach den festen Prüfungen bekommt eine zweite Anfrage, nach Möglichkeit mit einem anderen Modell, Original
-und Übersetzung satzweise und urteilt je Block: in Ordnung, oder Mangel mit Art (Sinn, ausgelassen, hinzugefügt, Begriff,
-Grammatik) und Grund. Ein Mangel schickt den Block mit dem Grund im Auftrag zur Nacharbeit; eine Korrektur gilt erst, wenn
-sie die festen Prüfungen wieder besteht. Nach zwei Nacharbeiten bleibt der Block im Original (`lang="en"`, sichtbar
+und Übersetzung satzweise und urteilt je Block nur über den Inhalt: in Ordnung, oder Mangel mit Art (Sinn, ausgelassen,
+hinzugefügt) und Grund. Begriffe, Rechtschreibung, Zeichen und Anrede prüfen die festen Prüfungen; der Prüfer bekommt die
+Begriffsliste darum nicht. Einwände anderer Art (Art "anderes", oder ein Grund, der sich auf eine Begriffsliste beruft) und
+solche aus der Zeit, als er auch über Begriffe und Grammatik urteilte, gelten nicht: sie werden verworfen und im Bericht
+gezählt (`zahlen.verworfen`); eine offene Stelle, die nur daran scheiterte, geht beim Neuprüfen wieder zum Prüfer. Ein
+Mangel schickt den Block mit dem Grund im Auftrag zur Nacharbeit; eine Korrektur gilt erst, wenn sie die festen Prüfungen
+wieder besteht. Nach zwei Nacharbeiten bleibt der Block im Original (`lang="en"`, sichtbar
 markiert) und erscheint im Prüfbericht. Beanstandetes wird nie still eingesetzt.
 
 **Prüfbericht** je Kapitel: Blöcke gesamt, bestanden, nachgearbeitet, offen; je offener Stelle Original, Übersetzung,
@@ -198,11 +220,12 @@ nur erfundene Texte.
 | `GET /api/fassungen` | Fassungen in Arbeit (läuft, Pause, Fehler) für die Aufträge: `[{id, buch_id, titel, sprache, stand, anteil, kapitel_fertig, kapitel_gesamt, fertig_gegen, grund}]` |
 | `GET /api/books/{id}/fassungen/de/folgen` | Rückfrage vor dem Start: `{seiten, kapitel, bloecke, begriffe, abbildungen, dauer_s, fertig_gegen, tempo_s_je_seite, ablage: {ort, pfad}, anrede, geht, grund}`; `ort` kellerwolke oder geraet; `anrede` die der Fassung, ohne Fassung die Vorgabe; `seiten` beim PDF die Seiten des PDF; `geht` false mit Grund, wenn das Buch nicht englisch ist, das Format noch nicht übersetzt wird (EPUB und PDF werden es) oder ein PDF keinen Text zum Zerlegen hat (Scan: "Texterkennung folgt in der nächsten Stufe") |
 | `POST /api/books/{id}/fassungen/de` | startet (oder setzt fort, auch eine fertige mit geänderten Prüfungen), Antwort Stand; Körper optional `{anrede: "du" \| "Sie"}` für eine neue Fassung, ohne Angabe die Vorgabe; eine andere Anrede für eine bestehende Fassung gibt 409 |
-| `GET /api/fassungen/{fid}/stand` | `{id, stand, begonnen, bisher_s, noch_s, fertig_gegen, tempo_s_je_seite, kapitel_jetzt, block_jetzt, stationen: [{name, stand, text}], kapitel: [{nr, titel, stand, dauer_s, geschaetzt, bloecke, fertig, geprueft, nachgearbeitet, offen}], zahlen: {bloecke, uebersetzt, bestanden, nachgearbeitet, offen}, grund}`; Stationen in fester Folge: Zerlegen, Begriffe, Übersetzen, Prüfen, Nacharbeit, Setzen; Stand je Station: wartet, laeuft, fertig |
+| `GET /api/fassungen/{fid}/stand` | `{id, stand, begonnen, bisher_s, noch_s, fertig_gegen, tempo_s_je_seite, kapitel_jetzt, block_jetzt, stationen: [{name, stand, text}], kapitel: [{nr, titel, stand, dauer_s, geschaetzt, bloecke, fertig, geprueft, nachgearbeitet, offen}], zahlen: {bloecke, uebersetzt, bestanden, nachgearbeitet, offen, verworfen}, grund}`; Stationen in fester Folge: Zerlegen, Begriffe, Übersetzen, Prüfen, Nacharbeit, Setzen; Stand je Station: wartet, laeuft, fertig |
 | `POST /api/fassungen/{fid}/pause`, `.../fortsetzen`, `.../abbrechen` | Stand; Abbrechen behält Fertiges, die Fassung bleibt "teilweise" |
-| `GET /api/fassungen/{fid}/bericht` | `{zahlen, offen: [{kennung, kapitel, ort, seite_original, seite_gedruckt, original, deutsch, befunde: [{art, quelle, text, stelle}]}]}`; `quelle` pruefung oder ki; `stelle` das beanstandete Stück im deutschen Text; beim PDF `seite_original` die Seite im PDF, `seite_gedruckt` ihre Beschriftung |
+| `GET /api/fassungen/{fid}/bericht` | `{zahlen, offen: [{kennung, kapitel, ort, seite_original, seite_gedruckt, original, deutsch, befunde: [{art, quelle, text, stelle}]}], begriffe_fragwuerdig: [Begriff]}`; `quelle` pruefung oder ki; `stelle` das beanstandete Stück im deutschen Text; beim PDF `seite_original` die Seite im PDF, `seite_gedruckt` ihre Beschriftung; `zahlen.verworfen` die Einwände des Prüfers, die nicht gelten; `begriffe_fragwuerdig` die fragwürdigen Einträge der Begriffsliste |
 | `POST /api/fassungen/{fid}/bloecke/{kennung}` | `{aktion: "neu" \| "annehmen" \| "setzen", text?}`; "setzen" nimmt deinen Text (Marken wie im Bericht, Zeichen wie < und & dürfen roh stehen), wenn er die festen Prüfungen besteht, sonst 422 mit Befunden |
-| `GET /api/books/{id}/begriffe`, `POST`, `PATCH /api/begriffe/{bid}`, `DELETE` | Begriffsliste je Buch `[{id, englisch, deutsch, bleibt, herkunft, stellen, grund, art}]`; `art` begriff oder einheit, `herkunft` regel, ki, hand oder vorgabe; `GET /api/begriffe` und `POST /api/begriffe` die Liste für alle Bücher |
+| `GET /api/books/{id}/begriffe`, `POST`, `PATCH /api/begriffe/{bid}`, `DELETE` | Begriffsliste je Buch `[{id, englisch, deutsch, bleibt, herkunft, stellen, grund, art, fragwuerdig}]`; `art` begriff oder einheit, `herkunft` regel, ki, hand oder vorgabe; `fragwuerdig` der Grund, warum ein Eintrag von Regel oder KI die Regeln nicht besteht (leer: er gilt); `PATCH` macht einen Eintrag zu einem von Hand, der gilt; `DELETE` eines fragwürdigen übersetzt nichts neu; `GET /api/begriffe` und `POST /api/begriffe` die Liste für alle Bücher |
+| `POST /api/books/{id}/begriffe/fragwuerdige/entfernen` | `{ids}` (die, die die Vorschau zeigte) entfernt diese fragwürdigen Einträge; was inzwischen nicht mehr fragwürdig ist, bleibt; neu übersetzt wird nichts; Antwort `{entfernt: [id]}` |
 | `GET /api/fassungen/{fid}/datei` | die deutsche Fassung als EPUB für den Leser, auch teilweise (offene Blöcke im Original mit Marke) |
 | `GET`, `PATCH /api/fassungen/{fid}/leseposition` | `{position, gelesen_am}`, Body `{position}`: der Lesestand dieser Fassung, bis zum gemeinsamen Lesestand getrennt vom Original (Tabelle `fassung_lesestand`); Lesestand, Vorlesestelle, Notizen und Markierungen des Originals bleiben unberührt |
 

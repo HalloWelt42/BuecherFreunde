@@ -102,7 +102,7 @@ async def test_bericht_nennt_die_seite_im_original(client, test_db, uebersetzer)
     [offen] = (await client.get(f"/api/fassungen/{fid}/bericht")).json()["offen"]
     assert {k: offen[k] for k in ("kennung", "ort", "seite_original", "seite_gedruckt", "original")} == {
         "kennung": "1.20", "ort": "1 Getting Started, Absatz 20", "seite_original": 2, "seite_gedruckt": "12", "original": WASSER}
-    assert [b["art"] for b in offen["befunde"]] == ["marken"]
+    assert [b["art"] for b in offen["befunde"]] == ["marken", "antwort"]             # die Nacharbeit änderte nichts
     # die Stelle steht im Original, markiert, mit ihrer Seitenmarke
     b = await fassungen.buch(buch)
     k1 = dateien((settings.storage_dir / b.hash[:2] / b.hash[2:4] / b.hash / "Fassungen" / "de" / "Garten.epub").read_bytes())[

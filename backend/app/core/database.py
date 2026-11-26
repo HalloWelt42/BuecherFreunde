@@ -522,6 +522,8 @@ NEUBAU_SPALTEN: tuple[tuple[str, str, str], ...] = (
     # Übersetzung (BF-71, services/fassungen.py)
     ("fassung", "anrede", "TEXT NOT NULL DEFAULT 'du'"),           # du, Sie: so spricht die Fassung den Leser an, durchgehend
     ("fassung", "geprueft_mit", "TEXT NOT NULL DEFAULT ''"),       # womit die Blöcke fest geprüft sind; weicht es ab: neu prüfen
+    ("fassung", "pruefer_verworfen", "INTEGER NOT NULL DEFAULT 0"),  # Einwände des KI-Prüfers anderer Art, die nicht gelten
+    ("begriff", "fragwuerdig", "TEXT NOT NULL DEFAULT ''"),        # warum ein Eintrag von Regel oder KI die Regeln nicht besteht
     # Übersetzung aus einem PDF (BF-71): wo der Block im Original steht
     ("uebersetzung_block", "seite", "INTEGER DEFAULT NULL"),       # Dateiseite ab 1; leer bei EPUB
     ("uebersetzung_block", "seite_gedruckt", "TEXT NOT NULL DEFAULT ''"),  # die Beschriftung dieser Seite, sonst die Dateiseite

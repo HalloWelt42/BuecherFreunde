@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Allgemeine Begriffsliste für alle Bücher (BF-71), im Format der Buchprojekte: englisch -> deutsch, leer heißt bleibt englisch; mehrere erlaubte Formen mit | getrennt, die erste ist die vereinbarte. Kommt einmal je Fassung in die Tabelle begriff (Herkunft vorgabe) und ist danach dort änderbar; Regeln stehen in uebersetzung/anweisungen.py. Abkürzungen stehen nur hier, wenn das Deutsche eine übliche Entsprechung hat (AI: KI); sonst bleiben sie. alltagswoerter: gewöhnliche englische Wörter; ein Vorschlag der KI 'bleibt englisch' nur aus solchen Wörtern wird verworfen.",
+  "_hinweis": "Allgemeine Begriffsliste für alle Bücher (BF-71), im Format der Buchprojekte: englisch -> deutsch, leer heißt bleibt englisch; mehrere erlaubte Formen mit | getrennt, die erste ist die vereinbarte. Kommt einmal je Fassung in die Tabelle begriff (Herkunft vorgabe) und ist danach dort änderbar; Regeln stehen in uebersetzung/anweisungen.py. Abkürzungen stehen nur hier, wenn das Deutsche eine übliche Entsprechung hat (AI: KI); sonst bleiben sie. alltagswoerter: gewöhnliche englische Wörter; ein Vorschlag der KI 'bleibt englisch' nur aus solchen Wörtern wird verworfen, die Regel für Namen nimmt sie nie, und ein unverändert gebliebener Block mit einem von ihnen ist unübersetzt. englisch_im_fach: Fachwörter, die im deutschen Fachtext gebräuchlich englisch bleiben; ein Vorschlag der KI, der ihnen eine deutsche Form gibt, wird verworfen, ein solcher Eintrag in einer bestehenden Liste ist fragwürdig.",
   "fassung": 2,
   "begriffe": {
     "AI": "KI | künstliche Intelligenz",
@@ -29,5 +29,11 @@
     "project", "question", "quick", "quickly", "reading", "resource", "section", "simple", "solution", "start", "started",
     "step", "strategy", "summary", "technique", "tip", "tutorial", "understanding", "use", "using", "way", "work", "working",
     "world"
+  ],
+  "englisch_im_fach": [
+    "backend", "browser", "bug", "cache", "callback", "client", "cluster", "compiler", "container", "cookie", "debugger",
+    "deployment", "exception", "feature", "firewall", "firmware", "framework", "frontend", "hardware", "hash", "interrupt",
+    "kernel", "middleware", "multithreading", "paging", "pipeline", "pixel", "plugin", "router", "scheduler", "server",
+    "shader", "socket", "software", "sprite", "thread", "token", "widget"
   ]
 }
