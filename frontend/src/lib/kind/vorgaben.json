@@ -1,26 +1,156 @@
 {
-  "_hinweis": "Vorgaben je Stufe, nur für Felder, die der Server in GET /api/familie/ich nicht mitschickt. Die Wahrheit ist stufen.json des Servers. Werte nach der Recherche an BF-78 (docs/neubau/FAMILIE.md, Gestaltung).",
+  "_hinweis": "Vorgaben je Stufe nach backend/app/familie/stufen.json (Fassung 1), nur für Felder, die der Server in GET /api/familie/ich nicht mitschickt. Die Wahrheit ist der Server. vorlesen_von_selbst gibt es nur hier: im Vorlesealter liest ein Buch beim Öffnen von selbst vor.",
   "stufen": {
     "vorlesen": {
-      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen"],
-      "darstellung": { "schrift": "\"Andika\", system-ui, sans-serif", "groesse": 32, "fett": true, "zeilenabstand": 1.6, "woerter_je_zeile": 4, "zeichen_je_zeile": 32, "abstand_absatz": 1, "abstand_buchstabe": 0.04, "abstand_wort": 0.2, "tippflaeche_mm": 20, "silben": false, "lesezeile": false, "mitlesen": true, "tempo": 0.9, "vorlesen_von_selbst": true }
+      "faehigkeiten": [
+        "lesen",
+        "vorlesen"
+      ],
+      "darstellung": {
+        "schrift": "\"Andika\", system-ui, sans-serif",
+        "groesse": 32,
+        "fett": true,
+        "zeilenabstand": 1.5,
+        "woerter_je_zeile": 4,
+        "zeichen_je_zeile": 0,
+        "abstand_absatz": 2,
+        "abstand_buchstabe": 0.12,
+        "abstand_wort": 0.16,
+        "tippflaeche_mm": 20.1,
+        "silben": false,
+        "lesezeile": false,
+        "mitlesen": true,
+        "tempo": 0.8,
+        "vorlesen_von_selbst": true,
+        "hinweise_sprechen": true,
+        "tasten_ansagen": true
+      },
+      "name_eingabe": "vorschlaege"
     },
     "erstes_lesen": {
-      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen"],
-      "darstellung": { "schrift": "\"Andika\", system-ui, sans-serif", "groesse": 30, "fett": true, "zeilenabstand": 1.6, "woerter_je_zeile": 5, "zeichen_je_zeile": 36, "abstand_absatz": 1, "abstand_buchstabe": 0.04, "abstand_wort": 0.2, "tippflaeche_mm": 16, "silben": true, "lesezeile": true, "mitlesen": true, "tempo": 0.9, "vorlesen_von_selbst": false }
+      "faehigkeiten": [
+        "lesen",
+        "vorlesen"
+      ],
+      "darstellung": {
+        "schrift": "\"Andika\", system-ui, sans-serif",
+        "groesse": 28,
+        "fett": true,
+        "zeilenabstand": 1.5,
+        "woerter_je_zeile": 6,
+        "zeichen_je_zeile": 0,
+        "abstand_absatz": 2,
+        "abstand_buchstabe": 0.12,
+        "abstand_wort": 0.16,
+        "tippflaeche_mm": 20.1,
+        "silben": false,
+        "lesezeile": true,
+        "mitlesen": true,
+        "tempo": 0.9,
+        "vorlesen_von_selbst": false,
+        "hinweise_sprechen": true,
+        "tasten_ansagen": true
+      },
+      "name_eingabe": "tippen"
     },
     "lesen_lernen": {
-      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "gelesen"],
-      "darstellung": { "schrift": "\"Andika\", system-ui, sans-serif", "groesse": 26, "fett": false, "zeilenabstand": 1.6, "woerter_je_zeile": 6, "zeichen_je_zeile": 48, "abstand_absatz": 1.2, "abstand_buchstabe": 0.03, "abstand_wort": 0.16, "tippflaeche_mm": 14, "silben": true, "lesezeile": true, "mitlesen": true, "tempo": 1, "vorlesen_von_selbst": false }
+      "faehigkeiten": [
+        "lesen",
+        "vorlesen",
+        "favoriten"
+      ],
+      "darstellung": {
+        "schrift": "\"Andika\", system-ui, sans-serif",
+        "groesse": 24,
+        "fett": false,
+        "zeilenabstand": 1.5,
+        "woerter_je_zeile": 0,
+        "zeichen_je_zeile": 60,
+        "abstand_absatz": 2,
+        "abstand_buchstabe": 0.12,
+        "abstand_wort": 0.16,
+        "tippflaeche_mm": 14.8,
+        "silben": false,
+        "lesezeile": true,
+        "mitlesen": true,
+        "tempo": 1,
+        "vorlesen_von_selbst": false,
+        "hinweise_sprechen": true,
+        "tasten_ansagen": true
+      },
+      "name_eingabe": "tippen"
     },
     "schule": {
-      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "gelesen", "markierungen", "notizen"],
-      "darstellung": { "schrift": "\"Andika\", system-ui, sans-serif", "groesse": 21, "fett": false, "zeilenabstand": 1.5, "woerter_je_zeile": 0, "zeichen_je_zeile": 70, "abstand_absatz": 1.5, "abstand_buchstabe": 0.02, "abstand_wort": 0.16, "tippflaeche_mm": 12, "silben": false, "lesezeile": true, "mitlesen": true, "tempo": 1, "vorlesen_von_selbst": false }
+      "faehigkeiten": [
+        "lesen",
+        "vorlesen",
+        "lesezeichen",
+        "suche",
+        "favoriten",
+        "markierungen",
+        "notizen"
+      ],
+      "darstellung": {
+        "schrift": "\"Atkinson Hyperlegible\", system-ui, sans-serif",
+        "groesse": 20,
+        "fett": false,
+        "zeilenabstand": 1.5,
+        "woerter_je_zeile": 0,
+        "zeichen_je_zeile": 80,
+        "abstand_absatz": 2,
+        "abstand_buchstabe": 0.12,
+        "abstand_wort": 0.16,
+        "tippflaeche_mm": 11.6,
+        "silben": false,
+        "lesezeile": false,
+        "mitlesen": false,
+        "tempo": 1,
+        "vorlesen_von_selbst": false,
+        "hinweise_sprechen": false,
+        "tasten_ansagen": false
+      },
+      "name_eingabe": "tippen"
     },
     "jugend": {
-      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "gelesen", "markierungen", "notizen"],
-      "darstellung": { "schrift": "\"Andika\", system-ui, sans-serif", "groesse": 19, "fett": false, "zeilenabstand": 1.5, "woerter_je_zeile": 0, "zeichen_je_zeile": 80, "abstand_absatz": 1.5, "abstand_buchstabe": 0, "abstand_wort": 0.1, "tippflaeche_mm": 12, "silben": false, "lesezeile": false, "mitlesen": true, "tempo": 1, "vorlesen_von_selbst": false }
+      "faehigkeiten": [
+        "lesen",
+        "vorlesen",
+        "lesezeichen",
+        "suche",
+        "favoriten",
+        "markierungen",
+        "notizen"
+      ],
+      "darstellung": {
+        "schrift": "\"Atkinson Hyperlegible\", system-ui, sans-serif",
+        "groesse": 18,
+        "fett": false,
+        "zeilenabstand": 1.5,
+        "woerter_je_zeile": 0,
+        "zeichen_je_zeile": 80,
+        "abstand_absatz": 2,
+        "abstand_buchstabe": 0.12,
+        "abstand_wort": 0.16,
+        "tippflaeche_mm": 11.6,
+        "silben": false,
+        "lesezeile": false,
+        "mitlesen": false,
+        "tempo": 1,
+        "vorlesen_von_selbst": false,
+        "hinweise_sprechen": false,
+        "tasten_ansagen": false
+      },
+      "name_eingabe": "tippen"
     }
   },
-  "katzennamen": ["Flecki", "Mimi", "Tiger", "Wolke", "Mondfell", "Pünktchen", "Krümel", "Schnurri"]
+  "katzennamen": [
+    "Mimi",
+    "Minka",
+    "Tiger",
+    "Flocke",
+    "Luna",
+    "Momo",
+    "Pfötchen",
+    "Samtpfote"
+  ]
 }

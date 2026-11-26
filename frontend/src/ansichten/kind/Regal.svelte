@@ -2,6 +2,8 @@
   // Das Kinderregal: nur die freigegebenen Bücher als große Umschläge. In den ersten Stufen sonst nichts (drei große Umschläge
   // je Reihe); wer mehr darf, bekommt drei gleich große Tasten (Mein Regal, Lieblinge, Gelesen) und die Suche im eigenen Regal.
   // "Gelesen" ist der ruhige Rückblick: die Umschläge der fertigen Bücher mit dem Tag, ohne Punkte. Unten wartet die Katze.
+  import { tick } from "svelte";
+  import { ansage } from "../../lib/kind/ansage.svelte";
   import { holeRegal, type Regalart } from "../../lib/kind/api";
   import { wannGelesen } from "../../lib/kind/datum";
   import Katze from "../../lib/kind/Katze.svelte";
@@ -61,12 +63,30 @@
     // Noch im Tippen: so darf das Vorlesen gleich danach klingen
     vorlesen.entsperre();
     navigate(`/book/${buch.id}/read`);
+    void ansage.taste(buch.title);
   }
 
-  function waehle(neu: Regalart) {
+  function waehle(neu: Regalart, name: string) {
     suche = "";
     navigate(neu === "alle" ? "/" : `/?regal=${neu}`, true);
+    void ansage.taste(name);
   }
+
+  function schloss() {
+    onschloss();
+    void ansage.hinweis("Frag Mama oder Papa.");
+  }
+
+  // Was sonst nur dasteht, wird vorgesprochen: ein leeres Regal
+  let leerText = $derived(
+    !laedt && !fehler && !gezeigt.length
+      ? suche ? "Kein Buch gefunden." : art === "lieblinge" ? "Noch keine Lieblinge." : art === "gelesen" ? "Noch kein Buch zu Ende gelesen." : "Noch keine Bücher. Frag deine Eltern."
+      : "",
+  );
+  $effect(() => {
+    const text = leerText;
+    if (text) void tick().then(() => ansage.hinweis(text));
+  });
 
   const jetzt = new Date();
 </script>
@@ -74,7 +94,7 @@
 <header class="k-kopf">
   <Wer profil={ich.profil} />
   <div class="k-rechts">
-    <button class="k-schloss" type="button" aria-label="Für Eltern" onclick={onschloss}><i class="fa-solid fa-lock" aria-hidden="true"></i></button>
+    <button class="k-schloss" type="button" aria-label="Für Eltern" onclick={schloss}><i class="fa-solid fa-lock" aria-hidden="true"></i></button>
   </div>
 </header>
 
@@ -84,7 +104,7 @@
       {#if regale.length > 1}
         <div class="k-regalwahl" role="tablist" aria-label="Regale">
           {#each regale as [a, name, zeichen] (a)}
-            <button class="k-taste quer" class:an={art === a} type="button" role="tab" aria-selected={art === a} onclick={() => waehle(a)}><i class="fa-solid fa-{zeichen}" aria-hidden="true"></i>{name}</button>
+            <button class="k-taste quer" class:an={art === a} type="button" role="tab" aria-selected={art === a} onclick={() => waehle(a, name)}><i class="fa-solid fa-{zeichen}" aria-hidden="true"></i>{name}</button>
           {/each}
         </div>
       {/if}
@@ -106,15 +126,7 @@
     </div>
   {:else if !laedt && !gezeigt.length}
     <div class="k-leer">
-      {#if suche}
-        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>Kein Buch gefunden</span>
-      {:else if art === "lieblinge"}
-        <i class="fa-regular fa-heart" aria-hidden="true"></i><span>Noch keine Lieblinge</span>
-      {:else if art === "gelesen"}
-        <i class="fa-regular fa-circle-check" aria-hidden="true"></i><span>Noch kein Buch zu Ende gelesen</span>
-      {:else}
-        <i class="fa-solid fa-book" aria-hidden="true"></i><span>Noch keine Bücher. Frag deine Eltern.</span>
-      {/if}
+      <i class="fa-{suche ? 'solid fa-magnifying-glass' : art === 'lieblinge' ? 'regular fa-heart' : art === 'gelesen' ? 'regular fa-circle-check' : 'solid fa-book'}" aria-hidden="true"></i><span>{leerText}</span>
     </div>
   {:else}
     <div class="k-regal" class:gross aria-busy={laedt}>
@@ -126,7 +138,7 @@
 </div>
 
 <footer class="k-fuss mit-katze">
-  {#if art !== "gelesen"}<Kinderuhr {uhr} mitText={ich.profil.stufe !== "vorlesen"} />{/if}
+  {#if art !== "gelesen"}<Kinderuhr {uhr} ruheAb={ich.lesezeit.ruhe_ab} mitText={ich.profil.stufe !== "vorlesen"} onsage={(text) => void ansage.hinweis(text)} />{/if}
   {#if ich.katze.an}
     <div class="k-katzenplatz">
       <a class="k-taste quer k-katzenname" href="/katze" aria-label={ich.katze.name ? `${ich.katze.name}, Namen ändern` : "Der Katze einen Namen geben"}>

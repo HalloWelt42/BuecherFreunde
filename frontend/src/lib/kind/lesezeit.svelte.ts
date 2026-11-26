@@ -15,7 +15,7 @@ export interface Lesezeitgriffe {
   sichtbar(): boolean;
 }
 
-export const OHNE_GRENZE: Lesezeitstand = { heute_s: 0, rest_s: null, ruht: false, ruhe_bis: null, ruhe_ab: null, hinweis_ab_s: null };
+export const OHNE_GRENZE: Lesezeitstand = { heute_s: 0, grenze_s: null, rest_s: null, ruht: false, ruhe_bis: null, ruhe_ab: null, hinweis_ab_s: null };
 
 /** Was heute noch bleibt, mit den noch nicht gemeldeten Sekunden; null: ohne Grenze */
 export function restVon(stand: Lesezeitstand, offen: number): number | null {
@@ -25,9 +25,10 @@ export function restVon(stand: Lesezeitstand, offen: number): number | null {
 /** Ist die Lesezeit um oder Ruhezeit? Das sagt nur der Server. */
 export const faelligVon = (stand: Lesezeitstand): boolean => stand.ruht || (stand.rest_s !== null && stand.rest_s <= 0);
 
-/** Kommt der sanfte Hinweis? Nur in Stufen mit Hinweis und solange noch Zeit bleibt */
-export function hinweisVon(stand: Lesezeitstand, rest: number | null): boolean {
-  return stand.hinweis_ab_s !== null && rest !== null && rest > 0 && rest <= stand.hinweis_ab_s && !stand.ruht;
+/** Kommt der sanfte Hinweis? Ab hinweis_ab_s gelesener Zeit heute (fünf Minuten vor dem Ende), solange noch Zeit bleibt */
+export function hinweisVon(stand: Lesezeitstand, offen: number): boolean {
+  const rest = restVon(stand, offen);
+  return stand.hinweis_ab_s !== null && rest !== null && rest > 0 && stand.heute_s + offen >= stand.hinweis_ab_s && !stand.ruht;
 }
 
 /** Der nächste Zeitpunkt zu "07:00" oder ein Zeitpunkt selbst; null, wenn nichts zu lesen ist */
@@ -68,7 +69,7 @@ export class Lesezeituhr {
 
   rest = $derived(restVon(this.stand, this.offen));
   faellig = $derived(faelligVon(this.stand));
-  hinweis = $derived(hinweisVon(this.stand, this.rest));
+  hinweis = $derived(hinweisVon(this.stand, this.offen));
 
   constructor(private griffe: Lesezeitgriffe, stand: Lesezeitstand = OHNE_GRENZE) {
     this.stand = stand;

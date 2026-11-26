@@ -10,14 +10,14 @@ describe("Fähigkeiten", () => {
     expect([...faehigkeitenAus({ lesen: true, suche: true, notizen: false }, "schule")]).toEqual(["lesen", "suche"]);
   });
 
-  it("nimmt ohne Angabe die Vorgaben der Stufe: anfangs nur Lesen, Vorlesen, ein Lesezeichen", () => {
-    expect([...faehigkeitenAus(undefined, "vorlesen")]).toEqual(["lesen", "vorlesen", "lesezeichen"]);
-    expect([...faehigkeitenAus(undefined, "erstes_lesen")]).toEqual(["lesen", "vorlesen", "lesezeichen"]);
+  it("nimmt ohne Angabe die Vorgaben der Stufe: für kleine Kinder nur Lesen und Vorlesen, Suche und Notizen erst ab Schule", () => {
+    expect([...faehigkeitenAus(undefined, "vorlesen")]).toEqual(["lesen", "vorlesen"]);
+    expect([...faehigkeitenAus(undefined, "erstes_lesen")]).toEqual(["lesen", "vorlesen"]);
     const lernen = faehigkeitenAus(undefined, "lesen_lernen");
-    expect(["suche", "favoriten", "gelesen"].every((f) => lernen.has(f as never))).toBe(true);
-    expect(lernen.has("notizen")).toBe(false);
+    expect(["favoriten", "gelesen"].every((f) => lernen.has(f as never))).toBe(true);
+    expect(["suche", "notizen", "markierungen", "lesezeichen"].some((f) => lernen.has(f as never))).toBe(false);
     const schule = faehigkeitenAus(undefined, "schule");
-    expect(schule.has("markierungen") && schule.has("notizen")).toBe(true);
+    expect(["suche", "markierungen", "notizen", "lesezeichen"].every((f) => schule.has(f as never))).toBe(true);
   });
 
   it("ergänzt die Darstellung aus der Stufe und hält Grenzen ein", () => {
@@ -28,21 +28,35 @@ describe("Fähigkeiten", () => {
     expect(d.woerter_je_zeile).toBe(4);
     expect(d.vorlesen_von_selbst).toBe(true);
     expect(d.schrift).toContain("Andika");
-    expect(darstellungAus({}, "vorlesen").tippflaeche_mm).toBe(20);
+    expect(darstellungAus({}, "vorlesen").tippflaeche_mm).toBe(20.1);
   });
 
-  it("versteht die Schreibweise des Erwachsenenteils: Größen in Pixeln, Lesehilfen am Profil, Schriftgröße je Kind", () => {
+  it("liest GET /api/familie/ich, wie der Server es schickt", () => {
     const ich = ichAus({
-      profil: { id: "k2", rolle: "kind", stufe: "lesen_lernen", einstellungen: { lesehilfen: { silben: false, lesezeile: true, mitlesen: true, tempo: 0.8, schrift: "gross" } } },
-      faehigkeiten: ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten"],
-      darstellung: { schrift: "andika", groesse_px: 25, woerter_je_zeile: null, tippflaeche_px: 76 },
+      profil: { id: "k2", rolle: "kind", stufe: "lesen_lernen", einstellungen: { lesehilfen: { silben: true }, lesezeit: { an: true, minuten: 45, ruhe_an: true, ruhe_von: "19:30", ruhe_bis: "06:30" } } },
+      faehigkeiten: ["lesen", "vorlesen", "favoriten"],
+      darstellung: { schrift: "kinderschrift", groesse_px: 29, fett: false, woerter_je_zeile: null, zeichen_je_zeile: 60, zeilenabstand: 1.5, absatz: 2, buchstabe: 0.12, wort: 0.16, tippflaeche_px: 76, symbole: true },
+      lesehilfen: { mitlesen: true, tempo: 0.8, silben: false, lesezeile: true, schrift: "gross", hinweise_sprechen: true, tasten_ansagen: false, stimme: "" },
+      lesezeit: { an: true, heute_s: 120, grenze_s: 2700, rest_s: 2580, hinweis_ab_s: 2400, ruht: false, ruhe_bis: null },
+      katze: { an: true, name: "Luna", schnurren: false, name_eingabe: "tippen" },
+      einblick: ["titel", "lesezeit", "fortschritt"],
     });
-    expect(ich.darstellung.groesse).toBe(30);
+    // Die Schriftwahl der Eltern hat der Server schon eingerechnet
+    expect(ich.darstellung.groesse).toBe(29);
     expect(ich.darstellung.woerter_je_zeile).toBe(0);
+    expect(ich.darstellung.zeichen_je_zeile).toBe(60);
+    expect(ich.darstellung.abstand_absatz).toBe(2);
     expect(ich.darstellung.tippflaeche_mm).toBe(20.1);
+    // ich.lesehilfen geht den gespeicherten Einstellungen vor
     expect(ich.darstellung.silben).toBe(false);
     expect(ich.darstellung.tempo).toBe(0.8);
+    expect(ich.darstellung.tasten_ansagen).toBe(false);
     expect(ich.darstellung.schrift).toContain("Andika");
+    expect(ich.lesezeit.ruhe_ab).toBe("19:30");
+    expect(ich.lesezeit.grenze_s).toBe(2700);
+    expect(ich.einblick).toEqual(["titel", "lesezeit", "fortschritt"]);
+    expect(darstellungAus({ schrift: "serifenlos", zeichen_je_zeile: null }, "schule").schrift).toContain("Atkinson");
+    expect(darstellungAus({ zeichen_je_zeile: null }, "schule").zeichen_je_zeile).toBe(0);
     // Der Rückblick kommt mit den Lieblingen, solange der Server ihn nicht eigens nennt
     expect(ich.faehigkeiten.has("gelesen")).toBe(true);
     expect(faehigkeitenAus({ favoriten: true, gelesen: false }, "schule").has("gelesen")).toBe(false);
@@ -52,17 +66,19 @@ describe("Fähigkeiten", () => {
     const ich = ichAus({ profil: { id: "k1", name: "Kim", rolle: "kind", stufe: "erstes_lesen" }, katze: { name: " Flocke " } });
     expect(ich.profil.stufe).toBe("erstes_lesen");
     expect(ich.profil.zeichen).toBe("face-smile");
-    expect(ich.katze).toEqual({ an: true, name: "Flocke", schnurren: false });
-    expect(ich.lesezeit).toEqual({ heute_s: 0, rest_s: null, ruht: false, ruhe_bis: null, ruhe_ab: null, hinweis_ab_s: null });
-    expect(ich.darstellung.silben).toBe(true);
+    expect(ich.katze).toEqual({ an: true, name: "Flocke", schnurren: false, name_eingabe: "tippen" });
+    expect(ich.lesezeit).toEqual({ heute_s: 0, grenze_s: null, rest_s: null, ruht: false, ruhe_bis: null, ruhe_ab: null, hinweis_ab_s: null });
+    expect(ich.darstellung.lesezeile).toBe(true);
     expect(nutztKinderbereich(ich)).toBe(true);
     expect(nutztKinderbereich(ichAus({ profil: { rolle: "kind", stufe: "jugend" } }))).toBe(false);
     expect(nutztKinderbereich(ichAus({ profil: { rolle: "erwachsen" } }))).toBe(false);
   });
 
   it("liest Lesezeit und Katze tolerant", () => {
-    expect(lesezeitAus({ heute_s: 90, rest_s: 10, ruht: true, ruhe_bis: "07:00", ruhe_von: "19:30", hinweis_ab_s: 300 })).toEqual({ heute_s: 90, rest_s: 10, ruht: true, ruhe_bis: "07:00", ruhe_ab: "19:30", hinweis_ab_s: 300 });
-    expect(katzeAus({ an: false, schnurren: true })).toEqual({ an: false, name: "", schnurren: true });
+    expect(lesezeitAus({ an: true, heute_s: 90, grenze_s: 100, rest_s: 10, ruht: true, ruhe_bis: "07:00", hinweis_ab_s: 0 }, { ruhe_an: true, ruhe_von: "19:30" })).toEqual({ heute_s: 90, grenze_s: 100, rest_s: 10, ruht: true, ruhe_bis: "07:00", ruhe_ab: "19:30", hinweis_ab_s: 0 });
+    expect(lesezeitAus({}, { ruhe_an: false, ruhe_von: "19:30" }).ruhe_ab).toBeNull();
+    expect(katzeAus({ an: false, schnurren: true })).toEqual({ an: false, name: "", schnurren: true, name_eingabe: "vorschlaege" });
+    expect(katzeAus({ name_eingabe: "tippen" }).name_eingabe).toBe("tippen");
   });
 });
 

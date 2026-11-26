@@ -3,7 +3,7 @@ import { faelligVon, hinweisVon, LEERLAUF_S, Lesezeituhr, restVon, TAKT_S, weite
 import { nochZeit, wannGelesen } from "../src/lib/kind/datum";
 import type { Lesezeitstand } from "../src/lib/kind/typen";
 
-const stand = (teil: Partial<Lesezeitstand> = {}): Lesezeitstand => ({ heute_s: 0, rest_s: 600, ruht: false, ruhe_bis: null, ruhe_ab: null, hinweis_ab_s: 300, ...teil });
+const stand = (teil: Partial<Lesezeitstand> = {}): Lesezeitstand => ({ heute_s: 0, grenze_s: 600, rest_s: 600, ruht: false, ruhe_bis: null, ruhe_ab: null, hinweis_ab_s: 300, ...teil });
 
 function uhr(start: Lesezeitstand = stand(), antwort?: (s: number) => Lesezeitstand) {
   let jetzt = 1_000_000;
@@ -107,10 +107,12 @@ describe("Lesezeit", () => {
     expect(faelligVon(stand({ ruht: true }))).toBe(true);
     expect(faelligVon(stand({ rest_s: 0 }))).toBe(true);
     expect(faelligVon(stand({ rest_s: null }))).toBe(false);
-    expect(hinweisVon(stand(), 299)).toBe(true);
-    expect(hinweisVon(stand(), 301)).toBe(false);
+    // hinweis_ab_s zählt gelesene Zeit heute (fünf Minuten vor der Grenze), samt dem noch nicht Gemeldeten
+    expect(hinweisVon(stand({ heute_s: 290, rest_s: 310 }), 10)).toBe(true);
+    expect(hinweisVon(stand({ heute_s: 290, rest_s: 310 }), 5)).toBe(false);
     expect(hinweisVon(stand({ hinweis_ab_s: null }), 10)).toBe(false);
-    expect(hinweisVon(stand(), 0)).toBe(false);
+    expect(hinweisVon(stand({ heute_s: 600, rest_s: 0 }), 0)).toBe(false);
+    expect(hinweisVon(stand({ heute_s: 400, rest_s: 200, ruht: true }), 0)).toBe(false);
   });
 
   it("sagt kindgerecht, wann es weitergeht und wie viel Zeit bleibt", () => {
@@ -118,6 +120,9 @@ describe("Lesezeit", () => {
     expect(weiterAb(new Date(2026, 10, 27, 7, 0).toISOString(), jetzt)).toBe("Morgen ab 7 Uhr");
     expect(weiterAb(new Date(2026, 10, 26, 20, 30).toISOString(), jetzt)).toBe("Ab 20:30 Uhr");
     expect(weiterAb(null, jetzt)).toBe("Morgen");
+    // Der Server nennt nur die Uhrzeit
+    expect(weiterAb("06:30", jetzt)).toBe("Morgen ab 6:30 Uhr");
+    expect(weiterAb("20:00", jetzt)).toBe("Ab 20 Uhr");
     expect(nochZeit(25 * 60)).toBe("noch 25 Minuten");
     expect(nochZeit(30)).toBe("noch 1 Minute");
     expect(nochZeit(70 * 60)).toBe("noch 1 Stunde 10 Minuten");

@@ -102,6 +102,7 @@
 /* Die Lesezeit als Kinderuhr (Entwurf Runde 3): Zeigeruhr ohne Sekundenzeiger, die restliche Zeit als farbiges Stück bis zum
    Punkt am Rand, daneben dezent Rest und Gesamtzeit. Ändert sich nur einmal je Minute. */
 .k-uhr { --uhr: clamp(4.5rem, 13vw, 8.5rem); --k-uhr-rest: color-mix(in srgb, var(--k-warm) 38%, transparent); display: inline-flex; align-items: center; gap: .75rem; flex: none; color: var(--k-leise); }
+button.k-uhr { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; border-radius: .75rem; }
 .k-uhr svg { width: var(--uhr); height: auto; aspect-ratio: 1; display: block; flex: none; }
 .k-uhr-klein { --uhr: clamp(2.75rem, 5.4vw, 3.5rem); gap: .5rem; }
 .k-uhr .u-blatt { fill: var(--k-flaeche); stroke: var(--k-linie); stroke-width: 2.5; }
@@ -206,6 +207,7 @@
 .k-dialog > div { width: min(26rem, 100%); max-height: 100%; overflow: auto; display: grid; gap: 1rem; padding: 1.25rem; border-radius: 1.25rem; background: var(--k-grund); color: var(--k-tinte); box-shadow: 0 1rem 3rem -1rem rgb(0 0 0 / .5); }
 .k-dialogkopf { display: flex; align-items: center; gap: .75rem; font-size: 1.375rem; font-weight: 700; }
 .k-dialogkopf .k-schloss { margin-left: auto; }
+.k-einblick { margin: 0; display: flex; gap: .625rem; align-items: baseline; color: var(--k-leise); font-size: 1rem; }
 .k-pinstellen { display: flex; justify-content: center; gap: .75rem; min-height: 1.5rem; }
 .k-pinstellen span { width: 1.125rem; height: 1.125rem; border-radius: 50%; border: 2px solid var(--k-leise); }
 .k-pinstellen span.voll { background: var(--k-tinte); border-color: var(--k-tinte); }

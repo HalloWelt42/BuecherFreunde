@@ -4,9 +4,10 @@
   // nur die, die die Stufe erlaubt. Text in der Kinderdarstellung (Schrift, Größe, kurze Zeilen, Abstände aus ich.darstellung),
   // farbige Silben und Lesezeile, wenn die Eltern sie erlauben; das Kind schaltet sie selbst an und aus. Vorgelesen wird mit dem
   // Vorlesen der App, das gelesene Wort leuchtet mit. Ist die Lesezeit um, endet erst die Seite, dann kommt die Ruhe.
-  import { untrack } from "svelte";
+  import { tick, untrack } from "svelte";
   import { holeBuch, coverUrl } from "../../lib/api/books";
   import { toggleFavorit } from "../../lib/api/user-data";
+  import { ansage } from "../../lib/kind/ansage.svelte";
   import type { Kinderquelle } from "../../lib/kind/inhalt";
   import { Kinderlesestand } from "../../lib/kind/leser.svelte";
   import type { Lesezeituhr } from "../../lib/kind/lesezeit.svelte";
@@ -17,6 +18,8 @@
   import type { Seitenmass } from "../../lib/kind/seiten";
   import { ladeSilbentrenner, silbentrennerBereit } from "../../lib/kind/silben";
   import { kindangabenAus, kinderlesewerte } from "../../lib/kind/stelle";
+  import { lesetasten, steuertVorlesen, tastenansage, tastenbild, type Lesetaste, type Tastenstand } from "../../lib/kind/tasten";
+  import { uhrtext } from "../../lib/kind/uhr";
   import type { Ich, Kinderstelle, Wort } from "../../lib/kind/typen";
   import { lesewerte } from "../../lib/lesestand";
   import { buchort, Positionsspeicher } from "../../lib/leser/position";
@@ -183,7 +186,7 @@
     const luft = Math.ceil(0.5 * groesse);
     const innen = b - rand;
     const hoch = h - luft * 2;
-    const hoechstens = Math.max(8 * zeichenbreite, d.zeichen_je_zeile * zeichenbreite);
+    const hoechstens = d.zeichen_je_zeile ? Math.max(8 * zeichenbreite, d.zeichen_je_zeile * zeichenbreite) : Infinity;
     const quer = innen > hoch * 1.15;
     const abstand = 1.5 * rem;
     const bildhoehe = Math.round(hoch * 0.42);
@@ -214,18 +217,20 @@
     });
   });
 
-  // Blättern, Wischen und Tasten
+  // Blättern, Wischen und Tasten. Die Wirkung kommt sofort, die Ansage danach; klingt gerade Vorlesen, schweigt es für die
+  // Ansage und liest danach auf der neuen Seite weiter.
   async function blaettere(richtung: 1 | -1) {
     const s = stand;
     if (!s) return;
     stift = false;
+    const lief = liestVor && !vorlesen.pausiert;
+    const ruhte = liestVor && vorlesen.pausiert;
+    if (lief) vorlesen.pausiere();
     if (richtung > 0) await s.weiter();
     else await s.zurueck();
-    // Wer selbst blättert, hört ab der neuen Seite
-    if (liestVor && vorlesequelle) {
-      if (vorlesen.pausiert || s.amEnde) vorlesen.halt();
-      else liesVor();
-    }
+    if (ruhte || (lief && s.amEnde)) vorlesen.halt();
+    await ansage.taste(richtung > 0 ? "Weiter" : "Zurück", true);
+    if (lief && !s.amEnde && !uhr.faellig) liesVor();
   }
 
   $effect(() => {
@@ -250,18 +255,30 @@
     vorlesen.liesBuch(vorlesequelle, { von: s.vorleseanfang(zeileAn), bis: null }, buch.title, { titel: buch.title, autor: buch.author, bild: coverUrl(buch.id, buch.cover_stand) }, buch.id);
   }
 
-  function vorleseTaste() {
-    if (!liestVor) return liesVor();
-    if (vorlesen.pausiert) vorlesen.weiter();
-    else vorlesen.pausiere();
+  /** Anhalten wirkt sofort und sagt es danach; Anfangen und Weiterhören sagen es kurz an und lesen dann */
+  async function vorleseTaste() {
+    const vorher = vorlesestand();
+    if (vorher === "laeuft") {
+      vorlesen.pausiere();
+      void ansage.taste(tastenansage("vorlesen", stand_(), vorher), true);
+      return;
+    }
+    await ansage.taste(tastenansage("vorlesen", { ...stand_(), vorlesen: "laeuft" }, vorher), true);
+    if (vorher === "ruht" && liestVor) vorlesen.weiter();
+    else liesVor();
   }
 
-  // Ein Buch der Stufe Vorlesen liest sich beim Öffnen von selbst vor
+  // Ein Buch der Stufe Vorlesen liest sich beim Öffnen von selbst vor, nach der Ansage seines Titels
   let vonSelbst = false;
   $effect(() => {
     if (vonSelbst || !stand?.jetzt || !kannVorlesen || !d.vorlesen_von_selbst) return;
     vonSelbst = true;
-    untrack(liesVor);
+    void ansage.fertig().then(() => untrack(liesVor));
+  });
+
+  // Über das Vorlesen wird nie gesprochen
+  $effect(() => {
+    if (liestVor && !vorlesen.pausiert && !vorlesen.wartet) untrack(() => ansage.stoppe());
   });
 
   function zurRuhe() {
@@ -283,6 +300,7 @@
     if (!uhr.hinweis || hinweisGezeigt) return;
     hinweisGezeigt = true;
     grosserHinweis = true;
+    untrack(() => void ansage.hinweis(`Gleich ist die Lesezeit um. Noch ${Math.max(1, Math.ceil((uhr.rest ?? 0) / 60))} Minuten.`));
     setTimeout(() => (grosserHinweis = false), HINWEIS_MS);
   });
 
@@ -294,12 +312,46 @@
       fertig = true;
       s.lesezeichen = null;
       void merkeStelle(s.stelle);
+      void ansage.hinweis("Fertig! Du hast das Buch zu Ende gelesen.");
     });
   });
+
+  /** Wie die Tasten gerade stehen */
+  function vorlesestand(): Tastenstand["vorlesen"] {
+    return liestVor ? (vorlesen.pausiert ? "ruht" : "laeuft") : "aus";
+  }
+  function stand_(): Tastenstand {
+    return { vorlesen: vorlesestand(), silben: silbenAn, zeile: zeileAn, stift, gemerkt: !!stand?.aufLesezeichen };
+  }
+  let tastenstand = $derived<Tastenstand>({ vorlesen: liestVor ? (vorlesen.pausiert ? "ruht" : "laeuft") : "aus", silben: silbenAn, zeile: zeileAn, stift, gemerkt: !!stand?.aufLesezeichen });
+  let tasten = $derived(lesetasten(f, d, kannVorlesen));
+
+  /** Eine Taste unten: erst die Wirkung, dann die Ansage */
+  async function drueck(t: Lesetaste) {
+    if (t === "weiter") return blaettere(1);
+    if (t === "zurueck") return blaettere(-1);
+    if (t === "vorlesen") return vorleseTaste();
+    if (t === "silben") schalte("silben");
+    else if (t === "zeile") schalte("zeile");
+    else if (t === "merken") stand?.lesezeichenUmschalten();
+    else if (t === "stift") {
+      stift = !stift;
+      if (markierungen) markierungen.anfang = null;
+    } else if (t === "notiz") notizen = true;
+    await tick();
+    void ansage.taste(tastenansage(t, stand_()), steuertVorlesen(t));
+  }
+
+  function zumRegal() {
+    onzurueck();
+    // Erst wenn der Leser weg ist und das Vorlesen schweigt
+    void tick().then(() => ansage.taste("Zum Regal"));
+  }
 
   async function lieblingUmschalten() {
     try {
       lieblingsbuch = (await toggleFavorit(id)).ist_favorit;
+      void ansage.taste(lieblingsbuch ? "Lieblingsbuch" : "Kein Lieblingsbuch mehr");
     } catch (e) {
       melde.schlecht(e);
     }
@@ -339,9 +391,9 @@
 <header class="k-kopf">
   <span class="k-buchname"><i class="fa-solid fa-book-open" aria-hidden="true"></i><span>{buch?.title ?? ""}{seitenname ? `, ${seitenname}` : ""}</span></span>
   <div class="k-rechts">
-    <Kinderuhr {uhr} klein mitText={ich.profil.stufe !== "vorlesen"} />
+    <Kinderuhr {uhr} ruheAb={ich.lesezeit.ruhe_ab} klein mitText={ich.profil.stufe !== "vorlesen"} onsage={(text) => void ansage.hinweis(text)} />
     {#if ich.katze.an}<Katze name={ich.katze.name} zustand="schlaeft" groesse="clamp(3rem, 6.5vw, 4.25rem)" />{/if}
-    <button class="k-taste rund" type="button" aria-label="Zum Regal" onclick={onzurueck}><i class="fa-solid fa-house" aria-hidden="true"></i></button>
+    <button class="k-taste rund" type="button" aria-label="Zum Regal" onclick={zumRegal}><i class="fa-solid fa-house" aria-hidden="true"></i></button>
   </div>
 </header>
 
@@ -363,7 +415,10 @@
     <div class="k-schluss">
       <i class="fa-solid fa-circle-check k-schlusszeichen" aria-hidden="true"></i>
       <b>Fertig!</b>
-      <Buchkachel {buch} onwahl={onzurueck} />
+      <Buchkachel {buch} onwahl={zumRegal} />
+      {#if f.has("favoriten")}
+        <button class="k-taste quer" class:an={lieblingsbuch} type="button" aria-pressed={lieblingsbuch} onclick={() => void lieblingUmschalten()}><i class="fa-{lieblingsbuch ? 'solid' : 'regular'} fa-heart" aria-hidden="true"></i>Lieblingsbuch</button>
+      {/if}
     </div>
   {:else if seite && mass}
     <div class="k-blatt" class:mit-bild={mitBild && seite.zeilen.length > 0} class:nur-bild={mitBild && !seite.zeilen.length} class:quer={mass.quer} class:hochkant={!mass.quer} style:--bildhoehe="{mass.bildhoehe}px"
@@ -384,34 +439,22 @@
 
 <footer class="k-fuss">
   <div class="k-tasten">
-    <button class="k-taste" type="button" disabled={!stand || (stand.istErste && !stand.amEnde)} onclick={() => void blaettere(-1)}><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>Zurück</button>
-    {#if f.has("lesezeichen") && stand && !stand.amEnde}
-      <button class="k-taste" class:an={stand.aufLesezeichen} type="button" aria-pressed={stand.aufLesezeichen} onclick={() => stand?.lesezeichenUmschalten()}><i class="fa-{stand.aufLesezeichen ? 'solid' : 'regular'} fa-bookmark" aria-hidden="true"></i>Merken</button>
-    {/if}
-    {#if kannVorlesen && !stand?.amEnde}
-      <button class="k-taste" class:haupt={d.vorlesen_von_selbst} class:an={liestVor && !d.vorlesen_von_selbst} type="button" disabled={!stand?.jetzt} onclick={vorleseTaste}>
-        {#if liestVor && !vorlesen.pausiert}<i class="fa-solid fa-pause" aria-hidden="true"></i>Pause{:else if liestVor}<i class="fa-solid fa-play" aria-hidden="true"></i>Weiter hören{:else}<i class="fa-solid fa-volume-high" aria-hidden="true"></i>Vorlesen{/if}
-      </button>
-    {/if}
-    {#if d.silben && !stand?.amEnde}
-      <button class="k-taste" class:an={silbenAn} type="button" aria-pressed={silbenAn} onclick={() => schalte("silben")}><i class="fa-solid fa-palette" aria-hidden="true"></i>Silben</button>
-    {/if}
-    {#if d.lesezeile && !stand?.amEnde}
-      <button class="k-taste" class:an={zeileAn} type="button" aria-pressed={zeileAn} onclick={() => schalte("zeile")}><i class="fa-solid fa-grip-lines" aria-hidden="true"></i>Zeile</button>
-    {/if}
-    {#if f.has("markierungen") && markierungen && !stand?.amEnde}
-      <button class="k-taste" class:an={stift} type="button" aria-pressed={stift} onclick={() => ((stift = !stift), markierungen && (markierungen.anfang = null))}><i class="fa-solid fa-highlighter" aria-hidden="true"></i>Stift</button>
-    {/if}
-    {#if f.has("notizen") && stand && !stand.amEnde}
-      <button class="k-taste" type="button" onclick={() => (notizen = true)}><i class="fa-solid fa-note-sticky" aria-hidden="true"></i>Notiz</button>
-    {/if}
-    {#if f.has("favoriten")}
-      <button class="k-taste" class:an={lieblingsbuch} type="button" aria-pressed={lieblingsbuch} onclick={() => void lieblingUmschalten()}><i class="fa-{lieblingsbuch ? 'solid' : 'regular'} fa-heart" aria-hidden="true"></i>Mag ich</button>
-    {/if}
     {#if stand?.amEnde}
-      <button class="k-taste haupt" type="button" onclick={onzurueck}><i class="fa-solid fa-house" aria-hidden="true"></i>Zum Regal</button>
+      <button class="k-taste" type="button" onclick={() => void drueck("zurueck")}><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>Zurück</button>
+      <button class="k-taste haupt" type="button" onclick={zumRegal}><i class="fa-solid fa-house" aria-hidden="true"></i>Zum Regal</button>
     {:else}
-      <button class="k-taste" type="button" disabled={!stand?.jetzt} onclick={() => void blaettere(1)}><i class="fa-solid fa-arrow-right" aria-hidden="true"></i>Weiter</button>
+      {#each tasten as t (t)}
+        {@const b = tastenbild(t, tastenstand)}
+        <button
+          class="k-taste"
+          class:an={b.an && t !== "vorlesen"}
+          class:haupt={t === "vorlesen" && d.vorlesen_von_selbst}
+          type="button"
+          aria-pressed={["silben", "zeile", "stift", "merken"].includes(t) ? b.an : undefined}
+          disabled={!stand?.jetzt || (t === "zurueck" && stand.istErste) || (t === "stift" && !markierungen)}
+          onclick={() => void drueck(t)}
+        ><i class="fa-{b.voll ? 'solid' : 'regular'} fa-{b.symbol}" aria-hidden="true"></i>{b.name}</button>
+      {/each}
     {/if}
   </div>
 </footer>

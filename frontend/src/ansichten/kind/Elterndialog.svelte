@@ -1,10 +1,19 @@
 <script lang="ts">
-  // Hinter dem Schloss, für die Eltern: das Profil verlassen (auf einem fest gestellten Gerät nur mit der Eltern-PIN,
+  // Hinter dem Schloss, für die Eltern: was sie sehen (auch für das Kind), das Profil verlassen (auf einem fest gestellten Gerät nur mit der Eltern-PIN,
   // POST /api/familie/verlassen) und die Darstellung des Geräts (Hell, Dunkel, System; Schriftgröße), dauerhaft gemerkt.
   import { ladeFamilie, verlasseProfil } from "../../lib/api/familie";
   import { darstellung, wahlen } from "../../lib/stand/darstellung.svelte";
 
-  let { onverlassen, onschliessen }: { onverlassen: () => void; onschliessen: () => void } = $props();
+  let { einblick = [], onverlassen, onschliessen }: { einblick?: string[]; onverlassen: () => void; onschliessen: () => void } = $props();
+
+  /** Was die Eltern sehen, für das Kind gesagt (FAMILIE.md, Einblick: für das Kind sichtbar) */
+  const EINBLICK: Record<string, string> = { titel: "die Titel", lesezeit: "die Lesezeit", fortschritt: "wie weit du bist", grober_fortschritt: "ungefähr, wie weit du bist", zuletzt: "wann du zuletzt gelesen hast", geteiltes: "nur, was du teilst" };
+  let sehen = $derived.by(() => {
+    const teile = einblick.map((e) => EINBLICK[e]).filter(Boolean);
+    if (!teile.length) return "";
+    const liste = teile.length < 2 ? teile[0] : `${teile.slice(0, -1).join(", ")} und ${teile.at(-1)}`;
+    return `Deine Eltern sehen ${liste}.`;
+  });
 
   const LAENGE = 8;
   let gebunden = $state<boolean | null>(null);
@@ -57,6 +66,8 @@
       <i class="fa-solid fa-lock" aria-hidden="true"></i><span>Für Eltern</span>
       <button class="k-schloss" type="button" aria-label="Schließen" onclick={onschliessen}><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
     </div>
+
+    {#if sehen}<p class="k-einblick"><i class="fa-solid fa-eye" aria-hidden="true"></i>{sehen}</p>{/if}
 
     {#if gebunden}
       <div class="k-pinstellen" class:falsch aria-label="{pin.length} Ziffern eingegeben">

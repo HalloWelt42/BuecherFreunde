@@ -29,7 +29,7 @@ export interface Kinderdarstellung {
   zeilenabstand: number;
   /** Höchstens so viele Wörter je Zeile; 0: nur nach Breite */
   woerter_je_zeile: number;
-  /** Höchstens so viele Zeichen je Zeile */
+  /** Höchstens so viele Zeichen je Zeile; 0: nur nach Breite */
   zeichen_je_zeile: number;
   /** Abstände als Anteil der Schriftgröße */
   abstand_absatz: number;
@@ -46,11 +46,18 @@ export interface Kinderdarstellung {
   tempo: number;
   /** Ein Buch liest sich beim Öffnen von selbst vor */
   vorlesen_von_selbst: boolean;
+  /** Hinweise vorsprechen (Lesezeit, Ruhezeit, Schloss, Katze benennen, alles, was sonst nur da steht) */
+  hinweise_sprechen: boolean;
+  /** Nach dem Druck sagen, welche Taste es war */
+  tasten_ansagen: boolean;
 }
 
 /** Lesezeit von heute, wie der Server sie rechnet (GET /api/familie/ich, Antwort von POST /api/familie/lesezeit) */
 export interface Lesezeitstand {
+  /** Heute gezählt (Vorlesen, wenn es mitzählt) */
   heute_s: number;
+  /** Lesezeit am Tag; null: ohne Grenze */
+  grenze_s: number | null;
   /** Was heute noch bleibt, mit einer nahen Ruhezeit verrechnet; null: ohne Grenze */
   rest_s: number | null;
   /** Gerade ist Ruhezeit */
@@ -59,7 +66,7 @@ export interface Lesezeitstand {
   ruhe_bis: string | null;
   /** Ab wann Ruhezeit ist ("19:30" oder ein Zeitpunkt); null: ohne oder unbekannt */
   ruhe_ab: string | null;
-  /** Ab so viel Rest kommt der sanfte Hinweis; null: kein Hinweis in dieser Stufe */
+  /** Ab so viel heute_s kommt der sanfte Hinweis (fünf Minuten vor dem Ende); null: ohne Grenze */
   hinweis_ab_s: number | null;
 }
 
@@ -68,6 +75,8 @@ export interface Katzenstand {
   /** Leer: das Kind hat ihr noch keinen Namen gegeben */
   name: string;
   schnurren: boolean;
+  /** Im Vorlesealter aus vorgesprochenen Vorschlägen wählen, sonst selbst tippen */
+  name_eingabe: "vorschlaege" | "tippen";
 }
 
 /** Wach im Regal, schläft beim Lesen, ruht auf dem Ruheschirm */
@@ -79,6 +88,8 @@ export interface Ich {
   darstellung: Kinderdarstellung;
   lesezeit: Lesezeitstand;
   katze: Katzenstand;
+  /** Was die Eltern sehen (titel, lesezeit, fortschritt, grober_fortschritt, geteiltes); das Kind sieht es auch */
+  einblick: string[];
 }
 
 /** Ein Wort im Text einer Einheit, mit seiner Lage darin (Zeichen von bis, ausschließlich) */

@@ -10,6 +10,7 @@
   import "../../stil/kind.css";
   import { untrack } from "svelte";
   import { matchRoute, navigate, route } from "../../lib/router.svelte";
+  import { ansage } from "../../lib/kind/ansage.svelte";
   import { meldeLesezeit } from "../../lib/kind/api";
   import { ichAus } from "../../lib/kind/ich";
   import { Lesezeituhr } from "../../lib/kind/lesezeit.svelte";
@@ -87,8 +88,17 @@
     if (ich) nutzeSchrift(ich.darstellung.schrift);
   });
 
-  // Jede Bedienung zählt als Lesen, solange der Leser offen ist
-  const regung = () => uhr.regung();
+  // Ansagen, wie die Eltern sie für dieses Kind eingestellt haben
+  $effect(() => {
+    if (ich) ansage.stelle(ich.darstellung.hinweise_sprechen, ich.darstellung.tasten_ansagen);
+    return () => ansage.stoppe();
+  });
+
+  // Jede Bedienung zählt als Lesen, solange der Leser offen ist; das erste Antippen gibt die Ansagen frei
+  const regung = () => {
+    uhr.regung();
+    ansage.freigeben();
+  };
 
   function verlassen() {
     eltern = false;
@@ -114,7 +124,7 @@
       <Regal {ich} {uhr} onschloss={() => (eltern = true)} />
     {/if}
     {#if eltern}
-      <Elterndialog onverlassen={verlassen} onschliessen={() => (eltern = false)} />
+      <Elterndialog einblick={ich.einblick} onverlassen={verlassen} onschliessen={() => (eltern = false)} />
     {/if}
   </div>
 {:else}
