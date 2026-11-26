@@ -16,7 +16,7 @@
   import { Positionsspeicher } from "../../lib/leser/position";
   import type { Lesegriffe, Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { kannHervorheben, Rechteckschicht } from "../../lib/leser/hervorhebung";
-  import { faerbeCode, kopierknoepfe } from "../../lib/leser/text/codefarben";
+  import { setzeCode } from "../../lib/leser/text/codefarben";
   import { Blattquelle } from "../../lib/leser/text/lesequelle";
   import { nutzeSchrift } from "../../lib/leser/schriften";
   import { absatzBei, vorgelesenIn } from "../../lib/leser/fokus";
@@ -104,6 +104,8 @@
   /** Wird gerufen, sobald der Text auf dem Blatt steht */
   async function steht() {
     await tick();
+    // Erst die Codeblöcke fertig setzen: das Färben tauscht ihre Textknoten aus, auf denen alles Weitere aufbaut (BF-54)
+    if (istMarkdown && satz) await setzeCode(satz);
     if (!flaeche || !blatt || !satz) return;
     const s = satz;
     sitzung.kapitel = sammleKapitel();
@@ -112,7 +114,6 @@
     fluss ??= new Textfluss({ flaeche, blatt, satz }, art, bewegt);
     const ab = start.prozent ? start.prozent / 100 : start.seite ? (start.seite - 1) / gesamt : nenntStelle(start) ? 0 : (alt.scrollPct ?? 0) / 100;
     fluss.zuAnteil(ab);
-    if (istMarkdown) void faerbeCode(s).then(() => kopierknoepfe(s));
     quelle = new Blattquelle({ satz: s, flaeche, fluss: () => fluss, kapitel: () => sitzung.kapitel, kapitelJetzt: () => sitzung.kapitelJetzt, ersatz: () => ersatz, ohneTitel: (nr, alle) => `Stück ${nr + 1} von ${alle}` });
     sitzung.quelle = quelle;
     sitzung.hilfe = {

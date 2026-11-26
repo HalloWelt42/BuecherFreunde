@@ -2,6 +2,9 @@ import { entschaerfe, hinweiskasten, mitDiagramm, sichereAdresse } from "../src/
 import { prozentVon, textkapitel, textknoten, zeichneMarkierungen, zeichneTreffer } from "../src/lib/leser/text/markierung";
 import { findeStuecke, Zeichenindex } from "../src/lib/leser/textsuche";
 import { textVon } from "../src/lib/leser/festbereich";
+import { setzeCode } from "../src/lib/leser/text/codefarben";
+import { codebloecke } from "../src/lib/leser/text/codeorte";
+import type { Codestelle } from "../src/lib/api/ausfuehren";
 import { hexZuTon, tonZuHex } from "../src/lib/farbton";
 import { gleicheSchrift, istDunkel, klemme, papierOder, themaIndex, ZEILEN } from "../src/lib/leser/darstellung";
 import type { Markierung } from "../src/lib/typen";
@@ -88,6 +91,24 @@ describe("Markierungen im Text", () => {
     expect([r instanceof StaticRange, zeichneTreffer(b, "meer")[0] instanceof StaticRange]).toEqual([true, true]);
     b.prepend(document.createElement("hr"));
     expect([r.startOffset, textVon(r)]).toEqual([4, "Deich"]);
+    b.remove();
+  });
+
+  it("setzt Codeblöcke fertig, bevor gezeichnet wird: eine Markierung im Code überlebt das Färben nur danach (BF-54)", async () => {
+    const b = blatt('<p>Davor ein Satz.</p><pre><code class="language-javascript">const antwort = 42; // die Antwort</code></pre>');
+    document.body.append(b);
+    const frueh = zeichneMarkierungen(b, [marke(8, "antwort = 42", 60)]).get(8)!;
+    await setzeCode(b);
+    // So ging sie verloren: das Färben hat den Textknoten ausgetauscht
+    expect([b.querySelector("code")?.dataset.highlighted, frueh.startContainer.isConnected]).toEqual(["yes", false]);
+    const danach = zeichneMarkierungen(b, [marke(8, "antwort = 42", 60)]).get(8)!;
+    expect([danach.startContainer.isConnected, textVon(danach)]).toEqual([true, "antwort = 42"]);
+    // Die Taste zum Kopieren zählt nicht zum Text; die Codestelle (BF-29) erkennt den gefärbten Block wie den schlichten
+    expect(b.querySelectorAll(".code-kopieren").length).toBe(1);
+    const stelle = { kennung: "s1", code: "const antwort = 42; // die Antwort" } as Codestelle;
+    expect(codebloecke(b, [stelle]).map((o) => o.stelle.kennung)).toEqual(["s1"]);
+    await setzeCode(b);
+    expect(b.querySelectorAll(".code-kopieren").length).toBe(1);
     b.remove();
   });
 

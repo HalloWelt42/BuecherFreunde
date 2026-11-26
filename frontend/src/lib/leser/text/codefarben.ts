@@ -40,6 +40,16 @@ export async function faerbeCode(flaeche: HTMLElement): Promise<void> {
   }
 }
 
+/**
+ * Der Satz der Codeblöcke, fertig: gefärbt und mit der Taste zum Kopieren. Das Färben ersetzt die Textknoten der Blöcke;
+ * was auf Textknoten aufbaut (Markierungen, Treffer, Stellen des Leseflusses, Vorlesen), kommt darum erst danach (BF-54).
+ * Gelingt das Färben nicht (etwa ohne Netz), bleibt der Code schlicht.
+ */
+export async function setzeCode(flaeche: HTMLElement): Promise<void> {
+  await faerbeCode(flaeche).catch(() => {});
+  kopierknoepfe(flaeche);
+}
+
 const KOPIERT_MS = 2000;
 
 export function kopierknoepfe(flaeche: HTMLElement): void {
