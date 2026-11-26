@@ -15,7 +15,8 @@ from datetime import datetime, timedelta, timezone
 from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.models.fassung import (
-    IN_ARBEIT, MIT_DEUTSCH, Bericht, FassungEintrag, FassungStand, Folgen, KapitelStand, OffeneStelle, Station, Stationsstand, Zahlen,
+    IN_ARBEIT, MIT_DEUTSCH, Bericht, FassungEintrag, FassungStand, Folgen, KapitelStand, LaufEintrag, OffeneStelle, Station, Stationsstand,
+    Zahlen,
 )
 from backend.app.quellen.sprache import kuerzel
 from backend.app.services import begriffsliste, fassung_ablage, fassungen
@@ -65,19 +66,44 @@ def _kapitel_fertig(zeilen: list[BlockZeile]) -> bool:
     return not any(z.stand in IN_ARBEIT for z in zeilen)
 
 
-async def eintraege(b: Buchangaben, angelegt: str) -> list[FassungEintrag]:
-    """Das Original zuerst, dann jede Fassung."""
-    aus = [FassungEintrag(id=None, sprache=kuerzel(b.language) or "en", original=True, stand="fertig", angelegt=angelegt, geaendert=angelegt)]
-    for f in await fassungen.alle_zum_buch(b.id):
-        zeilen = await fassungen.bloecke(f.id)
+class _Kapitelzahlen:
+    """Kapitel und Restzeit einer Fassung aus ihren Blöcken."""
+
+    def __init__(self, zeilen: list[BlockZeile], s_je_seite: float) -> None:
         je_kapitel: dict[int, list[BlockZeile]] = {}
         for z in zeilen:
             je_kapitel.setdefault(z.kapitel, []).append(z)
-        noch = _seiten(sum(z.woerter for z in zeilen if z.stand in IN_ARBEIT)) * await tempo(f)
-        aus.append(FassungEintrag(id=f.id, sprache=f.sprache, original=False, stand=f.stand,
-                                  kapitel_fertig=sum(map(_kapitel_fertig, je_kapitel.values())), kapitel_gesamt=len(je_kapitel),
-                                  fertig_gegen=_um(noch) if f.stand == "laeuft" else None, modell=f.modell, pruefmodell=f.pruefmodell,
-                                  angelegt=f.angelegt_am, geaendert=f.geaendert_am))
+        self.fertig = sum(map(_kapitel_fertig, je_kapitel.values()))
+        self.gesamt = len(je_kapitel)
+        self.noch_s = _seiten(sum(z.woerter for z in zeilen if z.stand in IN_ARBEIT)) * s_je_seite
+        self.anteil = (len(zeilen) - sum(z.stand in IN_ARBEIT for z in zeilen)) / len(zeilen) if zeilen else 0.0
+
+
+async def eintraege(b: Buchangaben, angelegt: str, wahl: str = "") -> list[FassungEintrag]:
+    """Das Original zuerst, dann jede Fassung; `wahl` (Sprache, leer: das Original) ist die gewählte."""
+    aus = [FassungEintrag(id=None, sprache=kuerzel(b.language) or "en", original=True, stand="fertig", angelegt=angelegt, geaendert=angelegt)]
+    for f in await fassungen.alle_zum_buch(b.id):
+        k = _Kapitelzahlen(await fassungen.bloecke(f.id), await tempo(f))
+        aus.append(FassungEintrag(id=f.id, sprache=f.sprache, original=False, stand=f.stand, kapitel_fertig=k.fertig, kapitel_gesamt=k.gesamt,
+                                  fertig_gegen=_um(k.noch_s) if f.stand == "laeuft" else None, modell=f.modell, pruefmodell=f.pruefmodell,
+                                  angelegt=f.angelegt_am, geaendert=f.geaendert_am, gewaehlt=f.sprache == wahl))
+    if not any(e.gewaehlt for e in aus):
+        aus[0].gewaehlt = True
+    return aus
+
+
+async def laeufe() -> list[LaufEintrag]:
+    """Jede Fassung in Arbeit (läuft, Pause, Fehler) mit dem Titel ihres Buchs, in der Folge, in der der Lauf sie nimmt."""
+    aus = []
+    for z in await db.fetch_all("SELECT f.id, b.title FROM fassung f JOIN books b ON b.id = f.buch_id "
+                                "WHERE f.stand IN ('laeuft', 'pause', 'fehler') ORDER BY f.angelegt_am, f.id"):
+        f = await fassungen.holen(z["id"])
+        if f is None:
+            continue
+        k = _Kapitelzahlen(await fassungen.bloecke(f.id), await tempo(f))
+        aus.append(LaufEintrag(id=f.id, buch_id=f.buch_id, titel=z["title"] or "", sprache=f.sprache, stand=f.stand, anteil=round(k.anteil, 4),
+                               kapitel_fertig=k.fertig, kapitel_gesamt=k.gesamt, fertig_gegen=_um(k.noch_s) if f.stand == "laeuft" else None,
+                               grund=f.grund))
     return aus
 
 

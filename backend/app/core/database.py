@@ -420,6 +420,11 @@ CREATE TABLE IF NOT EXISTS begriff (                 -- Begriffsliste je Buch, b
     geaendert_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_begriff_eindeutig ON begriff(COALESCE(buch_id, 0), lower(englisch));
+CREATE TABLE IF NOT EXISTS fassung_lesestand (       -- wo man in einer Übersetzung liest (services/fassung_lesen.py); getrennt vom
+    fassung_id INTEGER PRIMARY KEY REFERENCES fassung(id) ON DELETE CASCADE,  -- Lesestand des Originals in user_book_data
+    position TEXT NOT NULL DEFAULT '',               -- wie reading_position, etwa epub:{"cfi": ...}
+    gelesen_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
 CREATE TABLE IF NOT EXISTS vorlesestelle (          -- wo das Vorlesen je Buch stehen blieb (api/user_data.py); gilt auf jedem Gerät
     buch_id INTEGER PRIMARY KEY REFERENCES books(id) ON DELETE CASCADE,
     einheit INTEGER NOT NULL,                        -- Seite, Abschnitt oder Stück der Lesequelle, ab 0
@@ -512,6 +517,8 @@ NEUBAU_SPALTEN: tuple[tuple[str, str, str], ...] = (
     ("categories", "herkunft", "TEXT NOT NULL DEFAULT ''"),        # standard, geteilt, neu, eigen
     ("categories", "arten", "TEXT NOT NULL DEFAULT '[\"\"]'"),      # Bereich: JSON, für welche Arten (books.typ) er gilt; "" Buch
     ("categories", "teil_von", "TEXT NOT NULL DEFAULT ''"),        # Kategorie: Schlüssel der großen, deren Teil sie ist
+    # Bücher übersetzen (BF-71): welche Fassung "Lesen" auf der Buchseite öffnet; leer das Original, sonst ihre Sprache
+    ("user_book_data", "fassung_wahl", "TEXT NOT NULL DEFAULT ''"),
 )
 
 

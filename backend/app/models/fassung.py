@@ -6,10 +6,11 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, StringConstraints, model_validator
 
-from backend.app.models.grenzen import BEGRIFF, BEGRIFF_GRUND, BLOCKTEXT
+from backend.app.models.grenzen import BEGRIFF, BEGRIFF_GRUND, BLOCKTEXT, Leseposition
 from backend.app.uebersetzung.modelle import Befund
 
 Stand = Literal["laeuft", "pause", "teilweise", "fertig", "fehler"]
+Zielsprache = Literal["de"]                          # Sprachen, in die übersetzt wird
 Blockstand = Literal["wartet", "uebersetzt", "nacharbeit", "bestanden", "nachgearbeitet", "offen", "angenommen", "gesetzt"]
 Stationsname = Literal["Zerlegen", "Begriffe", "Übersetzen", "Prüfen", "Nacharbeit", "Setzen"]
 Stationsstand = Literal["wartet", "laeuft", "fertig"]
@@ -36,6 +37,36 @@ class FassungEintrag(BaseModel):
     pruefmodell: str = ""
     angelegt: str
     geaendert: str
+    gewaehlt: bool = False                           # diese Fassung öffnet "Lesen" auf der Buchseite
+
+
+class Fassungswahl(BaseModel):
+    """Welche Fassung "Lesen" öffnet; die Wahl gilt je Buch auf jedem Gerät."""
+    sprache: Zielsprache | None = None               # None: das Original
+
+
+class LaufEintrag(BaseModel):
+    """Eine Fassung in Arbeit (läuft, Pause oder Fehler), für die Liste der Aufträge."""
+    id: int
+    buch_id: int
+    titel: str                                       # Titel des Buchs
+    sprache: str
+    stand: Stand
+    anteil: float                                    # Blöcke mit Ergebnis an allen, 0 bis 1; 0 vor dem Zerlegen
+    kapitel_fertig: int = 0
+    kapitel_gesamt: int = 0
+    fertig_gegen: str | None = None                  # geschätzt, Zeitpunkt (UTC, ISO), nur solange sie läuft
+    grund: str = ""
+
+
+class Lesestand(BaseModel):
+    """Wo man in einer Übersetzung liest; der Lesestand des Originals bleibt davon unberührt."""
+    position: str = ""                               # wie die Leseposition eines Buchs, leer: noch nicht gelesen
+    gelesen_am: str | None = None
+
+
+class LesestandNeu(BaseModel):
+    position: Leseposition
 
 
 class Ablageort(BaseModel):

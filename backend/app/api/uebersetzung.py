@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Literal
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -13,15 +12,15 @@ from fastapi.responses import JSONResponse
 from backend.app.core.auth import verify_token, verify_token_inhalt
 from backend.app.core.database import db
 from backend.app.models.fassung import (
-    BegriffAenderung, BegriffEintrag, BegriffNeu, Bericht, BlockAktion, BlockAntwort, FassungEintrag, FassungStand, Folgen,
+    BegriffAenderung, BegriffEintrag, BegriffNeu, Bericht, BlockAktion, BlockAntwort, FassungEintrag, FassungStand, Fassungswahl, Folgen,
+    LaufEintrag, Lesestand, LesestandNeu, Zielsprache,
 )
 from backend.app.models.grenzen import Nr
-from backend.app.services import begriffsliste, fassung_ablage, fassungen, fassungsstand
+from backend.app.services import begriffsliste, fassung_ablage, fassung_lesen, fassungen, fassungsstand
 from backend.app.services.fassungen import Beanstandet, BlockZeile, Buchangaben, FassungZeile, Ungueltig
 from backend.app.services.uebersetzungslauf import uebersetzungslauf
 
 router = APIRouter(tags=["Übersetzung"])
-Ziel = Literal["de"]                                 # Sprachen, in die übersetzt wird
 
 
 async def _buch(buch_id: int) -> Buchangaben:
@@ -54,17 +53,34 @@ async def fassungen_liste(buch_id: Nr) -> list[FassungEintrag]:
     """Das Original zuerst (`id` null, `original` true), dann jede Fassung mit Stand und Kapiteln."""
     b = await _buch(buch_id)
     z = await db.fetch_one("SELECT created_at FROM books WHERE id = ?", (buch_id,))
-    return await fassungsstand.eintraege(b, z["created_at"])
+    return await fassungsstand.eintraege(b, z["created_at"], await fassung_lesen.wahl(buch_id))
+
+
+@router.put("/api/books/{buch_id}/fassungen/wahl", response_model=list[FassungEintrag], dependencies=[Depends(verify_token)])
+async def fassung_waehlen(buch_id: Nr, wahl: Fassungswahl) -> list[FassungEintrag]:
+    """Welche Fassung "Lesen" auf der Buchseite öffnet (`sprache` null: das Original); gilt auf jedem Gerät."""
+    await _buch(buch_id)
+    if wahl.sprache is not None and await fassungen.zum_buch(buch_id, wahl.sprache) is None:
+        raise HTTPException(status_code=404, detail="Diese Fassung gibt es noch nicht")
+    await fassung_lesen.waehlen(buch_id, wahl.sprache)
+    await db.commit()
+    return await fassungen_liste(buch_id)
+
+
+@router.get("/api/fassungen", response_model=list[LaufEintrag], dependencies=[Depends(verify_token)])
+async def fassungen_in_arbeit() -> list[LaufEintrag]:
+    """Jede Fassung, die läuft, Pause macht oder auf einen Menschen wartet (Fehler), für die Aufträge."""
+    return await fassungsstand.laeufe()
 
 
 @router.get("/api/books/{buch_id}/fassungen/{sprache}/folgen", response_model=Folgen, dependencies=[Depends(verify_token)])
-async def fassung_folgen(buch_id: Nr, sprache: Ziel) -> Folgen:
+async def fassung_folgen(buch_id: Nr, sprache: Zielsprache) -> Folgen:
     """Rückfrage vor dem Start: Umfang, Dauer, Ablage; `geht` false mit Grund."""
     return await fassungsstand.folgen(await _buch(buch_id), sprache)
 
 
 @router.post("/api/books/{buch_id}/fassungen/{sprache}", response_model=FassungStand, dependencies=[Depends(verify_token)])
-async def fassung_starten(buch_id: Nr, sprache: Ziel) -> FassungStand:
+async def fassung_starten(buch_id: Nr, sprache: Zielsprache) -> FassungStand:
     """Startet die Übersetzung oder setzt sie fort (aus Pause, abgebrochen oder nach einem Fehler)."""
     b = await _buch(buch_id)
     f = await fassungen.zum_buch(buch_id, sprache)
@@ -160,6 +176,22 @@ async def fassung_datei(fid: Nr, request: Request, herunterladen: bool = Query(F
     weise = "attachment" if herunterladen else "inline"
     name = fassung_ablage.name_zum_lesen(b, f.sprache)
     return Response(daten, media_type=fassung_ablage.EPUB, headers={"Content-Disposition": f"{weise}; filename*=UTF-8''{quote(name)}"})
+
+
+@router.get("/api/fassungen/{fid}/leseposition", response_model=Lesestand, dependencies=[Depends(verify_token)])
+async def fassung_lesestand(fid: Nr) -> Lesestand:
+    """Wo man in dieser Fassung liest; getrennt vom Lesestand des Originals."""
+    await _fassung(fid)
+    return await fassung_lesen.lesestand(fid)
+
+
+@router.patch("/api/fassungen/{fid}/leseposition", response_model=Lesestand, dependencies=[Depends(verify_token)])
+async def fassung_lesestand_merken(fid: Nr, neu: LesestandNeu) -> Lesestand:
+    """Merkt die Stelle in dieser Fassung; Lesestand und Vorlesestelle des Originals bleiben unberührt."""
+    await _fassung(fid)
+    stand = await fassung_lesen.merken(fid, neu.position)
+    await db.commit()
+    return stand
 
 
 # -- Begriffsliste ------------------------------------------------------------------------------------------------------------

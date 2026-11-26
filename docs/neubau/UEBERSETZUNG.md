@@ -149,7 +149,9 @@ nur erfundene Texte.
 
 | Weg | Inhalt |
 |---|---|
-| `GET /api/books/{id}/fassungen` | `[{id, sprache, original, stand, kapitel_fertig, kapitel_gesamt, fertig_gegen, modell, pruefmodell, angelegt, geaendert}]`; das Original steht immer zuerst (`id` null, `original` true) |
+| `GET /api/books/{id}/fassungen` | `[{id, sprache, original, stand, kapitel_fertig, kapitel_gesamt, fertig_gegen, modell, pruefmodell, angelegt, geaendert, gewaehlt}]`; das Original steht immer zuerst (`id` null, `original` true); `gewaehlt` die Fassung, die "Lesen" öffnet |
+| `PUT /api/books/{id}/fassungen/wahl` | `{sprache}` (null: das Original) wählt, was "Lesen" öffnet, je Buch auf jedem Gerät (`user_book_data.fassung_wahl`); Antwort die Fassungen |
+| `GET /api/fassungen` | Fassungen in Arbeit (läuft, Pause, Fehler) für die Aufträge: `[{id, buch_id, titel, sprache, stand, anteil, kapitel_fertig, kapitel_gesamt, fertig_gegen, grund}]` |
 | `GET /api/books/{id}/fassungen/de/folgen` | Rückfrage vor dem Start: `{seiten, kapitel, bloecke, begriffe, abbildungen, dauer_s, fertig_gegen, tempo_s_je_seite, ablage: {ort, pfad}, geht, grund}`; `ort` kellerwolke oder geraet; `geht` false mit Grund, wenn das Buch nicht englisch ist oder das Format noch nicht übersetzt wird |
 | `POST /api/books/{id}/fassungen/de` | startet (oder setzt fort), Antwort Stand |
 | `GET /api/fassungen/{fid}/stand` | `{id, stand, begonnen, bisher_s, noch_s, fertig_gegen, tempo_s_je_seite, kapitel_jetzt, block_jetzt, stationen: [{name, stand, text}], kapitel: [{nr, titel, stand, dauer_s, geschaetzt, bloecke, fertig, geprueft, nachgearbeitet, offen}], zahlen: {bloecke, uebersetzt, bestanden, nachgearbeitet, offen}, grund}`; Stationen in fester Folge: Zerlegen, Begriffe, Übersetzen, Prüfen, Nacharbeit, Setzen; Stand je Station: wartet, laeuft, fertig |
@@ -158,6 +160,7 @@ nur erfundene Texte.
 | `POST /api/fassungen/{fid}/bloecke/{kennung}` | `{aktion: "neu" \| "annehmen" \| "setzen", text?}`; "setzen" nimmt deinen Text, wenn er die festen Prüfungen besteht, sonst 422 mit Befunden |
 | `GET /api/books/{id}/begriffe`, `POST`, `PATCH /api/begriffe/{bid}`, `DELETE` | Begriffsliste je Buch `[{id, englisch, deutsch, bleibt, herkunft, stellen, grund, art}]`; `art` begriff oder einheit, `herkunft` regel, ki, hand oder vorgabe; `GET /api/begriffe` und `POST /api/begriffe` die Liste für alle Bücher |
 | `GET /api/fassungen/{fid}/datei` | die deutsche Fassung als EPUB für den Leser, auch teilweise (offene Blöcke im Original mit Marke) |
+| `GET`, `PATCH /api/fassungen/{fid}/leseposition` | `{position, gelesen_am}`, Body `{position}`: der Lesestand dieser Fassung, bis zum gemeinsamen Lesestand getrennt vom Original (Tabelle `fassung_lesestand`); Lesestand, Vorlesestelle, Notizen und Markierungen des Originals bleiben unberührt |
 
 Geschätzt wird aus dem Tempo dieses Rechners: vor dem ersten Lauf aus einer festen Vorgabe (`UEBERSETZEN_S_JE_SEITE`,
 Vorgabe 30 mit Prüfung), danach aus dem gleitenden Mittel der letzten Läufe, im Lauf aus dem Tempo dieses Laufs.
