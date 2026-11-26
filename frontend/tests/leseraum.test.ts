@@ -1,5 +1,5 @@
 // Aufteilung des Leseraums (BF-35, BF-36, BF-41): Rand für die Marken, Feld daneben, Breite des Blatts
-import { blattbreite, MARKENRAND, teileAuf, type Raumlage } from "../src/lib/leser/leseraum.svelte";
+import { blattbreite, hoechsteSeitenbreite, MARKENRAND, teileAuf, type Raumlage } from "../src/lib/leser/leseraum.svelte";
 import { einpassen } from "../src/lib/leser/pdf/zoom";
 
 const lage = (teil: Partial<Raumlage>): Raumlage => ({ breite: 1428, feld: 320, rand: 16, telefon: false, vollbild: false, marken: true, feldOffen: false, ...teil });
@@ -34,6 +34,12 @@ describe("Breite des Blatts", () => {
     blattbreite.wert = 731;
     expect(blattbreite.wert).toBe(740);
     blattbreite.wert = blattbreite.bereich.vorgabe;
+  });
+
+  it("gilt für die Seite im PDF am Rechner, nicht im Vollbild und nicht am Telefon", () => {
+    expect(hoechsteSeitenbreite({ telefon: false, vollbild: false })).toBe(blattbreite.wert);
+    expect(hoechsteSeitenbreite({ telefon: false, vollbild: true })).toBe(Infinity);
+    expect(hoechsteSeitenbreite({ telefon: true, vollbild: false })).toBe(Infinity);
   });
 
   it("begrenzt im PDF die Seite beim Einpassen, in der Doppelseite jede der beiden", () => {

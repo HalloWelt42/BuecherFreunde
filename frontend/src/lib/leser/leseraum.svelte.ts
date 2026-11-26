@@ -42,6 +42,12 @@ export function teileAuf(r: Raumlage): Aufteilung {
   return { markenrand, feldDaneben, rechts: markenrand + (feldDaneben ? feld : 0) };
 }
 
+/** So breit wird eine Seite im PDF beim Einpassen höchstens: die Breite des Blatts. Im Vollbild reicht das Blatt bis an die
+ *  Kanten (BF-21), am Telefon füllt es die Breite; Text, Markdown und EPUB behalten auch dort ihre Spaltenbreite. */
+export function hoechsteSeitenbreite(r: { telefon: boolean; vollbild: boolean }): number {
+  return r.telefon || r.vollbild ? Infinity : blattbreite.wert;
+}
+
 const SCHLUESSEL = "leser.breite";
 
 /** Breite des Blatts: Textspalte in Text, Markdown und EPUB, Seite im PDF beim Einpassen; je Gerät gemerkt */

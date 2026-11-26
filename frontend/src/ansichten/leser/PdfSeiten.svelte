@@ -6,7 +6,7 @@
   import { PdfAnzeige } from "../../lib/leser/pdf/anzeige";
   import type { PdfBuch } from "../../lib/leser/pdf/dokument";
   import { Pdfmarkierungen } from "../../lib/leser/pdf/markierung";
-  import { blattbreite } from "../../lib/leser/leseraum.svelte";
+  import { blattbreite, hoechsteSeitenbreite } from "../../lib/leser/leseraum.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
   import { einpassen, geblaettert, nachbarn, sichtbareSeiten, type Ansicht, type Seitenrest } from "../../lib/leser/pdf/zoom";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
@@ -55,7 +55,7 @@
   }
   /** Maß, mit dem die Seite in dieser Ansicht passt: in den freien Platz, höchstens so breit wie das Blatt (BF-36) */
   export function passend(fuer: Ansicht): number | null {
-    return flaeche ? einpassen(fuer, pdf.mass, frei(), schale.telefon ? Infinity : blattbreite.wert) : null;
+    return flaeche ? einpassen(fuer, pdf.mass, frei(), hoechsteSeitenbreite(schale)) : null;
   }
 
   /** Wie weit die Seite oben schon durchgerollt ist, als Anteil ihrer Höhe */
@@ -119,7 +119,7 @@
 
   // Ansicht, Zoom oder Breite des Blatts: neu rechnen, die Seite bleibt
   $effect(() => {
-    void [ansicht, zoom, blattbreite.wert];
+    void [ansicht, zoom, blattbreite.wert, schale.vollbild];
     untrack(() => void rechne());
   });
 
