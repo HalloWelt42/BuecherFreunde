@@ -126,7 +126,10 @@ export interface OffeneStelle {
   kapitel: number;
   /** für Menschen, etwa "Getting Started, Absatz 4" */
   ort: string;
+  /** nur bei PDF: die Seite im PDF */
   seite_original: number | null;
+  /** nur bei PDF: wie die Seite gedruckt heißt, sonst leer */
+  seite_gedruckt: string;
   /** Vorlage mit Marken */
   original: string;
   /** die letzte Übersetzung mit Marken; leer, wenn keine kam */

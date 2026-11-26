@@ -5,7 +5,7 @@ import type { Befund, Fassungseintrag, Kapitelstand, Laufeintrag, Laufstand, Sta
 import { dauer, gegen, ungefaehr } from "./zeiten";
 
 /** Formate, die schon übersetzt werden (wie FORMATE in backend/app/services/fassungsstand.py) */
-export const UEBERSETZBAR = ["epub"];
+export const UEBERSETZBAR = ["epub", "pdf"];
 
 /** Name und Stand eines Flaggenlabels */
 export function labeltext(f: Fassungseintrag, seiten: number): { name: string; stand: string } {

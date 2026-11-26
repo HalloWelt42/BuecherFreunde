@@ -6,7 +6,7 @@ import Buchkopf from "../src/ansichten/buch/Buchkopf.svelte";
 import Uebersetzungsfrage from "../src/ansichten/buch/Uebersetzungsfrage.svelte";
 import { Buchfassungen, fassungsAdresse, uebersetzbar } from "../src/ansichten/buch/fassungen.svelte";
 import Offenestelle from "../src/ansichten/uebersetzung/Offenestelle.svelte";
-import { originalfassung, uebersetzungsfassung } from "../src/lib/leser/lesefassung";
+import { ladeLesefassung, originalfassung, uebersetzungsfassung } from "../src/lib/leser/lesefassung";
 import { Positionsspeicher } from "../src/lib/leser/position";
 import { Lesesitzung } from "../src/lib/leser/sitzung.svelte";
 import { anschluesse } from "../src/lib/stand/anschluesse.svelte";
@@ -151,11 +151,12 @@ describe("Fassungen auf der Buchseite", () => {
     expect(fassungsAdresse(7, "de", { restart: 1 })).toBe("/book/7/read/de?restart=1");
   });
 
-  it("bieten das Übersetzen nur englischen EPUB ohne deutsche Fassung an, und nur mit KI", () => {
+  it("bieten das Übersetzen nur englischen EPUB und PDF ohne deutsche Fassung an, und nur mit KI", () => {
     expect(uebersetzbar(BUCH, [original()])).toBe(true);
     expect(uebersetzbar(BUCH, [original(), deutsch()])).toBe(false);
     expect(uebersetzbar({ ...BUCH, language: "de" }, [original()])).toBe(false);
-    expect(uebersetzbar({ ...BUCH, file_format: "pdf" }, [original()])).toBe(false);
+    expect(uebersetzbar({ ...BUCH, file_format: "pdf" }, [original()])).toBe(true);
+    expect(uebersetzbar({ ...BUCH, file_format: "mobi" }, [original()])).toBe(false);
     anschluesse.jetzt = { ...anschluesse.jetzt, ki: false };
     expect(uebersetzbar(BUCH, [original()])).toBe(false);
   });
@@ -245,7 +246,7 @@ describe("Übersetzungen unter Aufträge", () => {
 
 describe("Offene Stelle im Prüfbericht", () => {
   const stelle: OffeneStelle = {
-    kennung: "5.4", kapitel: 5, ort: "Testing Safely, Absatz 4", seite_original: null,
+    kennung: "5.4", kapitel: 5, ort: "Testing Safely, Absatz 4", seite_original: null, seite_gedruckt: "",
     original: "The trade off is speed: every extra check slows the robot down.", deutsch: "Der Preis ist Tempo: Jede Prüfung beschleunigt den Roboter.",
     befunde: [{ art: "sinn", quelle: "ki", text: '"slows down" heißt hier "bremst".', stelle: "beschleunigt" }],
   };
@@ -254,6 +255,12 @@ describe("Offene Stelle im Prüfbericht", () => {
     render(Offenestelle, { props: { stelle, fassung: 3, onerledigt: () => {} } });
     expect(document.querySelector("mark")?.textContent).toBe("beschleunigt");
     expect(screen.getByText(/Sinn \(KI-Prüfer\)/)).toBeTruthy();
+    expect(screen.queryByText(/im Original$/)).toBeNull();
+  });
+
+  it("nennt bei einem PDF die gedruckte Seite im Original", () => {
+    render(Offenestelle, { props: { stelle: { ...stelle, seite_original: 31, seite_gedruckt: "29" }, fassung: 3, onerledigt: () => {} } });
+    expect(screen.getByText("Seite 29 im Original")).toBeTruthy();
   });
 
   it("nimmt einen Text von Hand nur, wenn er die festen Prüfungen besteht", async () => {
@@ -283,6 +290,13 @@ describe("Lesen der Übersetzung", () => {
     expect(uebersetzung).toMatchObject({ fassung: 3, sprache: "de", format: "epub", datei: "/api/fassungen/3/datei", position: 'epub:{"percent":40}', mitStellen: false });
     expect(uebersetzung.ort.pfad).toBe("/book/7/read/de");
     expect(originalfassung(BUCH)).toMatchObject({ fassung: null, datei: "/api/books/7/file", position: 'epub:{"percent":25}', mitStellen: true });
+  });
+
+  it("liest die Übersetzung eines PDF im EPUB-Leser", async () => {
+    const pdf = { ...BUCH, file_format: "pdf", file_name: "Roboter.pdf" };
+    server((weg) => [200, weg.endsWith("/fassungen") ? [original(), deutsch()] : { position: "", gelesen_am: null }]);
+    expect(await ladeLesefassung(pdf, "de")).toMatchObject({ fassung: 3, format: "epub", datei: "/api/fassungen/3/datei", mitStellen: false });
+    expect(await ladeLesefassung(pdf, undefined)).toMatchObject({ fassung: null, format: "pdf", mitStellen: true });
   });
 
   it("merkt die Stelle bei der Übersetzung, nie am Original", () => {

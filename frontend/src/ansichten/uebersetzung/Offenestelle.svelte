@@ -48,7 +48,7 @@
 {/snippet}
 
 <article class="offenestelle platte" aria-label={stelle.ort}>
-  <div class="reihe"><b>{stelle.ort}</b>{#if stelle.seite_original}<span class="leise">Seite {stelle.seite_original} im Original</span>{/if}</div>
+  <div class="reihe"><b>{stelle.ort}</b>{#if stelle.seite_original}<span class="leise">Seite {stelle.seite_gedruckt || stelle.seite_original} im Original</span>{/if}</div>
   <div class="stellenpaar">
     <div lang="en"><small>Englisch</small><Markentext text={stelle.original} /></div>
     {#if bearbeitet}
