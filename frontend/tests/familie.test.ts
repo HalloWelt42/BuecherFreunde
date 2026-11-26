@@ -46,11 +46,13 @@ function buch(id: number, title: string, mehr: Partial<Buch> = {}): Buch {
   };
 }
 
-/** Antworten je Weg; was fehlt, ist leer */
+/** Antworten je Weg. Ein Abruf (GET) eines Wegs, den der Test nicht nennt, gibt es nicht (404), wie beim echten Server; so
+ *  bekommt etwa das Nachladen des Bestands nach einem Profilwechsel keine fremde Antwort. Schreibende Wege antworten leer. */
 function server(wege: Record<string, unknown>) {
-  const f = vi.fn((weg: string) => {
+  const f = vi.fn((weg: string, init?: RequestInit) => {
     const pfad = weg.split("?")[0];
     if (pfad === "/api/familie/stufen" && !(pfad in wege)) return Promise.resolve(new Response(JSON.stringify({ stufen: STUFEN, lesezeit: [], zugang: ZUGANG })));
+    if (!(pfad in wege) && (init?.method ?? "GET") === "GET") return Promise.resolve(new Response(JSON.stringify({ detail: "Nicht gefunden" }), { status: 404 }));
     return Promise.resolve(new Response(JSON.stringify(wege[pfad] ?? {}), { status: 200 }));
   });
   globalThis.fetch = f as unknown as typeof fetch;
