@@ -177,7 +177,7 @@ async def fassung_datei(fid: Nr, request: Request, herunterladen: bool = Query(F
     original = await fassungen.original_lesen(b)
     if original is None:
         raise HTTPException(status_code=503, detail="Das Original ist gerade nicht zu holen")
-    daten = await asyncio.to_thread(fassungen.epub_bauen, original, await fassungen.satz(f))
+    daten = await asyncio.to_thread(fassungen.epub_bauen, b, original, await fassungen.satz(f))
     weise = "attachment" if herunterladen else "inline"
     name = fassung_ablage.name_zum_lesen(b, f.sprache)
     return Response(daten, media_type=fassung_ablage.EPUB, headers={"Content-Disposition": f"{weise}; filename*=UTF-8''{quote(name)}"})

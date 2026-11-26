@@ -1,6 +1,7 @@
 """Wo die deutsche Fassung liegt (BF-71): in der Kellerwolke neben dem Original unter `Fassungen/<sprache>/` mit dem Namen des
-Originals; ohne Kellerwolke (oder solange das Original nur auf dem Gerät liegt) im lokalen Bestand im Ordner des Buchs, wie
-die Begleiter, ebenfalls unter `Fassungen/<sprache>/`. Das Original bleibt unverändert.
+Originals (die Fassung eines PDF ist ein EPUB und heißt so); ohne Kellerwolke (oder solange das Original nur auf dem Gerät
+liegt) im lokalen Bestand im Ordner des Buchs, wie die Begleiter, ebenfalls unter `Fassungen/<sprache>/`. Das Original bleibt
+unverändert.
 
 Wird neu gesetzt, bekommt die Datei in der Kellerwolke eine neue Version (nur auf den zuletzt gelesenen Stand); ist sie dort
 verschwunden, wird sie neu angelegt."""
@@ -27,6 +28,11 @@ ORDNER = "Fassungen"
 EPUB = "application/epub+zip"
 
 
+def _als_epub(name: str) -> str:
+    """Die Fassung ist immer ein EPUB: der Name des Originals mit dieser Endung."""
+    return name if name.lower().endswith(".epub") else f"{posixpath.splitext(name)[0] or name}.epub"
+
+
 async def ort(sprache: str, b: Buchangaben) -> Ablageort:
     ablage = await db.fetch_one("SELECT name, pfad FROM ablage_datei WHERE hash = ?", (b.hash,))
     if ablage is not None and wolke.bereit:
@@ -36,8 +42,8 @@ async def ort(sprache: str, b: Buchangaben) -> Ablageort:
         else:
             fach, name = ablageort(b.id, b.title, b.author, b.file_name, b.file_format)
             ordner = f"{settings.ablage_ordner}/Bücher/{fach}"
-        return Ablageort(ort="kellerwolke", pfad=f"{ordner}/{ORDNER}/{sprache}/{name}")
-    name = dateiname(Path(b.file_name).name or f"{b.id}.epub")
+        return Ablageort(ort="kellerwolke", pfad=f"{ordner}/{ORDNER}/{sprache}/{_als_epub(name)}")
+    name = _als_epub(dateiname(Path(b.file_name).name or f"{b.id}.epub"))
     return Ablageort(ort="geraet", pfad=str(get_storage_path(b.hash) / ORDNER / sprache / name))
 
 

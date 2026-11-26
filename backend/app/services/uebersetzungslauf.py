@@ -43,7 +43,7 @@ from backend.app.uebersetzung.modelle import Anrede, Befund, Begriff, Unbrauchba
 from backend.app.uebersetzung.pruefen import pruefen
 from backend.app.uebersetzung.pruefer import pruefen_lassen
 from backend.app.uebersetzung.uebersetzen import Auftrag, nacharbeiten, portionen, speicherschluessel, uebersetzen
-from backend.app.uebersetzung.zerlegen_epub import NichtLesbar
+from backend.app.uebersetzung.werk import NichtLesbar
 
 logger = logging.getLogger("buecherfreunde.uebersetzungslauf")
 ANTWORT_TOKEN = 8192                                 # Obergrenze je Antwort; eine Portion braucht weit weniger
@@ -237,10 +237,10 @@ class Uebersetzungslauf:
             if not self.ki.bereit:
                 raise NichtJetzt("Keine Leitstelle eingetragen (LEITSTELLE_ADRESSE, LEITSTELLE_SCHLUESSEL_DATEI)")
             await fassungen.aendern(f.id, grund="", **({"begonnen": fassungen.jetzt()} if f.begonnen is None else {}))
-            if f.zerlegt != fassungen.zerlegt_mit():
+            if f.zerlegt != fassungen.zerlegt_mit(b.format):
                 self.jetzt = Jetzt(f.id, "Zerlegen")
                 original = await self._original(b)
-                await fassungen.abgleichen(f.id, await asyncio.to_thread(fassungen.zerlegung_aus, original))
+                await fassungen.abgleichen(f.id, await asyncio.to_thread(fassungen.werk_aus, b, original))
             if not f.begriffe_fertig:
                 await self._begriffe(f, b)
             await self._modelle_merken(f)
@@ -383,7 +383,7 @@ class Uebersetzungslauf:
             return
         stand = f.aenderungen
         satz = await fassungen.satz(f)
-        daten = await asyncio.to_thread(fassungen.epub_bauen, original or await self._original(b), satz)
+        daten = await asyncio.to_thread(fassungen.epub_bauen, b, original or await self._original(b), satz)
         try:
             pfad, knoten = await fassung_ablage.ablegen(f, b, daten)
         except WolkeFehler as e:

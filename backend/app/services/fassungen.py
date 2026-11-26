@@ -1,7 +1,9 @@
 """Fassungen eines Buchs (BF-71): die deutsche Fassung als eigene Datei neben dem Original, mit ihrem Lauf in eigenen
 Tabellen (core/database.py): `fassung` (Stand, Modell, Ablage, Zeit), `uebersetzung_kapitel` und `uebersetzung_block` (je
-Block Vorlage, Übersetzung, Stand, Befunde, Versuche). An den Blöcken setzt der Lauf nach jedem Halt fort
-(services/uebersetzungslauf.py); dieselbe Zerlegung ergibt dieselben Kennungen (uebersetzung/zerlegen_epub.py).
+Block Vorlage, Übersetzung, Stand, Befunde, Versuche, beim PDF Seite und Lage im Original). An den Blöcken setzt der Lauf nach
+jedem Halt fort (services/uebersetzungslauf.py); dieselbe Zerlegung ergibt dieselben Kennungen (uebersetzung/werk.py: EPUB
+und PDF, die deutsche Fassung ist immer ein EPUB). Die Seiten eines PDF tragen in der Fassung die Beschriftungen, die
+BücherFreunde überall zeigt (services/seiten.py).
 
 Stand einer Fassung: laeuft, pause, teilweise (abgebrochen, Fertiges bleibt), fertig, fehler (ein Mensch ist gefragt).
 Stand eines Blocks: wartet, uebersetzt (feste Prüfungen bestanden, wartet auf den Prüfer), nacharbeit, bestanden,
@@ -16,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
@@ -23,6 +26,7 @@ from pydantic import BaseModel, Field
 from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.models.fassung import IN_ARBEIT, MIT_DEUTSCH, VON_DER_KI, Blockstand, Stand
+from backend.app.services.seiten import buch_seiten
 from backend.app.services.storage import get_original_file
 from backend.app.uebersetzung import marken
 from backend.app.uebersetzung.anweisungen import FASSUNG as ANWEISUNG
@@ -30,9 +34,11 @@ from backend.app.uebersetzung.begriffe import kommt_vor
 from backend.app.uebersetzung.modelle import Anrede, Befund, Begriff, Block, Laengengrenzen
 from backend.app.uebersetzung.pruefen import FASSUNG as PRUEF_FASSUNG
 from backend.app.uebersetzung.pruefen import pruefen
-from backend.app.uebersetzung.setzen import Hinweis, Satz, Uebersetzt, setzen
+from backend.app.uebersetzung.setzen import Hinweis, Satz, Uebersetzt
+from backend.app.uebersetzung.werk import FORMATE, Werk, zerlegen
 from backend.app.uebersetzung.zeichen import gerade
-from backend.app.uebersetzung.zerlegen_epub import Zerlegung, zerlegen
+
+logger = logging.getLogger("buecherfreunde.fassungen")
 
 ZERLEGEN_FASSUNG = 2                        # steigt sie (andere Regeln beim Zerlegen), wird jede Fassung neu zerlegt
 NOCH_NICHT = "Im Original: noch nicht übersetzt"
@@ -48,6 +54,11 @@ class Buchangaben(BaseModel):
     language: str | None = ""
     file_format: str = ""
     file_name: str = ""
+    page_count: int | None = 0
+
+    @property
+    def format(self) -> str:
+        return (self.file_format or "").lower().lstrip(".")
 
 
 class FassungZeile(BaseModel):
@@ -105,6 +116,9 @@ class BlockZeile(BaseModel):
     versuche: int = 0
     nacharbeiten: int = 0
     geprueft: bool = False
+    seite: int | None = None                         # beim PDF: Dateiseite im Original
+    seite_gedruckt: str = ""
+    lage: list[float] = Field(default_factory=list)
 
     def als_block(self) -> Block:
         return Block(kennung=self.kennung, kapitel=self.kapitel, nr=self.nr, art=self.art, stufe=self.stufe, vorlage=self.vorlage,
@@ -131,9 +145,11 @@ def nie_klassen() -> frozenset[str]:
     return frozenset(k.strip() for k in settings.uebersetzen_nie_klassen.split(",") if k.strip())
 
 
-def zerlegt_mit() -> str:
-    """Womit zerlegt wird; ändert es sich, wird neu zerlegt (Kennungen können sich dann verschieben)."""
-    return f"{ZERLEGEN_FASSUNG}:{','.join(sorted(nie_klassen()))}"
+def zerlegt_mit(format: str) -> str:
+    """Womit ein Original dieses Formats zerlegt wird; ändert es sich, wird neu zerlegt (Kennungen können sich dann
+    verschieben)."""
+    art = FORMATE.get(format.lower().lstrip("."), "")
+    return f"{ZERLEGEN_FASSUNG}:{','.join(sorted(nie_klassen()))}" + (f":{art}" if art else "")
 
 
 def grenzen() -> Laengengrenzen:
@@ -154,7 +170,8 @@ def anrede_vorgabe() -> Anrede:
 # -- Lesen --------------------------------------------------------------------------------------------------------------------
 
 async def buch(buch_id: int) -> Buchangaben | None:
-    z = await db.fetch_one("SELECT id, hash, title, author, language, file_format, file_name FROM books WHERE id = ?", (buch_id,))
+    z = await db.fetch_one("SELECT id, hash, title, author, language, file_format, file_name, page_count FROM books WHERE id = ?",
+                           (buch_id,))
     return Buchangaben(**z) if z else None
 
 
@@ -186,7 +203,8 @@ async def naechste(ausser: set[int]) -> FassungZeile | None:
 
 
 def _block(z: dict) -> BlockZeile:
-    return BlockZeile(**{**z, "befunde": json.loads(z["befunde"] or "[]"), "geprueft": bool(z["geprueft"])})
+    return BlockZeile(**{**z, "befunde": json.loads(z["befunde"] or "[]"), "geprueft": bool(z["geprueft"]),
+                         "lage": json.loads(z["lage"] or "[]")})
 
 
 async def bloecke(fid: int, kapitel: int | None = None, staende: tuple[str, ...] | None = None) -> list[BlockZeile]:
@@ -248,12 +266,13 @@ async def zeit_merken(fid: int, kapitel_nr: int | None, sekunden: float) -> None
 
 
 _BLOCKSPALTEN = ("kapitel", "nr", "art", "stufe", "pruefsumme", "vorlage", "woerter", "uebersetzung", "stand", "befunde",
-                 "versuche", "nacharbeiten", "geprueft")
+                 "versuche", "nacharbeiten", "geprueft", "seite", "seite_gedruckt", "lage")
 
 
 def _werte(fid: int, z: BlockZeile) -> tuple:
     return (fid, z.kennung, z.kapitel, z.nr, z.art, z.stufe, z.pruefsumme, z.vorlage, z.woerter, z.uebersetzung, z.stand,
-            json.dumps([b.model_dump() for b in z.befunde], ensure_ascii=False), z.versuche, z.nacharbeiten, int(z.geprueft))
+            json.dumps([b.model_dump() for b in z.befunde], ensure_ascii=False), z.versuche, z.nacharbeiten, int(z.geprueft),
+            z.seite, z.seite_gedruckt, json.dumps(z.lage) if z.lage else "")
 
 
 async def bloecke_merken(fid: int, zeilen: list[BlockZeile]) -> None:
@@ -271,13 +290,14 @@ async def bloecke_merken(fid: int, zeilen: list[BlockZeile]) -> None:
 
 def _uebernommen(neu: Block, alt: BlockZeile | None) -> BlockZeile:
     zeile = BlockZeile(kennung=neu.kennung, kapitel=neu.kapitel, nr=neu.nr, art=neu.art, stufe=neu.stufe, pruefsumme=neu.pruefsumme,
-                       vorlage=neu.vorlage, woerter=neu.woerter)
+                       vorlage=neu.vorlage, woerter=neu.woerter, seite=neu.seite, seite_gedruckt=neu.gedruckt,
+                       lage=[round(v, 1) for v in neu.lage] if neu.lage else [])
     if alt is None:
         return zeile
     return zeile.model_copy(update={k: getattr(alt, k) for k in ("uebersetzung", "stand", "befunde", "versuche", "nacharbeiten", "geprueft")})
 
 
-async def abgleichen(fid: int, zerlegung: Zerlegung) -> None:
+async def abgleichen(fid: int, werk: Werk) -> None:
     """Kapitel und Blöcke nach der Zerlegung. Was schon übersetzt war, bleibt bei dem Block mit derselben Vorlage (gleiche
     Kennung zuerst, sonst gleiche Prüfsumme); ein Block, dessen Vorlage sich geändert hat, wartet wieder."""
     alt = await bloecke(fid)
@@ -287,7 +307,7 @@ async def abgleichen(fid: int, zerlegung: Zerlegung) -> None:
         je_summe.setdefault(z.pruefsumme, z)
     dauer = {k.nr: k.dauer_s for k in await kapitel(fid)}
     neue = []
-    for b in zerlegung.bloecke():
+    for b in werk.bloecke():
         vorher = je_kennung.get(b.kennung)
         neue.append(_uebernommen(b, vorher if vorher is not None and vorher.pruefsumme == b.pruefsumme else je_summe.get(b.pruefsumme)))
     async with db.einheit():
@@ -297,9 +317,10 @@ async def abgleichen(fid: int, zerlegung: Zerlegung) -> None:
                               f"VALUES ({', '.join('?' * (len(_BLOCKSPALTEN) + 2))})", [_werte(fid, z) for z in neue])
         await db.execute_many("INSERT INTO uebersetzung_kapitel (fassung_id, nr, titel, datei, bloecke, woerter, dauer_s) VALUES (?, ?, ?, ?, ?, ?, ?)",
                               [(fid, d.kapitel, d.titel, d.pfad, len(d.laeufe), sum(b.woerter for b in d.bloecke()), dauer.get(d.kapitel, 0))
-                               for d in zerlegung.mit_bloecken()])
+                               for d in werk.kapitel()])
         await db.execute("UPDATE fassung SET zerlegt = ?, woerter = ?, nicht_lesbar = ?, aenderungen = aenderungen + 1, geaendert_am = ? "
-                         "WHERE id = ?", (zerlegt_mit(), sum(z.woerter for z in neue), json.dumps(zerlegung.nicht_lesbar), jetzt(), fid))
+                         "WHERE id = ?", (zerlegt_mit(werk.format), sum(z.woerter for z in neue), json.dumps(werk.nicht_lesbar, ensure_ascii=False),
+                                          jetzt(), fid))
 
 
 # -- Zwischenspeicher ---------------------------------------------------------------------------------------------------------
@@ -323,8 +344,19 @@ async def original_lesen(b: Buchangaben) -> bytes | None:
     return await asyncio.to_thread(pfad.read_bytes) if pfad is not None else None
 
 
-def zerlegung_aus(original: bytes) -> Zerlegung:
-    return zerlegen(original, nie_klassen())
+def gedruckte_seiten(b: Buchangaben) -> list[str]:
+    """Die Beschriftungen der Seiten eines PDF, wie BücherFreunde sie überall zeigt ("" wo unbekannt; im Faden rufen)."""
+    try:
+        return buch_seiten(b.hash, b.format, b.page_count)[1]
+    except Exception as f:  # noqa: BLE001 - ohne Beschriftungen zeigen die Marken die Seiten des PDF
+        logger.warning("Seiten von %s nicht lesbar: %s", b.hash[:12], f)
+        return []
+
+
+def werk_aus(b: Buchangaben, original: bytes) -> Werk:
+    """Das Original zerlegt (im Faden rufen); wirft NichtLesbar mit einem deutschen Satz."""
+    gedruckt = gedruckte_seiten(b) if b.format == "pdf" else []
+    return zerlegen(original, b.format, nie_klassen(), gedruckt, b.title or "", b.author or "")
 
 
 async def satz(f: FassungZeile, mit_hinweis: bool = True) -> Satz:
@@ -337,9 +369,9 @@ async def satz(f: FassungZeile, mit_hinweis: bool = True) -> Satz:
     return Satz(deutsch=deutsch, im_original=im_original, hinweis=hinweis, sprache=f.sprache, aus_sprache=f.aus_sprache)
 
 
-def epub_bauen(original: bytes, s: Satz) -> bytes:
-    """Die deutsche Fassung aus dem Original und dem Satz (im Faden rufen)."""
-    return setzen(original, zerlegung_aus(original), s)
+def epub_bauen(b: Buchangaben, original: bytes, s: Satz) -> bytes:
+    """Die deutsche Fassung aus dem Original und dem Satz, immer ein EPUB (im Faden rufen)."""
+    return werk_aus(b, original).setzen(s)
 
 
 # -- Aktionen an einem Block --------------------------------------------------------------------------------------------------

@@ -24,7 +24,8 @@ KI nur über die Leitstelle, Texterkennung als Werkzeug ohne Modell am Mac.
 ```
 Original (EPUB, PDF, Scan)
   -> Texterkennung (nur Scans und Abbildungen)            Stellwerk am Mac, Werkzeug ohne Modell
-  -> Zerlegen in Blöcke mit fester Kennung               backend/app/uebersetzung/zerlegen_epub.py, zerlegen_pdf.py
+  -> Zerlegen in Blöcke mit fester Kennung               backend/app/uebersetzung/werk.py (EPUB und PDF), zerlegen_epub.py,
+                                                          zerlegen_pdf.py (pdf_lesen.py, pdf_aufbau.py, pdf_epub.py)
   -> Begriffsliste je Buch (Regeln, dann KI-Vorschlag)    uebersetzung/begriffe.py
   -> Übersetzen in Portionen (Leitstelle, JSON-Schema)    uebersetzung/uebersetzen.py
   -> Prüfkette: feste Prüfungen, KI-Prüfer, Nacharbeit    uebersetzung/pruefen.py
@@ -61,10 +62,27 @@ Lesestand, Notizen, Markierungen und die Seitenmarken des PDF.
 - **Zeichen:** Das Modell sieht Text als Zeichen (`if age < 18`), nur die Marken sind Auszeichnung; die Antwort kommt
   wieder in die Schreibweise der Vorlagen (`&lt;`). Was darin wie eine Auszeichnung aussieht und nicht als Text im
   Original steht, bleibt roh und fällt in der Prüfung "Marken" auf.
-- **PDF:** Blöcke aus der Seitenstruktur: Überschriften nach Schriftgröße und Gewicht, Code nach der vorhandenen Erkennung
-  der Codestellen (Festbreite, BF-29), Tabellen nach Zellen, Abbildungen mit Bildunterschrift, Kopf- und Fußzeilen und
-  Seitenzahlen fallen weg, Silbentrennung am Zeilenende wird aufgelöst. Jeder Block merkt sich Seite und Lage. Die deutsche
-  Fassung wird ein EPUB mit Marken "Seite 33" an den Stellen der Seitenwechsel.
+- **PDF:** Aus der Seitenstruktur entsteht ein englisches EPUB mit demselben Aufbau (zerlegen_pdf.py), das dieselbe Kette
+  zerlegt und setzt wie jedes EPUB; so sind Blöcke, Marken, Vorlagen und Prüfungen dieselben, und die deutsche Fassung ist
+  ein EPUB.
+  - Lesen (pdf_lesen.py): Zeilen mit ihren Schriften; Code nach der Erkennung der Codestellen (Festbreite, BF-29); Tabellen
+    aus den Linien der Seite nach Zellen (Zeilen, Spalten, Kopfzeile, verbundene Zellen); Abbildungen aus Zeichnungen und
+    Bildern, Text darin gehört zum Bild; Text in einem Rahmen oder auf einer Fläche bleibt Text (Kasten); Kopf- und
+    Fußzeilen und Seitenzahlen fallen weg (im Rand, wiederkehrend über Seiten); Lesefolge nach Breuel, auch zweispaltig.
+  - Aufbau (pdf_aufbau.py): Überschriften nach Größe und Gewicht, die Stufen aus der Verteilung im Dokument; Absätze über
+    Zeilen, Spalten und Seiten hinweg (die nächste Zeile in derselben Schrift, nicht eingerückt, die vorige war voll);
+    Trennung am Zeilenende aufgelöst (der Bindestrich bleibt, wo das Dokument das Wort sonst mit ihm schreibt); Listen mit
+    dem gedruckten Zeichen als Platzhalter; Fußnoten am Fuß der Seite mit Verweis aus dem Text; Bildunterschriften
+    ("Figure 1", "Table 2", "Listing 3") an ihrer Abbildung, Tabelle oder Codestelle; Kapitel aus dem Inhaltsverzeichnis
+    des PDF (oberste Stufe mit mehr als einem Eintrag), sonst an den Überschriften der obersten Stufe.
+  - EPUB (pdf_epub.py): eine Datei je Kapitel, das Verzeichnis mit Seitenliste, ein Rasterbild, das allein die Abbildung
+    ist, unverändert, sonst ein Ausschnitt der Seite. An jedem Seitenwechsel eine Marke "Seite 33" mit der gedruckten
+    Seitenzahl (wie BücherFreunde sie überall zeigt, services/seiten.py), sonst der Seite im PDF; mitten in einem Absatz
+    steht sie als Platzhalter in der Vorlage, so setzt die Übersetzung sie an die passende Stelle. Jedes Element trägt
+    `data-bf-seite` und `data-bf-lage`; daraus kennt jeder Block Seite und Lage im Original.
+  - Nicht zerlegt wird ein PDF ohne Textschicht (Scan), mit unlesbarer Schrift oder mit kaum Text; die Rückfrage sagt dann
+    `geht: false` mit dem Grund, dass die Texterkennung in der nächsten Stufe folgt. Einzelne Seiten ohne Textschicht in
+    einem PDF mit Text kommen als Bild in die Fassung und stehen bei "Zerlegen" als nicht lesbar.
 - **Scan:** erst Texterkennung je Seite mit Lage der Zeilen, dann wie PDF.
 
 ## Begriffsliste
@@ -139,9 +157,10 @@ erkannt ist, bleibt englisch und steht im Bericht.
 - Tabelle `fassung`: Buch, Sprache, aus Sprache, Stand (läuft, teilweise, fertig, Fehler), Datei in der Kellerwolke,
   Modell für Übersetzen und Prüfen, Fassung der Anweisung, Anrede, womit fest geprüft ist, angelegt, geändert, Zahlen aus
   dem Prüfbericht.
-- Tabelle `uebersetzung_block`: Fassung, Kennung, Prüfsumme des Originals, Übersetzung, Stand, Befunde, Versuche.
-- Die Datei liegt in der Kellerwolke neben dem Original unter `Fassungen/de/`. Ohne Kellerwolke liegt sie im lokalen
-  Bestand (wie die Begleiter).
+- Tabelle `uebersetzung_block`: Fassung, Kennung, Prüfsumme des Originals, Übersetzung, Stand, Befunde, Versuche; beim PDF
+  Seite, gedruckte Seite und Lage im Original.
+- Die Datei liegt in der Kellerwolke neben dem Original unter `Fassungen/de/` (die Fassung eines PDF als EPUB, mit dieser
+  Endung). Ohne Kellerwolke liegt sie im lokalen Bestand (wie die Begleiter).
 - Jede deutsche Fassung trägt sichtbar "Von uns übersetzt aus dem Englischen" mit Modell und Datum; das Original ist mit
   einem Tipp erreichbar.
 
@@ -177,11 +196,11 @@ nur erfundene Texte.
 | `GET /api/books/{id}/fassungen` | `[{id, sprache, original, stand, kapitel_fertig, kapitel_gesamt, fertig_gegen, modell, pruefmodell, angelegt, geaendert, gewaehlt, anrede}]`; das Original steht immer zuerst (`id` null, `original` true, `anrede` null); `gewaehlt` die Fassung, die "Lesen" öffnet |
 | `PUT /api/books/{id}/fassungen/wahl` | `{sprache}` (null: das Original) wählt, was "Lesen" öffnet, je Buch auf jedem Gerät (`user_book_data.fassung_wahl`); Antwort die Fassungen |
 | `GET /api/fassungen` | Fassungen in Arbeit (läuft, Pause, Fehler) für die Aufträge: `[{id, buch_id, titel, sprache, stand, anteil, kapitel_fertig, kapitel_gesamt, fertig_gegen, grund}]` |
-| `GET /api/books/{id}/fassungen/de/folgen` | Rückfrage vor dem Start: `{seiten, kapitel, bloecke, begriffe, abbildungen, dauer_s, fertig_gegen, tempo_s_je_seite, ablage: {ort, pfad}, anrede, geht, grund}`; `ort` kellerwolke oder geraet; `anrede` die der Fassung, ohne Fassung die Vorgabe; `geht` false mit Grund, wenn das Buch nicht englisch ist oder das Format noch nicht übersetzt wird |
+| `GET /api/books/{id}/fassungen/de/folgen` | Rückfrage vor dem Start: `{seiten, kapitel, bloecke, begriffe, abbildungen, dauer_s, fertig_gegen, tempo_s_je_seite, ablage: {ort, pfad}, anrede, geht, grund}`; `ort` kellerwolke oder geraet; `anrede` die der Fassung, ohne Fassung die Vorgabe; `seiten` beim PDF die Seiten des PDF; `geht` false mit Grund, wenn das Buch nicht englisch ist, das Format noch nicht übersetzt wird (EPUB und PDF werden es) oder ein PDF keinen Text zum Zerlegen hat (Scan: "Texterkennung folgt in der nächsten Stufe") |
 | `POST /api/books/{id}/fassungen/de` | startet (oder setzt fort, auch eine fertige mit geänderten Prüfungen), Antwort Stand; Körper optional `{anrede: "du" \| "Sie"}` für eine neue Fassung, ohne Angabe die Vorgabe; eine andere Anrede für eine bestehende Fassung gibt 409 |
 | `GET /api/fassungen/{fid}/stand` | `{id, stand, begonnen, bisher_s, noch_s, fertig_gegen, tempo_s_je_seite, kapitel_jetzt, block_jetzt, stationen: [{name, stand, text}], kapitel: [{nr, titel, stand, dauer_s, geschaetzt, bloecke, fertig, geprueft, nachgearbeitet, offen}], zahlen: {bloecke, uebersetzt, bestanden, nachgearbeitet, offen}, grund}`; Stationen in fester Folge: Zerlegen, Begriffe, Übersetzen, Prüfen, Nacharbeit, Setzen; Stand je Station: wartet, laeuft, fertig |
 | `POST /api/fassungen/{fid}/pause`, `.../fortsetzen`, `.../abbrechen` | Stand; Abbrechen behält Fertiges, die Fassung bleibt "teilweise" |
-| `GET /api/fassungen/{fid}/bericht` | `{zahlen, offen: [{kennung, kapitel, ort, seite_original, original, deutsch, befunde: [{art, quelle, text, stelle}]}]}`; `quelle` pruefung oder ki; `stelle` das beanstandete Stück im deutschen Text |
+| `GET /api/fassungen/{fid}/bericht` | `{zahlen, offen: [{kennung, kapitel, ort, seite_original, seite_gedruckt, original, deutsch, befunde: [{art, quelle, text, stelle}]}]}`; `quelle` pruefung oder ki; `stelle` das beanstandete Stück im deutschen Text; beim PDF `seite_original` die Seite im PDF, `seite_gedruckt` ihre Beschriftung |
 | `POST /api/fassungen/{fid}/bloecke/{kennung}` | `{aktion: "neu" \| "annehmen" \| "setzen", text?}`; "setzen" nimmt deinen Text (Marken wie im Bericht, Zeichen wie < und & dürfen roh stehen), wenn er die festen Prüfungen besteht, sonst 422 mit Befunden |
 | `GET /api/books/{id}/begriffe`, `POST`, `PATCH /api/begriffe/{bid}`, `DELETE` | Begriffsliste je Buch `[{id, englisch, deutsch, bleibt, herkunft, stellen, grund, art}]`; `art` begriff oder einheit, `herkunft` regel, ki, hand oder vorgabe; `GET /api/begriffe` und `POST /api/begriffe` die Liste für alle Bücher |
 | `GET /api/fassungen/{fid}/datei` | die deutsche Fassung als EPUB für den Leser, auch teilweise (offene Blöcke im Original mit Marke) |

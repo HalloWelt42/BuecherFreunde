@@ -25,12 +25,12 @@ from backend.app.services.ki import ki
 from backend.app.services.uebersetzungslauf import uebersetzungslauf
 from backend.app.uebersetzung import begriffe, marken
 from backend.app.uebersetzung.sprache import buch_ist_englisch
-from backend.app.uebersetzung.zerlegen_epub import NichtLesbar
+from backend.app.uebersetzung.werk import FORMATE, NichtLesbar
 
 ARTWORT = {"ueberschrift": "Überschrift", "absatz": "Absatz", "listenpunkt": "Listenpunkt", "tabellenzelle": "Tabellenzelle",
            "bildunterschrift": "Bildunterschrift", "fussnote": "Fußnote"}
 PROBE_WOERTER = 3000                                 # so viel Text entscheidet, ob ein Buch ohne Angabe englisch ist
-FORMATE = ("epub",)                                  # was schon übersetzt wird
+NICHT_LESBAR_GEZEIGT = 3                             # so viele Teile, die nicht lesbar sind, nennt der Stand
 
 
 def _seiten(woerter: int) -> float:
@@ -110,39 +110,42 @@ async def laeufe() -> list[LaufEintrag]:
 # -- Rückfrage vor dem Start --------------------------------------------------------------------------------------------------
 
 async def folgen(b: Buchangaben, sprache: str = "de") -> Folgen:
-    """Was das Übersetzen bedeutet; liest und zerlegt dafür das Original. `anrede` ist die der Fassung, sonst die Vorgabe."""
+    """Was das Übersetzen bedeutet; liest und zerlegt dafür das Original. `anrede` ist die der Fassung, sonst die Vorgabe.
+    Beim PDF zählen die Seiten des PDF, sonst Seiten zu UEBERSETZEN_WOERTER_JE_SEITE Wörtern."""
     f = await fassungen.zum_buch(b.id, sprache)
     anrede = f.anrede if f is not None else fassungen.anrede_vorgabe()
-    if b.file_format.lower().lstrip(".") not in FORMATE:
-        return Folgen(geht=False, anrede=anrede, grund=f"Das Format {b.file_format.upper() or 'ohne Endung'} wird noch nicht übersetzt, bisher nur EPUB")
+    if b.format not in FORMATE:
+        bisher = " und ".join(x.upper() for x in FORMATE)
+        return Folgen(geht=False, anrede=anrede, grund=f"Das Format {b.format.upper() or 'ohne Endung'} wird noch nicht übersetzt, bisher nur {bisher}")
     if not ki.bereit:
         return Folgen(geht=False, anrede=anrede, grund="Keine Leitstelle eingetragen: ohne KI wird nicht übersetzt")
     original = await fassungen.original_lesen(b)
     if original is None:
         return Folgen(geht=False, anrede=anrede, grund="Das Original ist gerade nicht zu holen")
     try:
-        zerlegung = await asyncio.to_thread(fassungen.zerlegung_aus, original)
+        werk = await asyncio.to_thread(fassungen.werk_aus, b, original)
     except NichtLesbar as e:
         return Folgen(geht=False, anrede=anrede, grund=str(e))
-    bloecke = zerlegung.bloecke()
+    bloecke = werk.bloecke()
     probe, summe = [], 0
     for x in bloecke:
         if summe >= PROBE_WOERTER:
             break
         probe.append(marken.klartext(x.vorlage))
         summe += x.woerter
-    if not buch_ist_englisch(b.language or zerlegung.sprache, " ".join(probe)):
+    if not buch_ist_englisch(b.language or werk.sprache, " ".join(probe)):
         return Folgen(geht=False, anrede=anrede,
-                      grund=f"Das Buch ist nicht englisch (Sprache: {kuerzel(b.language or zerlegung.sprache) or 'nach dem Text'})")
-    if f is not None and f.zerlegt == fassungen.zerlegt_mit():
+                      grund=f"Das Buch ist nicht englisch (Sprache: {kuerzel(b.language or werk.sprache) or 'nach dem Text'})")
+    if f is not None and f.zerlegt == fassungen.zerlegt_mit(b.format):
         offen = sum(z.woerter for z in await fassungen.bloecke(f.id, staende=IN_ARBEIT))
     else:
         offen = sum(x.woerter for x in bloecke)
     vorhanden = await begriffsliste.vorhandene(b.id)
     s_je_seite = await tempo(f)
     dauer = _seiten(offen) * s_je_seite
-    return Folgen(seiten=math.ceil(_seiten(sum(x.woerter for x in bloecke))), kapitel=len(zerlegung.mit_bloecken()), bloecke=len(bloecke),
-                  begriffe=len(vorhanden) + len(begriffe.namen(bloecke, vorhanden)), abbildungen=zerlegung.abbildungen,
+    seiten = werk.seiten if werk.seiten is not None else math.ceil(_seiten(sum(x.woerter for x in bloecke)))
+    return Folgen(seiten=seiten, kapitel=len(werk.kapitel()), bloecke=len(bloecke),
+                  begriffe=len(vorhanden) + len(begriffe.namen(bloecke, vorhanden)), abbildungen=werk.abbildungen,
                   dauer_s=round(dauer, 1), fertig_gegen=_um(dauer), tempo_s_je_seite=round(s_je_seite, 1),
                   ablage=await fassung_ablage.ort(sprache, b), anrede=anrede, geht=True)
 
@@ -158,7 +161,11 @@ def _stationen(f: FassungZeile, zeilen: list[BlockZeile], station: str | None) -
     n = Counter(z.stand for z in zeilen)
     zerlegt = bool(f.zerlegt)
     kapitel = len({z.kapitel for z in zeilen})
-    nicht = f"; {len(f.nicht_lesbar)} Dateien nicht lesbar, sie bleiben im Original" if f.nicht_lesbar else ""
+    nicht = ""
+    if f.nicht_lesbar:
+        genannt = ", ".join(f.nicht_lesbar[:NICHT_LESBAR_GEZEIGT])
+        rest = len(f.nicht_lesbar) - NICHT_LESBAR_GEZEIGT
+        nicht = f"; nicht lesbar, bleibt im Original: {genannt}" + (f" und {rest} weitere" if rest > 0 else "")
     uebersetzt = len(zeilen) - n["wartet"]
     geprueft = sum(z.geprueft for z in zeilen)
     return [
@@ -201,7 +208,8 @@ async def bericht(f: FassungZeile) -> Bericht:
     zeilen = await fassungen.bloecke(f.id)
     titel = {k.nr: k.titel for k in await fassungen.kapitel(f.id)}
     offen = [OffeneStelle(kennung=z.kennung, kapitel=z.kapitel, ort=f"{titel.get(z.kapitel, z.kapitel)}, {ARTWORT.get(z.art, z.art)} {z.nr}",
-                          original=z.vorlage, deutsch=z.uebersetzung, befunde=z.befunde)
+                          seite_original=z.seite, seite_gedruckt=z.seite_gedruckt, original=z.vorlage, deutsch=z.uebersetzung,
+                          befunde=z.befunde)
              for z in zeilen if z.stand == "offen"]
     return Bericht(zahlen=zahlen_aus(zeilen), offen=offen)
 

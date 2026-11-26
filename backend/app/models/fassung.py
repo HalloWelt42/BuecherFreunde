@@ -145,7 +145,8 @@ class OffeneStelle(BaseModel):
     kennung: str
     kapitel: int
     ort: str                                         # für Menschen, etwa "Getting Started, Absatz 4"
-    seite_original: int | None = None                # nur bei PDF
+    seite_original: int | None = None                # nur bei PDF: die Seite im PDF (zum Springen)
+    seite_gedruckt: str = ""                         # nur bei PDF: ihre gedruckte Beschriftung (für Menschen)
     original: str                                    # Vorlage mit Marken
     deutsch: str                                     # die letzte Übersetzung, mit Marken; leer, wenn keine kam
     befunde: list[Befund]

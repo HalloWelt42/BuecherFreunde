@@ -63,9 +63,10 @@ async def test_folgen_wenn_es_nicht_geht(client, test_db, uebersetzer, monkeypat
     assert f["geht"] is False and f["grund"] == "Das Buch ist nicht englisch (Sprache: de)"
     r = await client.post(f"/api/books/{deutsch}/fassungen/de")
     assert r.status_code == 422 and r.json()["detail"] == "Das Buch ist nicht englisch (Sprache: de)"
-    await test_db.execute("UPDATE books SET file_format = 'pdf', hash = 'anders' WHERE id = ?", (deutsch,))
+    await test_db.execute("UPDATE books SET file_format = 'mobi', hash = 'anders' WHERE id = ?", (deutsch,))
     await test_db.commit()
-    assert (await client.get(f"/api/books/{deutsch}/fassungen/de/folgen")).json()["grund"] == "Das Format PDF wird noch nicht übersetzt, bisher nur EPUB"
+    assert (await client.get(f"/api/books/{deutsch}/fassungen/de/folgen")).json()["grund"] == (
+        "Das Format MOBI wird noch nicht übersetzt, bisher nur EPUB und PDF")
     ohne_angabe = await probebuch(test_db, language="", hash="ohneangabe")
     assert (await client.get(f"/api/books/{ohne_angabe}/fassungen/de/folgen")).json()["geht"] is False   # zu wenig Text, um englisch zu gelten
     monkeypatch.setattr(settings, "leitstelle_adresse", "")
