@@ -13,6 +13,7 @@ import asyncio
 import logging
 from pathlib import Path
 
+from backend.app.annahme import auswertung
 from backend.app.core.database import db
 from backend.app.core.suchindex import SUCHTEXT_ZEICHEN
 from backend.app.quellen import auskunft, bilder
@@ -76,14 +77,15 @@ def _reset_status():
 
 
 def _ohne_volltext(buecher: list) -> set[int]:
-    """Bücher, deren Volltext fehlt oder so kurz ist, dass er keiner ist."""
+    """Bücher, deren Volltext fehlt oder so kurz ist, dass er keiner ist, oder die keine Seiten haben (BF-17: beim
+    Aufnehmen nicht lesbar, inzwischen schon)."""
     ids = set()
     for b in buecher:
         try:
             kurz = get_sidecar_path(b["hash"], "fulltext.txt").stat().st_size < VOLLTEXT_MINDESTENS
         except OSError:
             kurz = True
-        if kurz:
+        if kurz or not b["page_count"]:
             ids.add(b["id"])
     return ids
 
@@ -279,11 +281,12 @@ async def _rescan_worker(buecher: list, typen: list[str], lauf: Anhalter):
                     status["isbn_gefunden"] += 1
 
             if original is not None and fehlt_text:
-                text = await asyncio.to_thread(_extrahiere_volltext, original, fmt)
-                if text:
-                    save_fulltext(book["hash"], text)
-                    # über fts_content in den Suchindex (Trigger), dann wieder leer
-                    await db.execute("UPDATE books SET fts_content = ?, updated_at = datetime('now') WHERE id = ?", (text[:SUCHTEXT_ZEICHEN], book["id"]))
+                e = await auswertung.auswerten(original)               # derselbe Leser wie beim Aufnehmen, im eigenen Prozess
+                if e.lesbar and e.fulltext.strip():
+                    save_fulltext(book["hash"], e.fulltext)
+                    # über fts_content in den Suchindex (Trigger), dann wieder leer; fehlende Seitenzahl gleich mit
+                    await db.execute("UPDATE books SET fts_content = ?, page_count = CASE WHEN COALESCE(page_count, 0) = 0 THEN ? "
+                                     "ELSE page_count END, updated_at = datetime('now') WHERE id = ?", (e.fulltext[:SUCHTEXT_ZEICHEN], e.page_count, book["id"]))
                     await db.execute("UPDATE books SET fts_content = '' WHERE id = ?", (book["id"],))
                     await db.commit()
                     status["volltext_extrahiert"] += 1
@@ -308,44 +311,6 @@ async def _rescan_worker(buecher: list, typen: list[str], lauf: Anhalter):
         status["metadaten_aktualisiert"], status["volltext_extrahiert"],
         status["fehler"],
     )
-
-
-def _extrahiere_volltext(original: Path, fmt: str) -> str | None:
-    """Volltext aus Datei extrahieren."""
-    if fmt == "epub":
-        import zipfile
-        try:
-            from bs4 import BeautifulSoup
-            with zipfile.ZipFile(original) as zf:
-                parts = []
-                html_files = sorted([
-                    n for n in zf.namelist()
-                    if n.lower().endswith((".html", ".xhtml", ".htm"))
-                ])
-                for html_name in html_files:
-                    try:
-                        content = zf.read(html_name).decode("utf-8", errors="ignore")
-                        soup = BeautifulSoup(content, "html.parser")
-                        text = soup.get_text(separator="\n", strip=True)
-                        if text:
-                            parts.append(text)
-                    except Exception:
-                        continue
-                if parts:
-                    return "\n\n".join(parts)
-        except Exception:
-            pass
-
-    elif fmt == "pdf":
-        try:
-            from backend.app.services.seiten import pdf_volltext
-            text = pdf_volltext(original)
-            if text.strip():
-                return text
-        except Exception:
-            pass
-
-    return None
 
 
 async def _extrahiere_isbn(book: dict, original: Path, fmt: str) -> str | None:
@@ -393,7 +358,7 @@ async def _extrahiere_isbn(book: dict, original: Path, fmt: str) -> str | None:
     # 2. Direkt aus Datei-Inhalt (erste Seiten)
     text_direkt = ""
     if fmt == "epub":
-        text_direkt = await asyncio.to_thread(_extrahiere_volltext, original, fmt) or ""
+        text_direkt = (await auswertung.auswerten(original)).fulltext
     elif fmt == "pdf":
         try:
             import fitz
