@@ -33,7 +33,7 @@ textarea.eingabe { height: auto; min-height: 5rem; padding: .5rem .625rem; resiz
 .fenster-mitte { flex: 1; padding: .125rem .875rem .875rem; display: grid; gap: .75rem; align-content: start; grid-template-columns: minmax(0, 1fr); }
 .fenster footer { flex: none; padding: .625rem .875rem; border-top: 1px solid var(--linie); }
 .folgen { display: grid; gap: .375rem; }
-.folgen li { padding-left: 1.125rem; position: relative; }
+.folgen li { padding-left: 1.125rem; position: relative; overflow-wrap: anywhere; }
 .folgen li::before { content: ""; position: absolute; left: .25rem; top: .5625rem; width: .375rem; height: .375rem; border-radius: 50%; background: var(--schlecht); }
 .sterne.waehlbar { display: inline-flex; }
 .sterne.waehlbar button { padding: .375rem .125rem; font-size: 1rem; }

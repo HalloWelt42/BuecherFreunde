@@ -11,6 +11,7 @@
   import type { Buch, BuchEinzeln } from "../../lib/typen";
   import Ablageorte from "./Ablageorte.svelte";
   import Angabenvergleich from "./Angabenvergleich.svelte";
+  import Begleitmaterial from "./Begleitmaterial.svelte";
   import BuchBearbeiten from "./BuchBearbeiten.svelte";
   import Buchkopf from "./Buchkopf.svelte";
   import Buchsuche from "./Buchsuche.svelte";
@@ -76,6 +77,7 @@
       <Buchkopf {buch} {fassungen} onneu={(neu) => buch && (buch = { ...buch, ...neu })} ongeaendert={() => void laden()} />
     {/if}
     <div class="raster">
+      <Begleitmaterial {buch} />
       <Ablageorte {buch} />
       <Buchsuche {buch} />
       <Stellen {buch} />
