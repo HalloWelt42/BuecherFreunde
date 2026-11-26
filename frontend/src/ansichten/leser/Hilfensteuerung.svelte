@@ -5,7 +5,6 @@
   import { lesehilfen, type Fokusart } from "../../lib/leser/lesehilfen.svelte";
   import { selbstlauf } from "../../lib/leser/selbstlauf.svelte";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
-  import { geraet } from "../../lib/stand/geraet.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
   import Fokusschicht from "./Fokusschicht.svelte";
 
@@ -19,7 +18,7 @@
 
   // Ruhig wird es nur, wenn nichts offen ist und man eine Weile nichts tut
   $effect(() => {
-    const darf = (lesehilfen.ruhe || schale.vollbild) && !geraet.telefon && !sitzung.feld && !offen;
+    const darf = (lesehilfen.ruhe || schale.vollbild) && !schale.telefon && !sitzung.feld && !offen;
     void zuletzt;
     sitzung.ruhig = false;
     if (!darf) return;
@@ -34,29 +33,32 @@
     const [x, y] = [e.clientX, e.clientY];
     bild = requestAnimationFrame(() => {
       sitzung.zeiger = { x, y };
-      if (lesehilfen.fokus.art === "lineal") linealY = null;
+      if (lesehilfen.fokus.art === "lineal" && lesehilfen.fokus.folgt) linealY = null;
     });
   }
 
-  // Lineal mit den Pfeilen: Zeile für Zeile, am Rand geht der Text weiter
+  // Lineal mit den Pfeilen: Zeile für Zeile, am Rand geht der Text weiter. Ein festes Lineal merkt sich die neue Höhe.
   function lineal(richtung: 1 | -1) {
     const h = sitzung.hilfe;
     const blatt = h?.blatt();
     if (!h || !blatt) return;
+    const f = lesehilfen.fokus;
+    const r = rahmen.getBoundingClientRect();
+    const setze = (y: number) => (f.folgt ? (linealY = y) : lesehilfen.setzeFokus({ linie: (y - r.top) / r.height }));
     const zeile = h.zeilenhoehe();
-    const jetzt = linealY ?? sitzung.zeiger?.y ?? blatt.top + blatt.height / 3;
+    const jetzt = f.folgt ? (linealY ?? sitzung.zeiger?.y ?? blatt.top + blatt.height / 3) : r.top + f.linie * r.height;
     const neu = jetzt + richtung * zeile;
-    const halb = (lesehilfen.fokus.zeilen * zeile) / 2;
+    const halb = (f.zeilen * zeile) / 2;
     if (neu + halb > blatt.bottom || neu - halb < blatt.top) {
       if (h.art() === "scrollen") h.rolle(richtung * zeile);
-      else if (richtung > 0 && h.blaettere()) linealY = blatt.top + halb + zeile;
+      else if (richtung > 0 && h.blaettere()) setze(blatt.top + halb + zeile);
       return;
     }
-    linealY = neu;
+    setze(neu);
   }
 
   function taste(e: KeyboardEvent): boolean {
-    if (geraet.telefon || schreibtGerade(e) || e.ctrlKey || e.metaKey || e.altKey || document.querySelector("dialog[open]")) return false;
+    if (schale.telefon || schreibtGerade(e) || e.ctrlKey || e.metaKey || e.altKey || document.querySelector("dialog[open]")) return false;
     zuletzt = Date.now();
     const f = lesehilfen.fokus;
     const tun: Record<string, () => void> = {
@@ -108,10 +110,11 @@
     if (!w || angewandt) return;
     angewandt = true;
     const v = lesehilfen.fuerBuch(sitzung.buch.id);
-    if (!v) return;
+    // Am Telefon gibt es die Lesehilfen nicht, auch keine gemerkte Voreinstellung (BF-40)
+    if (!v || schale.telefon) return;
     w.setze(v.fg, v.bg);
     lesehilfen.setzeHilfen(v.hilfen);
   });
 </script>
 
-{#if lesehilfen.fokus.an && sitzung.hilfe && !geraet.telefon}<Fokusschicht {sitzung} {rahmen} bind:linealY />{/if}
+{#if lesehilfen.fokus.an && sitzung.hilfe && !schale.telefon}<Fokusschicht {sitzung} {rahmen} bind:linealY />{/if}

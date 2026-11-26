@@ -25,7 +25,9 @@
   Fokus
   <Haekchen text="Fokus zeigen" an={f.an} onwahl={(an) => lesehilfen.setzeFokus({ an })} />
   <Segment name="Art des Fokus" werte={arten} wert={f.art === "absatz" && !sitzung.hilfe?.mitAbsaetzen ? "lineal" : f.art} onwahl={(art) => lesehilfen.setzeFokus({ art, an: true })} />
-  {#if f.art === "fenster"}<p class="klein leise">Auf der Seite ziehen, an Kanten und Ecken größer oder kleiner, doppelt klicken stellt zurück.</p>{/if}
+  {#if f.art === "fenster"}<p class="klein leise">Am Rand ziehen verschiebt, Kanten und Ecken ändern die Größe, Doppelklick stellt zurück.</p>{/if}
+  {#if f.art === "lineal"}<Haekchen text="Folgt der Maus" an={f.folgt} onwahl={(folgt) => lesehilfen.setzeFokus({ folgt })} />{/if}
+  {#if f.art === "lineal" && !f.folgt}<p class="klein leise">Steht fest: am Rand ziehen oder Pfeiltasten.</p>{/if}
 </div>
 {#if f.art === "lineal"}<Stufenregler name="Zeilen" wert={f.zeilen} bereich={BEREICHE.zeilen} anzeige={String(f.zeilen)} onwahl={(zeilen) => lesehilfen.setzeFokus({ zeilen })} />{/if}
 <div class="feld">Außen<Segment name="Außen" werte={HUELLEN} wert={f.huelle} onwahl={(huelle) => lesehilfen.setzeFokus({ huelle })} /></div>

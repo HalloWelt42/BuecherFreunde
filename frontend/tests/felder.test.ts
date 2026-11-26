@@ -1,5 +1,7 @@
 // Offene Felder (BF-39): ein Druck daneben und Esc schließen das zuletzt geöffnete, ohne im Buch zu blättern
 import { offenesFeld } from "../src/lib/flucht";
+import { lesehilfen, OHNE } from "../src/lib/leser/lesehilfen.svelte";
+import { schale } from "../src/lib/stand/schale.svelte";
 
 function element(tag = "div"): HTMLElement {
   const e = document.createElement(tag);
@@ -69,5 +71,21 @@ describe("Ein Druck daneben", () => {
     expect(zu).toEqual(["zwei"]);
     ab2();
     ab1();
+  });
+});
+
+describe("Lesehilfen am Telefon (BF-40)", () => {
+  afterEach(() => {
+    schale.breite = 1440;
+    lesehilfen.setzeHilfen(OHNE);
+  });
+
+  it("wirken am Telefon nicht, auch nicht gemerkte, am Rechner wie eingestellt", () => {
+    lesehilfen.setzeHilfen({ helligkeit: 80, zeichen: 2 });
+    schale.breite = 1440;
+    expect(lesehilfen.wirksam.helligkeit).toBe(80);
+    schale.breite = 390;
+    expect(lesehilfen.wirksam).toEqual(OHNE);
+    expect(lesehilfen.hilfen.helligkeit).toBe(80);
   });
 });

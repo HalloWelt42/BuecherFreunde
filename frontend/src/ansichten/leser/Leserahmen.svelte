@@ -61,11 +61,12 @@
     e.stopPropagation();
   }
 
-  let hilfen = $derived(Object.entries(hilfenCss(lesehilfen.hilfen)).map(([k, v]) => `${k}: ${v}`).join("; "));
-  // Das Feld Fokus zeigt beim Öffnen gleich, was es tut
-  $effect(() => {
+  let hilfen = $derived(Object.entries(hilfenCss(lesehilfen.wirksam)).map(([k, v]) => `${k}: ${v}`).join("; "));
+  // Das Feld Fokus zeigt beim Öffnen gleich, was es tut; danach schaltet nur noch, wer schaltet (BF-40)
+  function fokusfeld() {
+    sitzung.schalteFeld("fokus");
     if (sitzung.feld === "fokus" && !lesehilfen.fokus.an) lesehilfen.setzeFokus({ an: true });
-  });
+  }
 
   let zustand = $derived(!liestHier ? "volume-low" : vorlesen.wartet && !vorlesen.pausiert ? "circle-notch" : vorlesen.pausiert ? "pause" : "volume-high");
 
@@ -105,7 +106,7 @@
       <!-- Am Telefon steht das Vorlesen im Feld; liest es gerade, auch hier -->
       <span class="reihe" class:nur-breit={!liestHier}><Knopf text="Vorlesen" symbol={liestHier ? zustand : "volume-high"} nur frei klein gesperrt={!bereit} gedrueckt={liestHier} aufgeklappt={vorlesenOffen} bind:element={vorleseKnopf} onclick={() => (vorlesenOffen = !vorlesenOffen)} /></span>
       <span class="nur-breit reihe">
-        <Knopf text="Fokus und Hilfen" symbol="crosshairs" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "fokus" || lesehilfen.fokus.an} onclick={() => sitzung.schalteFeld("fokus")} />
+        <Knopf text="Fokus und Hilfen" symbol="crosshairs" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "fokus" || lesehilfen.fokus.an} onclick={fokusfeld} />
         <Knopf text="Vollbild" symbol="expand" nur frei klein onclick={() => void schale.vollbildUmschalten()} />
         <Knopf text="Tastenkürzel" symbol="keyboard" nur frei klein gedrueckt={sitzung.feld === "tasten"} onclick={() => sitzung.schalteFeld("tasten")} />
       </span>
@@ -129,7 +130,7 @@
         <h2>Schrift und Papier</h2>
         <Leseartwahl {art} {onart} />
         {@render darstellung()}
-        <Blattfeinheiten {sitzung} text={satz} />
+        {#if !schale.telefon}<Blattfeinheiten {sitzung} text={satz} />{/if}
         <Leserwerkzeuge {sitzung} />
       {/if}
       </div>

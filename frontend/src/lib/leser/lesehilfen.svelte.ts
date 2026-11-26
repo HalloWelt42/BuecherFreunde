@@ -2,6 +2,7 @@
 // Kontrast, Wärme, Graustufen, Abbildungen) und der Satz (Zeichen-, Wort-, Absatzabstand, Ausrichtung, Silbentrennung). Dazu
 // Voreinstellungen, mitgeliefert und eigene, auf Wunsch je Buch gemerkt.
 import { liesJson, merkeJson } from "../speicher";
+import { schale } from "../stand/schale.svelte";
 import { FARBTHEMEN, type Bereich } from "./darstellung";
 
 export type Fokusart = "fenster" | "lineal" | "absatz";
@@ -19,6 +20,9 @@ export interface Fokus {
   /** Fenster als Anteil der Fläche: Mitte x, Mitte y, Breite, Höhe */
   fenster: { x: number; y: number; b: number; h: number };
   zeilen: number;
+  /** Lineal folgt der Maus; sonst steht es fest am Schirm, auf dieser Höhe (Anteil der Fläche, Mitte des Bands) */
+  folgt: boolean;
+  linie: number;
 }
 
 export interface Blatthilfen {
@@ -72,7 +76,7 @@ export const MITGELIEFERT: Voreinstellung[] = [
   { name: "Nacht", fg: nacht.fg, bg: nacht.bg, hilfen: { ...OHNE, helligkeit: 85, kontrast: 95, bilder: 70 }, fest: true },
 ];
 
-const FOKUS: Fokus = { an: false, art: "lineal", huelle: "dunkel", staerke: 0.75, verlauf: 48, farbe: "#000000", fenster: { x: 0.5, y: 0.45, b: 0.6, h: 0.5 }, zeilen: 3 };
+const FOKUS: Fokus = { an: false, art: "lineal", huelle: "dunkel", staerke: 0.75, verlauf: 48, farbe: "#000000", fenster: { x: 0.5, y: 0.45, b: 0.6, h: 0.5 }, zeilen: 3, folgt: true, linie: 0.4 };
 export const FOKUSFARBEN: [string, string][] = [["#000000", "Schwarz"], ["#1d2a28", "Nachtgrün"], ["#3d2b1f", "Braun"], ["#ffffff", "Weiß"]];
 
 interface Gemerkt {
@@ -115,6 +119,10 @@ class Lesehilfen {
   }
   get hilfen(): Blatthilfen {
     return this.#w.hilfen;
+  }
+  /** Was auf dem Blatt wirkt: am Telefon gibt es die Hilfen nicht, auch nicht gemerkte (BF-40) */
+  get wirksam(): Blatthilfen {
+    return schale.telefon ? OHNE : this.#w.hilfen;
   }
   setzeHilfen(neu: Partial<Blatthilfen>): void {
     this.#w.hilfen = { ...this.#w.hilfen, ...neu };

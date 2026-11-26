@@ -1,6 +1,9 @@
 <script lang="ts">
   // Fokus: eine Schicht über dem Buch, außen abgedunkelt oder milchig, innen klar. Fenster (frei gezogen), Lineal (Zeilenband)
-  // oder Absatz. Klicks, Auswahl und Scrollen gehen hindurch; nur beim Anpassen des Fensters lassen sich Griffe fassen.
+  // oder Absatz. Fenster und festes Lineal stehen am Schirm, das Buch läuft darunter durch. Klicks, Auswahl und Scrollen
+  // gehen hindurch, auch innen; fassen lassen sich nur die Kanten, auch bei geschlossenem Feld (BF-40). Sichtbar sind die
+  // Griffe im Feld Fokus, beim Ziehen und unter der Maus.
+  import { untrack } from "svelte";
   import { streifenUm, type Kasten } from "../../lib/leser/fokus";
   import { lesehilfen } from "../../lib/leser/lesehilfen.svelte";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
@@ -14,7 +17,10 @@
   let loch = $state<Kasten | null>(null);
   let gezogen = $state<{ x: number; y: number; b: number; h: number } | null>(null);
   let takt = $state(0);
-  let anpassen = $derived(f.art === "fenster" && sitzung.feld === "fokus");
+  let gezogeneLinie = $state<number | null>(null);
+  let feldOffen = $derived(sitzung.feld === "fokus");
+  /** Das Lineal steht fest (folgt nicht der Maus) und liest gerade nicht mit */
+  let festesLineal = $derived(f.art === "lineal" && !f.folgt);
   let liestHier = $derived(vorlesen.aktiv && vorlesen.quelle !== null && vorlesen.quelle === sitzung.quelle);
 
   // Beim Vorlesen bewegt sich die Stelle ohne eigenes Ereignis: ein ruhiger Takt
@@ -38,7 +44,8 @@
     if (f.art === "lineal") {
       const zeile = h.zeilenhoehe();
       const v = liestHier ? h.vorgelesen().zeile : null;
-      const mitte = v ? (v.oben + v.unten) / 2 : (linealY ?? (sitzung.zeiger?.y ?? r.top + r.height / 3));
+      const fest = r.top + (gezogeneLinie ?? f.linie) * r.height;
+      const mitte = v ? (v.oben + v.unten) / 2 : f.folgt ? (linealY ?? sitzung.zeiger?.y ?? r.top + r.height / 3) : fest;
       const halb = (f.zeilen * zeile) / 2;
       return { links, oben: mitte - r.top - halb, rechts, unten: mitte - r.top + halb };
     }
@@ -48,8 +55,16 @@
   }
 
   $effect(() => {
-    void [sitzung.zeiger, sitzung.bewegung, takt, f, gezogen, linealY, liestHier, sitzung.hilfe];
+    void [sitzung.zeiger, sitzung.bewegung, takt, f, gezogen, gezogeneLinie, linealY, liestHier, sitzung.hilfe];
     loch = rechne();
+  });
+
+  // Wird das Lineal festgestellt, bleibt es, wo es gerade steht
+  let folgteZuvor = untrack(() => f.folgt);
+  $effect(() => {
+    const folgt = f.folgt;
+    if (folgteZuvor && !folgt && loch && flaeche.hoehe) lesehilfen.setzeFokus({ linie: (loch.oben + loch.unten) / 2 / flaeche.hoehe });
+    folgteZuvor = folgt;
   });
   $effect(() => {
     const b = new ResizeObserver(() => (loch = rechne()));
@@ -59,9 +74,12 @@
 
   let streifen = $derived(loch ? streifenUm(loch, flaeche.breite, flaeche.hoehe, f.verlauf) : []);
 
-  // Anpassen: innen fassen verschiebt, an Kanten und Ecken ändert die Größe; Doppelklick stellt zurück
+  // Anpassen: der Rand verschiebt, Kanten und Ecken ändern die Größe; Doppelklick stellt zurück. Beim festen Lineal
+  // verschieben seine Ränder das Band.
   function fasse(e: PointerEvent, kante: string) {
     e.preventDefault();
+    e.stopPropagation();
+    if (kante === "linie") return fasseLinie(e);
     const start = { x: e.clientX, y: e.clientY, w: { ...f.fenster } };
     const ziel = e.currentTarget as HTMLElement;
     ziel.setPointerCapture(e.pointerId);
@@ -86,8 +104,23 @@
     ziel.addEventListener("pointerup", los, { once: true });
     ziel.addEventListener("pointercancel", los, { once: true });
   }
+  function fasseLinie(e: PointerEvent) {
+    const start = { y: e.clientY, linie: f.linie };
+    const ziel = e.currentTarget as HTMLElement;
+    ziel.setPointerCapture(e.pointerId);
+    const zieh = (m: PointerEvent) => (gezogeneLinie = Math.min(0.95, Math.max(0.05, start.linie + (m.clientY - start.y) / flaeche.hoehe)));
+    const los = () => {
+      ziel.removeEventListener("pointermove", zieh);
+      if (gezogeneLinie !== null) lesehilfen.setzeFokus({ linie: gezogeneLinie });
+      gezogeneLinie = null;
+    };
+    ziel.addEventListener("pointermove", zieh);
+    ziel.addEventListener("pointerup", los, { once: true });
+    ziel.addEventListener("pointercancel", los, { once: true });
+  }
   const zuruecksetzen = () => lesehilfen.setzeFokus({ fenster: { x: 0.5, y: 0.45, b: 0.6, h: 0.5 } });
   const KANTEN = ["o", "u", "l", "r", "ol", "or", "ul", "ur"];
+  const RAENDER = ["o", "u", "l", "r"];
 </script>
 
 {#if loch}
@@ -95,10 +128,16 @@
     {#each streifen as s (s.rand)}
       <i class="streifen {s.rand}" style:left="{s.links}px" style:top="{s.oben}px" style:width="{s.breite}px" style:height="{s.hoehe}px"></i>
     {/each}
-    {#if anpassen}
+    {#if f.art === "fenster" || (festesLineal && !liestHier)}
+      <!-- Innen geht alles hindurch; nur der Rand und die Griffe lassen sich fassen -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="griff" style:left="{loch.links}px" style:top="{loch.oben}px" style:width="{loch.rechts - loch.links}px" style:height="{loch.unten - loch.oben}px" onpointerdown={(e) => fasse(e, "mitte")} ondblclick={zuruecksetzen}>
-        {#each KANTEN as k (k)}<span class="kante {k}" onpointerdown={(e) => (e.stopPropagation(), fasse(e, k))}></span>{/each}
+      <div class="griff" class:zeigt={feldOffen || !!gezogen || gezogeneLinie !== null} style:left="{loch.links}px" style:top="{loch.oben}px" style:width="{loch.rechts - loch.links}px" style:height="{loch.unten - loch.oben}px">
+        {#if f.art === "fenster"}
+          {#each RAENDER as k (k)}<span class="rand {k}" data-bedienbar onpointerdown={(e) => fasse(e, "mitte")} ondblclick={zuruecksetzen}></span>{/each}
+          {#each KANTEN as k (k)}<span class="kante {k}" data-bedienbar onpointerdown={(e) => fasse(e, k)}></span>{/each}
+        {:else}
+          {#each ["o", "u"] as k (k)}<span class="rand {k} linie" data-bedienbar onpointerdown={(e) => fasse(e, "linie")}></span>{/each}
+        {/if}
       </div>
     {/if}
   </div>
@@ -140,20 +179,37 @@
   }
   .griff {
     position: absolute;
+    pointer-events: none;
+    outline: 1px dashed transparent;
+    outline-offset: -1px;
+  }
+  /* Rand zum Verschieben: ein schmaler Streifen über jeder Kante */
+  .rand {
+    position: absolute;
     pointer-events: auto;
     cursor: move;
-    outline: 1px dashed color-mix(in srgb, var(--randtinte, #000) 55%, transparent);
-    outline-offset: -1px;
     touch-action: none;
   }
+  .rand.o, .rand.u { left: 0; right: 0; height: 10px; }
+  .rand.l, .rand.r { top: 0; bottom: 0; width: 10px; }
+  .rand.o { top: -5px; } .rand.u { bottom: -5px; }
+  .rand.l { left: -5px; } .rand.r { right: -5px; }
+  .rand.linie { cursor: ns-resize; }
   .kante {
     position: absolute;
+    pointer-events: auto;
+    touch-action: none;
     width: 14px;
     height: 14px;
     border-radius: 3px;
     background: var(--messing);
     box-shadow: 0 0 0 2px rgb(255 255 255 / 0.8);
+    opacity: 0;
+    transition: opacity 0.15s;
   }
+  /* Zu sehen im Feld Fokus, beim Ziehen und sobald die Maus an einem Griff ist */
+  .griff:is(.zeigt, :has(.rand:hover, .kante:hover)) { outline-color: color-mix(in srgb, var(--randtinte, #000) 55%, transparent); }
+  .griff:is(.zeigt, :has(.rand:hover, .kante:hover)) .kante { opacity: 1; }
   .kante.o, .kante.u { left: calc(50% - 7px); cursor: ns-resize; }
   .kante.l, .kante.r { top: calc(50% - 7px); cursor: ew-resize; }
   .kante.o, .kante.ol, .kante.or { top: -7px; }

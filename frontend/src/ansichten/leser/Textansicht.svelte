@@ -134,7 +134,7 @@
 
   // Schrift, Zeilen, Rand: dieselbe Stelle bleibt
   $effect(() => {
-    void [textansicht.groesse, textansicht.zeilen, textansicht.familie, blattrand.wert, schale.vollbild, lesehilfen.hilfen];
+    void [textansicht.groesse, textansicht.zeilen, textansicht.familie, blattrand.wert, schale.vollbild, lesehilfen.wirksam];
     untrack(() => void fluss?.halte(tick));
   });
 

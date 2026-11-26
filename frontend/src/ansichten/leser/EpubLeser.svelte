@@ -150,7 +150,7 @@
 
   // Lesehilfen im Kapitel: Abstände, Abbildungen; in Ruhe auch dort kein Zeiger
   $effect(() => {
-    const css = hilfenEpubCss(lesehilfen.hilfen) + (sitzung.ruhig ? "\n* { cursor: none !important; }" : "");
+    const css = hilfenEpubCss(lesehilfen.wirksam) + (sitzung.ruhig ? "\n* { cursor: none !important; }" : "");
     if (bereit) untrack(() => anzeige?.zusatz(css));
   });
 

@@ -195,7 +195,7 @@
 
   // Anderer Rand: dieselbe Stelle bleibt
   $effect(() => {
-    void [blattrand.wert, schale.vollbild, lesehilfen.hilfen];
+    void [blattrand.wert, schale.vollbild, lesehilfen.wirksam];
     untrack(() => void fluss?.halte(tick));
   });
 
