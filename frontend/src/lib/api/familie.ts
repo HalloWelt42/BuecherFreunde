@@ -1,6 +1,6 @@
 // Familie mit Profilen (BF-78, docs/neubau/FAMILIE.md): Profile, Wahl beim Start, Rechte, Freigaben, Lesezeit, Einblick,
 // Katze. Was ein Profil sieht und darf, entscheidet der Server; die Oberfläche zeigt nur, was er erlaubt.
-import { del, get, patch, post, put } from "./client";
+import { anfrage, del, get, patch, post, put } from "./client";
 import type { Buch } from "../typen";
 
 export type Rolle = "verwaltung" | "erwachsen" | "kind";
@@ -27,7 +27,7 @@ export interface Lesehilfen {
   hinweise_sprechen: boolean;
   /** Eine gedrückte Taste sagt, was sie tut */
   tasten_ansagen: boolean;
-  /** Vorlesestimme des Profils; leer: die Vorgabe */
+  /** Stimme der Ansagen: "katalog:<name>" aus dem Sprechdienst oder "geraet"; leer: noch keine gewählt */
   stimme?: string;
 }
 
@@ -235,6 +235,17 @@ export interface Einblick {
   eintraege: Einblickeintrag[];
 }
 
+/** Die Ansagen spricht das Gerät selbst; gedacht für Installationen ohne Sprechdienst */
+export const GERAETESTIMME = "geraet";
+
+/** Wie weit die festen Ansagen einer Stimme sind (Auftrag "Ansagen erstellen") */
+export interface Ansagenstand {
+  gesamt: number;
+  fertig: number;
+  /** Der Auftrag läuft gerade */
+  laeuft: boolean;
+}
+
 /** Womit sich jemand ausweist: PIN aus Ziffern oder drei Bildschlüssel */
 export type Nachweis = { pin: string } | { bild_pin: string[] } | Record<string, never>;
 
@@ -267,6 +278,12 @@ export const ladeFreigaben = (id: string): Promise<Freigaben> => get(`${profilwe
 export const gibFrei = (id: string, art: Freigabeart, ziel_ids: number[]): Promise<unknown> => post(`${profilweg(id)}/freigaben`, { art, ziel_ids });
 export const nimmFreigabe = (id: string, art: Freigabeart, ziel_ids: number[]): Promise<unknown> => del(`${profilweg(id)}/freigaben`, { art, ziel_ids });
 export const ladeEinblick = (id: string): Promise<Einblick> => get(`${profilweg(id)}/einblick`);
+
+/** Der Probesatz in dieser Stimme, als Ton */
+export async function ansageProbe(stimme: string): Promise<Blob> {
+  return (await anfrage(`${WEG}/ansagen/probe`, { method: "POST", body: JSON.stringify({ stimme }) })).blob();
+}
+export const ansagenStand = (stimme: string): Promise<Ansagenstand> => get(`${WEG}/ansagen/stand`, { stimme });
 
 export const bindeGeraet = (profil_id: string, eltern_pin: string): Promise<unknown> => post(`${WEG}/geraet`, { profil_id, eltern_pin });
 /** Mit der PIN der Eltern; als Verwaltung ohne sie */

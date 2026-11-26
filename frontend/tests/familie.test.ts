@@ -15,6 +15,7 @@ import { setze } from "../src/ansichten/einstellungen/familie/aendern";
 import { freigabeziel, zielAus } from "../src/ansichten/zuordnen/ziel";
 import { Zuordnung } from "../src/ansichten/zuordnen/zuordnung.svelte";
 import Bildpinfeld from "../src/lib/teile/Bildpinfeld.svelte";
+import Ansagestimme from "../src/ansichten/einstellungen/familie/Ansagestimme.svelte";
 import type { Buch } from "../src/lib/typen";
 
 const STUFEN: Stufenangabe[] = [
@@ -326,5 +327,33 @@ describe("Bild-PIN", () => {
     expect(screen.queryByRole("button", { name: /2\. Bild/ })).toBeNull();
     for (const bild of ["Mond", "Stern", "Apfel"]) await fireEvent.click(screen.getByRole("button", { name: bild }));
     expect(onvoll).toHaveBeenCalledWith(["mond", "stern", "apfel"]);
+  });
+});
+
+describe("Stimme der Ansagen", () => {
+  const KATALOG = { da: true, stimmen: [{ id: "katalog:serena", name: "serena", gruppe: "eingebaut" }], hinweis: "" };
+  const mitStimme = (stimme: string): Profil => ({ ...KIND, einstellungen: { lesehilfen: { mitlesen: true, tempo: 1, silben: false, lesezeile: true, schrift: "mittel", hinweise_sprechen: true, tasten_ansagen: true, stimme } } });
+
+  it("zeigt die gewählte Stimme und dass die festen Ansagen bereitliegen", async () => {
+    server({ "/api/vorlesen/stimmen": KATALOG, "/api/familie/ansagen/stand": { gesamt: 186, fertig: 186, laeuft: false } });
+    render(Ansagestimme, { props: { profil: mitStimme("katalog:serena"), aendert: true } });
+    expect(await screen.findByText("186 feste Ansagen fertig, auch ohne Sprechdienst")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "serena" })).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Probe" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("zeigt, wie weit die Ansagen entstehen, mit dem Weg zum Auftrag", async () => {
+    server({ "/api/vorlesen/stimmen": KATALOG, "/api/familie/ansagen/stand": { gesamt: 186, fertig: 40, laeuft: true } });
+    render(Ansagestimme, { props: { profil: mitStimme("katalog:serena"), aendert: true } });
+    expect(await screen.findByText(/werden erstellt: 40 von 186/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Auftrag" })).toBeTruthy();
+  });
+
+  it("bittet ohne Stimme um eine Wahl, die Probe ruht", async () => {
+    server({ "/api/vorlesen/stimmen": KATALOG });
+    render(Ansagestimme, { props: { profil: mitStimme(""), aendert: true } });
+    expect(screen.getByRole("button", { name: "Stimme wählen" })).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Probe" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("Noch keine Stimme gewählt")).toBeTruthy();
   });
 });

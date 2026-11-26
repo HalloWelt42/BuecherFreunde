@@ -1,6 +1,6 @@
 <script lang="ts">
-  // Lesehilfen je Kind (Entwurf kinder-4 Abschnitt 5): Vorlesen mit Mitlesen samt Tempo, farbige Silben, Lesezeile, Hinweise
-  // vorsprechen, Tasten ansagen, Größe der Kinderschrift. Silben und Lesezeile schaltet das Kind danach selbst an und aus;
+  // Lesehilfen je Kind (Entwurf kinder-5 Abschnitt 5): Vorlesen mit Mitlesen samt Tempo, farbige Silben, Lesezeile, Hinweise
+  // vorsprechen, Tasten ansagen und ihre Stimme, Größe der Kinderschrift. Silben und Lesezeile schaltet das Kind danach selbst an und aus;
   // hier steht, ob es sie hat. Ohne Wahl der Eltern gilt die Vorgabe der Stufe.
   import type { Profil } from "../../../lib/api/familie";
   import { SCHRIFTEN, TEMPI, einstellungenVon, schriftText, tempoText } from "../../../lib/familie";
@@ -10,6 +10,7 @@
   import Segment from "../../../lib/teile/Segment.svelte";
   import Symbol from "../../../lib/teile/Symbol.svelte";
   import { setze } from "./aendern";
+  import Ansagestimme from "./Ansagestimme.svelte";
   import Wertchip from "./Wertchip.svelte";
 
   let { profil, aendert }: { profil: Profil; aendert: boolean } = $props();
@@ -44,6 +45,7 @@
     <span>Tasten ansagen<small>sagt, was gerade gedrückt wurde</small></span>
     <Schalter an={hilfen.tasten_ansagen} name="Tasten ansagen" gesperrt={!aendert} onwahl={(tasten_ansagen) => void setze(profil, "lesehilfen", { tasten_ansagen })} />
   </div>
+  <Ansagestimme {profil} {aendert} />
   <div class="elternzeile">
     <span>Schrift<small>Kinderschrift, {schriftText(hilfen.schrift)}</small></span>
     <Wertchip text="Aa {schriftText(hilfen.schrift)}" name="Größe der Kinderschrift" gesperrt={!aendert}>
