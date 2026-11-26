@@ -4,6 +4,9 @@
   import Vorschlaege from "./Vorschlaege.svelte";
 </script>
 
-<Regale />
-<Sammlungen />
-<Vorschlaege />
+<!-- Die Listen der Regale und Sammlungen nutzen den freien Platz der Seite und rollen selbst (BF-74) -->
+<div class="raster fuellend">
+  <Regale />
+  <Sammlungen />
+  <Vorschlaege />
+</div>

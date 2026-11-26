@@ -4,5 +4,7 @@
   import Hintergrundbilder from "./Hintergrundbilder.svelte";
 </script>
 
-<Karte titel="Darstellung" symbol="palette"><Darstellungswahl /></Karte>
-<Karte titel="Eigene Hintergrundbilder" symbol="image"><Hintergrundbilder /></Karte>
+<div class="raster">
+  <Karte titel="Darstellung" symbol="palette"><Darstellungswahl /></Karte>
+  <Karte titel="Eigene Hintergrundbilder" symbol="image"><Hintergrundbilder /></Karte>
+</div>

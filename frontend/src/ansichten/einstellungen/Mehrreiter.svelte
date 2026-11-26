@@ -6,7 +6,9 @@
   import Ueber from "./Ueber.svelte";
 </script>
 
-<Karte titel="KI" symbol="wand-magic-sparkles" id="ki"><KiVerbindung /></Karte>
-<Karte titel="Anweisungen an die KI" symbol="message"><Anweisungen /></Karte>
-<Karte titel="Rechtliches" symbol="scale-balanced" breit id="rechtliches"><Rechtliches /></Karte>
-<Karte titel="Über" symbol="circle-info" breit id="ueber"><Ueber /></Karte>
+<div class="raster">
+  <Karte titel="KI" symbol="wand-magic-sparkles" id="ki"><KiVerbindung /></Karte>
+  <Karte titel="Anweisungen an die KI" symbol="message"><Anweisungen /></Karte>
+  <Karte titel="Rechtliches" symbol="scale-balanced" breit id="rechtliches"><Rechtliches /></Karte>
+  <Karte titel="Über" symbol="circle-info" breit id="ueber"><Ueber /></Karte>
+</div>

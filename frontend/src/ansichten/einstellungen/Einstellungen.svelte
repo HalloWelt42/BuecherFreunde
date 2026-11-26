@@ -49,12 +49,11 @@
   </nav>
 </div>
 
+<!-- Jeder Reiter bringt sein Raster mit und bestimmt so selbst, ob seine Listen die Höhe der Seite füllen (BF-74) -->
 <div class="inhalt rollen" bind:this={flaeche}>
-  <div class="raster">
-    {#if hier.reiter === "darstellung"}<Darstellungsreiter />
-    {:else if hier.reiter === "verbindungen"}<Verbindungsreiter />
-    {:else if hier.reiter === "regale"}<Regalreiter />
-    {:else if hier.reiter === "wartung"}<Wartungsreiter />
-    {:else}<Mehrreiter />{/if}
-  </div>
+  {#if hier.reiter === "darstellung"}<Darstellungsreiter />
+  {:else if hier.reiter === "verbindungen"}<Verbindungsreiter />
+  {:else if hier.reiter === "regale"}<Regalreiter />
+  {:else if hier.reiter === "wartung"}<Wartungsreiter />
+  {:else}<Mehrreiter />{/if}
 </div>

@@ -5,6 +5,8 @@
   import Sicherung from "./Sicherung.svelte";
 </script>
 
-<Karte titel="Sicherung" symbol="shield-halved"><Sicherung /></Karte>
-<Karte titel="Bestand und Suche" symbol="database"><Bestandsangaben /></Karte>
-<Karte titel="Dateien prüfen" symbol="magnifying-glass-chart" breit><Dateipruefung /></Karte>
+<div class="raster">
+  <Karte titel="Sicherung" symbol="shield-halved"><Sicherung /></Karte>
+  <Karte titel="Bestand und Suche" symbol="database"><Bestandsangaben /></Karte>
+  <Karte titel="Dateien prüfen" symbol="magnifying-glass-chart" breit><Dateipruefung /></Karte>
+</div>

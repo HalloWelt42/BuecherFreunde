@@ -10,9 +10,11 @@
   $effect(() => void lesestoff.laden());
 </script>
 
-<Karte titel="Verbindungen" symbol="plug"><Verbindungsliste /></Karte>
-<Karte titel="Orte" symbol="hard-drive"><Orte /></Karte>
-<!-- Nur mit Dienst im Hintergrund (gebaute App über https) -->
-{#if lesestoff.stand}<Karte titel="Ohne Netz lesen" symbol="wifi"><OhneNetz /></Karte>{/if}
-<Karte titel="Quellen und Dienste" symbol="book-atlas" breit><Dienste /></Karte>
-<Karte titel="Schlüssel dieses Browsers" symbol="key" breit><Schluessel /></Karte>
+<div class="raster">
+  <Karte titel="Verbindungen" symbol="plug"><Verbindungsliste /></Karte>
+  <Karte titel="Orte" symbol="hard-drive"><Orte /></Karte>
+  <!-- Nur mit Dienst im Hintergrund (gebaute App über https) -->
+  {#if lesestoff.stand}<Karte titel="Ohne Netz lesen" symbol="wifi"><OhneNetz /></Karte>{/if}
+  <Karte titel="Quellen und Dienste" symbol="book-atlas" breit><Dienste /></Karte>
+  <Karte titel="Schlüssel dieses Browsers" symbol="key" breit><Schluessel /></Karte>
+</div>
