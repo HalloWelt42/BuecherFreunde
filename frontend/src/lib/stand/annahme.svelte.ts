@@ -7,6 +7,7 @@ import { pruefsumme } from "../annahme/pruefsumme";
 import type { AnnahmeEintrag, AnnahmeListe, Annahmequelle, AnnahmeZaehler, Hochladung, Quellenzahlen } from "../annahme/typen";
 import { EINLESEN, EINZELN, GEMEINFREI, gehoertZu, sammle } from "../annahme/sammlung";
 import { fuegeZusammen, laeuftVonSelbst, type Annahmezeile } from "../annahme/zeilen";
+import { darfAbrufen } from "./abrufe";
 import { bestand } from "./bestand.svelte";
 
 const IM_REGAL = ["wissen", "fertig", "ohne_text"];
@@ -49,7 +50,7 @@ class Annahme {
   }
 
   async starte(): Promise<void> {
-    if (this.#stromAus) return;
+    if (this.#stromAus || !darfAbrufen("annahme")) return;
     await this.auffrischen();
     if (!this.grund) this.#stromAus = annahmeEreignisse((liste) => this.#uebernimm(liste));
   }
@@ -60,6 +61,7 @@ class Annahme {
   }
 
   async auffrischen(): Promise<void> {
+    if (!darfAbrufen("annahme")) return;
     try {
       this.#uebernimm(await ladeAnnahmen());
       this.grund = "";

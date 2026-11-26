@@ -3,6 +3,7 @@ import { get } from "../api/client";
 import { ladeKategorien } from "../api/categories";
 import { ladeSammlungen } from "../api/collections";
 import { ladeKatalog } from "../api/katalog";
+import { darfAbrufen } from "./abrufe";
 import type { Katalog, Regal, Sammlung, Zahlen } from "../typen";
 
 const LEER: Zahlen = {
@@ -28,7 +29,8 @@ class Bestand {
   leistenRegale = $derived(this.regale.filter((r) => r.spezial));
 
   async laden(): Promise<void> {
-    const [zahlen, regale, sammlungen, katalog] = await Promise.allSettled([get("/api/config/stats"), ladeKategorien(), ladeSammlungen(), ladeKatalog()]);
+    // Den Katalog nur, wo das Profil ihn sehen darf (BF-78); sonst bleibt er leer
+    const [zahlen, regale, sammlungen, katalog] = await Promise.allSettled([get("/api/config/stats"), ladeKategorien(), ladeSammlungen(), darfAbrufen("katalog") ? ladeKatalog() : Promise.resolve(null)]);
     if (zahlen.status === "fulfilled") this.zahlen = { ...LEER, ...zahlen.value };
     // Bereiche und Kategorien des Katalogs stehen in derselben Tabelle; Regale sind nur die übrigen
     if (regale.status === "fulfilled") this.regale = regale.value.filter((r: Regal) => (r.art ?? "regal") === "regal").sort((a: Regal, b: Regal) => NAMENSFOLGE.compare(a.name, b.name));

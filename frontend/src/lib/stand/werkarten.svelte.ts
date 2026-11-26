@@ -4,6 +4,7 @@
 import { einordnungsstand, setzeEinordnungFort } from "../api/einordnung";
 import { anzahl, zahl } from "../format";
 import type { Einordnungsstand } from "../typen";
+import { darfAbrufen } from "./abrufe";
 import { auftraege } from "./auftraege.svelte";
 import { bestand } from "./bestand.svelte";
 import { melde } from "./meldungen.svelte";
@@ -31,7 +32,7 @@ class Werkarten {
   #gesehen = false;
 
   starte(): void {
-    if (this.#an) return;
+    if (this.#an || !darfAbrufen("werkarten")) return;
     this.#an = true;
     void this.#takt();
   }

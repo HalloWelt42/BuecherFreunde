@@ -2,6 +2,7 @@
 // gemeinfreie Bücher stehen in der einen Liste der Annahme (lib/stand/annahme.svelte.ts) und werden hier als Auftrag gezeigt.
 import { brecheRescanAb, holeRescanStatus } from "../api/imports";
 import { EINLESEN, ERLEDIGT, GEMEINFREI, WARTEND, type Sammelstand } from "../annahme/sammlung";
+import { darfAbrufen } from "./abrufe";
 import { annahme } from "./annahme.svelte";
 import { bestand } from "./bestand.svelte";
 
@@ -74,7 +75,7 @@ class Auftraege {
   }
 
   starte(): void {
-    if (this.#an) return;
+    if (this.#an || !darfAbrufen("ergaenzung")) return;
     this.#an = true;
     void this.#takt();
   }
@@ -92,6 +93,7 @@ class Auftraege {
 
   /** Der Stand der Ergänzung; das Einlesen kommt mit dem Ereignisstrom der Annahme */
   async auffrischen(): Promise<void> {
+    if (!darfAbrufen("ergaenzung")) return;
     try {
       const stand = await holeRescanStatus();
       if (!stand) return;

@@ -7,6 +7,7 @@
   import { anschluesse } from "../stand/anschluesse.svelte";
   import { suche, suchwerte } from "../stand/suche.svelte";
   import { ich } from "../stand/ich.svelte";
+  import { mitAuftraegen } from "../stand/abrufe";
   import Knopf from "../teile/Knopf.svelte";
   import Profilbild from "../teile/Profilbild.svelte";
   import Segment from "../teile/Segment.svelte";
@@ -24,7 +25,9 @@
     {#if anschluesse.jetzt.bedeutung}<span class="nur-weit"><Segment name="Suchart" werte={suchwerte} wert={suche.art} onwahl={(w) => suche.waehleArt(w)} /></span>{/if}
   </Suchfeld>
   {#if ich.darf("hinzufuegen")}<span class="nicht-telefon"><Knopf text="Hinzufügen" symbol="plus" haupt href="/import" /></span>{/if}
-  <Knopf text={auftragstext} symbol="arrows-rotate" klasse="auftragsknopf" aufgeklappt={schale.offen === "auftraege"} onclick={() => schale.umschalten("auftraege")} />
+  {#if mitAuftraegen() || auftraege.alleEigenen.length}
+    <Knopf text={auftragstext} symbol="arrows-rotate" klasse="auftragsknopf" aufgeklappt={schale.offen === "auftraege"} onclick={() => schale.umschalten("auftraege")} />
+  {/if}
   <span class="nur-breit reihe">
     <Knopf text="Schnellnotiz" titel={notizblock.woerter ? `Schnellnotiz, ${anzahl(notizblock.woerter, "Wort", "Wörter")}` : "Schnellnotiz"} symbol="note-sticky" nur frei gedrueckt={schale.notizOffen} onclick={() => (schale.notizOffen = !schale.notizOffen)} />
     <Knopf text="Danke sagen" symbol="heart" nur frei href="/danke" />

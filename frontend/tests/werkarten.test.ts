@@ -9,6 +9,8 @@ import { bestand } from "../src/lib/stand/bestand.svelte";
 import { buecher } from "../src/lib/stand/buecher.svelte";
 import { fasstZusammen } from "../src/lib/stand/eintraege";
 import { werkarten, werkartenanteil, werkartentext } from "../src/lib/stand/werkarten.svelte";
+import { ich } from "../src/lib/stand/ich.svelte";
+import type { Faehigkeit, Ich } from "../src/lib/api/familie";
 import type { Einordnungsstand } from "../src/lib/typen";
 
 const stand = (mehr: Partial<Einordnungsstand>): Einordnungsstand => ({ an: true, bereit: true, laeuft: true, angehalten: false, grund: "", gesamt: 12, nach_regel: 7, durch_ki: 2, offen: 3, ...mehr });
@@ -60,8 +62,15 @@ describe("Bücher und Besonderes", () => {
   });
 });
 
+/** Das aktive Profil darf, was der Lauf am Server braucht (BF-78: sonst fragt der Stand gar nicht erst) */
+const darf = (...faehigkeiten: Faehigkeit[]) => ich.setze({ profil: { id: "p-1", name: "Wiebke", rolle: "verwaltung" }, faehigkeiten } as unknown as Ich);
+
 describe("Art der Werke bestimmen unter Aufträge", () => {
-  afterEach(() => werkarten.halte());
+  beforeEach(() => darf("bearbeiten", "ki"));
+  afterEach(() => {
+    werkarten.halte();
+    ich.setze(null);
+  });
 
   it("nennt Fortschritt und Zahlen", () => {
     expect(werkartentext(stand({}))).toBe("9 von 12 Werken eingeordnet: 7 nach Regel, 2 durch die KI, 3 offen");

@@ -16,6 +16,8 @@ import { auftraege } from "../src/lib/stand/auftraege.svelte";
 import { rueckfrage } from "../src/lib/stand/rueckfrage.svelte";
 import { buecher } from "../src/lib/stand/buecher.svelte";
 import { uebersetzungen } from "../src/lib/stand/uebersetzungen.svelte";
+import { ich } from "../src/lib/stand/ich.svelte";
+import type { Faehigkeit, Ich } from "../src/lib/api/familie";
 import type { BuchEinzeln } from "../src/lib/typen";
 import { klartext, stuecke } from "../src/lib/uebersetzung/marken";
 import {
@@ -235,8 +237,15 @@ describe("Rückfrage vor dem Übersetzen", () => {
   });
 });
 
+/** Das aktive Profil darf, was der Lauf am Server braucht (BF-78: sonst fragt der Stand gar nicht erst) */
+const darf = (...faehigkeiten: Faehigkeit[]) => ich.setze({ profil: { id: "p-1", name: "Wiebke", rolle: "verwaltung" }, faehigkeiten } as unknown as Ich);
+
 describe("Übersetzungen unter Aufträge", () => {
-  afterEach(() => uebersetzungen.halte());
+  beforeEach(() => darf("ki"));
+  afterEach(() => {
+    uebersetzungen.halte();
+    ich.setze(null);
+  });
 
   it("stehen mit Anteil und Pause da und nach dem Ende einmal mit dem Ergebnis", async () => {
     let laeufe: Laufeintrag[] = [{ id: 3, buch_id: 7, titel: "Building Tiny Robots at Home", sprache: "de", stand: "laeuft", anteil: 0.25, kapitel_fertig: 2, kapitel_gesamt: 9, fertig_gegen: null, grund: "" }];

@@ -4,6 +4,7 @@ import { get } from "../api/client";
 import { healthCheck, ladeVersion } from "../api/config";
 import { ladeVerbindungen } from "../api/orte";
 import type { Guete, Verbindung } from "../typen";
+import { darfAbrufen } from "./abrufe";
 import { anschluesse } from "./anschluesse.svelte";
 
 export interface Dienststand {
@@ -59,11 +60,13 @@ class Verbindungen {
   }
 
   async #listeLaden(): Promise<void> {
+    if (!darfAbrufen("verbindungen")) return;
     this.liste = nachRang(await ladeVerbindungen());
   }
 
   async #fassungLaden(): Promise<void> {
     this.fassung = (await ladeVersion()).version ?? "";
+    if (!darfAbrufen("neueVersion")) return;
     const neu = await get("/api/config/update-check");
     this.neueFassung = neu.update_verfuegbar && neuerAls(neu.remote_version ?? "", this.fassung) ? neu.remote_version : "";
   }

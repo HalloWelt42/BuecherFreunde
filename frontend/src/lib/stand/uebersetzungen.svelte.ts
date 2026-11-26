@@ -6,6 +6,7 @@ import { auftragstext, ergebnistext } from "../uebersetzung/texte";
 import type { Laufeintrag } from "../uebersetzung/typen";
 import { auftraege } from "./auftraege.svelte";
 import { melde } from "./meldungen.svelte";
+import { darfAbrufen } from "./abrufe";
 
 const VORSILBE = "uebersetzung-";
 const TAKT_AKTIV_MS = 3000;
@@ -21,7 +22,7 @@ class Uebersetzungen {
   #inArbeit = new Map<number, Laufeintrag>();
 
   starte(): void {
-    if (this.#an) return;
+    if (this.#an || !darfAbrufen("uebersetzungen")) return;
     this.#an = true;
     void this.#takt();
   }
@@ -42,6 +43,7 @@ class Uebersetzungen {
 
   /** Gleich nachfragen, etwa nach dem Start auf der Buchseite */
   async auffrischen(): Promise<void> {
+    if (!darfAbrufen("uebersetzungen")) return;
     let laeufe: Laufeintrag[];
     try {
       laeufe = await holeLaeufe();
