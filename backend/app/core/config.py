@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     zwischen_dir: Path = _project_root() / "zwischen"
     zwischen_mb: int = 900             # so viel dürfen Originale im Zwischenspeicher belegen
     ablage_ordner: str = "Apps/BücherFreunde"
+    # Eingangsordner auf dem Gerät (ohne Kellerwolke): was hier liegt, nimmt die App jede Minute auf und zieht es um
+    eingangsordner_dir: Path = _project_root() / "eingangsordner"
 
     # Fundus (Suche nach Bedeutung) und Assistent; leer: die Fähigkeit fehlt, die App läuft weiter
     fundus_url: str = ""

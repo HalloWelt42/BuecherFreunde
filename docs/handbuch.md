@@ -13,7 +13,7 @@ schluessel_orte:
   - "pi5b: `{{wurzel}}/zugang/leitstelle.schluessel`, Modus 0600 (Schlüssel der Anwendung in der Leitstelle), wenn `LEITSTELLE_ADRESSE` gesetzt ist"
   - "pi5b: `{{wurzel}}/.env` (Orte, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
 einrichten: einrichten.sh
-stand: bc19142
+stand: 04c3cde
 ---
 
 # BücherFreunde (Neubau)
@@ -27,6 +27,8 @@ ist die App die Quelle der Bücher; die Nummern der Bücher sind dieselben wie i
 Zwei Container aus `docker/pi5b.compose.yml`: das Backend (FastAPI) und die Oberfläche (nginx, Port
 {{port:ziel/oberflaeche}}, nur am Gerät selbst). Im Heimnetz erreicht man sie über den [[Vorbau]] unter ihrem Namen (HTTPS);
 die App meldet selbst an, mit dem Konto der [[Kellerwolke]].
+Die Oberfläche setzt die Sicherheitsköpfe samt Content-Security-Policy aus `docker/sicherheit.conf` (im Bild unter
+`/etc/nginx/snippets/`): Skripte nur von der App selbst, damit kein Skript aus einem Buch läuft.
 
 `Apps/BücherFreunde/Eingangsordner` in der [[Kellerwolke]]: was dort liegt, nimmt die App jede Minute auf, die Datei zieht dabei
 nach `Bücher` um. Doppel, fremde Formate und Unlesbares bleiben liegen und stehen unter "Hinzufügen".

@@ -13,6 +13,8 @@ services:
       - DATABASE_DIR=/app/database
       # Hochgeladenes liegt bis zur Aufnahme neben den Büchern und überlebt so einen Neustart
       - ZWISCHEN_DIR=/app/storage/.zwischen
+      # Eingangsordner ohne Kellerwolke: was dort liegt, nimmt die App jede Minute auf
+      - EINGANGSORDNER_DIR=/app/eingangsordner
       - HOST_STORAGE_DIR=${STORAGE_DIR:-./storage}
       - HOST_EXTERNAL_DIR=${EXTERNAL_DIR:-./external}
       - HOST_IMPORT_DIR=${IMPORT_DIR:-./import}
@@ -22,6 +24,7 @@ services:
       - ${EXTERNAL_DIR:-../external}:/app/external:ro
       - ${IMPORT_DIR:-../import}:/app/import
       - ${DATABASE_DIR:-../database}:/app/database
+      - ${EINGANGSORDNER_DIR:-../eingangsordner}:/app/eingangsordner
       # Zugang zur Kellerwolke: eigener App-Schlüssel (Modus 0600) und Zertifikatsstelle des Heimnetzes
       - ../zugang:/app/zugang:ro
     healthcheck:

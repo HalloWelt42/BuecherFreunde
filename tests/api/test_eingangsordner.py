@@ -1,6 +1,9 @@
-"""Der Eingangsordner in der Kellerwolke, mit nachgebauter Ablage: Neues wird einmal aufgenommen, Doppel und Fremdes bleiben liegen."""
+"""Der Eingangsordner in der Kellerwolke (mit nachgebauter Ablage) und auf dem Gerät: Neues wird einmal aufgenommen, Doppel
+und Fremdes bleiben liegen."""
 
 import hashlib
+import os
+import time
 
 import pytest
 
@@ -82,6 +85,59 @@ async def test_abgelegtes_kommt_in_die_bibliothek(annahme_dienst, auth_headers, 
 async def test_entferntes_kommt_nicht_wieder(annahme_dienst, auth_headers, monkeypatch):
     Ablage({"Comic.cbz": b"x", "Bild.png": b"y"}).einhaengen(monkeypatch)
     await eingangsordner.aufnehmen()
+    nr = (await aufnahmen(annahme_dienst, auth_headers))["Bild.png"]["id"]
+    await annahme_dienst.delete(f"/api/annahme/{nr}", headers=auth_headers)
+    assert await eingangsordner.aufnehmen() == 0
+    assert "Bild.png" not in await aufnahmen(annahme_dienst, auth_headers)
+
+
+# -- Ohne Kellerwolke: der Eingangsordner auf dem Gerät (BF-18) -----------------------------------------------------------
+
+@pytest.fixture
+def geraeteordner(tmp_path, monkeypatch):
+    ort = tmp_path / "eingangsordner"
+    monkeypatch.setattr(settings, "eingangsordner_dir", ort)
+    eingangsordner.einrichten()
+    return ort
+
+
+def ablegen(ort, name: str, inhalt: bytes, alt: bool = True):
+    datei = ort / name
+    datei.parent.mkdir(parents=True, exist_ok=True)
+    datei.write_bytes(inhalt)
+    if alt:                                                    # liegt schon eine Weile: fertig geschrieben
+        os.utime(datei, (time.time() - 60, time.time() - 60))
+    return datei
+
+
+@pytest.mark.asyncio
+async def test_auf_dem_geraet_wie_in_der_kellerwolke(annahme_dienst, auth_headers, geraeteordner):
+    buch = pdf("Geräteordner Probe")
+    ablegen(geraeteordner, "unter/Im Unterordner.pdf", buch)
+    ablegen(geraeteordner, "Noch einmal.pdf", buch)
+    ablegen(geraeteordner, "Comic.cbz", b"x")
+    assert await eingangsordner.aufnehmen() == 3
+    assert await eingangsordner.aufnehmen() == 0, "jede Datei nur einmal"
+    alle = await aufnahmen(annahme_dienst, auth_headers)
+    assert {z["quelle"] for z in alle.values()} == {"eingangsordner"}
+    fertig = [await warten(annahme_dienst, auth_headers, alle[n]["id"]) for n in ("Im Unterordner.pdf", "Noch einmal.pdf")]
+    assert sorted(z["stand"] for z in fertig) == ["da", "fertig"], fertig
+    assert alle["Comic.cbz"]["stand"] == "format"
+    liegt = sorted(p.name for p in geraeteordner.rglob("*") if p.is_file())
+    assert len(liegt) == 2 and "Comic.cbz" in liegt, "nur das aufgenommene Buch zieht um, Doppel und Fremdes bleiben"
+    stand = (await annahme_dienst.get("/api/annahme/eingangsordner", headers=auth_headers)).json()
+    assert stand["bereit"] and stand["pfad"] == str(geraeteordner)
+    assert sorted(d["stand"] for d in stand["dateien"]) == ["da", "format"]
+    assert await eingangsordner.aufnehmen() == 0
+
+
+@pytest.mark.asyncio
+async def test_frisch_geschriebenes_wartet_und_entferntes_kommt_nicht_wieder(annahme_dienst, auth_headers, geraeteordner):
+    datei = ablegen(geraeteordner, "Wird noch geschrieben.pdf", pdf("Frisch"), alt=False)
+    assert await eingangsordner.aufnehmen() == 0
+    os.utime(datei, (time.time() - 60, time.time() - 60))
+    ablegen(geraeteordner, "Bild.png", b"y")
+    assert await eingangsordner.aufnehmen() == 2
     nr = (await aufnahmen(annahme_dienst, auth_headers))["Bild.png"]["id"]
     await annahme_dienst.delete(f"/api/annahme/{nr}", headers=auth_headers)
     assert await eingangsordner.aufnehmen() == 0

@@ -85,8 +85,9 @@ FUNDUS_APPS=Fundus                                        # Apps, die den Bestan
 # Pfade
 STORAGE_DIR=/pfad/zu/buechern   # Arbeitsverzeichnis mit Hash-Ordnern
 EXTERNAL_DIR=/pfad/zum/scannen  # Scan-Ordner (read-only, kann leer sein)
-IMPORT_DIR=/pfad/zum/import     # Upload-Ziel
+IMPORT_DIR=/pfad/zum/import     # Einlese-Ordner: auf Wunsch aufgenommen, die Dateien bleiben dort
 DATABASE_DIR=/pfad/zur/db       # SQLite + Backups
+EINGANGSORDNER_DIR=/pfad/zum/eingang   # ohne Kellerwolke: was hier liegt, wird jede Minute aufgenommen und zieht um
 
 # Quellen für Angaben (alle freiwillig, ohne Schlüssel; jede einzeln abschaltbar)
 DNB_ENABLED=true                # Deutsche Nationalbibliothek
@@ -115,7 +116,7 @@ Alles hier ist freiwillig. Fehlt ein Anschluss, fehlt nur seine Fähigkeit, und 
 
 | Anschluss | Einstellung | Ohne ihn |
 |---|---|---|
-| Kellerwolke (Ablage und Anmeldung) | `KELLERWOLKE_URL` und App-Zugang | Bücher liegen auf dem Gerät; beim ersten Öffnen legt man ein eigenes Konto an |
+| Kellerwolke (Ablage und Anmeldung) | `KELLERWOLKE_URL` und App-Zugang | Bücher liegen auf dem Gerät; beim ersten Öffnen legt man ein eigenes Konto an; der Eingangsordner liegt dann auf dem Gerät (`EINGANGSORDNER_DIR`) |
 | Fundus (Suche nach Bedeutung) | `FUNDUS_URL`, `FUNDUS_SAMMLUNG` | Suche nach Wörtern |
 | Assistent | `ASSISTENT_URL` | kein Gespräch über Stellen |
 | Nachschlag (Lexika, Handbücher) | `NACHSCHLAG_URL` | Nachschlagen im öffentlichen Lexikon im Netz (`WIKIPEDIA_ENABLED`), abgeschaltet keins |

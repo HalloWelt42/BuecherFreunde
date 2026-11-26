@@ -30,6 +30,7 @@ TEIL = 4 * 1024 * 1024
 LAUFEND = ("wartet", "laedt", "angehalten", "liest", "angaben", "regal")
 IN_ARBEIT = ("liest", "angaben", "regal")
 QUELLEN = ("hochladen", "eingangsordner", "ordner", "extern", "gemeinfrei")
+BEHALTEN = ("ordner", "extern")          # aus diesen Quellen bleibt die Datei, wo sie ist
 KLAEREN = ("format", "kaputt", "fehler", "ohne_text")
 FORMATE = "PDF, EPUB, MOBI, TXT und MD"
 
@@ -152,10 +153,12 @@ class Annahme:
         self._weiter()
 
     async def aus_ordner(self, dateien: list[Path], quelle: str, anreichern: bool = False) -> int:
-        """Dateien aus einem Ordner auf dem Gerät: sie bleiben, wo sie sind. Was schon in Arbeit oder aufgenommen ist (gleicher
-        Ort, gleiche Größe), kommt nicht noch einmal."""
+        """Dateien aus einem Ordner auf dem Gerät. Aus Einlese-Ordner und externer Sammlung bleiben sie, wo sie sind, und was
+        schon in Arbeit oder aufgenommen ist (gleicher Ort, gleiche Größe), kommt nicht noch einmal. Aus dem Eingangsordner
+        ziehen sie beim Aufnehmen um; was dort liegen bleibt (gibt es schon, unlesbar, entfernt), kommt nie noch einmal."""
+        staende = "" if quelle == "eingangsordner" else "AND stand IN ('liest', 'angaben', 'regal', 'wissen', 'fertig', 'da')"
         bekannt = {(z["pfad"], z["groesse"]) for z in await db.fetch_all(
-            "SELECT pfad, groesse FROM aufnahme WHERE pfad IS NOT NULL AND stand IN ('liest', 'angaben', 'regal', 'wissen', 'fertig', 'da')")}
+            f"SELECT pfad, groesse FROM aufnahme WHERE pfad IS NOT NULL {staende}")}
         neu = 0
         for datei in dateien:
             groesse = datei.stat().st_size
@@ -257,14 +260,15 @@ class Annahme:
 
     # -- Bedienung -----------------------------------------------------------------------------------------------------
     async def entfernen(self, nr: int) -> None:
-        z = await db.fetch_one("SELECT upload, stand, knoten FROM aufnahme WHERE id = ?", (nr,))
+        z = await db.fetch_one("SELECT upload, stand, knoten, quelle FROM aufnahme WHERE id = ?", (nr,))
         if z and z["upload"] and z["stand"] in ("wartet", "laedt", "angehalten"):
             try:
                 await wolke.upload_abbrechen(z["upload"])
             except WolkeFehler as f:
                 logger.info("Upload %s nicht abgebrochen: %s", z["upload"], f)
-        # Ein Knoten bleibt gemerkt, sonst nähme der Eingangsordner dieselbe Datei gleich noch einmal auf
-        await db.execute("UPDATE aufnahme SET ausgeblendet = 1 WHERE id = ?" if z and z["knoten"] else "DELETE FROM aufnahme WHERE id = ?", (nr,))
+        # Aus dem Eingangsordner bleibt der Eintrag gemerkt, sonst nähme er dieselbe Datei gleich noch einmal auf
+        merken = z and (z["knoten"] or z["quelle"] == "eingangsordner")
+        await db.execute("UPDATE aufnahme SET ausgeblendet = 1 WHERE id = ?" if merken else "DELETE FROM aufnahme WHERE id = ?", (nr,))
         await db.commit()
         for e in self._neu:
             e.set()
@@ -381,21 +385,22 @@ class Annahme:
 
     async def _ablegen(self, z: dict, buch: int, summe: str, name: str, pfad: Path) -> None:
         """Das Original an seinen Ort: liegt es schon in der Kellerwolke, dort umziehen; sonst mit Kellerwolke dorthin
-        schreiben, ohne sie in den Speicher des Geräts. Dateien aus Ordnern bleiben, wo sie sind (Kopie), was nur im
-        Zwischenspeicher liegt, zieht um."""
+        schreiben, ohne sie in den Speicher des Geräts. Aus Einlese-Ordner und externer Sammlung bleibt die Datei, wo sie
+        ist (Kopie); alles andere zieht um (Zwischenspeicher, Eingangsordner auf dem Gerät)."""
         if z["knoten"]:
             await ablegen(buch, z["knoten"])
             return
+        behalten = z["quelle"] in BEHALTEN
         if wolke.bereit:
             await wolke.ordner(f"{settings.ablage_ordner}/Eingang")
             k = await wolke.datei_schreiben(f"{settings.ablage_ordner}/Eingang/{summe[:12]} {sauber(name, 180)}", pfad)
             await ablegen(buch, k["id"])
-            if not z["pfad"]:
+            if not behalten:
                 pfad.unlink(missing_ok=True)
             return
         ziel = get_storage_path(summe) / name
         ziel.parent.mkdir(parents=True, exist_ok=True)
-        await asyncio.to_thread(shutil.copy2 if z["pfad"] else shutil.move, pfad, ziel)      # auch über Datenträger hinweg
+        await asyncio.to_thread(shutil.copy2 if behalten else shutil.move, pfad, ziel)      # auch über Datenträger hinweg
 
     @staticmethod
     def _am_ziel(volltext: str) -> tuple[str, int, str]:

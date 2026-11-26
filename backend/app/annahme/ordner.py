@@ -10,11 +10,13 @@ from backend.app.core.database import db
 from backend.app.services.storage import SUPPORTED_FORMATS, compute_hash
 
 
-def dateien(verzeichnis: Path) -> list[Path]:
-    """Alle lesbaren Formate im Ordner, auch in Unterordnern; ohne Prüfsumme, kehrt sofort zurück."""
+def dateien(verzeichnis: Path, alle_formate: bool = False) -> list[Path]:
+    """Die lesbaren Formate im Ordner, auch in Unterordnern (`alle_formate`: jede Datei, damit Fremdes mit Grund in der Liste
+    steht); ohne Prüfsumme, kehrt sofort zurück. Verborgene Dateien zählen nie."""
     if not verzeichnis.is_dir():
         return []
-    return [f for f in sorted(verzeichnis.rglob("*")) if f.is_file() and f.suffix.lower() in SUPPORTED_FORMATS and not f.name.startswith(".")]
+    return [f for f in sorted(verzeichnis.rglob("*")) if f.is_file() and not f.name.startswith(".")
+            and (alle_formate or f.suffix.lower() in SUPPORTED_FORMATS)]
 
 
 async def vorschau(verzeichnis: Path) -> list[dict]:
