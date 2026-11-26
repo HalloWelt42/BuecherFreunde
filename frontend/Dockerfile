@@ -5,8 +5,10 @@ WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ .
-# Fassung für den Vergleich mit dem Server (vite.config.js liest ../VERSION)
+# Fassung für den Vergleich mit dem Server und die Sicherheitsköpfe (vite.config.js liest ../VERSION und
+# ../docker/sicherheit.conf)
 COPY VERSION /VERSION
+COPY docker/sicherheit.conf /docker/sicherheit.conf
 RUN npm run build
 
 # Serve-Stage
