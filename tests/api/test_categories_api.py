@@ -56,14 +56,17 @@ async def test_kategorie_erstellen(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_kategorie_slug_eindeutigkeit(client: AsyncClient):
-    """Doppelte Slug-Namen werden automatisch nummeriert."""
-    await client.post("/api/categories", json={"name": "Roman"})
-    response = await client.post("/api/categories", json={"name": "Roman"})
+    """Ein Name gehört einem Regal; fällt nur das Kürzel zusammen, wird es nummeriert (BF-50)."""
+    await client.post("/api/categories", json={"name": "Sci-Fi"})
+    doppelt = await client.post("/api/categories", json={"name": "sci-fi"})
+    assert doppelt.status_code == 409
+    assert doppelt.json() == {"detail": "Ein Regal mit diesem Namen gibt es schon"}
+    response = await client.post("/api/categories", json={"name": "Sci Fi"})
     assert response.status_code == 201
     data = response.json()
-    # Der zweite Slug bekommt eine Nummer angehaengt
-    assert data["slug"].startswith("roman")
-    assert data["slug"] != "roman"
+    # Der zweite Slug bekommt eine Nummer angehängt
+    assert data["slug"].startswith("sci-fi")
+    assert data["slug"] != "sci-fi"
 
 
 # -- Flache Liste --

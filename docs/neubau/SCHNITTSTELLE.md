@@ -1,7 +1,13 @@
 # Neue Schnittstellen des Neubaus (BF-7 bis BF-10)
 
 Alle Wege brauchen die Anmeldung (`Authorization: Bearer` oder `X-Kellerwolke-Sitzung`). Bilder, Dateien und Ereignisströme lesen sie aus dem Inhalts-Cookie von `POST /api/anmeldung/zugang`; in Adressen steht sie nie.
-Fehler kommen als `{"detail": "deutscher Satz"}`. Die vorhandenen Wege bleiben unverändert.
+Fehler kommen als `{"detail": "deutscher Satz"}`, auf allen Wegen (BF-50, `core/fehlerantworten.py`):
+
+- 422 bei ungültiger Eingabe nennt Feld und Grund, mehrere durch Semikolon getrennt, etwa
+  `"Titel: darf nicht leer sein; Jahr: höchstens 2027"`. Die Grenzen stehen an einer Stelle (`models/grenzen.py`).
+- 404, wenn es das Genannte nicht gibt: auch beim Ändern und Löschen, auch zu einem fehlenden Buch, und für eine Nummer im
+  Pfad, die keine sein kann (`"Nicht gefunden"`).
+- 409, wenn ein Name schon vergeben ist (Regal, Autor).
 
 ## Annahme (eine Auftragsliste für alle Quellen)
 
@@ -23,14 +29,15 @@ möglich), `kaputt` (leer oder unlesbar, nicht eingetragen), `fehler` (mit Grund
 
 | Weg | Zweck |
 |---|---|
-| `GET /api/annahme` | `{eintraege: [...], zaehler: {alle, laeuft, klaeren, da, fertig}}`, neueste zuerst |
+| `GET /api/annahme` | `{eintraege: [...], weitere, zaehler: {alle, laeuft, klaeren, da, fertig}, quellen: {<quelle>: {gesamt, laeuft, fertig, da, gescheitert}}}`, neueste zuerst; die Liste hat höchstens 300 Einträge (`weitere` sagt, wie viele darüber hinaus da sind), die Zähler zählen alle sichtbaren |
 | `POST /api/annahme` `{name, groesse, sha256}` | anlegen; antwortet sofort mit `da`, `format` oder `kaputt`, wenn nichts hochzuladen ist |
-| `PATCH /api/annahme/{id}` Kopf `Upload-Offset`, Körper roh | nächstes Teil; 409 `{detail, empfangen}` nennt den wahren Stand |
+| `PATCH /api/annahme/{id}` Kopf `Upload-Offset`, Körper roh | nächstes Teil; 409 `{detail, empfangen}` nennt den wahren Stand, 413 bei mehr Daten als angesagt |
 | `GET /api/annahme/{id}` | Stand, sagt wo es weitergeht |
 | `POST /api/annahme/{id}/erneut` | Auswertung noch einmal |
 | `DELETE /api/annahme/{id}` | Eintrag entfernen, laufenden Upload abbrechen; ein eingetragenes Buch bleibt |
+| `DELETE /api/annahme?quelle=ordner&stand=fertig&stand=da` | viele auf einmal, wie einzeln; nach Quelle, Stand (mehrfach) oder beidem, eins davon muss sein; `{entfernt, ...wie GET}` |
 | `POST /api/annahme/ausblenden` | fertige und schon vorhandene ausblenden (bleiben im Verlauf) |
-| `GET /api/annahme/eingangsordner` | `{bereit, pfad, dateien: [{name, groesse, stand, text, buch_id}]}`, was im Eingangsordner der Kellerwolke liegt |
+| `GET /api/annahme/eingangsordner` | `{bereit, ort, pfad, dateien: [{name, groesse, stand, text, buch_id}]}`, was im Eingangsordner liegt; `ort`: `kellerwolke` oder `geraet` |
 | `POST /api/annahme/eingangsordner` | jetzt nachsehen, sonst jede Minute; `{neu}` |
 | `GET /api/annahme/ereignisse` | Ereignisstrom, je Änderung `data: {eintraege, zaehler}` |
 
@@ -50,6 +57,7 @@ Ist der Rechner aus, gilt `verfuegbar: false` mit `grund`; die Suche nach Wörte
   codeschmiede, leitstelle)
 - `GET /api/orte` -> `[{kennung, name, pfad, belegt, frei, stand}]` (bestand, suche, texte, umschlaege, zwischen)
 - `GET /api/books/{id}/ablage` -> `{wolke: {pfad, groesse, sha256}, volltext: {seiten, zeichen}, wissen: {stand, text}}`
+- `GET /api/books/{id}/file` das Original, zum Ansehen im Browser inline; `?herunterladen=true` als Anhang
 - `GET /api/config/oberflaeche` -> `{assistent: "https://..."}` Adresse des Assistenten für "Im Assistenten fragen"
 
 ## Quellen für Angaben (BF-23)

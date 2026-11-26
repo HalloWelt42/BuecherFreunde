@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, Field
 
+from backend.app.models.grenzen import Adresse, Autorname, Biografie, Herkunft, Lebensjahr
 from backend.app.services.autoren_uebernahme import Verweis
 
 
@@ -47,14 +48,14 @@ class AuthorResponse(BaseModel):
 class AuthorUpdate(BaseModel):
     """Felder die bei einem Autor aktualisiert werden können."""
 
-    name: str | None = None
-    biography: str | None = None
-    birth_year: int | None = None
-    death_year: int | None = None
-    nationality: str | None = None
-    website: str | None = None
-    wikidata_id: str | None = None
-    wikipedia_url: str | None = None
+    name: Autorname | None = None
+    biography: Biografie | None = None
+    birth_year: Lebensjahr | None = None
+    death_year: Lebensjahr | None = None
+    nationality: Herkunft | None = None
+    website: Adresse | None = None
+    wikidata_id: str | None = Field(None, pattern=r"^(Q[0-9]{1,12})?$")
+    wikipedia_url: Adresse | None = None
 
 
 class AuthorListResponse(BaseModel):

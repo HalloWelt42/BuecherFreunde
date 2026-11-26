@@ -36,6 +36,7 @@ from backend.app.core.database import db
 from backend.app.services.search import search_books, search_count
 from backend.app.services.seiten import buch_seiten
 from backend.app.services.storage import get_sidecar_path
+from backend.app.models.grenzen import SEITEN_HOECHSTENS, VERSATZ, Nr
 
 router = APIRouter(prefix="/api/v1/fundus", tags=["Fundus"])
 
@@ -125,7 +126,7 @@ async def steckbrief(_app: Konto = Depends(app_pruefen)):
 
 @router.get("/suche")
 async def suche(q: str = Query(..., min_length=1, max_length=500), n: int = Query(10, ge=1, le=HOECHSTENS),
-                ab: int = Query(0, ge=0), _app: Konto = Depends(app_pruefen)):
+                ab: int = Query(0, ge=0, le=VERSATZ), _app: Konto = Depends(app_pruefen)):
     """Treffer je Buch: zuerst alle Wörter (Suchindex des Bestands), gibt es so keine, dann eines davon. Je Buch die
     besten Seiten aus fulltext.txt mit Ausschnitt."""
     beginn = time.monotonic()
@@ -164,7 +165,7 @@ async def suche(q: str = Query(..., min_length=1, max_length=500), n: int = Quer
 
 
 @router.get("/inhalt/{buch}")
-async def inhalt(buch: int, von: int = Query(1, ge=1), bis: int | None = Query(None, ge=1),
+async def inhalt(buch: Nr, von: int = Query(1, ge=1, le=SEITEN_HOECHSTENS), bis: int | None = Query(None, ge=1, le=SEITEN_HOECHSTENS),
                  _app: Konto = Depends(app_pruefen)):
     """Seiten von `von` bis `bis` (ohne `bis`: bis zum Ende). Seite N ist die N-te Seite der Datei."""
     zeile = await _buch(buch)
@@ -176,7 +177,7 @@ async def inhalt(buch: int, von: int = Query(1, ge=1), bis: int | None = Query(N
 
 
 @router.get("/bestand")
-async def bestand(ab: int = Query(0, ge=0), n: int = Query(500, ge=1, le=2000), _app: Konto = Depends(app_pruefen)):
+async def bestand(ab: int = Query(0, ge=0, le=VERSATZ), n: int = Query(500, ge=1, le=2000), _app: Konto = Depends(app_pruefen)):
     """Angaben aller Bücher nach Kennung, seitenweise; `lesestand`: es gibt einen Lesestand, `notizen`: Notizen und
     Markierungen zusammen."""
     gesamt = await db.fetch_one("SELECT COUNT(*) AS n FROM books")
@@ -203,10 +204,10 @@ async def bestand(ab: int = Query(0, ge=0), n: int = Query(500, ge=1, le=2000), 
 
 
 @router.get("/umschlag/{buch}")
-async def umschlag(buch: int, _app: Konto = Depends(app_pruefen)):
+async def umschlag(buch: Nr, _app: Konto = Depends(app_pruefen)):
     return await get_cover(buch, _token="")
 
 
 @router.get("/datei/{buch}")
-async def datei(buch: int, request: Request, _app: Konto = Depends(app_pruefen)):
+async def datei(buch: Nr, request: Request, _app: Konto = Depends(app_pruefen)):
     return await get_file(buch, request, _token="")

@@ -9,16 +9,17 @@ from backend.app.core.database import db
 from backend.app.services.ai_categorization import categorize_book
 from backend.app.services.ki import KiFehler, ki
 from backend.app.services.storage import load_fulltext
+from backend.app.models.grenzen import Nr, Prompt, Promptbeschreibung, Promptname, Regalname
 
 router = APIRouter(prefix="/api/ai", tags=["KI"])
 
 
 class AcceptCategories(BaseModel):
-    kategorien: list[str]
+    kategorien: list[Regalname] = Field(max_length=50)
 
 
 @router.post("/buch/{book_id}/kategorisieren")
-async def categorize(book_id: int, _token: str = Depends(verify_token)):
+async def categorize(book_id: Nr, _token: str = Depends(verify_token)):
     """Holt KI-Kategorie-Vorschläge für ein Buch."""
     book = await db.fetch_one(
         "SELECT id, hash, title, author FROM books WHERE id = ?", (book_id,)
@@ -41,7 +42,7 @@ async def categorize(book_id: int, _token: str = Depends(verify_token)):
 
 @router.post("/buch/{book_id}/kategorien-uebernehmen")
 async def accept_categories(
-    book_id: int, data: AcceptCategories, _token: str = Depends(verify_token)
+    book_id: Nr, data: AcceptCategories, _token: str = Depends(verify_token)
 ):
     """Übernimmt KI-Kategorie-Vorschläge für ein Buch.
 
@@ -140,11 +141,11 @@ async def update_ai_config(data: AiConfigUpdate, _token: str = Depends(verify_to
 # --- Prompt-Verwaltung ---
 
 class PromptUpdate(BaseModel):
-    name: str | None = None
-    beschreibung: str | None = None
-    system_prompt: str | None = None
-    temperatur: float | None = None
-    max_tokens: int | None = None
+    name: Promptname | None = None
+    beschreibung: Promptbeschreibung | None = None
+    system_prompt: Prompt | None = None
+    temperatur: float | None = Field(None, ge=0, le=2)
+    max_tokens: int | None = Field(None, ge=50, le=4000)
     aktiv: bool | None = None
 
 
@@ -158,7 +159,7 @@ async def list_prompts(_token: str = Depends(verify_token)):
 
 
 @router.get("/prompts/{prompt_id}")
-async def get_prompt(prompt_id: int, _token: str = Depends(verify_token)):
+async def get_prompt(prompt_id: Nr, _token: str = Depends(verify_token)):
     """Gibt einen einzelnen Prompt zurück."""
     row = await db.fetch_one(
         "SELECT * FROM ai_prompts WHERE id = ?", (prompt_id,)
@@ -170,7 +171,7 @@ async def get_prompt(prompt_id: int, _token: str = Depends(verify_token)):
 
 @router.patch("/prompts/{prompt_id}")
 async def update_prompt(
-    prompt_id: int, data: PromptUpdate, _token: str = Depends(verify_token)
+    prompt_id: Nr, data: PromptUpdate, _token: str = Depends(verify_token)
 ):
     """Aktualisiert einen KI-Prompt."""
     existing = await db.fetch_one(
@@ -187,9 +188,9 @@ async def update_prompt(
     if data.system_prompt is not None:
         updates["system_prompt"] = data.system_prompt
     if data.temperatur is not None:
-        updates["temperatur"] = max(0.0, min(2.0, data.temperatur))
+        updates["temperatur"] = data.temperatur
     if data.max_tokens is not None:
-        updates["max_tokens"] = max(50, min(4000, data.max_tokens))
+        updates["max_tokens"] = data.max_tokens
     if data.aktiv is not None:
         updates["aktiv"] = 1 if data.aktiv else 0
 
@@ -217,7 +218,7 @@ async def update_prompt(
 
 
 @router.post("/prompts/{prompt_id}/reset")
-async def reset_prompt(prompt_id: int, _token: str = Depends(verify_token)):
+async def reset_prompt(prompt_id: Nr, _token: str = Depends(verify_token)):
     """Setzt einen Prompt auf den Standardwert zurück (löscht und migriert neu)."""
     existing = await db.fetch_one(
         "SELECT schluessel FROM ai_prompts WHERE id = ?", (prompt_id,)

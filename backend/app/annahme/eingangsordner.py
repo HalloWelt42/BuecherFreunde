@@ -55,26 +55,27 @@ async def _dateien() -> AsyncIterator[dict]:
 
 
 async def inhalt() -> dict:
-    """Was im Ordner liegt und wie es damit steht, für die Oberfläche."""
+    """Was im Ordner liegt und wie es damit steht, für die Oberfläche; `ort` sagt, welcher Ordner gilt: `kellerwolke` oder
+    `geraet`."""
     if not wolke.bereit:
         return await _inhalt_auf_dem_geraet()
     dateien = []
     async for k in _dateien():
         z = await db.fetch_one("SELECT stand, text, buch_id FROM aufnahme WHERE knoten = ? ORDER BY id DESC", (k["id"],))
         dateien.append({"name": k["name"], "groesse": k["groesse"], "stand": z["stand"] if z else "neu", "text": z["text"] if z else "Wird gleich aufgenommen", "buch_id": z["buch_id"] if z else None})
-    return {"bereit": True, "pfad": pfad(), "dateien": dateien}
+    return {"bereit": True, "ort": "kellerwolke", "pfad": pfad(), "dateien": dateien}
 
 
 async def _inhalt_auf_dem_geraet() -> dict:
     ort = settings.eingangsordner_dir
     if not ort.is_dir():
-        return {"bereit": False, "pfad": str(ort), "dateien": []}
+        return {"bereit": False, "ort": "geraet", "pfad": str(ort), "dateien": []}
     dateien = []
     for f in await asyncio.to_thread(ordner.dateien, ort, True):
         z = await db.fetch_one("SELECT stand, text, buch_id FROM aufnahme WHERE pfad = ? ORDER BY id DESC", (str(f),))
         dateien.append({"name": f.name, "groesse": f.stat().st_size, "stand": z["stand"] if z else "neu",
                         "text": z["text"] if z else "Wird gleich aufgenommen", "buch_id": z["buch_id"] if z else None})
-    return {"bereit": True, "pfad": str(ort), "dateien": dateien}
+    return {"bereit": True, "ort": "geraet", "pfad": str(ort), "dateien": dateien}
 
 
 async def aufnehmen() -> int:

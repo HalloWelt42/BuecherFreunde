@@ -1,34 +1,39 @@
-"""API-Endpunkte fuer Buch-Labels (Lesezeichen mit Farbe)."""
+"""API-Endpunkte für Etiketten (Lesezeichen mit Farbe, Name und Notiz)."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
-from typing import Optional
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 
-from ..core.auth import verify_token
-from ..core.database import db
+from backend.app.api import vorhanden
+from backend.app.core.auth import verify_token
+from backend.app.core.database import db
+from backend.app.models.grenzen import Etikett, EtikettNotiz, Farbe, Nr, Prozent, Seitenangabe, StelleOderLeer
 
 router = APIRouter(prefix="/api", tags=["labels"])
 
 
+FEHLT = "Etikett nicht gefunden"
+
+
 class LabelCreate(BaseModel):
-    color: str = Field(default="#4FC3F7", max_length=20)
-    name: str = Field(default="", max_length=50)
-    note: str = Field(default="")
-    page_reference: str = Field(default="", max_length=50)
-    position_percent: float = Field(default=0)
-    cfi_reference: str = Field(default="")
+    color: Farbe = "#4FC3F7"
+    name: Etikett = ""
+    note: EtikettNotiz = ""
+    page_reference: Seitenangabe = ""
+    position_percent: Prozent = 0
+    cfi_reference: StelleOderLeer = ""
 
 
 class LabelUpdate(BaseModel):
-    color: Optional[str] = Field(default=None, max_length=20)
-    name: Optional[str] = Field(default=None, max_length=50)
-    note: Optional[str] = None
-    page_reference: Optional[str] = Field(default=None, max_length=50)
+    color: Farbe | None = None
+    name: Etikett | None = None
+    note: EtikettNotiz | None = None
+    page_reference: Seitenangabe | None = None
 
 
 @router.get("/books/{book_id}/labels")
-async def get_labels(book_id: int, _token: str = Depends(verify_token)):
+async def get_labels(book_id: Nr, _token: str = Depends(verify_token)):
     """Alle Labels eines Buches."""
+    await vorhanden.buch(book_id)
     rows = await db.fetch_all(
         "SELECT * FROM book_labels WHERE book_id = ? ORDER BY position_percent, created_at",
         (book_id,),
@@ -38,20 +43,17 @@ async def get_labels(book_id: int, _token: str = Depends(verify_token)):
 
 @router.post("/books/{book_id}/labels")
 async def create_label(
-    book_id: int, data: LabelCreate, _token: str = Depends(verify_token)
+    book_id: Nr, data: LabelCreate, _token: str = Depends(verify_token)
 ):
     """Neues Label erstellen."""
-    book = await db.fetch_one("SELECT id FROM books WHERE id = ?", (book_id,))
-    if not book:
-        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
-
+    await vorhanden.buch(book_id)
     cursor = await db.execute(
         """INSERT INTO book_labels (book_id, color, name, note, page_reference, position_percent, cfi_reference)
            VALUES (?, ?, ?, ?, ?, ?, ?)""",
         (
             book_id,
             data.color,
-            data.name[:50],
+            data.name,
             data.note,
             data.page_reference,
             data.position_percent,
@@ -66,22 +68,11 @@ async def create_label(
 
 @router.patch("/labels/{label_id}")
 async def update_label(
-    label_id: int, data: LabelUpdate, _token: str = Depends(verify_token)
+    label_id: Nr, data: LabelUpdate, _token: str = Depends(verify_token)
 ):
     """Label aktualisieren."""
-    label = await db.fetch_one("SELECT * FROM book_labels WHERE id = ?", (label_id,))
-    if not label:
-        raise HTTPException(status_code=404, detail="Label nicht gefunden")
-
-    updates = {}
-    if data.color is not None:
-        updates["color"] = data.color
-    if data.name is not None:
-        updates["name"] = data.name[:50]
-    if data.note is not None:
-        updates["note"] = data.note
-    if data.page_reference is not None:
-        updates["page_reference"] = data.page_reference
+    await vorhanden.eintrag("book_labels", label_id, FEHLT, "id")
+    updates = data.model_dump(exclude_none=True)
 
     if updates:
         set_clause = ", ".join(f"{k} = ?" for k in updates)
@@ -96,19 +87,16 @@ async def update_label(
 
 
 @router.delete("/labels/{label_id}")
-async def delete_label(label_id: int, _token: str = Depends(verify_token)):
-    """Label loeschen."""
-    label = await db.fetch_one("SELECT id FROM book_labels WHERE id = ?", (label_id,))
-    if not label:
-        raise HTTPException(status_code=404, detail="Label nicht gefunden")
-    await db.execute("DELETE FROM book_labels WHERE id = ?", (label_id,))
+async def delete_label(label_id: Nr, _token: str = Depends(verify_token)):
+    """Label löschen."""
+    vorhanden.getroffen(await db.execute("DELETE FROM book_labels WHERE id = ?", (label_id,)), FEHLT)
     await db.commit()
-    return {"message": "Label geloescht"}
+    return {"message": "Etikett gelöscht"}
 
 
 @router.get("/labels/search")
 async def search_labels(
-    q: str = Query(..., min_length=1),
+    q: str = Query(..., min_length=1, max_length=200),
     limit: int = Query(50, ge=1, le=200),
     _token: str = Depends(verify_token),
 ):

@@ -2,10 +2,11 @@
 die Annahme (annahme/gemeinfrei.py); Stand und Fortschritt stehen in der einen Liste unter /api/annahme."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.app.annahme.dienst import annahme
 from backend.app.core.auth import verify_token
+from backend.app.models.grenzen import ADRESSE, AUSWAHL_HOECHSTENS, AUTOR, LISTENSEITE, TITEL, Nr
 from backend.app.quellen import stand
 from backend.app.quellen.fehler import QuelleFehler
 from backend.app.quellen.gutenberg import Fundliste, suche
@@ -26,7 +27,7 @@ async def gutenberg_suche(
     q: str = Query("", description="Suchbegriff (Titel, Autor)"),
     sprache: str = Query("", description="Sprachfilter (z.B. 'de', 'en', 'de,en')"),
     topic: str = Query("", description="Thema/Kategorie"),
-    seite: int = Query(1, ge=1, description="Seitennummer"),
+    seite: int = Query(1, ge=1, le=LISTENSEITE, description="Seitennummer"),
     _token: str = Depends(verify_token),
 ) -> Fundliste:
     """Sucht Bücher auf Project Gutenberg."""
@@ -36,9 +37,19 @@ async def gutenberg_suche(
         raise HTTPException(status_code=502, detail=f.grund) from f
 
 
+class GemeinfreiesBuch(BaseModel):
+    """Ein Buch aus der Suche, wie sie es liefert."""
+    gutenberg_id: Nr
+    titel: str = Field("", max_length=TITEL)
+    autor: str = Field("", max_length=AUTOR)
+    download_url: str = Field("", max_length=ADRESSE)
+    download_format: str = Field("", max_length=100)
+    cover_url: str = Field("", max_length=ADRESSE)
+
+
 class GutenbergImportRequest(BaseModel):
-    """Bücher aus der Suche: je Buch {gutenberg_id, titel, autor, download_url, download_format, cover_url}."""
-    buecher: list[dict]
+    """Bücher aus der Suche."""
+    buecher: list[GemeinfreiesBuch] = Field(max_length=AUSWAHL_HOECHSTENS)
 
 
 @router.post("/import")
@@ -47,5 +58,5 @@ async def gutenberg_import(request: GutenbergImportRequest, _token: str = Depend
     gelesen, ins Regal "Gutenberg". `anzahl`: neu in der Liste; was es schon gibt, steht dort als vorhanden."""
     if not request.buecher:
         raise HTTPException(status_code=400, detail="Keine Bücher ausgewählt")
-    neu = await annahme.aus_gemeinfrei(request.buecher)
+    neu = await annahme.aus_gemeinfrei([b.model_dump() for b in request.buecher])
     return {"gestartet": neu > 0, "anzahl": neu}

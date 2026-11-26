@@ -1,31 +1,36 @@
 """API-Endpunkte für Textmarkierungen (Highlights) - Farbmarkierungen mit optionalem Label."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from backend.app.api import vorhanden
 from backend.app.core.auth import verify_token
 from backend.app.core.database import db
+from backend.app.models.grenzen import Etikett, EtikettNotiz, Farbe, Nr, Stelle, Textauszug
 
 router = APIRouter(prefix="/api", tags=["Highlights"])
 
+FEHLT = "Markierung nicht gefunden"
+
 
 class HighlightCreate(BaseModel):
-    cfi_range: str
-    color: str = "#FFEE58"
-    text_snippet: str = ""
-    label_name: str = ""
-    label_note: str = ""
+    cfi_range: Stelle
+    color: Farbe = "#FFEE58"
+    text_snippet: Textauszug = ""
+    label_name: Etikett = ""
+    label_note: EtikettNotiz = ""
 
 
 class HighlightUpdate(BaseModel):
-    color: str | None = None
-    label_name: str | None = None
-    label_note: str | None = None
+    color: Farbe | None = None
+    label_name: Etikett | None = None
+    label_note: EtikettNotiz | None = None
 
 
 @router.get("/books/{book_id}/highlights")
-async def liste_highlights(book_id: int, _: str = Depends(verify_token)):
+async def liste_highlights(book_id: Nr, _: str = Depends(verify_token)):
     """Alle Highlights eines Buches."""
+    await vorhanden.buch(book_id)
     rows = await db.fetch_all(
         "SELECT * FROM book_highlights WHERE book_id = ? ORDER BY created_at",
         (book_id,),
@@ -35,55 +40,37 @@ async def liste_highlights(book_id: int, _: str = Depends(verify_token)):
 
 @router.post("/books/{book_id}/highlights")
 async def erstelle_highlight(
-    book_id: int, daten: HighlightCreate, _: str = Depends(verify_token)
+    book_id: Nr, daten: HighlightCreate, _: str = Depends(verify_token)
 ):
     """Neues Highlight erstellen."""
+    await vorhanden.buch(book_id)
     cursor = await db.execute(
         """INSERT INTO book_highlights (book_id, cfi_range, color, text_snippet, label_name, label_note)
            VALUES (?, ?, ?, ?, ?, ?)""",
         (book_id, daten.cfi_range, daten.color, daten.text_snippet, daten.label_name, daten.label_note),
     )
     await db.commit()
-    row = await db.fetch_one(
-        "SELECT * FROM book_highlights WHERE id = ?", (cursor.lastrowid,)
-    )
-    return dict(row) if row else {"id": cursor.lastrowid}
+    return await db.fetch_one("SELECT * FROM book_highlights WHERE id = ?", (cursor.lastrowid,))
 
 
 @router.delete("/highlights/{highlight_id}")
-async def loesche_highlight(highlight_id: int, _: str = Depends(verify_token)):
+async def loesche_highlight(highlight_id: Nr, _: str = Depends(verify_token)):
     """Highlight löschen."""
-    await db.execute("DELETE FROM book_highlights WHERE id = ?", (highlight_id,))
+    vorhanden.getroffen(await db.execute("DELETE FROM book_highlights WHERE id = ?", (highlight_id,)), FEHLT)
     await db.commit()
     return {"ok": True}
 
 
 @router.patch("/highlights/{highlight_id}")
 async def aktualisiere_highlight(
-    highlight_id: int, daten: HighlightUpdate, _: str = Depends(verify_token)
+    highlight_id: Nr, daten: HighlightUpdate, _: str = Depends(verify_token)
 ):
     """Highlight aktualisieren (Farbe, Name, Notiz)."""
-    updates = []
-    values = []
-    if daten.color is not None:
-        updates.append("color = ?")
-        values.append(daten.color)
-    if daten.label_name is not None:
-        updates.append("label_name = ?")
-        values.append(daten.label_name)
-    if daten.label_note is not None:
-        updates.append("label_note = ?")
-        values.append(daten.label_note)
-    if not updates:
-        return {"ok": True}
-
-    values.append(highlight_id)
-    await db.execute(
-        f"UPDATE book_highlights SET {', '.join(updates)} WHERE id = ?", values
-    )
-    await db.commit()
-
-    row = await db.fetch_one(
-        "SELECT * FROM book_highlights WHERE id = ?", (highlight_id,)
-    )
-    return dict(row) if row else {"ok": True}
+    await vorhanden.eintrag("book_highlights", highlight_id, FEHLT, "id")
+    updates = daten.model_dump(exclude_none=True)
+    if updates:
+        await db.execute(
+            f"UPDATE book_highlights SET {', '.join(f'{k} = ?' for k in updates)} WHERE id = ?", (*updates.values(), highlight_id)
+        )
+        await db.commit()
+    return await db.fetch_one("SELECT * FROM book_highlights WHERE id = ?", (highlight_id,))

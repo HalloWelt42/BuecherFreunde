@@ -13,6 +13,7 @@ from backend.app.codestellen.modelle import Codestelle, Vorpruefung
 from backend.app.codestellen.vorpruefung import VorpruefungStand, ergebnisse, vorpruefer
 from backend.app.core.auth import verify_token
 from backend.app.services.ausfuehren import HOECHSTENS_ZEICHEN, Ausfuehrstand, Lauf, sandbox
+from backend.app.models.grenzen import SEITEN_HOECHSTENS, Nr
 
 router = APIRouter(prefix="/api", tags=["Ausführen"], dependencies=[Depends(verify_token)])
 
@@ -75,8 +76,8 @@ async def vorpruefung_fortsetzen() -> VorpruefungStand:
 
 
 @router.get("/books/{buch}/codestellen", response_model=CodestellenAntwort)
-async def buch_codestellen(buch: int, von: int | None = Query(None, ge=1, description="erste Dateiseite (nur PDF)"),
-                           bis: int | None = Query(None, ge=1, description="letzte Dateiseite (nur PDF)")) -> CodestellenAntwort:
+async def buch_codestellen(buch: Nr, von: int | None = Query(None, ge=1, le=SEITEN_HOECHSTENS, description="erste Dateiseite (nur PDF)"),
+                           bis: int | None = Query(None, ge=1, le=SEITEN_HOECHSTENS, description="letzte Dateiseite (nur PDF)")) -> CodestellenAntwort:
     """Die Codestellen eines Buchs; mit `von` und `bis` nur die, die in diese Seiten hineinreichen (Ketten ganz). Fehlt
     die Erkennung noch, kommt das Buch sofort an die Reihe (`stand: ausstehend`)."""
     try:

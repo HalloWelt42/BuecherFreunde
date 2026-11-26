@@ -6,15 +6,18 @@ import math
 from pathlib import Path
 from xml.sax.saxutils import escape
 
+from typing import Annotated, Literal
+
 from fastapi import Request, APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, StringConstraints
 
 from backend.app.services.seiten import buch_seiten
 from backend.app.core.auth import verify_token, verify_token_inhalt
 from backend.app.core.config import settings
 from backend.app.core.database import db
-from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate
+from backend.app.api import vorhanden
+from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate, typ_pruefen
 from backend.app.models.textansicht import TextBaustein, TextSeite, TextSeitenAntwort
 from backend.app.services.textansicht import Baustein, Codeteil, abbildung_png, seiten_lesen
 import fitz
@@ -26,6 +29,7 @@ from backend.app.ablage.wolke import wolke
 from backend.app.annahme.eintragen import autoren_verknuepfen
 from backend.app.services import buchsuche, deckblatt, schnellfilter
 from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover, save_fulltext
+from backend.app.models.grenzen import AUSWAHL_HOECHSTENS, GROESSTE_ZAHL, JAHR_BIS, LEBENSJAHR_AB, LISTENSEITE, SEITEN_HOECHSTENS, Index, Nr
 
 router = APIRouter(prefix="/api/books", tags=["Bücher"])
 
@@ -167,10 +171,10 @@ async def _batch_enrich_book_list(rows: list[dict]) -> list[BookListItem]:
 @router.get("", response_model=BookListResponse)
 async def list_books(
     _token: str = Depends(verify_token),
-    seite: int = Query(1, ge=1, description="Seitennummer"),
+    seite: int = Query(1, ge=1, le=LISTENSEITE, description="Seitennummer"),
     pro_seite: int = Query(24, ge=1, le=100, description="Einträge pro Seite"),
     kategorie: str | None = Query(None, description="Kategorie-ID(s), kommagetrennt"),
-    sammlung: int | None = Query(None, description="Sammlungs-ID Filter"),
+    sammlung: Nr | None = Query(None, description="Sammlungs-ID Filter"),
     typ: str | None = Query(None, description="Typ-Filter (heft, katalog, broschuere)"),
     favorit: bool | None = Query(None, description="Nur Favoriten"),
     zu_lesen: bool | None = Query(None, description="Nur Zum-Lesen"),
@@ -183,19 +187,23 @@ async def list_books(
     hat_highlights: bool | None = Query(None, description="Bücher mit Textmarkierungen"),
     autor: str | None = Query(None, description="Autor-Filter (exakter Match oder LIKE)"),
     verlag: str | None = Query(None, description="Verlag-Filter (exakter Match oder LIKE)"),
-    jahr_von: int | None = Query(None, description="Erscheinungsjahr ab"),
-    jahr_bis: int | None = Query(None, description="Erscheinungsjahr bis"),
+    jahr_von: int | None = Query(None, ge=LEBENSJAHR_AB, le=JAHR_BIS, description="Erscheinungsjahr ab"),
+    jahr_bis: int | None = Query(None, ge=LEBENSJAHR_AB, le=JAHR_BIS, description="Erscheinungsjahr bis"),
     suche: str | None = Query(None, description="Schnellfilter: jedes Wort in Titel, Autor, ISBN oder Etikett"),
     sortierung: str = Query("titel", description="Sortierung: titel, autor, datum, bewertung, größe, jahr, verlag"),
     richtung: str = Query("asc", description="Sortierrichtung: asc, desc"),
 ):
-    """Listet Bücher paginiert und filterbar auf."""
+    """Listet Bücher paginiert und filterbar auf. Jeder Schalter filtert in beide Richtungen: true nur die mit, false nur
+    die ohne."""
     # Basis-Query aufbauen
     conditions = []
     params: list = []
 
+    def ob(wert: bool, buecher: str) -> str:
+        return f"b.id {'' if wert else 'NOT '}IN ({buecher})"
+
     if kategorie is not None:
-        kat_ids = [int(k) for k in kategorie.split(",") if k.strip().isdigit()]
+        kat_ids = [int(k) for k in kategorie.split(",") if k.strip().isdigit() and 0 < int(k) <= GROESSTE_ZAHL]
         if len(kat_ids) == 1:
             conditions.append("b.id IN (SELECT book_id FROM book_categories WHERE category_id = ?)")
             params.append(kat_ids[0])
@@ -213,33 +221,27 @@ async def list_books(
         params.append(typ.strip())
 
     if favorit is not None:
-        conditions.append("b.id IN (SELECT book_id FROM user_book_data WHERE is_favorite = 1)")
+        conditions.append(ob(favorit, "SELECT book_id FROM user_book_data WHERE is_favorite = 1"))
 
     if zu_lesen is not None:
-        conditions.append("b.id IN (SELECT book_id FROM user_book_data WHERE is_to_read = 1)")
+        conditions.append(ob(zu_lesen, "SELECT book_id FROM user_book_data WHERE is_to_read = 1"))
 
     if bewertung_min is not None:
         conditions.append("b.id IN (SELECT book_id FROM user_book_data WHERE rating >= ?)")
         params.append(bewertung_min)
 
     if gelesen is not None:
-        if gelesen:
-            conditions.append("b.id IN (SELECT book_id FROM user_book_data WHERE last_read_at IS NOT NULL)")
-        else:
-            conditions.append("b.id NOT IN (SELECT book_id FROM user_book_data WHERE last_read_at IS NOT NULL)")
+        conditions.append(ob(gelesen, "SELECT book_id FROM user_book_data WHERE last_read_at IS NOT NULL"))
 
     if weiterlesen is not None:
-        conditions.append(
-            """b.id IN (SELECT book_id FROM user_book_data
-               WHERE reading_position IS NOT NULL AND reading_position != ''
-               AND last_read_at IS NOT NULL)"""
-        )
+        conditions.append(ob(weiterlesen, "SELECT book_id FROM user_book_data WHERE reading_position IS NOT NULL AND reading_position != '' "
+                                          "AND last_read_at IS NOT NULL"))
 
     if hat_labels is not None:
-        conditions.append(f"b.id {'' if hat_labels else 'NOT '}IN ({schnellfilter.MIT_ETIKETTEN})")
+        conditions.append(ob(hat_labels, schnellfilter.MIT_ETIKETTEN))
 
     if hat_highlights is not None:
-        conditions.append("b.id IN (SELECT DISTINCT book_id FROM book_highlights)")
+        conditions.append(ob(hat_highlights, "SELECT book_id FROM book_highlights"))
 
     if hat_isbn is not None:
         if hat_isbn:
@@ -352,7 +354,7 @@ async def recently_read(
 
 @router.get("/{book_id}/aehnliche")
 async def similar_books(
-    book_id: int,
+    book_id: Nr,
     _token: str = Depends(verify_token),
     limit: int = Query(6, ge=1, le=20),
 ):
@@ -422,7 +424,7 @@ async def similar_books(
 
 
 @router.get("/{book_id}", response_model=BookResponse)
-async def get_book(book_id: int, _token: str = Depends(verify_token)):
+async def get_book(book_id: Nr, _token: str = Depends(verify_token)):
     """Gibt die vollständigen Details eines Buches zurück."""
     row = await db.fetch_one("SELECT * FROM books WHERE id = ?", (book_id,))
     if not row:
@@ -448,16 +450,15 @@ async def get_book(book_id: int, _token: str = Depends(verify_token)):
 
 @router.patch("/{book_id}", response_model=BookResponse)
 async def update_book(
-    book_id: int, update: BookUpdate, _token: str = Depends(verify_token)
+    book_id: Nr, update: BookUpdate, _token: str = Depends(verify_token)
 ):
     """Aktualisiert Metadaten eines Buches."""
-    existing = await db.fetch_one("SELECT id FROM books WHERE id = ?", (book_id,))
-    if not existing:
-        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
-
+    await vorhanden.buch(book_id)
     updates = {k: v for k, v in update.model_dump(exclude_unset=True).items() if v is not None or k == "year"}
     if not updates:
         raise HTTPException(status_code=400, detail="Keine Felder zum Aktualisieren")
+    if "sammlung_id" in updates:
+        await vorhanden.eintrag("collections", updates["sammlung_id"], "Sammlung nicht gefunden", "id")
 
     set_clause = ", ".join(f"{k} = ?" for k in updates)
     values = list(updates.values()) + [book_id]
@@ -474,7 +475,7 @@ async def update_book(
 
 @router.delete("/{book_id}")
 async def delete_book(
-    book_id: int,
+    book_id: Nr,
     datei_loeschen: bool = Query(False, description="Auch die Datei im Speicher löschen"),
     _token: str = Depends(verify_token),
 ):
@@ -503,9 +504,23 @@ async def delete_book(
 
 class BulkAction(BaseModel):
     """Massenbearbeitung für mehrere Bücher."""
-    book_ids: list[int]
-    aktion: str  # "loeschen", "kategorie_zuweisen", "sammlung_zuweisen", "typ_setzen", "favorit", "zu_lesen"
-    wert: str | int | None = None  # z.B. Kategorie-ID, Tag-ID, true/false
+    book_ids: list[Nr] = Field(max_length=AUSWAHL_HOECHSTENS)
+    aktion: Literal["loeschen", "kategorie_zuweisen", "sammlung_zuweisen", "typ_setzen", "favorit", "zu_lesen"]
+    wert: Nr | bool | Annotated[str, StringConstraints(max_length=50)] | None = None  # Nummer von Regal oder Sammlung, Typ, true/false
+
+
+async def _nummer(wert: object, tabelle: str, meldung: str) -> int:
+    """Die Nummer eines Regals oder einer Sammlung für eine Sammelaktion; es muss sie geben."""
+    if isinstance(wert, bool) or not isinstance(wert, int | str) or not str(wert).isdigit() or not 0 < int(wert) <= GROESSTE_ZAHL:
+        raise HTTPException(status_code=422, detail="Wert: keine Nummer")
+    return (await vorhanden.eintrag(tabelle, int(wert), meldung, "id"))["id"]
+
+
+def _typ(wert: object) -> str:
+    try:
+        return typ_pruefen(str(wert) if wert else "")
+    except ValueError as f:
+        raise HTTPException(status_code=422, detail=f"Wert: {f}") from None
 
 
 @router.post("/bulk")
@@ -521,77 +536,69 @@ async def bulk_action(
 
     if action.aktion == "loeschen":
         for bid in action.book_ids:
-            await db.execute("DELETE FROM books WHERE id = ?", (bid,))
-            betroffen += 1
+            betroffen += (await db.execute("DELETE FROM books WHERE id = ?", (bid,))).rowcount
         await db.commit()
 
     elif action.aktion == "kategorie_zuweisen":
         if action.wert is None:
             raise HTTPException(status_code=400, detail="Kategorie-ID fehlt")
-        kat_id = int(action.wert)
+        kat_id = await _nummer(action.wert, "categories", "Regal nicht gefunden")
         for bid in action.book_ids:
-            await db.execute(
+            betroffen += (await db.execute(
                 "INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'manuell')",
                 (bid, kat_id),
-            )
-            betroffen += 1
+            )).rowcount
         await db.commit()
 
     elif action.aktion == "sammlung_zuweisen":
         if action.wert is None:
             raise HTTPException(status_code=400, detail="Sammlungs-ID fehlt")
-        samml_id = int(action.wert)
+        samml_id = await _nummer(action.wert, "collections", "Sammlung nicht gefunden")
         for bid in action.book_ids:
-            await db.execute(
+            betroffen += (await db.execute(
                 "UPDATE books SET sammlung_id = ? WHERE id = ?",
                 (samml_id, bid),
-            )
-            betroffen += 1
+            )).rowcount
         await db.commit()
 
     elif action.aktion == "typ_setzen":
-        typ_wert = str(action.wert) if action.wert else ""
+        typ_wert = _typ(action.wert)
         for bid in action.book_ids:
-            await db.execute(
+            betroffen += (await db.execute(
                 "UPDATE books SET typ = ? WHERE id = ?",
                 (typ_wert, bid),
-            )
-            betroffen += 1
+            )).rowcount
         await db.commit()
 
     elif action.aktion == "favorit":
         fav = 1 if action.wert in (True, "true", 1) else 0
         for bid in action.book_ids:
-            await db.execute(
+            betroffen += (await db.execute(
                 """INSERT INTO user_book_data (book_id, is_favorite)
                    VALUES (?, ?)
                    ON CONFLICT(book_id) DO UPDATE SET is_favorite = ?""",
                 (bid, fav, fav),
-            )
-            betroffen += 1
+            )).rowcount
         await db.commit()
 
     elif action.aktion == "zu_lesen":
         val = 1 if action.wert in (True, "true", 1) else 0
         for bid in action.book_ids:
-            await db.execute(
+            betroffen += (await db.execute(
                 """INSERT INTO user_book_data (book_id, is_to_read)
                    VALUES (?, ?)
                    ON CONFLICT(book_id) DO UPDATE SET is_to_read = ?""",
                 (bid, val, val),
-            )
-            betroffen += 1
+            )).rowcount
         await db.commit()
 
-    else:
-        raise HTTPException(status_code=400, detail=f"Unbekannte Aktion: {action.aktion}")
 
     return {"betroffen": betroffen, "aktion": action.aktion}
 
 
 @router.delete("/kategorie/{category_id}/buecher")
 async def delete_books_by_category(
-    category_id: int,
+    category_id: Nr,
     datei_loeschen: bool = Query(False, description="Auch Dateien im Speicher löschen"),
     _token: str = Depends(verify_token),
 ):
@@ -713,7 +720,7 @@ def _generate_cover_sync(file_hash: str, file_format: str) -> bytes | None:
 
 
 @router.get("/{book_id}/cover")
-async def get_cover(book_id: int, _token: str = Depends(verify_token_inhalt)):
+async def get_cover(book_id: Nr, _token: str = Depends(verify_token_inhalt)):
     """Liefert das Cover eines Buches und gibt NIE 404 zurück.
 
     Reihenfolge: vorhandenes cover.jpg -> sonst aus der Quelldatei erzeugen
@@ -761,7 +768,7 @@ async def get_cover(book_id: int, _token: str = Depends(verify_token_inhalt)):
 
 
 @router.post("/{book_id}/cover/neu-extrahieren")
-async def re_extract_cover(book_id: int, _token: str = Depends(verify_token)):
+async def re_extract_cover(book_id: Nr, _token: str = Depends(verify_token)):
     """Extrahiert das Cover neu aus der Buchdatei und überschreibt das bestehende."""
     book = await db.fetch_one(
         "SELECT id, hash, file_format FROM books WHERE id = ?", (book_id,)
@@ -788,7 +795,8 @@ async def re_extract_cover(book_id: int, _token: str = Depends(verify_token)):
 
 
 @router.get("/{book_id}/file")
-async def get_file(book_id: int, request: Request, _token: str = Depends(verify_token_inhalt)):
+async def get_file(book_id: Nr, request: Request, herunterladen: bool = Query(False, description="Als Anhang (Herunterladen) statt zum Ansehen im Browser"),
+                   _token: str = Depends(verify_token_inhalt)):
     """Streamt die Buchdatei (mit Range-Request-Unterstützung)."""
     book = await db.fetch_one(
         "SELECT hash, file_name, file_format FROM books WHERE id = ?", (book_id,)
@@ -805,11 +813,11 @@ async def get_file(book_id: int, request: Request, _token: str = Depends(verify_
     }
     media_type = media_types.get(book["file_format"], "application/octet-stream")
 
-    return await original_antwort(request, book["hash"], media_type, book["file_name"])
+    return await original_antwort(request, book["hash"], media_type, book["file_name"], herunterladen)
 
 
 @router.post("/{book_id}/isbn-scan")
-async def isbn_scan(book_id: int, _token: str = Depends(verify_token)):
+async def isbn_scan(book_id: Nr, _token: str = Depends(verify_token)):
     """Scannt ein Buch erneut nach ISBNs.
 
     Liest den Volltext und extrahiert alle gültigen ISBNs.
@@ -906,7 +914,7 @@ async def isbn_scan(book_id: int, _token: str = Depends(verify_token)):
 @router.post("/rescan")
 async def rescan_books(
     typen: str = Query("cover,isbn", description="Kommagetrennt: cover,isbn,metadaten,volltext"),
-    kategorie: int | None = Query(None, description="Nur Buecher dieser Kategorie (0=ohne Kategorie)"),
+    kategorie: Index | None = Query(None, description="Nur Bücher dieser Kategorie (0=ohne Kategorie)"),
     manuell_einschliessen: bool = Query(False, description="Auch manuell bearbeitete Buecher scannen"),
     _token: str = Depends(verify_token),
 ):
@@ -933,7 +941,7 @@ async def rescan_cancel(_token: str = Depends(verify_token)):
 @router.get("/rescan/vorschau")
 async def rescan_vorschau(
     typen: str = Query("cover,isbn", description="Kommagetrennt: cover,isbn,metadaten,volltext"),
-    kategorie: int | None = Query(None, description="Nur Buecher dieser Kategorie"),
+    kategorie: Index | None = Query(None, description="Nur Bücher dieser Kategorie (0=ohne Kategorie)"),
     manuell_einschliessen: bool = Query(False),
     _token: str = Depends(verify_token),
 ):
@@ -992,8 +1000,8 @@ async def _pdf_zum_lesen(book_id: int) -> tuple[dict, Path]:
 
 @router.get("/{book_id}/textseiten", response_model=TextSeitenAntwort)
 async def text_seiten(
-    book_id: int,
-    ab: int = Query(1, ge=1, description="Erste Dateiseite"),
+    book_id: Nr,
+    ab: int = Query(1, ge=1, le=SEITEN_HOECHSTENS, description="Erste Dateiseite"),
     anzahl: int = Query(6, ge=1, le=30),
     _token: str = Depends(verify_token),
 ):
@@ -1011,7 +1019,7 @@ async def text_seiten(
 
 
 @router.get("/{book_id}/textseiten/{seite}/bild/{nr}")
-async def text_seiten_bild(book_id: int, seite: int, nr: int, _token: str = Depends(verify_token_inhalt)):
+async def text_seiten_bild(book_id: Nr, seite: Nr, nr: Index, _token: str = Depends(verify_token_inhalt)):
     """Abbildung `nr` einer Seite der Textansicht als PNG (Ausschnitt der Originalseite)."""
     _book, pfad = await _pdf_zum_lesen(book_id)
     png = await asyncio.to_thread(abbildung_png, pfad, seite, nr, codeteile=await _codeteile(book_id))
@@ -1022,7 +1030,7 @@ async def text_seiten_bild(book_id: int, seite: int, nr: int, _token: str = Depe
 
 @router.get("/{book_id}/volltext-suche")
 async def fulltext_search_book(
-    book_id: int,
+    book_id: Nr,
     q: str = Query(..., min_length=1, description="Suchbegriff"),
     limit: int = Query(500, ge=1, le=5000),
     ganzes_wort: bool = Query(False, description="Nur ganze Woerter"),

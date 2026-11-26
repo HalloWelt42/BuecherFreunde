@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from backend.app.core.auth import verify_token
+from backend.app.models.grenzen import VERSATZ
 from backend.app.services.search import (
     SearchResult,
     optimize_index,
@@ -38,7 +39,7 @@ class SuggestResponse(BaseModel):
 async def search(
     q: str = Query(..., min_length=1, description="Suchbegriff"),
     limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0, le=VERSATZ),
     _token: str = Depends(verify_token),
 ):
     """Volltextsuche in allen Buechern mit Kontext-Snippets.

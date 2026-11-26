@@ -1,5 +1,6 @@
 """Das Original eines Buchs als Antwort an den Browser, mit Bereichen (Leser holen nur, was sie zeigen): vom Gerät, aus dem
-Zwischenspeicher oder durchgereicht aus der Kellerwolke, ohne es hier abzulegen."""
+Zwischenspeicher oder durchgereicht aus der Kellerwolke, ohne es hier abzulegen. Zum Ansehen im Browser kommt es inline,
+zum Herunterladen als Anhang; der Weg ist derselbe."""
 
 from __future__ import annotations
 
@@ -25,10 +26,11 @@ def _auf_dem_geraet(file_hash: str) -> Path | None:
     return kandidaten[0] if kandidaten else None
 
 
-async def original_antwort(request: Request, file_hash: str, art: str, name: str) -> Response:
+async def original_antwort(request: Request, file_hash: str, art: str, name: str, herunterladen: bool = False) -> Response:
+    weise = "attachment" if herunterladen else "inline"
     da = _auf_dem_geraet(file_hash)
     if da is not None:
-        return FileResponse(da, media_type=art, filename=name, headers={"Accept-Ranges": "bytes"})
+        return FileResponse(da, media_type=art, filename=name, headers={"Accept-Ranges": "bytes"}, content_disposition_type=weise)
     ablage = originale.eintrag(file_hash)
     if ablage is None or not wolke.bereit:
         raise HTTPException(status_code=404, detail=FEHLT)
@@ -41,7 +43,7 @@ async def original_antwort(request: Request, file_hash: str, art: str, name: str
         raise HTTPException(status_code=503, detail=f"Die Kellerwolke meldet {r.status_code}")
     kopf = {k: r.headers[k] for k in ("content-length", "content-range", "etag") if k in r.headers}
     kopf["Accept-Ranges"] = "bytes"
-    kopf["Content-Disposition"] = f"inline; filename*=UTF-8''{quote(name or ablage['name'])}"
+    kopf["Content-Disposition"] = f"{weise}; filename*=UTF-8''{quote(name or ablage['name'])}"
 
     async def strom():
         try:

@@ -24,6 +24,8 @@ from backend.app.services.anhalten import Anhalter
 from backend.app.services.autoren_uebernahme import OHNE_EINTRAG
 from backend.app.services.autoren_uebernahme import slug as _slugify
 from backend.app.services.autorennamen import zerlegen
+from backend.app.api import vorhanden
+from backend.app.models.grenzen import LISTENSEITE, Nr
 
 router = APIRouter(prefix="/api/authors", tags=["Autoren"])
 
@@ -31,7 +33,7 @@ router = APIRouter(prefix="/api/authors", tags=["Autoren"])
 @router.get("", response_model=AuthorListResponse)
 async def list_authors(
     _token: str = Depends(verify_token),
-    seite: int = Query(1, ge=1),
+    seite: int = Query(1, ge=1, le=LISTENSEITE),
     pro_seite: int = Query(24, ge=1, le=100),
     suche: str | None = Query(None, description="Namenssuche"),
     sortierung: str = Query("name", description="Sortierung: name, bücher, datum"),
@@ -360,7 +362,7 @@ async def delete_orphaned_authors(_token: str = Depends(verify_token)):
 # --- Dynamische Routen (/{author_id}) ---
 
 @router.get("/{author_id}", response_model=AuthorResponse)
-async def get_author(author_id: int, _token: str = Depends(verify_token)):
+async def get_author(author_id: Nr, _token: str = Depends(verify_token)):
     """Gibt die vollständigen Details eines Autors zurück."""
     author = await db.fetch_one(
         "SELECT * FROM authors WHERE id = ?", (author_id,)
@@ -393,7 +395,7 @@ async def get_author(author_id: int, _token: str = Depends(verify_token)):
 
 @router.patch("/{author_id}")
 async def update_author(
-    author_id: int, data: AuthorUpdate, _token: str = Depends(verify_token)
+    author_id: Nr, data: AuthorUpdate, _token: str = Depends(verify_token)
 ):
     """Aktualisiert einen Autor."""
     existing = await db.fetch_one(
@@ -402,13 +404,14 @@ async def update_author(
     if not existing:
         raise HTTPException(status_code=404, detail="Autor nicht gefunden")
 
-    updates = {}
-    for key, value in data.model_dump(exclude_unset=True).items():
-        updates[key] = value
+    # null leert ein Feld; nur der Name bleibt dann, wie er ist
+    updates = {k: v for k, v in data.model_dump(exclude_unset=True).items() if v is not None or k != "name"}
 
-    # Name geändert -> Slug neu generieren
-    if "name" in updates and updates["name"]:
+    # Name geändert -> Slug neu generieren; ein Name gehört einem Autor
+    if "name" in updates:
         updates["slug"] = _slugify(updates["name"])
+        if await db.fetch_one("SELECT id FROM authors WHERE slug = ? AND id != ?", (updates["slug"], author_id)):
+            raise HTTPException(status_code=409, detail="Diesen Autor gibt es schon")
 
     if updates:
         set_clause = ", ".join(f"{k} = ?" for k in updates)
@@ -423,7 +426,7 @@ async def update_author(
 
 
 @router.delete("/{author_id}")
-async def delete_author(author_id: int, _token: str = Depends(verify_token)):
+async def delete_author(author_id: Nr, _token: str = Depends(verify_token)):
     """Löscht einen Autor."""
     existing = await db.fetch_one(
         "SELECT id FROM authors WHERE id = ?", (author_id,)
@@ -440,8 +443,8 @@ async def delete_author(author_id: int, _token: str = Depends(verify_token)):
 async def create_author(data: AuthorUpdate, _token: str = Depends(verify_token)):
     """Erstellt einen neuen Autor."""
     name = data.name
-    if not name or not name.strip():
-        raise HTTPException(status_code=400, detail="Name ist erforderlich")
+    if not name:
+        raise HTTPException(status_code=422, detail="Name: fehlt")
 
     slug = _slugify(name)
     existing = await db.fetch_one(
@@ -468,12 +471,14 @@ async def create_author(data: AuthorUpdate, _token: str = Depends(verify_token))
 
 @router.post("/{author_id}/buecher/{book_id}")
 async def link_book(
-    author_id: int,
-    book_id: int,
-    role: str = Query("autor"),
+    author_id: Nr,
+    book_id: Nr,
+    role: str = Query("autor", min_length=1, max_length=50),
     _token: str = Depends(verify_token),
 ):
     """Verknüpft ein Buch mit einem Autor."""
+    await vorhanden.eintrag("authors", author_id, "Autor nicht gefunden", "id")
+    await vorhanden.buch(book_id)
     await db.execute(
         "INSERT OR IGNORE INTO book_authors (book_id, author_id, role) VALUES (?, ?, ?)",
         (book_id, author_id, role),
@@ -484,20 +489,21 @@ async def link_book(
 
 @router.delete("/{author_id}/buecher/{book_id}")
 async def unlink_book(
-    author_id: int, book_id: int, _token: str = Depends(verify_token)
+    author_id: Nr, book_id: Nr, _token: str = Depends(verify_token)
 ):
     """Entfernt die Verknüpfung zwischen Buch und Autor."""
-    await db.execute(
+    c = await db.execute(
         "DELETE FROM book_authors WHERE book_id = ? AND author_id = ?",
         (book_id, author_id),
     )
+    vorhanden.getroffen(c, "Dieses Buch ist nicht mit dem Autor verknüpft")
     await db.commit()
     return {"entfernt": True}
 
 
 @router.get("/{author_id}/foto")
 async def get_author_photo(
-    author_id: int,
+    author_id: Nr,
     groesse: str = Query("normal", description="normal, thumb, mini"),
     _token: str = Depends(verify_token_inhalt),
 ):
@@ -536,7 +542,7 @@ async def get_author_photo(
 
 
 @router.post("/{author_id}/anreichern")
-async def enrich_author(author_id: int, _token: str = Depends(verify_token)):
+async def enrich_author(author_id: Nr, _token: str = Depends(verify_token)):
     """Sucht Angaben zu einem Autor in Normdatei und Lexikon (Wikidata, Wikipedia).
 
     Biografie, Lebensdaten, Foto, Werke und Verweise kommen als Vorschlag; die Bücher des Autors
@@ -578,7 +584,7 @@ async def enrich_author(author_id: int, _token: str = Depends(verify_token)):
 
 @router.post("/{author_id}/anreichern/uebernehmen")
 async def apply_author_enrichment(
-    author_id: int, felder: dict, _token: str = Depends(verify_token)
+    author_id: Nr, felder: dict, _token: str = Depends(verify_token)
 ):
     """Übernimmt die angereicherten Autorendaten."""
     author = await db.fetch_one("SELECT id FROM authors WHERE id = ?", (author_id,))

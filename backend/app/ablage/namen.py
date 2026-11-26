@@ -16,6 +16,19 @@ def sauber(text: str | None, hoechstens: int) -> str:
     return t
 
 
+def dateiname(name: str, hoechstens: int = 255) -> str:
+    """Ein Dateiname, den jedes Dateisystem nimmt (höchstens `hoechstens` Byte); ist er länger, wird vorn gekürzt, die
+    Endung bleibt. Was passt, bleibt, wie es ist."""
+    if len(name.encode()) <= hoechstens:
+        return name
+    p = Path(name)
+    endung = p.suffix if 0 < len(p.suffix.encode()) <= 16 else ""
+    stamm = p.stem if endung else name
+    while stamm and len((stamm + endung).encode()) > hoechstens:
+        stamm = stamm[:-1]
+    return stamm.rstrip(" .") + endung
+
+
 def fach(titel: str) -> str:
     a = unicodedata.normalize("NFD", titel or "?")[0].upper()
     return a if "A" <= a <= "Z" else "0-9" if a.isdigit() else "Andere"

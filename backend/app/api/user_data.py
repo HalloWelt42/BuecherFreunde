@@ -1,10 +1,12 @@
 """API-Endpunkte für Nutzerdaten (Favoriten, Lesestand, Bewertung)."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from backend.app.api import vorhanden
 from backend.app.core.auth import verify_token
 from backend.app.core.database import db
+from backend.app.models.grenzen import GROESSTE_ZAHL, Leseposition, Nr
 
 router = APIRouter(prefix="/api/books", tags=["Nutzerdaten"])
 
@@ -14,16 +16,16 @@ class RatingUpdate(BaseModel):
 
 
 class ReadingPositionUpdate(BaseModel):
-    position: str
+    position: Leseposition
 
 
 class VorlesestelleNeu(BaseModel):
     """Wo das Vorlesen stehen blieb: Einheit der Lesequelle und Anfang des Satzes, dazu der gewählte Umfang."""
 
-    einheit: int = Field(ge=0)
-    zeichen: int = Field(ge=0)
-    bis_einheit: int | None = Field(default=None, ge=0)
-    bis_zeichen: int | None = Field(default=None, ge=0)
+    einheit: int = Field(ge=0, le=GROESSTE_ZAHL)
+    zeichen: int = Field(ge=0, le=GROESSTE_ZAHL)
+    bis_einheit: int | None = Field(default=None, ge=0, le=GROESSTE_ZAHL)
+    bis_zeichen: int | None = Field(default=None, ge=0, le=GROESSTE_ZAHL)
     umfang: str = Field(default="", max_length=80)
     ort: str = Field(default="", max_length=120)
 
@@ -45,13 +47,11 @@ async def _ensure_user_data(book_id: int) -> None:
 
 async def _check_book_exists(book_id: int) -> None:
     """Prüft ob das Buch existiert."""
-    book = await db.fetch_one("SELECT id FROM books WHERE id = ?", (book_id,))
-    if not book:
-        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+    await vorhanden.buch(book_id)
 
 
 @router.patch("/{book_id}/favorit")
-async def toggle_favorite(book_id: int, _token: str = Depends(verify_token)):
+async def toggle_favorite(book_id: Nr, _token: str = Depends(verify_token)):
     """Wechselt den Favoriten-Status eines Buches."""
     await _check_book_exists(book_id)
     await _ensure_user_data(book_id)
@@ -71,7 +71,7 @@ async def toggle_favorite(book_id: int, _token: str = Depends(verify_token)):
 
 
 @router.patch("/{book_id}/zu-lesen")
-async def toggle_to_read(book_id: int, _token: str = Depends(verify_token)):
+async def toggle_to_read(book_id: Nr, _token: str = Depends(verify_token)):
     """Wechselt den Zum-Lesen-Status eines Buches."""
     await _check_book_exists(book_id)
     await _ensure_user_data(book_id)
@@ -91,7 +91,7 @@ async def toggle_to_read(book_id: int, _token: str = Depends(verify_token)):
 
 
 @router.patch("/{book_id}/gelesen")
-async def toggle_read(book_id: int, _token: str = Depends(verify_token)):
+async def toggle_read(book_id: Nr, _token: str = Depends(verify_token)):
     """Wechselt den Gelesen-Status eines Buches (setzt/löscht last_read_at)."""
     await _check_book_exists(book_id)
     await _ensure_user_data(book_id)
@@ -118,7 +118,7 @@ async def toggle_read(book_id: int, _token: str = Depends(verify_token)):
 
 @router.patch("/{book_id}/bewertung")
 async def set_rating(
-    book_id: int, data: RatingUpdate, _token: str = Depends(verify_token)
+    book_id: Nr, data: RatingUpdate, _token: str = Depends(verify_token)
 ):
     """Setzt die Bewertung eines Buches (0-5 Sterne)."""
     await _check_book_exists(book_id)
@@ -135,7 +135,7 @@ async def set_rating(
 
 @router.patch("/{book_id}/leseposition")
 async def set_reading_position(
-    book_id: int, data: ReadingPositionUpdate, _token: str = Depends(verify_token)
+    book_id: Nr, data: ReadingPositionUpdate, _token: str = Depends(verify_token)
 ):
     """Speichert die Leseposition (Seitenzahl, CFI oder Prozent)."""
     await _check_book_exists(book_id)
@@ -155,7 +155,7 @@ async def set_reading_position(
 
 
 @router.get("/{book_id}/vorlesestelle", response_model=Vorlesestelle | None)
-async def lies_vorlesestelle(book_id: int, _token: str = Depends(verify_token)) -> Vorlesestelle | None:
+async def lies_vorlesestelle(book_id: Nr, _token: str = Depends(verify_token)) -> Vorlesestelle | None:
     """Wo das Vorlesen dieses Buchs stehen blieb; null, wenn nichts gemerkt ist."""
     await _check_book_exists(book_id)
     zeile = await db.fetch_one(
@@ -165,7 +165,7 @@ async def lies_vorlesestelle(book_id: int, _token: str = Depends(verify_token)) 
 
 
 @router.put("/{book_id}/vorlesestelle", response_model=Vorlesestelle)
-async def merke_vorlesestelle(book_id: int, stelle: VorlesestelleNeu, _token: str = Depends(verify_token)) -> Vorlesestelle:
+async def merke_vorlesestelle(book_id: Nr, stelle: VorlesestelleNeu, _token: str = Depends(verify_token)) -> Vorlesestelle:
     """Merkt die Stelle; eine frühere desselben Buchs wird ersetzt."""
     await _check_book_exists(book_id)
     await db.execute(
@@ -182,7 +182,7 @@ async def merke_vorlesestelle(book_id: int, stelle: VorlesestelleNeu, _token: st
 
 
 @router.delete("/{book_id}/vorlesestelle", status_code=204)
-async def vergiss_vorlesestelle(book_id: int, _token: str = Depends(verify_token)) -> None:
+async def vergiss_vorlesestelle(book_id: Nr, _token: str = Depends(verify_token)) -> None:
     """Der gewählte Umfang ist zu Ende gelesen: nichts mehr zum Weiterlesen."""
     await _check_book_exists(book_id)
     await db.execute("DELETE FROM vorlesestelle WHERE buch_id = ?", (book_id,))

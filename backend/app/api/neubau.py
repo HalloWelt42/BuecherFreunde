@@ -16,12 +16,13 @@ from backend.app.services import bedeutung
 from backend.app.services.ausfuehren import NICHT_ZUGELASSEN, sandbox
 from backend.app.services.ki import ki
 from backend.app.services.storage import get_sidecar_path
+from backend.app.models.grenzen import Nr
 
 router = APIRouter(prefix="/api", tags=["Neubau"])
 
 
 @router.get("/suche/bedeutung")
-async def suche_bedeutung(q: str = Query(min_length=1, max_length=1000), n: int = Query(20, ge=1, le=50), buch: int | None = None, _=Depends(verify_token)):
+async def suche_bedeutung(q: str = Query(min_length=1, max_length=1000), n: int = Query(20, ge=1, le=50), buch: Nr | None = None, _=Depends(verify_token)):
     return await bedeutung.suchen(q, n, buch)
 
 
@@ -83,7 +84,7 @@ async def oberflaeche(_=Depends(verify_token)):
 
 
 @router.get("/books/{buch}/ablage")
-async def ablage(buch: int, _=Depends(verify_token)):
+async def ablage(buch: Nr, _=Depends(verify_token)):
     z = await db.fetch_one("SELECT hash, page_count, file_size FROM books WHERE id = ?", (buch,))
     if z is None:
         raise HTTPException(404, "Buch nicht gefunden")

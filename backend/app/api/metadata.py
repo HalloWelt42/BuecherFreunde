@@ -16,6 +16,7 @@ from backend.app.quellen.vorschlag import frage_aus, vorschlag
 from backend.app.services.autorennamen import zerlegen
 from backend.app.services.data_cleaner import bereinige_kategorien
 from backend.app.services.storage import save_cover
+from backend.app.models.grenzen import SEITEN_HOECHSTENS, Nr
 
 logger = logging.getLogger("buecherfreunde.api.metadata")
 
@@ -132,7 +133,7 @@ def _kein_fund(quelle: str | None, hinweise: list[str]) -> str:
 
 @router.post("/buch/{book_id}/anreichern")
 async def enrich_book(
-    book_id: int,
+    book_id: Nr,
     quelle: str | None = Query(None, description="Kennung einer Quelle oder \"alle\"; ohne Angabe die erste, die etwas weiß"),
     _token: str = Depends(verify_token),
 ):
@@ -187,7 +188,7 @@ async def _umschlag_holen(adresse: str) -> tuple[bytes | None, str]:
 
 @router.post("/buch/{book_id}/uebernehmen")
 async def apply_metadata(
-    book_id: int, felder: dict, _token: str = Depends(verify_token)
+    book_id: Nr, felder: dict, _token: str = Depends(verify_token)
 ):
     """Übernimmt vorgeschlagene Metadaten für ein Buch.
 
@@ -263,9 +264,9 @@ async def apply_metadata(
 
 @router.get("/buch/{book_id}/volltext")
 async def get_fulltext(
-    book_id: int,
-    seite_von: int = Query(1, ge=1, description="Startseite (1-basiert)"),
-    seite_bis: int = Query(5, ge=1, description="Endseite (inklusiv)"),
+    book_id: Nr,
+    seite_von: int = Query(1, ge=1, le=SEITEN_HOECHSTENS, description="Startseite (1-basiert)"),
+    seite_bis: int = Query(5, ge=1, le=SEITEN_HOECHSTENS, description="Endseite (inklusiv)"),
     _token: str = Depends(verify_token),
 ):
     """Gibt einen Seitenbereich des Volltextes zurück.

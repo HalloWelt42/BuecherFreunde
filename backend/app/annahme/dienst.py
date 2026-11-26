@@ -14,7 +14,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 from backend.app.ablage import originale
-from backend.app.ablage.namen import sauber
+from backend.app.ablage.namen import dateiname, sauber
 from backend.app.ablage.wolke import WolkeFehler, wolke
 from backend.app.annahme import angaben, auswertung, gemeinfrei
 from backend.app.annahme.eintragen import ablegen, eintragen
@@ -32,6 +32,11 @@ IN_ARBEIT = ("liest", "angaben", "regal")
 QUELLEN = ("hochladen", "eingangsordner", "ordner", "extern", "gemeinfrei")
 BEHALTEN = ("ordner", "extern")          # aus diesen Quellen bleibt die Datei, wo sie ist
 KLAEREN = ("format", "kaputt", "fehler", "ohne_text")
+# Zähler je Quelle: jeder Stand zählt genau einmal
+IM_REGAL = ("fertig", "wissen", "ohne_text")
+GESCHEITERT = ("format", "kaputt", "fehler")
+STAENDE = (*LAUFEND, *IM_REGAL, "da", *GESCHEITERT)
+LISTE = 300                              # so viele Einträge zeigt die Liste, die Zähler zählen alle
 FORMATE = "PDF, EPUB, MOBI, TXT und MD"
 
 
@@ -41,6 +46,13 @@ class AnnahmeFehler(Exception):
     def __init__(self, meldung: str) -> None:
         super().__init__(meldung)
         self.meldung = meldung
+
+
+class ZuViel(Exception):
+    """Mehr Bytes als die Datei hat, die angesagt war."""
+
+    def __init__(self) -> None:
+        super().__init__("Mehr Daten als angesagt")
 
 
 class Versatz(Exception):
@@ -70,6 +82,7 @@ class Annahme:
     def starten(self) -> None:
         self._arbeit, self._neu, self._eingang = asyncio.Event(), set(), None       # gehören zur laufenden Ereignisschleife
         self._arbeit.set()
+        self._leere_ordner_raeumen()
         self._schleife = asyncio.create_task(self._arbeiten())
 
     async def stoppen(self) -> None:
@@ -79,10 +92,21 @@ class Annahme:
 
     # -- Sicht ---------------------------------------------------------------------------------------------------------
     async def alle(self) -> dict:
-        zeilen = [_aussen(z) for z in await db.fetch_all("SELECT * FROM aufnahme WHERE ausgeblendet = 0 ORDER BY id DESC LIMIT 300")]
-        def zahl(*staende: str) -> int:
-            return sum(z["stand"] in staende for z in zeilen)
-        return {"eintraege": zeilen, "zaehler": {"alle": len(zeilen), "laeuft": zahl(*LAUFEND), "klaeren": zahl(*KLAEREN), "da": zahl("da"), "fertig": zahl("fertig", "wissen")}}
+        """Die neuesten Einträge (höchstens `LISTE`, `weitere` sagt, wie viele darüber hinaus da sind) und Zähler über alle,
+        auch je Quelle (gesamt, laeuft, fertig, da, gescheitert)."""
+        zeilen = [_aussen(z) for z in await db.fetch_all(f"SELECT * FROM aufnahme WHERE ausgeblendet = 0 ORDER BY id DESC LIMIT {LISTE}")]
+        anzahl = {(z["quelle"], z["stand"]): z["n"] for z in await db.fetch_all(
+            "SELECT quelle, stand, COUNT(*) AS n FROM aufnahme WHERE ausgeblendet = 0 GROUP BY quelle, stand")}
+
+        def zahl(staende: tuple[str, ...], quelle: str | None = None) -> int:
+            return sum(n for (q, s), n in anzahl.items() if s in staende and quelle in (None, q))
+
+        je_quelle = {q: {"gesamt": zahl(STAENDE, q), "laeuft": zahl(LAUFEND, q), "fertig": zahl(IM_REGAL, q), "da": zahl(("da",), q),
+                         "gescheitert": zahl(GESCHEITERT, q)} for q in QUELLEN}
+        alle = sum(anzahl.values())
+        return {"eintraege": zeilen, "weitere": max(0, alle - len(zeilen)),
+                "zaehler": {"alle": alle, "laeuft": zahl(LAUFEND), "klaeren": zahl(KLAEREN), "da": zahl(("da",)), "fertig": zahl(("fertig", "wissen"))},
+                "quellen": je_quelle}
 
     async def einer(self, nr: int) -> dict | None:
         z = await db.fetch_one("SELECT * FROM aufnahme WHERE id = ?", (nr,))
@@ -226,6 +250,8 @@ class Annahme:
             return _aussen(z)
         if versatz != z["empfangen"]:
             raise Versatz(await self._stand_holen(nr))
+        if versatz + laenge > z["groesse"]:
+            raise ZuViel()
         if z["upload"]:
             try:
                 u = await wolke.upload_teil(z["upload"], versatz, strom, laenge)
@@ -236,7 +262,7 @@ class Annahme:
                 raise
             empfangen, knoten = u["empfangen"], (u.get("knoten") or {}).get("id")
         else:
-            empfangen, knoten = await self._teil_hier(z, strom), None
+            empfangen, knoten = await self._teil_hier(z, strom, laenge), None
         fertig = empfangen >= z["groesse"]
         await self._setze(nr, empfangen=empfangen, anteil=empfangen / z["groesse"], knoten=knoten or z["knoten"], stand="liest" if fertig else "laedt", schritt=2 if fertig else 1,
                           text="Wartet auf das Lesen" if fertig else f"Wird abgelegt, {mb(empfangen)} von {mb(z['groesse'])}")
@@ -245,31 +271,82 @@ class Annahme:
         return await self.einer(nr)
 
     @staticmethod
-    def _hier(z: dict) -> Path:
-        """Ablage ohne Kellerwolke: ein Ordner je Aufnahme, damit der Name der Datei (und so der Titel) bleibt, wie er ist."""
-        return settings.zwischen_dir / "eingang" / str(z["id"]) / Path(z["name"]).name
+    def _zwischen() -> Path:
+        return settings.zwischen_dir / "eingang"
 
-    async def _teil_hier(self, z: dict, strom: AsyncIterator[bytes]) -> int:
-        """Ohne Kellerwolke (Entwicklung): das Teil landet im Zwischenspeicher."""
+    @classmethod
+    def _hier(cls, z: dict) -> Path:
+        """Ablage ohne Kellerwolke: ein Ordner je Aufnahme, damit der Name der Datei (und so der Titel) bleibt, wie er ist;
+        nur ein zu langer Name wird gekürzt."""
+        return cls._zwischen() / str(z["id"]) / dateiname(Path(z["name"]).name)
+
+    async def _teil_hier(self, z: dict, strom: AsyncIterator[bytes], laenge: int) -> int:
+        """Ohne Kellerwolke (Entwicklung): das Teil landet im Zwischenspeicher, nie mehr als angesagt. Bricht es ab, gilt nur,
+        was vorher da war."""
         ziel = self._hier(z)
         ziel.parent.mkdir(parents=True, exist_ok=True)
-        with ziel.open("ab" if z["empfangen"] else "wb") as f:
-            async for stueck in strom:
-                f.write(stueck)
+        if (da := ziel.stat().st_size if ziel.exists() else 0) < z["empfangen"]:        # verloren: dort weiter, wo es steht
+            await self._setze(z["id"], empfangen=da, anteil=da / z["groesse"])
+            raise Versatz(da)
+        geschrieben = 0
+        with ziel.open("r+b" if z["empfangen"] and ziel.exists() else "wb") as f:
+            f.seek(z["empfangen"])
+            try:
+                async for stueck in strom:
+                    geschrieben += len(stueck)
+                    if geschrieben > laenge:
+                        raise ZuViel()
+                    f.write(stueck)
+            except BaseException:
+                f.truncate(z["empfangen"])
+                raise
         return ziel.stat().st_size
+
+    def _leere_ordner_raeumen(self, ordner: Path | None = None) -> None:
+        """Leere Ordner im Zwischenspeicher des Eingangs gehen: einer nach dem Ablegen, alle beim Start."""
+        eingang = self._zwischen()
+        for o in [ordner] if ordner else (list(eingang.iterdir()) if eingang.is_dir() else []):
+            if o.parent == eingang and o.is_dir() and not any(o.iterdir()):
+                o.rmdir()
 
     # -- Bedienung -----------------------------------------------------------------------------------------------------
     async def entfernen(self, nr: int) -> None:
-        z = await db.fetch_one("SELECT upload, stand, knoten, quelle FROM aufnahme WHERE id = ?", (nr,))
-        if z and z["upload"] and z["stand"] in ("wartet", "laedt", "angehalten"):
-            try:
-                await wolke.upload_abbrechen(z["upload"])
-            except WolkeFehler as f:
-                logger.info("Upload %s nicht abgebrochen: %s", z["upload"], f)
+        await self._entfernen(await db.fetch_all("SELECT * FROM aufnahme WHERE id = ?", (nr,)))
+
+    async def aufraeumen(self, quelle: str | None, staende: list[str] | None) -> int:
+        """Viele auf einmal entfernen, wie einzeln: nach Quelle, nach Stand oder beidem (sichtbare Einträge). Liefert, wie
+        viele es waren."""
+        bedingungen, werte = ["ausgeblendet = 0"], []
+        if quelle:
+            bedingungen.append("quelle = ?")
+            werte.append(quelle)
+        if staende:
+            bedingungen.append(f"stand IN ({','.join('?' * len(staende))})")
+            werte.extend(staende)
+        zeilen = await db.fetch_all(f"SELECT * FROM aufnahme WHERE {' AND '.join(bedingungen)}", tuple(werte))
+        await self._entfernen(zeilen)
+        return len(zeilen)
+
+    async def _entfernen(self, zeilen: list[dict]) -> None:
+        """Laufende Uploads abbrechen (erst alles draußen, dann die Liste in einem Zug), angefangene Dateien im
+        Zwischenspeicher gehen mit. Ein eingetragenes Buch bleibt."""
+        offen = [z for z in zeilen if z["stand"] in ("wartet", "laedt", "angehalten")]
+        for z in offen:
+            if z["upload"]:
+                try:
+                    await wolke.upload_abbrechen(z["upload"])
+                except WolkeFehler as f:
+                    logger.info("Upload %s nicht abgebrochen: %s", z["upload"], f)
+            elif z["quelle"] == "hochladen":
+                angefangen = self._hier(z)
+                angefangen.unlink(missing_ok=True)
+                self._leere_ordner_raeumen(angefangen.parent)
         # Aus dem Eingangsordner bleibt der Eintrag gemerkt, sonst nähme er dieselbe Datei gleich noch einmal auf
-        merken = z and (z["knoten"] or z["quelle"] == "eingangsordner")
-        await db.execute("UPDATE aufnahme SET ausgeblendet = 1 WHERE id = ?" if merken else "DELETE FROM aufnahme WHERE id = ?", (nr,))
-        await db.commit()
+        merken = [z["id"] for z in zeilen if z["knoten"] or z["quelle"] == "eingangsordner"]
+        weg = [z["id"] for z in zeilen if z["id"] not in merken]
+        async with db.einheit():
+            for sql, nummern in (("UPDATE aufnahme SET ausgeblendet = 1 WHERE id = ?", merken), ("DELETE FROM aufnahme WHERE id = ?", weg)):
+                await db.execute_many(sql, [(n,) for n in nummern])
         for e in self._neu:
             e.set()
 
@@ -397,10 +474,13 @@ class Annahme:
             await ablegen(buch, k["id"])
             if not behalten:
                 pfad.unlink(missing_ok=True)
+                self._leere_ordner_raeumen(pfad.parent)
             return
-        ziel = get_storage_path(summe) / name
+        ziel = get_storage_path(summe) / dateiname(name)
         ziel.parent.mkdir(parents=True, exist_ok=True)
         await asyncio.to_thread(shutil.copy2 if behalten else shutil.move, pfad, ziel)      # auch über Datenträger hinweg
+        if not behalten:
+            self._leere_ordner_raeumen(pfad.parent)
 
     @staticmethod
     def _am_ziel(volltext: str) -> tuple[str, int, str]:

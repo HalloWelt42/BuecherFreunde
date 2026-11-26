@@ -2,11 +2,15 @@
 
 import re
 
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel
 
+from backend.app.api import vorhanden
 from backend.app.core.auth import verify_token
 from backend.app.core.database import db
+from backend.app.models.grenzen import AUSWAHL_HOECHSTENS, Farbe, Nr, Regalbeschreibung, Regalname, Sortierung, Symbol
 
 router = APIRouter(prefix="/api/categories", tags=["Kategorien"])
 
@@ -19,22 +23,37 @@ def _slugify(text: str) -> str:
     return slug.strip("-")
 
 
+FEHLT = "Regal nicht gefunden"
+DOPPELT = "Ein Regal mit diesem Namen gibt es schon"
+
+
 class CategoryCreate(BaseModel):
-    name: str
-    description: str = ""
-    color: str = "#6b7280"
-    icon: str = ""
-    sort_order: int = 0
+    name: Regalname
+    description: Regalbeschreibung = ""
+    color: Farbe = "#6b7280"
+    icon: Symbol = ""
+    sort_order: Sortierung = 0
     spezial: bool = False
 
 
 class CategoryUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
-    color: str | None = None
-    icon: str | None = None
-    sort_order: int | None = None
+    name: Regalname | None = None
+    description: Regalbeschreibung | None = None
+    color: Farbe | None = None
+    icon: Symbol | None = None
+    sort_order: Sortierung | None = None
     spezial: bool | None = None
+
+
+async def _freier_slug(name: str, ausser: int | None = None) -> str:
+    """Ein Name gehört genau einem Regal (409 sonst); fällt nur das Kürzel zusammen ("Sci-Fi", "Sci Fi"), wird gezählt."""
+    if await db.fetch_one("SELECT id FROM categories WHERE name = ? COLLATE NOCASE AND id IS NOT ?", (name, ausser)):
+        raise HTTPException(status_code=409, detail=DOPPELT)
+    grund = _slugify(name) or "regal"
+    slug, zaehler = grund, 2
+    while await db.fetch_one("SELECT id FROM categories WHERE slug = ? AND id IS NOT ?", (slug, ausser)):
+        slug, zaehler = f"{grund}-{zaehler}", zaehler + 1
+    return slug
 
 
 @router.get("")
@@ -55,23 +74,7 @@ async def list_categories(_token: str = Depends(verify_token)):
 @router.post("", status_code=201)
 async def create_category(data: CategoryCreate, _token: str = Depends(verify_token)):
     """Erstellt eine neue Kategorie."""
-    slug = _slugify(data.name)
-
-    existing = await db.fetch_one(
-        "SELECT id FROM categories WHERE slug = ?", (slug,)
-    )
-    if existing:
-        counter = 2
-        while True:
-            new_slug = f"{slug}-{counter}"
-            exists = await db.fetch_one(
-                "SELECT id FROM categories WHERE slug = ?", (new_slug,)
-            )
-            if not exists:
-                slug = new_slug
-                break
-            counter += 1
-
+    slug = await _freier_slug(data.name)
     cursor = await db.execute(
         """INSERT INTO categories (name, slug, description, color, icon, sort_order, spezial)
            VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -84,18 +87,13 @@ async def create_category(data: CategoryCreate, _token: str = Depends(verify_tok
 
 @router.patch("/{category_id}")
 async def update_category(
-    category_id: int, data: CategoryUpdate, _token: str = Depends(verify_token)
+    category_id: Nr, data: CategoryUpdate, _token: str = Depends(verify_token)
 ):
     """Aktualisiert eine Kategorie."""
-    existing = await db.fetch_one(
-        "SELECT * FROM categories WHERE id = ?", (category_id,)
-    )
-    if not existing:
-        raise HTTPException(status_code=404, detail="Kategorie nicht gefunden")
-
+    await vorhanden.eintrag("categories", category_id, FEHLT, "id")
     updates = data.model_dump(exclude_none=True)
     if "name" in updates:
-        updates["slug"] = _slugify(updates["name"])
+        updates["slug"] = await _freier_slug(updates["name"], category_id)
     if "spezial" in updates:
         updates["spezial"] = int(updates["spezial"])
 
@@ -111,13 +109,9 @@ async def update_category(
 
 
 @router.delete("/{category_id}")
-async def delete_category(category_id: int, _token: str = Depends(verify_token)):
+async def delete_category(category_id: Nr, _token: str = Depends(verify_token)):
     """Löscht eine Kategorie (Bücher bleiben erhalten)."""
-    existing = await db.fetch_one(
-        "SELECT id FROM categories WHERE id = ?", (category_id,)
-    )
-    if not existing:
-        raise HTTPException(status_code=404, detail="Kategorie nicht gefunden")
+    await vorhanden.eintrag("categories", category_id, FEHLT, "id")
 
     await db.execute("DELETE FROM book_categories WHERE category_id = ?", (category_id,))
     await db.execute("DELETE FROM categories WHERE id = ?", (category_id,))
@@ -128,12 +122,14 @@ async def delete_category(category_id: int, _token: str = Depends(verify_token))
 
 @router.post("/{book_id}/zuordnen")
 async def assign_categories(
-    book_id: int, kategorie_ids: list[int], _token: str = Depends(verify_token)
+    book_id: Nr, kategorie_ids: Annotated[list[Nr], Body(max_length=AUSWAHL_HOECHSTENS)], _token: str = Depends(verify_token)
 ):
-    """Ordnet einem Buch Kategorien zu (ersetzt bestehende)."""
-    book = await db.fetch_one("SELECT id FROM books WHERE id = ?", (book_id,))
-    if not book:
-        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+    """Ordnet einem Buch Kategorien zu (ersetzt bestehende). Fehlt eines der Regale, ändert sich nichts (404)."""
+    await vorhanden.buch(book_id)
+    kategorie_ids = list(dict.fromkeys(kategorie_ids))
+    da = {z["id"] for z in await db.fetch_all(f"SELECT id FROM categories WHERE id IN ({','.join('?' * len(kategorie_ids))})", tuple(kategorie_ids))} if kategorie_ids else set()
+    if fehlen := [k for k in kategorie_ids if k not in da]:
+        raise HTTPException(status_code=404, detail=f"{FEHLT}: {', '.join(map(str, fehlen))}")
 
     await db.execute("DELETE FROM book_categories WHERE book_id = ?", (book_id,))
     for cat_id in kategorie_ids:
@@ -148,15 +144,11 @@ async def assign_categories(
 
 @router.post("/{category_id}/books/{book_id}")
 async def add_book_to_category(
-    category_id: int, book_id: int, _token: str = Depends(verify_token)
+    category_id: Nr, book_id: Nr, _token: str = Depends(verify_token)
 ):
     """Fügt ein Buch zu einer Kategorie hinzu."""
-    book = await db.fetch_one("SELECT id FROM books WHERE id = ?", (book_id,))
-    if not book:
-        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
-    cat = await db.fetch_one("SELECT id FROM categories WHERE id = ?", (category_id,))
-    if not cat:
-        raise HTTPException(status_code=404, detail="Kategorie nicht gefunden")
+    await vorhanden.buch(book_id)
+    await vorhanden.eintrag("categories", category_id, FEHLT, "id")
 
     await db.execute(
         "INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'manuell')",
@@ -168,12 +160,13 @@ async def add_book_to_category(
 
 @router.delete("/{category_id}/books/{book_id}")
 async def remove_book_from_category(
-    category_id: int, book_id: int, _token: str = Depends(verify_token)
+    category_id: Nr, book_id: Nr, _token: str = Depends(verify_token)
 ):
     """Entfernt ein Buch aus einer Kategorie."""
-    await db.execute(
+    c = await db.execute(
         "DELETE FROM book_categories WHERE book_id = ? AND category_id = ?",
         (book_id, category_id),
     )
+    vorhanden.getroffen(c, "Das Buch steht nicht in diesem Regal")
     await db.commit()
     return {"message": "Kategorie entfernt"}

@@ -36,6 +36,7 @@ from backend.app.api.vorlesen import router as vorlesen_router
 from backend.app.api.wartung import router as wartung_router
 from backend.app.core.anmeldung import eigener_zugang, schliessen as anmeldung_schliessen
 from backend.app.core.config import settings
+from backend.app.core import fehlerantworten
 from backend.app.core.einheiten import Einheiten
 from backend.app.core.database import db
 from backend.app.codestellen.dienst import codestellen
@@ -110,6 +111,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.add_middleware(Einheiten)                   # jede Anfrage eine Transaktion (BF-49)
+fehlerantworten.einrichten(app)                 # eine Form für Fehler, deutsch (BF-50)
 
 # Keine Freigabe für fremde Seiten: Oberfläche und Schnittstelle kommen von derselben Adresse (nginx davor).
 app.include_router(neubau_router)

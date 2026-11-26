@@ -1,35 +1,35 @@
 """API-Endpunkte für Sammlungen."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
+from backend.app.api import vorhanden
 from backend.app.core.auth import verify_token
 from backend.app.core.database import db
+from backend.app.models.book import TYPEN
+from backend.app.models.grenzen import Band, Farbe, Nr, Sammlungsbeschreibung, Sammlungsname
 
 router = APIRouter(prefix="/api/collections", tags=["Sammlungen"])
 
-# Feste Systemtypen (nicht löschbar, nicht editierbar)
-SYSTEM_TYPEN = [
-    {"id": "heft", "name": "Heft", "beschreibung": "Zeitschrift, Magazin oder Heft"},
-    {"id": "katalog", "name": "Katalog", "beschreibung": "Produktkatalog oder Verzeichnis"},
-    {"id": "broschuere", "name": "Broschüre", "beschreibung": "Informationsbroschüre oder Flyer"},
-]
+
+
+FEHLT = "Sammlung nicht gefunden"
 
 
 class CollectionCreate(BaseModel):
-    name: str
-    description: str = ""
-    color: str = "#2563eb"
+    name: Sammlungsname
+    description: Sammlungsbeschreibung = ""
+    color: Farbe = "#2563eb"
 
 
 class CollectionUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
-    color: str | None = None
+    name: Sammlungsname | None = None
+    description: Sammlungsbeschreibung | None = None
+    color: Farbe | None = None
 
 
 class BuchZuordnung(BaseModel):
-    band_nummer: str = ""
+    band_nummer: Band = ""
 
 
 # --- Systemtypen ---
@@ -37,7 +37,7 @@ class BuchZuordnung(BaseModel):
 @router.get("/typen")
 async def liste_typen(_: str = Depends(verify_token)):
     """Gibt die verfügbaren Systemtypen zurück."""
-    return SYSTEM_TYPEN
+    return TYPEN
 
 
 # --- Sammlungen CRUD ---
@@ -73,15 +73,10 @@ async def erstelle_sammlung(
 
 @router.get("/{collection_id}")
 async def hole_sammlung(
-    collection_id: int, _: str = Depends(verify_token)
+    collection_id: Nr, _: str = Depends(verify_token)
 ):
     """Einzelne Sammlung mit Büchern."""
-    sammlung = await db.fetch_one(
-        "SELECT * FROM collections WHERE id = ?", (collection_id,)
-    )
-    if not sammlung:
-        raise HTTPException(status_code=404, detail="Sammlung nicht gefunden")
-
+    sammlung = await vorhanden.eintrag("collections", collection_id, FEHLT)
     buecher = await db.fetch_all("""
         SELECT id, title, author, isbn, file_format, cover_path, year, band_nummer
         FROM books
@@ -96,11 +91,12 @@ async def hole_sammlung(
 
 @router.patch("/{collection_id}")
 async def aktualisiere_sammlung(
-    collection_id: int,
+    collection_id: Nr,
     data: CollectionUpdate,
     _: str = Depends(verify_token),
 ):
     """Sammlung aktualisieren."""
+    await vorhanden.eintrag("collections", collection_id, FEHLT, "id")
     updates = {k: v for k, v in data.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(status_code=400, detail="Keine Änderungen")
@@ -118,9 +114,10 @@ async def aktualisiere_sammlung(
 
 @router.delete("/{collection_id}")
 async def loesche_sammlung(
-    collection_id: int, _: str = Depends(verify_token)
+    collection_id: Nr, _: str = Depends(verify_token)
 ):
     """Sammlung löschen. Setzt sammlung_id bei zugehörigen Büchern auf NULL."""
+    await vorhanden.eintrag("collections", collection_id, FEHLT, "id")
     await db.execute(
         "UPDATE books SET sammlung_id = NULL, band_nummer = '' WHERE sammlung_id = ?",
         (collection_id,),
@@ -134,21 +131,14 @@ async def loesche_sammlung(
 
 @router.post("/{collection_id}/buch/{book_id}")
 async def buch_zuordnen(
-    collection_id: int,
-    book_id: int,
+    collection_id: Nr,
+    book_id: Nr,
     data: BuchZuordnung = BuchZuordnung(),
     _: str = Depends(verify_token),
 ):
     """Buch einer Sammlung zuordnen (ersetzt vorherige Zuordnung)."""
-    sammlung = await db.fetch_one(
-        "SELECT id FROM collections WHERE id = ?", (collection_id,)
-    )
-    if not sammlung:
-        raise HTTPException(status_code=404, detail="Sammlung nicht gefunden")
-
-    buch = await db.fetch_one("SELECT id FROM books WHERE id = ?", (book_id,))
-    if not buch:
-        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+    await vorhanden.eintrag("collections", collection_id, FEHLT, "id")
+    await vorhanden.buch(book_id)
 
     await db.execute(
         "UPDATE books SET sammlung_id = ?, band_nummer = ? WHERE id = ?",
@@ -160,12 +150,13 @@ async def buch_zuordnen(
 
 @router.delete("/{collection_id}/buch/{book_id}")
 async def buch_aus_sammlung(
-    collection_id: int, book_id: int, _: str = Depends(verify_token)
+    collection_id: Nr, book_id: Nr, _: str = Depends(verify_token)
 ):
     """Buch aus Sammlung entfernen."""
-    await db.execute(
+    c = await db.execute(
         "UPDATE books SET sammlung_id = NULL, band_nummer = '' WHERE id = ? AND sammlung_id = ?",
         (book_id, collection_id),
     )
+    vorhanden.getroffen(c, "Das Buch gehört nicht zu dieser Sammlung")
     await db.commit()
     return {"message": "Buch aus Sammlung entfernt"}
