@@ -1,6 +1,5 @@
 // Was der Kinderbereich (BF-78, docs/neubau/FAMILIE.md) vom Server bekommt und was er selbst daraus macht. Die Rohform kommt aus
 // GET /api/familie/ich; lib/kind/ich.ts macht daraus ein vollständiges Ich, damit keine Ansicht mit fehlenden Feldern rechnet.
-import type { Buch } from "../typen";
 
 export type Stufe = "vorlesen" | "erstes_lesen" | "lesen_lernen" | "schule" | "jugend";
 
@@ -82,9 +81,6 @@ export interface Katzenstand {
 
 /** Wach im Regal, schläft beim Lesen, ruht auf dem Ruheschirm */
 export type Katzenzustand = "wach" | "schlaeft" | "ruht";
-
-/** Ein Buch, wie der Server es Kindern zeigt; fertig_am nach der Regel des Servers (Lesestand ab 0,99 oder markiert) */
-export type Kinderbuch = Buch & { fertig_am?: string | null };
 
 export interface Ich {
   profil: Kinderprofil;

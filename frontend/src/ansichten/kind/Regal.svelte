@@ -10,7 +10,7 @@
   import Katze from "../../lib/kind/Katze.svelte";
   import Kinderuhr from "../../lib/kind/Kinderuhr.svelte";
   import type { Lesezeituhr } from "../../lib/kind/lesezeit.svelte";
-  import type { Ich, Kinderbuch } from "../../lib/kind/typen";
+  import type { Ich } from "../../lib/kind/typen";
   import { navigate, route } from "../../lib/router.svelte";
   import { vorlesen } from "../../lib/stand/vorlesen.svelte";
   import type { Buch } from "../../lib/typen";
@@ -30,7 +30,7 @@
   let art = $derived<Regalart>(regale.some(([a]) => a === route.params.regal) ? (route.params.regal as Regalart) : "alle");
   let gross = $derived(regale.length === 1 && !f.has("suche"));
 
-  let buecher = $state.raw<Kinderbuch[]>([]);
+  let buecher = $state.raw<Buch[]>([]);
   let laedt = $state(true);
   let fehler = $state("");
   let suche = $state("");

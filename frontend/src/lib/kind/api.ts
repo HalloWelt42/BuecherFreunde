@@ -3,7 +3,8 @@
 import { anfrage } from "../api/client";
 import { listeBooks } from "../api/books";
 import { lesezeitAus } from "./ich";
-import type { Kinderbuch, Lesezeitstand } from "./typen";
+import type { Buch } from "../typen";
+import type { Lesezeitstand } from "./typen";
 
 /** Gelesene Sekunden seit der letzten Meldung; vorlesen: es wurde vorgelesen. beimGehen: geht auch noch hinaus, wenn die Seite
  *  gerade zugeht. Die Antwort ist der neue Stand. */
@@ -18,9 +19,9 @@ const PRO_SEITE = 100;
 
 /** Alle Bücher, die das Kind sehen darf, Seite für Seite geholt; der Server lässt nur Freigegebenes durch. "gelesen": die fertig
  *  gelesenen nach der Regel des Servers (fertig_am) */
-export async function holeRegal(art: Regalart): Promise<Kinderbuch[]> {
+export async function holeRegal(art: Regalart): Promise<Buch[]> {
   const filter = art === "lieblinge" ? { favorit: true } : art === "gelesen" ? { gelesen: true } : {};
-  const aus: Kinderbuch[] = [];
+  const aus: Buch[] = [];
   for (let seite = 1; ; seite++) {
     const liste = await listeBooks({ ...filter, seite, pro_seite: PRO_SEITE });
     aus.push(...liste.buecher);
