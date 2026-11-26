@@ -2,6 +2,10 @@
 FROM node:22-alpine AS builder
 
 WORKDIR /build
+# Editor und Debugger kommen aus dem Appkern (Paket von GitHub, BF-29): git dazu, GitHub über https statt ssh
+RUN apk add --no-cache git && \
+    git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" && \
+    git config --global --add url."https://github.com/".insteadOf "git@github.com:"
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ .
