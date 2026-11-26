@@ -1,5 +1,6 @@
 <script lang="ts">
-  // Vorlesen im Leser: was gelesen wird (Seite, Kapitel, ab hier, ganzes Buch), der Spieler, Stimme, Tempo, Schlafuhr
+  // Vorlesen im Leser: was gelesen wird (Seite, Kapitel, ab hier, ganzes Buch, weiter an der gemerkten Stelle), der Spieler,
+  // Stimme, Tempo, Schlafuhr
   import { coverUrl } from "../../lib/api/books";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
@@ -15,7 +16,7 @@
   type Umfang = "seite" | "kapitel" | "hier" | "buch";
   const UMFAENGE: [Umfang, string, string][] = [["seite", "Diese Seite", "file-lines"], ["kapitel", "Dieses Kapitel", "bookmark"], ["hier", "Ab hier", "play"], ["buch", "Ganzes Buch", "book-open"]];
 
-  let laedt = $state<Umfang | "">("");
+  let laedt = $state<Umfang | "weiter" | "">("");
   let quelle = $derived(sitzung.quelle);
   let hier = $derived(vorlesen.aktiv && !!quelle && vorlesen.quelle === quelle);
   let art = $derived(quelle?.einheitsart ?? "Seite");
@@ -26,6 +27,9 @@
   let schlafwert = $derived(vorlesen.schlaf.art === "minuten" ? String(vorlesen.schlaf.minuten) : vorlesen.schlaf.art);
 
   $effect(() => vorlesen.pruefe());
+  // Wo das Vorlesen zuletzt stehen blieb, auch auf einem anderen Gerät (BF-37)
+  $effect(() => void vorlesen.ladeStelle(sitzung.buch.id));
+  let gemerkt = $derived(vorlesen.gemerkt?.buch === sitzung.buch.id ? vorlesen.gemerkt.stelle : null);
 
   async function strecke(u: Umfang): Promise<Strecke | null> {
     if (!quelle) return null;
@@ -34,18 +38,25 @@
     return u === "seite" ? quelle.seite() : quelle.kapitel();
   }
 
-  async function starte(u: Umfang, name: string) {
+  async function starte(u: Umfang | "weiter", name: string) {
     // Im Tippen selbst, sonst bleibt das Telefon stumm
     vorlesen.entsperre();
     laedt = u;
     try {
-      const s = await strecke(u);
+      const s = u === "weiter" ? weiterAb() : await strecke(u);
       if (!s || !quelle) return void melde.info("Hier gibt es nichts zum Vorlesen");
       const b = sitzung.buch;
-      vorlesen.liesBuch(quelle, s, name, { titel: b.title, autor: b.authors.map((a) => a.name).join(", "), bild: coverUrl(b.id) });
+      vorlesen.liesBuch(quelle, s, name, { titel: b.title, autor: b.authors.map((a) => a.name).join(", "), bild: coverUrl(b.id) }, b.id);
     } finally {
       laedt = "";
     }
+  }
+
+  /** Weiter am gemerkten Satz, bis zum Ende des Umfangs, der damals gewählt war */
+  function weiterAb(): Strecke | null {
+    if (!gemerkt) return null;
+    const bis = gemerkt.bis_einheit === null ? null : { einheit: gemerkt.bis_einheit, zeichen: gemerkt.bis_zeichen ?? 0 };
+    return { von: { einheit: gemerkt.einheit, zeichen: gemerkt.zeichen }, bis };
   }
 </script>
 
@@ -59,6 +70,9 @@
     {#if vorlesen.weg}<Knopf text="Zur Stelle" symbol="location-crosshairs" klein onclick={() => vorlesen.zurStelle()} />{/if}
   {:else}
     <div class="tastenraster" style:--spalten="2" role="group" aria-label="Vorlesen">
+      {#if gemerkt}
+        <Knopf klasse="kachel weiter" text="Weiterlesen" symbol="forward" laeuft={laedt === "weiter"} gesperrt={!quelle || !vorlesen.stimmen.length} titel="Weiter an der Stelle, an der es stehen blieb" onclick={() => void starte("weiter", gemerkt?.umfang || "Weiterlesen")}><span class="ab">ab {gemerkt.ort}</span></Knopf>
+      {/if}
       {#each UMFAENGE as [u, name, symbol] (u)}
         {#if u !== "kapitel" || quelle?.mitKapiteln}
           <Knopf klasse="kachel" text={name} {symbol} laeuft={laedt === u} gesperrt={!quelle || !vorlesen.stimmen.length} titel={u === "buch" ? "Ganzes Buch von vorn" : undefined} onclick={() => void starte(u, name)} />
@@ -116,6 +130,14 @@
   }
   .tempo {
     text-align: center;
+  }
+  /* Weiterlesen steht über den Umfängen, so breit wie zwei */
+  .vorlesen :global(.kachel.weiter) {
+    grid-column: 1 / -1;
+  }
+  .ab {
+    font-size: 0.8125rem;
+    color: var(--tinte-3);
   }
   .reihe {
     gap: 0.25rem;

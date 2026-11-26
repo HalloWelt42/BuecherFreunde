@@ -17,6 +17,21 @@ class ReadingPositionUpdate(BaseModel):
     position: str
 
 
+class VorlesestelleNeu(BaseModel):
+    """Wo das Vorlesen stehen blieb: Einheit der Lesequelle und Anfang des Satzes, dazu der gewählte Umfang."""
+
+    einheit: int = Field(ge=0)
+    zeichen: int = Field(ge=0)
+    bis_einheit: int | None = Field(default=None, ge=0)
+    bis_zeichen: int | None = Field(default=None, ge=0)
+    umfang: str = Field(default="", max_length=80)
+    ort: str = Field(default="", max_length=120)
+
+
+class Vorlesestelle(VorlesestelleNeu):
+    gemerkt_am: str
+
+
 async def _ensure_user_data(book_id: int) -> None:
     """Stellt sicher, dass ein Eintrag in user_book_data existiert."""
     existing = await db.fetch_one(
@@ -133,3 +148,42 @@ async def set_reading_position(
     await db.commit()
 
     return {"book_id": book_id, "position": data.position}
+
+
+# Vorlesestelle (BF-37): Anhalten, Pause, Schlafuhr, Schließen und Abriss merken sie, damit es auf jedem Gerät an
+# demselben Satz weitergeht; ist der gewählte Umfang zu Ende gelesen, wird sie gelöscht.
+
+
+@router.get("/{book_id}/vorlesestelle", response_model=Vorlesestelle | None)
+async def lies_vorlesestelle(book_id: int, _token: str = Depends(verify_token)) -> Vorlesestelle | None:
+    """Wo das Vorlesen dieses Buchs stehen blieb; null, wenn nichts gemerkt ist."""
+    await _check_book_exists(book_id)
+    zeile = await db.fetch_one(
+        "SELECT einheit, zeichen, bis_einheit, bis_zeichen, umfang, ort, gemerkt_am FROM vorlesestelle WHERE buch_id = ?", (book_id,)
+    )
+    return Vorlesestelle(**dict(zeile)) if zeile else None
+
+
+@router.put("/{book_id}/vorlesestelle", response_model=Vorlesestelle)
+async def merke_vorlesestelle(book_id: int, stelle: VorlesestelleNeu, _token: str = Depends(verify_token)) -> Vorlesestelle:
+    """Merkt die Stelle; eine frühere desselben Buchs wird ersetzt."""
+    await _check_book_exists(book_id)
+    await db.execute(
+        """INSERT INTO vorlesestelle (buch_id, einheit, zeichen, bis_einheit, bis_zeichen, umfang, ort, gemerkt_am)
+           VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+           ON CONFLICT(buch_id) DO UPDATE SET einheit = excluded.einheit, zeichen = excluded.zeichen, bis_einheit = excluded.bis_einheit,
+             bis_zeichen = excluded.bis_zeichen, umfang = excluded.umfang, ort = excluded.ort, gemerkt_am = excluded.gemerkt_am""",
+        (book_id, stelle.einheit, stelle.zeichen, stelle.bis_einheit, stelle.bis_zeichen, stelle.umfang, stelle.ort),
+    )
+    await db.commit()
+    gemerkt = await lies_vorlesestelle(book_id, _token)
+    assert gemerkt is not None
+    return gemerkt
+
+
+@router.delete("/{book_id}/vorlesestelle", status_code=204)
+async def vergiss_vorlesestelle(book_id: int, _token: str = Depends(verify_token)) -> None:
+    """Der gewählte Umfang ist zu Ende gelesen: nichts mehr zum Weiterlesen."""
+    await _check_book_exists(book_id)
+    await db.execute("DELETE FROM vorlesestelle WHERE buch_id = ?", (book_id,))
+    await db.commit()

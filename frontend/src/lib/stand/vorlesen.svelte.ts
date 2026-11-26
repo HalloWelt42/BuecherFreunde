@@ -1,6 +1,8 @@
 // Vorlesen: welche Stimmen es gibt, welche gilt, was gerade klingt, und der Spieler dazu. Ist ein Sprechdienst angeschlossen,
 // spricht nur er; sonst die Stimmen des Geräts. Beide hinter derselben Schnittstelle (lib/vorlesen).
-import { ladeDienststimmen, type Dienststimmen } from "../api/vorlesen";
+// Liest es aus einem Buch, merkt der Server die Stelle (BF-37): Anhalten, Pause, Schlafuhr, Schließen des Buchs und Abriss
+// sichern den Satz, an dem es stand, beim Lesen alle paar Sekunden auch; ist der gewählte Umfang zu Ende, ist sie weg.
+import { holeVorlesestelle, ladeDienststimmen, merkeVorlesestelle, vergissVorlesestelle, type Dienststimmen, type Vorlesestelle } from "../api/vorlesen";
 import { lies as gemerkt, merke } from "../speicher";
 import { Dienstsprecher } from "../vorlesen/dienst";
 import { Vorlesefolge, type Schlaf } from "../vorlesen/folge";
@@ -16,6 +18,8 @@ const SCHLUESSEL_TEMPO = "vorlesen.tempo";
 const PROBE = "So klingt diese Stimme beim Vorlesen.";
 const GRUPPEN = { eigene: "Eigene Stimmen", weitere: "Weitere Stimmen", eingebaut: "Eingebaute Stimmen" };
 const OHNE_WERK: Werk = { titel: "", autor: "", bild: "" };
+/** So oft sichert das laufende Vorlesen seine Stelle, falls das Fenster ohne Abschied zugeht */
+const SICHERN_MS = 15_000;
 
 export const TEMPI = [0.8, 0.9, 1, 1.1, 1.25, 1.5];
 
@@ -44,6 +48,16 @@ class Vorlesestand {
   #vorlauf = new Vorlauf();
   #folge: Vorlesefolge | null = null;
   #werk = OHNE_WERK;
+  /** Buch, aus dem gelesen wird; null bei einzelnen Texten (Auswahl, Probe), die nichts merken */
+  #buch: number | null = null;
+  #gesichert = 0;
+  /** Gemerkte Stelle eines Buchs, wie der Server sie kennt: "Weiterlesen" im Feld Vorlesen */
+  gemerkt = $state.raw<{ buch: number; stelle: Vorlesestelle | null } | null>(null);
+
+  constructor() {
+    // Geht das Fenster zu (Tab zu, neu geladen), bleibt die Stelle so genau wie beim Anhalten
+    if (typeof window !== "undefined") addEventListener("pagehide", () => this.#sichere());
+  }
 
   stimmen = $derived<Stimme[]>(
     anschluesse.jetzt.vorlesen
@@ -111,9 +125,21 @@ class Vorlesestand {
     else this.halt();
   }
 
-  /** Eine Strecke eines Buchs; die Ansicht läuft mit */
-  liesBuch(quelle: Lesequelle, strecke: Strecke, was: string, werk: Werk = OHNE_WERK): void {
+  /** Die gemerkte Stelle eines Buchs vom Server; gilt auf jedem Gerät */
+  async ladeStelle(buch: number): Promise<void> {
+    try {
+      const stelle = await holeVorlesestelle(buch);
+      if (this.#buch !== buch || !this.aktiv) this.gemerkt = { buch, stelle };
+    } catch {
+      // ohne Antwort bleibt, was bekannt ist
+    }
+  }
+
+  /** Eine Strecke eines Buchs; die Ansicht läuft mit. buch: aus diesem Buch, dann merkt der Server die Stelle */
+  liesBuch(quelle: Lesequelle, strecke: Strecke, was: string, werk: Werk = OHNE_WERK, buch: number | null = null): void {
     this.halt();
+    this.#buch = buch;
+    this.#gesichert = Date.now();
     const [sprecher, stimme] = this.#teile();
     if (!sprecher) return void melde.warn(this.hinweis || "Hier gibt es keine Stimme zum Vorlesen");
     sprecher.tempo = this.#tempo;
@@ -123,9 +149,17 @@ class Vorlesestand {
     const gilt = () => this.quelle === quelle;
     this.#folge = new Vorlesefolge(quelle, strecke, sprecher, stimme, this.#vorlauf, {
       zustand: (z) => gilt() && this.#zeige(z),
-      ende: () => gilt() && this.#fertig(),
-      gerissen: (grund) => gilt() && melde.warn(`${grund}. Weiter setzt an derselben Stelle fort.`),
-      eingeschlafen: () => gilt() && (this.schlaf = { art: "aus" }),
+      ende: () => gilt() && this.#zuEnde(),
+      gerissen: (grund) => {
+        if (!gilt()) return;
+        this.#sichere();
+        melde.warn(`${grund}. Weiter setzt an derselben Stelle fort.`);
+      },
+      eingeschlafen: () => {
+        if (!gilt()) return;
+        this.schlaf = { art: "aus" };
+        this.#sichere();
+      },
     });
     this.#zeige({ wartet: true, pausiert: false, weg: false, einheit: strecke.von.einheit });
   }
@@ -133,6 +167,7 @@ class Vorlesestand {
   #zeige(z: { wartet: boolean; pausiert: boolean; weg: boolean; einheit: number }): void {
     const neu = z.einheit !== this.einheit || !navigator.mediaSession?.metadata;
     Object.assign(this, z);
+    if (!z.pausiert && !z.wartet && Date.now() - this.#gesichert >= SICHERN_MS) this.#sichere();
     this.kannVor = this.#folge?.kannVor ?? false;
     if (neu) this.#zeigeMedien();
     medienStand(!z.pausiert);
@@ -151,6 +186,7 @@ class Vorlesestand {
 
   pausiere(): void {
     this.#folge?.pausiere();
+    this.#sichere();
   }
   weiter(): void {
     this.entsperre();
@@ -184,13 +220,37 @@ class Vorlesestand {
     void this.#folge?.setzeSchlaf(schlaf);
   }
 
+  /** Anhalten, auch beim Schließen des Buchs: die Stelle bleibt zum Weiterlesen */
   halt(): void {
+    this.#sichere();
     this.#folge?.halt();
     this.#fertig();
   }
 
+  /** Der gewählte Umfang ist zu Ende gelesen: nichts mehr zum Weiterlesen */
+  #zuEnde(): void {
+    const buch = this.#buch;
+    if (buch !== null) {
+      this.gemerkt = { buch, stelle: null };
+      void vergissVorlesestelle(buch).catch(() => {});
+    }
+    this.#fertig();
+  }
+
+  /** Die Stelle des Satzes, der gerade klingt oder zuletzt klang, an den Server; ohne Netz bleibt sie hier bekannt */
+  #sichere(): void {
+    const [f, buch] = [this.#folge, this.#buch];
+    if (!f || buch === null) return;
+    this.#gesichert = Date.now();
+    const { einheit, zeichen } = f.stelle;
+    const neu = { einheit, zeichen, bis_einheit: f.bis?.einheit ?? null, bis_zeichen: f.bis?.zeichen ?? null, umfang: this.was, ort: f.quelle.name(einheit) };
+    this.gemerkt = { buch, stelle: { ...neu, gemerkt_am: new Date().toISOString() } };
+    void merkeVorlesestelle(buch, neu).catch(() => {});
+  }
+
   #fertig(): void {
     this.#folge = null;
+    this.#buch = null;
     Object.assign(this, { aktiv: false, wartet: false, pausiert: false, weg: false, was: "", quelle: null, kannVor: false, schlaf: { art: "aus" } });
     medienAus();
   }

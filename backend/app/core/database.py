@@ -335,6 +335,16 @@ CREATE TABLE IF NOT EXISTS code_vorpruefung (       -- je Code (codestellen/vorp
     geprueft_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     PRIMARY KEY (sprache, pruefsumme)
 );
+CREATE TABLE IF NOT EXISTS vorlesestelle (          -- wo das Vorlesen je Buch stehen blieb (api/user_data.py); gilt auf jedem Gerät
+    buch_id INTEGER PRIMARY KEY REFERENCES books(id) ON DELETE CASCADE,
+    einheit INTEGER NOT NULL,                        -- Seite, Abschnitt oder Stück der Lesequelle, ab 0
+    zeichen INTEGER NOT NULL,                        -- Anfang des Satzes in der Einheit
+    bis_einheit INTEGER,                             -- Ende des gewählten Umfangs (ausschließlich); leer: bis zum Ende des Buchs
+    bis_zeichen INTEGER,
+    umfang TEXT NOT NULL DEFAULT '',                 -- was gewählt war, etwa "Dieses Kapitel"
+    ort TEXT NOT NULL DEFAULT '',                    -- wie die Stelle heißt, etwa "Seite 12"
+    gemerkt_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
 CREATE INDEX IF NOT EXISTS idx_aufnahme_stand ON aufnahme(stand);
 CREATE INDEX IF NOT EXISTS idx_aufnahme_sha ON aufnahme(sha256);
 """

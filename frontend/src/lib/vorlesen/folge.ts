@@ -52,6 +52,15 @@ export class Vorlesefolge {
   get einheit(): number {
     return (this.#jetzt?.ort ?? this.#letzter)?.einheit ?? this.strecke.von.einheit;
   }
+  /** Anfang des Satzes, der gerade klingt oder zuletzt klang; dort fängt ein späteres Weiterlesen an */
+  get stelle(): Stelle {
+    const ort = this.#jetzt?.ort ?? this.#letzter;
+    return ort ? { einheit: ort.einheit, zeichen: ort.von } : this.strecke.von;
+  }
+  /** Ende des gewählten Umfangs; null: bis zum Ende des Buchs */
+  get bis(): Stelle | null {
+    return this.strecke.bis;
+  }
   get kannVor(): boolean {
     return this.einheit + 1 < this.quelle.anzahl && (!this.strecke.bis || this.einheit < this.strecke.bis.einheit - (this.strecke.bis.zeichen > 0 ? 0 : 1));
   }
