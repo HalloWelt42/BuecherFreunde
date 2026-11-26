@@ -42,6 +42,22 @@ löscht nichts.
    fortsetzbar, mit Prüfsummen), oder man hängt die Platte um und zeigt dem neuen Gerät den Ort; dann prüft es nur, ob
    alles da ist.
 
+## Abnahme des Entwurfs (26.11.2026)
+
+Entwurf Runde 1 abgenommen ("Passt, bauen"), mit diesen Antworten:
+- Der Schritt Konto bietet beides an: ein eigenes Konto anlegen oder mit dem Konto der Kellerwolke anmelden. Mit der
+  Kellerwolke kommen Adresse und Schlüssel gleich dort, der Schritt Anschlüsse zeigt sie dann als verbunden.
+- Die Profile (Name, Rolle, Stufe, Freigaben, Einstellungen) liegen als kleine Datei der App in der Kellerwolke und kommen
+  beim Neuaufbau vollständig zurück; PINs und Bild-PINs nie, sie werden danach neu gesetzt.
+- Beim Umzug ziehen die Schlüssel für Kellerwolke und Leitstelle über die gesicherte Verbindung des Einmalcodes direkt in
+  die Schlüsseldatei des neuen Geräts; die Oberfläche zeigt sie nie, das alte Gerät behält sie.
+- Persönliche Daten im Auszug lassen sich abschalten: Schalterzeile "Persönliches im Auszug" in der Karte der Kellerwolke
+  unter Einstellungen, Verbindungen, Vorgabe an. Ausschalten fragt mit Folgenvorschau, ob die vorhandenen Einträge aus
+  den Auszügen entfernt werden.
+- Selbst festgelegt im Entwurf und mit abgenommen: Nachschlag ohne Schlüssel; beim Wiederherstellen zuerst die Orte;
+  fehlt eine Platte, ist Weiter gesperrt; mit Kellerwolke entfällt beim Umzug der Schritt Originale; wieder geöffnet
+  zeigt der Assistent nur die Schritte von "Neu beginnen" ohne Konto.
+
 ## Weitere Regeln
 
 - **Nach dem Wiederherstellen** oder Neuaufbau prüft die App, ob jedes Original erreichbar ist. Fehlende stehen in einem
