@@ -58,10 +58,17 @@
   .werkzeug .leiste-auswahl, .werkzeug .auswahltitel { order: 4; }
   .werkzeug .suchfeld-mobil { flex: 1 0 100%; max-width: none; order: -1; height: 2.75rem; }
   .werkzeug .filter { display: flex; flex-wrap: wrap; gap: .375rem; width: 100%; }
+  /* Telefon (BF-68): eine Rasterzeile, drei Formate gleich breit, vier Zeichen je 2,75rem; Zusätze darunter */
+  .werkzeug .filter.raster { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) repeat(4, 2.75rem); gap: .375rem; }
+  .werkzeug .filter.raster > :is(.chip, .mehrfilter, .bearbeiten) { order: 0; margin-left: 0; min-width: 0; }
+  .werkzeug .filter.raster .chip { width: 100%; min-height: 2.75rem; justify-content: center; padding-inline: .375rem; }
+  .werkzeug .filter.raster .zusatz { order: 1; grid-column: 1 / -1; }
+  .werkzeug .filter.raster .zusatz:not(:has(.chip)) { display: none; }
   /* Sehr große Schrift: Bearbeiten nur mit Zeichen (der Name bleibt für Vorleseprogramme), die Schnellfilter in einer Zeile
      zum Wischen; so bleibt vom ersten Schirm etwas für die Bücher */
   :root[data-schrift="riesig"] .werkzeug .bearbeiten .knopf > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   :root[data-schrift="riesig"] .werkzeug .filter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  :root[data-schrift="riesig"] .werkzeug .filter.raster { grid-template-columns: repeat(auto-fill, minmax(4rem, 1fr)); overflow: visible; }
   :root[data-schrift="riesig"] .werkzeug .filter > * { flex: none; }
   .regal { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-inline: -.375rem; }
   .regal.gross { grid-template-columns: repeat(2, minmax(0, 1fr)); } .regal.nur { grid-template-columns: repeat(4, minmax(0, 1fr)); }

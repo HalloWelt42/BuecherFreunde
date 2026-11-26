@@ -11,24 +11,28 @@
     href?: string;
     titel?: string;
     gesperrt?: boolean;
+    /** Nur das Zeichen zeigen, der Text wird Beschriftung und Hinweis (BF-68) */
+    nur?: boolean;
     onclick?: (e: MouseEvent) => void;
     children?: Snippet;
   }
-  let { text = "", symbol = "", zahl = undefined, farbe = undefined, gedrueckt = undefined, href = undefined, titel = undefined, gesperrt = false, onclick = undefined, children = undefined }: Eigenschaften = $props();
+  let { text = "", symbol = "", zahl = undefined, farbe = undefined, gedrueckt = undefined, href = undefined, titel = undefined, gesperrt = false, nur = false, onclick = undefined, children = undefined }: Eigenschaften = $props();
+  let nurZeichen = $derived(nur && !!symbol);
+  let hinweis = $derived(titel ?? (nurZeichen ? text : undefined));
 </script>
 
 {#snippet inhalt()}
   {#if farbe}<span class="farbe" style:background={farbe} style:margin="0"></span>{/if}
   {#if symbol}<Symbol name={symbol} />{/if}
-  {text}
+  {#if !nurZeichen}{text}{/if}
   {#if zahl !== undefined}<span class="zahl">{zahl}</span>{/if}
   {@render children?.()}
 {/snippet}
 
 {#if href}
-  <a class="chip" {href} title={titel} aria-current={gedrueckt ? "page" : undefined} {onclick}>{@render inhalt()}</a>
+  <a class="chip" class:nur={nurZeichen} {href} title={hinweis} aria-label={nurZeichen ? text : undefined} aria-current={gedrueckt ? "page" : undefined} {onclick}>{@render inhalt()}</a>
 {:else if onclick}
-  <button class="chip" type="button" aria-pressed={gedrueckt} title={titel} disabled={gesperrt} {onclick}>{@render inhalt()}</button>
+  <button class="chip" class:nur={nurZeichen} type="button" aria-pressed={gedrueckt} title={hinweis} aria-label={nurZeichen ? text : undefined} disabled={gesperrt} {onclick}>{@render inhalt()}</button>
 {:else}
-  <span class="chip" title={titel}>{@render inhalt()}</span>
+  <span class="chip" class:nur={nurZeichen} title={hinweis}>{@render inhalt()}</span>
 {/if}

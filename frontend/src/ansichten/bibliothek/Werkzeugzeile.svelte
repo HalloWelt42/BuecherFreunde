@@ -14,6 +14,7 @@
   import Filterfeld from "./Filterfeld.svelte";
   import { regalansicht, regalarten } from "./ansicht.svelte";
   import { regalfilter } from "./schnellfilter";
+  import { schale } from "../../lib/stand/schale.svelte";
   import { titelDerFilter } from "./titel";
 
   let filterOffen = $state(false);
@@ -30,27 +31,38 @@
   }
 </script>
 
+{#snippet mehr()}
+  <span class="mehrfilter" bind:this={filterKnopf}><Chip text="Mehr" symbol="sliders" nur={schale.telefon} zahl={weitere || undefined} gedrueckt={filterOffen || weitere > 0} titel="Regale, Sammlung, Format, Bewertung, Etiketten" onclick={() => (filterOffen = !filterOffen)} /></span>
+{/snippet}
+{#snippet bearbeiten()}
+  <span class="bearbeiten"><Knopf text="Bearbeiten" symbol="pen" nur={schale.telefon} klein gedrueckt={auswahl.bearbeiten} onclick={() => auswahl.modus(!auswahl.bearbeiten)} /></span>
+{/snippet}
+
 <div class="werkzeug">
   <Suchfeld id="suchfeld-m" klasse="suchfeld-mobil" />
   <h1>{titelDerFilter()}</h1>
   <span class="leise zahl">{!buecher.geladen ? "" : filter.wert("q") ? vonGesamt(buecher.gesamt, buecher.ohneSuche) : anzahl(buecher.gesamt, "Buch", "Bücher")}</span>
-  <span class="filter reihe">
-    <Schnellfilterchip ziel={regalfilter} />
+  <!-- Am Telefon (BF-68): Formate als kurze Wörter, Favoriten, Lesesofa, Mehr und Bearbeiten als Zeichen, alles in einer Rasterzeile -->
+  <span class="filter reihe" class:raster={schale.telefon}>
+    {#if !schale.telefon}<Schnellfilterchip ziel={regalfilter} />{/if}
     <Chip text="PDF" gedrueckt={filter.hat("file_format", "pdf")} onclick={() => filter.schalte("file_format", "pdf")} />
     <Chip text="EPUB" gedrueckt={filter.hat("file_format", "epub")} onclick={() => filter.schalte("file_format", "epub")} />
     <Chip text="Text" titel="TXT und Markdown" gedrueckt={mitText} onclick={schalteText} />
-    <Chip text="Favoriten" symbol="heart" gedrueckt={filter.hat("is_favorite", "true")} onclick={() => filter.schalte("is_favorite", "true")} />
-    <Chip text="Lesesofa" symbol="couch" gedrueckt={filter.hat("is_to_read", "true")} onclick={() => filter.schalte("is_to_read", "true")} />
-    {#if filter.aktiv}<Chip text="Filter aufheben" symbol="xmark" onclick={() => filter.leere()} />{/if}
+    <Chip text="Favoriten" symbol="heart" nur={schale.telefon} gedrueckt={filter.hat("is_favorite", "true")} onclick={() => filter.schalte("is_favorite", "true")} />
+    <Chip text="Lesesofa" symbol="couch" nur={schale.telefon} gedrueckt={filter.hat("is_to_read", "true")} onclick={() => filter.schalte("is_to_read", "true")} />
+    {#if schale.telefon}
+      {@render mehr()}{@render bearbeiten()}
+      <span class="zusatz reihe"><Schnellfilterchip ziel={regalfilter} />{#if filter.aktiv}<Chip text="Filter aufheben" symbol="xmark" onclick={() => filter.leere()} />{/if}</span>
+    {:else if filter.aktiv}<Chip text="Filter aufheben" symbol="xmark" onclick={() => filter.leere()} />{/if}
   </span>
-  <span class="mehrfilter" bind:this={filterKnopf}><Chip text="Mehr" symbol="sliders" zahl={weitere || undefined} gedrueckt={filterOffen || weitere > 0} titel="Regale, Sammlung, Format, Bewertung, Etiketten" onclick={() => (filterOffen = !filterOffen)} /></span>
+  {#if !schale.telefon}{@render mehr()}{/if}
   <span class="reihe schiebt">
     <span class="sortierung reihe">
       <Auswahl name="Sortierung" klein werte={sortierungen.map(([w, t]) => [w, t])} wert={buecher.sortierung} onwahl={(w) => w !== buecher.sortierung && buecher.sortiere(w as Sortierung)} />
       <Knopf text={buecher.richtung === "asc" ? "Aufsteigend, umdrehen" : "Absteigend, umdrehen"} symbol={buecher.richtung === "asc" ? "arrow-up-short-wide" : "arrow-down-wide-short"} nur klein onclick={() => buecher.dreheRichtung()} />
     </span>
     <Segment name="Ansicht" nurSymbole werte={regalarten} wert={regalansicht.art} onwahl={(w) => (regalansicht.art = w)} />
-    <span class="bearbeiten"><Knopf text="Bearbeiten" symbol="pen" klein gedrueckt={auswahl.bearbeiten} onclick={() => auswahl.modus(!auswahl.bearbeiten)} /></span>
+    {#if !schale.telefon}{@render bearbeiten()}{/if}
   </span>
   {#if auswahl.bearbeiten}<Auswahlleiste />{/if}
 </div>
