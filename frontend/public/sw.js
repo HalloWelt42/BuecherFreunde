@@ -66,12 +66,32 @@ async function seite(anfrage) {
   }
 }
 
+/**
+ * Eine Bereichsanfrage bekommt genau ihr Stück (206), auch wenn die ganze Datei aus dem Speicher kommt: Safari fragt Töne
+ * zuerst mit "bytes=0-1" an und spielt sie nur mit einer Teilantwort (sonst bleibt etwa das Schnurren der Katze stumm), pdf.js
+ * fragt Bücher in Bereichen an. Ohne Bereich, mit einem Bereich, den diese Regel nicht kennt, oder wenn die Antwort schon ein
+ * Stück ist, bleibt sie, wie sie ist.
+ */
+async function stueck(anfrage, ganz) {
+  const bereich = /^bytes=(\d+)-(\d*)$/.exec(anfrage.headers.get("range") ?? "");
+  if (!bereich || ganz.status !== 200) return ganz;
+  const daten = await ganz.blob();
+  const von = Number(bereich[1]);
+  if (von >= daten.size) return new Response(null, { status: 416, headers: { "Content-Range": `bytes */${daten.size}` } });
+  const bis = Math.min(bereich[2] ? Number(bereich[2]) : daten.size - 1, daten.size - 1);
+  return new Response(daten.slice(von, bis + 1), {
+    status: 206,
+    headers: { "Content-Type": ganz.headers.get("content-type") ?? "", "Content-Range": `bytes ${von}-${bis}/${daten.size}`, "Content-Length": String(bis - von + 1), "Accept-Ranges": "bytes" },
+  });
+}
+
 async function gebaut(anfrage) {
   const da = await caches.match(anfrage);
-  if (da) return da;
+  if (da) return stueck(anfrage, da);
   const antwort = await fetch(anfrage);
-  if (antwort.ok) await (await caches.open(BAU)).put(anfrage, antwort.clone());
-  return antwort;
+  // Gemerkt wird nur die ganze Datei; ein Stück (206) nimmt der Speicher nicht an, die Antwort ginge sonst verloren
+  if (antwort.status === 200) await (await caches.open(BAU)).put(anfrage, antwort.clone());
+  return stueck(anfrage, antwort);
 }
 
 // --- Lesestoff ---------------------------------------------------------------------------------------------------------
@@ -129,16 +149,7 @@ function merke(weg, antwort, buch) {
 /** Aus dem Gemerkten, auch ein Stück der Datei (pdf.js fragt nach Bereichen) */
 async function gemerkt(anfrage) {
   const da = await (await caches.open(LESESTOFF)).match(anfrage.url);
-  if (!da) return null;
-  const bereich = /^bytes=(\d+)-(\d*)$/.exec(anfrage.headers.get("range") ?? "");
-  if (!bereich) return da;
-  const daten = await da.blob();
-  const von = Number(bereich[1]);
-  const bis = Math.min(bereich[2] ? Number(bereich[2]) : daten.size - 1, daten.size - 1);
-  return new Response(daten.slice(von, bis + 1), {
-    status: 206,
-    headers: { "Content-Type": da.headers.get("content-type") ?? "", "Content-Range": `bytes ${von}-${bis}/${daten.size}`, "Content-Length": String(bis - von + 1), "Accept-Ranges": "bytes" },
-  });
+  return da ? stueck(anfrage, da) : null;
 }
 
 async function ohneNetz(anfrage) {
