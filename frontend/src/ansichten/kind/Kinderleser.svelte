@@ -294,10 +294,10 @@
     return () => clearTimeout(frist);
   });
 
-  // Der sanfte Hinweis: einmal groß, dann bleibt die Zeit oben warm
+  // Der sanfte Hinweis ab Erstes Lesen: einmal groß und gesprochen, dann bleibt die Zeit oben warm
   let hinweisGezeigt = false;
   $effect(() => {
-    if (!uhr.hinweis || hinweisGezeigt) return;
+    if (!uhr.hinweis || hinweisGezeigt || ich.profil.stufe === "vorlesen") return;
     hinweisGezeigt = true;
     grosserHinweis = true;
     untrack(() => void ansage.hinweis(`Gleich ist die Lesezeit um. Noch ${Math.max(1, Math.ceil((uhr.rest ?? 0) / 60))} Minuten.`));
