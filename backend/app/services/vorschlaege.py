@@ -44,6 +44,7 @@ class Ergebnis(BaseModel):
     wege: list[str]
     ki: str
     ki_geprueft: bool
+    ki_zweifel: bool = False                    # die KI hält es für keine Reihe; der Vorschlag bleibt, du entscheidest
     baende: list[Bandangabe]
 
 
@@ -54,6 +55,7 @@ class OffenerVorschlag(BaseModel):
     wege: list[str]
     ki: str
     ki_geprueft: bool
+    ki_zweifel: bool
     baende: list[Bandangabe]                    # nur Bücher ohne Sammlung, nach Band
 
 
@@ -77,13 +79,14 @@ async def merken(ergebnisse: list[Ergebnis]) -> int:
     async with db.einheit():
         behalten: list[int] = []
         for e in ergebnisse:
-            z = await db.fetch_one(f"""INSERT INTO sammlung_vorschlag (schluessel, name, autor, wege, ki, ki_geprueft)
-                                       VALUES (?, ?, ?, ?, ?, ?)
+            z = await db.fetch_one(f"""INSERT INTO sammlung_vorschlag (schluessel, name, autor, wege, ki, ki_geprueft, ki_zweifel)
+                                       VALUES (?, ?, ?, ?, ?, ?, ?)
                                        ON CONFLICT(schluessel) DO UPDATE SET name = excluded.name, autor = excluded.autor,
-                                           wege = excluded.wege, ki = excluded.ki, ki_geprueft = excluded.ki_geprueft, geaendert_am = {JETZT}
+                                           wege = excluded.wege, ki = excluded.ki, ki_geprueft = excluded.ki_geprueft,
+                                           ki_zweifel = excluded.ki_zweifel, geaendert_am = {JETZT}
                                        WHERE sammlung_vorschlag.stand = 'offen' RETURNING id""",
                                    ("\n".join(sorted(e.schluessel)), e.name, e.autor, json.dumps(e.wege, ensure_ascii=False), e.ki,
-                                    int(e.ki_geprueft)))
+                                    int(e.ki_geprueft), int(e.ki_zweifel)))
             if z is None:                                   # angelegt oder verworfen: bleibt es
                 continue
             await db.execute("DELETE FROM sammlung_vorschlag_buch WHERE vorschlag_id = ?", (z["id"],))
@@ -104,16 +107,16 @@ async def _baende(vorschlag_id: int) -> list[Bandangabe]:
 
 def _vorschlag(z: dict, baende: list[Bandangabe]) -> OffenerVorschlag:
     return OffenerVorschlag(id=z["id"], name=z["name"], autor=z["autor"], wege=json.loads(z["wege"] or "[]"), ki=z["ki"],
-                            ki_geprueft=bool(z["ki_geprueft"]), baende=baende)
+                            ki_geprueft=bool(z["ki_geprueft"]), ki_zweifel=bool(z["ki_zweifel"]), baende=baende)
 
 
 async def offene() -> list[OffenerVorschlag]:
-    """Die offenen Vorschläge mit mindestens einem Buch ohne Sammlung, die größten zuerst."""
+    """Die offenen Vorschläge mit mindestens einem Buch ohne Sammlung, die größten zuerst; die, an denen die KI zweifelt, am Ende."""
     aus = []
     for z in await db.fetch_all("SELECT * FROM sammlung_vorschlag WHERE stand = 'offen'"):
         if baende := await _baende(z["id"]):
             aus.append(_vorschlag(z, baende))
-    return sorted(aus, key=lambda v: (-len(v.baende), v.name.casefold(), v.id))
+    return sorted(aus, key=lambda v: (v.ki_zweifel, -len(v.baende), v.name.casefold(), v.id))
 
 
 async def offener(vorschlag_id: int) -> OffenerVorschlag:

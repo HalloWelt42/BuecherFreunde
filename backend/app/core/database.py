@@ -364,6 +364,7 @@ CREATE TABLE IF NOT EXISTS sammlung_vorschlag (      -- gefundene Reihen (servic
     wege TEXT NOT NULL DEFAULT '[]',                 -- JSON: wie die Reihe gefunden wurde, kurze deutsche Sätze
     ki TEXT NOT NULL DEFAULT '',                     -- Satz der KI, oder warum sie nicht geprüft hat
     ki_geprueft INTEGER NOT NULL DEFAULT 0,
+    ki_zweifel INTEGER NOT NULL DEFAULT 0,           -- die KI hält es für keine Reihe; der Vorschlag bleibt sichtbar (BF-66)
     stand TEXT NOT NULL DEFAULT 'offen',             -- offen, angelegt, verworfen; angelegt und verworfen kommen nie wieder
     sammlung_id INTEGER DEFAULT NULL REFERENCES collections(id) ON DELETE SET NULL,
     gefunden_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
@@ -391,6 +392,7 @@ NEUBAU_SPALTEN: tuple[tuple[str, str, str], ...] = (
     ("books", "umschlag_schlicht", "INTEGER DEFAULT NULL"),        # Befund der Umschlagprüfung: NULL noch nicht geprüft, 0, 1
     ("books", "umschlag_geprueft", "INTEGER NOT NULL DEFAULT 0"),  # der umschlag_stand, zu dem der Befund gehört
     ("books", "einordnung", "TEXT NOT NULL DEFAULT ''"),           # wer Art und Gattung bestimmt hat: leer offen, ki, hand
+    ("sammlung_vorschlag", "ki_zweifel", "INTEGER NOT NULL DEFAULT 0"),  # die KI hält es für keine Reihe (BF-66)
 )
 
 

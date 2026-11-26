@@ -63,6 +63,7 @@ class Vorschlag(BaseModel):
     wege: list[str]                             # wie die Reihe gefunden wurde, kurze deutsche Sätze
     ki: str                                     # Satz der KI, oder warum sie nicht geprüft hat
     ki_geprueft: bool
+    ki_zweifel: bool                            # die KI hält es für keine Reihe; du entscheidest
     buecher: list[VorschlagBuch]
 
 
@@ -104,6 +105,7 @@ async def liste_vorschlaege(_: str = Depends(verify_token)) -> list[Vorschlag]:
     offen = await vorschlaege.offene()
     buecher = await buecher_mit_nummern([b.buch_id for v in offen for b in v.baende])
     return [Vorschlag(id=v.id, name=v.name, autor=v.autor, anzahl=len(v.baende), wege=v.wege, ki=v.ki, ki_geprueft=v.ki_geprueft,
+                      ki_zweifel=v.ki_zweifel,
                       buecher=[VorschlagBuch(**buecher[b.buch_id].model_dump(), band=b.band) for b in v.baende])
             for v in offen]
 

@@ -100,6 +100,7 @@ class Kandidat(BaseModel):
     ki_wege: list[str] = Field(default_factory=list)   # was die KI dazu beigetragen hat, als kurze Sätze
     ki: str = ""                                # Satz der KI, oder warum sie nicht geprüft hat
     ki_geprueft: bool = False
+    ki_zweifel: bool = False                    # die KI hält es für keine Reihe
 
     def wege(self) -> list[str]:
         """Wie die Reihe gefunden wurde, als kurze deutsche Sätze."""
@@ -116,7 +117,7 @@ class Kandidat(BaseModel):
 
     def ergebnis(self) -> vorschlaege.Ergebnis:
         return vorschlaege.Ergebnis(schluessel=self.schluessel, name=self.name, autor=self.autor, wege=self.wege(), ki=self.ki,
-                                    ki_geprueft=self.ki_geprueft,
+                                    ki_geprueft=self.ki_geprueft, ki_zweifel=self.ki_zweifel,
                                     baende=[vorschlaege.Bandangabe(buch_id=f.buch_id, band=f.band) for f in self.funde])
 
 
@@ -211,9 +212,14 @@ SCHEMA_GLEICH = {"type": "object", "additionalProperties": False, "required": ["
                      "properties": {"nummern": {"type": "array", "items": {"type": "integer"}, "description": "Nummern der Namen"},
                                     "name": {"type": "string", "description": "der richtige Name der Reihe"}}}}}}
 SYSTEM_PRUEFEN = ("Du prüfst Vorschläge für Reihen in einer privaten Bibliothek. Du bekommst den vermuteten Namen einer Reihe, "
-                  "den Autor und die Bücher mit Band und Titel. Antworte mit einem Objekt aus drei Feldern: 'reihe' ist true, "
-                  "wenn die Bücher wirklich eine Reihe oder ein mehrbändiges Werk bilden, sonst false; 'name' ist der richtige "
-                  "Name der Reihe; 'satz' ist ein ganzer kurzer deutscher Satz, warum.")
+                  "den Autor und die Bücher mit Band und Titel. Urteile nur nach diesen Angaben: Gehören die Bücher nach Titeln "
+                  "und Bandnummern zusammen, als Reihe, Folge oder mehrbändiges Werk? Ein unbekannter, abgekürzter oder anders "
+                  "geschriebener Autor, eine Übersetzung, ein deutscher Titel oder Bände, die von einer bekannten Ausgabe "
+                  "abweichen, sind kein Grund dagegen. Dagegen spricht nur, wenn die Titel offensichtlich nichts miteinander zu "
+                  "tun haben oder die Nummern keine Bände sind (etwa Jahrgänge, Folien, Kapitel einzelner Dokumente). "
+                  "Antworte mit einem Objekt aus drei Feldern: 'reihe' ist true, wenn die Bücher zusammengehören, sonst false; "
+                  "'name' ist der Name der Reihe, wie er in den Titeln steht oder richtig heißt; 'satz' ist ein ganzer kurzer "
+                  "deutscher Satz, warum.")
 SCHEMA_PRUEFEN = {"type": "object", "additionalProperties": False, "required": ["reihe", "name", "satz"],
                   "properties": {"reihe": {"type": "boolean", "description": "true, wenn die Bücher eine Reihe bilden"},
                                  "name": {"type": "string", "description": "der richtige Name der Reihe"},
@@ -405,7 +411,8 @@ class Sammlungsfinder:
         return aus
 
     async def _pruefen(self, kandidaten: list[Kandidat]) -> list[Kandidat]:
-        """Je Kandidat: bilden die Bücher wirklich eine Reihe? Was die KI verneint, wird kein Vorschlag."""
+        """Je Kandidat: bilden die Bücher wirklich eine Reihe? Verneint die KI, bleibt der Vorschlag mit ihrem Zweifel
+        sichtbar; entscheiden darf nur der Mensch (BF-66)."""
         behalten = []
         for i, k in enumerate(kandidaten, 1):
             self.schritt = f"KI prüft die Reihe {k.name} ({i} von {len(kandidaten)})"
@@ -414,8 +421,7 @@ class Sammlungsfinder:
                 k.ki = self.grund or UNBRAUCHBAR
             elif not u.reihe:
                 logger.info("Die KI hält %s für keine Reihe: %s", k.name, u.satz)
-                self.gefunden -= 1
-                continue
+                k.ki, k.ki_geprueft, k.ki_zweifel = u.satz, True, True
             else:
                 k.ki, k.ki_geprueft = u.satz, True
                 if (name := kiname(u.name)) and name != k.name:

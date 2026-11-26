@@ -96,10 +96,12 @@ async def test_ki_fuehrt_zusammen_bestaetigt_und_lehnt_ab(client, test_db, ki_sa
                   "Reihe prüfen: Die Sternenfahrer": {"reihe": True, "name": "Die Sternenfahrer", "satz": "Vier Bände einer Weltraumreihe."},
                   "Reihe prüfen: Mondgarten": {"reihe": False, "name": "", "satz": "Das sind drei getrennte Gartenbücher."}})
 
-    assert await sammlungsfinder.suchen() == 1
-    [v] = await vorschlaege(client)
-    assert (v["name"], v["autor"], v["anzahl"], v["ki"], v["ki_geprueft"]) == (
-        "Die Sternenfahrer", "Erna Beispiel", 4, "Vier Bände einer Weltraumreihe.", True)
+    assert await sammlungsfinder.suchen() == 2                                    # verneint die KI, bleibt der Vorschlag
+    v, zweifel = await vorschlaege(client)
+    assert (v["name"], v["autor"], v["anzahl"], v["ki"], v["ki_geprueft"], v["ki_zweifel"]) == (
+        "Die Sternenfahrer", "Erna Beispiel", 4, "Vier Bände einer Weltraumreihe.", True, False)
+    assert (zweifel["name"], zweifel["anzahl"], zweifel["ki"], zweifel["ki_geprueft"], zweifel["ki_zweifel"]) == (
+        "Mondgarten", 3, "Das sind drei getrennte Gartenbücher.", True, True)
     assert [(b["id"], b["band"]) for b in v["buecher"]] == list(zip(kurz + lang, ["1", "2", "3", "4"], strict=True))
     assert v["wege"] == ["Reihe und Band im Titel bei 4 Büchern", "Name der Reihe in 2 Schreibweisen", "Autor in 2 Schreibweisen",
                          "Die KI führt Sternenf und Sternenfahrer zusammen", "Die KI nennt die Reihe Die Sternenfahrer"]

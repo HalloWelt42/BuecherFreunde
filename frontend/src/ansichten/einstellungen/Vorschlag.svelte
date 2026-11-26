@@ -10,7 +10,7 @@
   let { vorschlag, onanpassen }: { vorschlag: Sammlungsvorschlag; onanpassen: () => void } = $props();
 
   let reihe = $derived(umschlagreihe(vorschlag.buecher));
-  let ki = $derived(kiSatz(vorschlag.ki, vorschlag.ki_geprueft));
+  let ki = $derived(kiSatz(vorschlag.ki, vorschlag.ki_geprueft, vorschlag.ki_zweifel));
   let arbeitet = $derived(vorschlaege.arbeitet.has(vorschlag.id));
 </script>
 
@@ -18,7 +18,7 @@
   <div class="kopf"><b>{vorschlag.name}</b><span class="leise zahl">{[anzahl(vorschlag.anzahl, "Buch", "Bücher"), vorschlag.autor].filter(Boolean).join(", ")}</span></div>
   <div class="wege">
     {#each vorschlag.wege as weg, n (n)}<Chip text={weg} symbol={wegSymbol(weg)} />{/each}
-    {#if ki}<Chip text={ki} symbol="robot" />{/if}
+    {#if ki}<Chip text={ki} symbol={vorschlag.ki_zweifel ? "circle-question" : "robot"} />{/if}
   </div>
   <div class="vorschlagsumschlaege">
     {#each reihe.gezeigt as buch (buch.id)}<Umschlag {buch} />{/each}

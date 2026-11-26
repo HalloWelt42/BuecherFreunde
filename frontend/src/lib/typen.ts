@@ -166,6 +166,8 @@ export interface Sammlungsvorschlag {
   ki: string;
   /** Hat die KI den Fund geprüft? Sonst steht in ki der Grund */
   ki_geprueft: boolean;
+  /** Die KI hält es für keine Reihe; der Vorschlag bleibt, du entscheidest (steht am Ende der Liste) */
+  ki_zweifel: boolean;
   buecher: Vorschlagsbuch[];
 }
 

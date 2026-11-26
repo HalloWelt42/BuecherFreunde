@@ -26,8 +26,9 @@ export function wegSymbol(weg: string): string {
 }
 
 /** Der Satz der KI, als solcher erkennbar; hat sie nicht geprüft, steht ihr Grund für sich */
-export function kiSatz(ki: string, geprueft: boolean): string {
+export function kiSatz(ki: string, geprueft: boolean, zweifel = false): string {
   const satz = ki.trim();
+  if (satz && geprueft && zweifel) return `Die KI zweifelt: ${satz}`;
   return !satz || !geprueft || /^(die\s+)?ki\b/i.test(satz) ? satz : `KI: ${satz}`;
 }
 

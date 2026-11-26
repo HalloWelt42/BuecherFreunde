@@ -194,6 +194,8 @@ describe("Vorschläge und Grenze", () => {
     expect(kiSatz("Die KI nennt sie Sternenfahrt", true)).toBe("Die KI nennt sie Sternenfahrt");
     expect(kiSatz("nicht geprüft, keine Verbindung", false)).toBe("nicht geprüft, keine Verbindung");
     expect(kiSatz(" ", true)).toBe("");
+    expect(kiSatz("Das sind getrennte Gartenbücher.", true, true)).toBe("Die KI zweifelt: Das sind getrennte Gartenbücher.");
+    expect(kiSatz("nicht geprüft, keine Verbindung", false, true)).toBe("nicht geprüft, keine Verbindung");
   });
 
   it("meldet die Zahl der Funde", () => {
