@@ -28,6 +28,9 @@ export interface Textantwort {
   seiten: Textseite[];
 }
 
+/** Trägt ein Baustein lesbaren Text, auch in einem Kasten? */
+const mitText = (b: Baustein): boolean => (b.art !== "bild" && !!(b.text.trim() || b.titel.trim() || b.zeilen?.length)) || b.inhalt.some(mitText);
+
 type Hole = (buch: number, ab: number, anzahl: number) => Promise<Textantwort>;
 
 export const AUSSCHNITT = 6;
@@ -40,7 +43,8 @@ export class Textseiten {
 
   erste = $derived(this.seiten[0]?.nr ?? 1);
   letzte = $derived(this.seiten.at(-1)?.nr ?? 0);
-  ohneText = $derived(this.seiten.length > 0 && this.seiten.every((s) => s.bausteine.length === 0));
+  /** Nur Bilder, kein lesbarer Text (eingescannt): die Seitenbilder zählen nicht als Text */
+  ohneText = $derived(this.seiten.length > 0 && !this.seiten.some((s) => s.bausteine.some(mitText)));
   mitVorn = $derived(this.seiten.length > 0 && this.erste > 1);
   mitHinten = $derived(this.letzte > 0 && this.letzte < this.gesamt);
 

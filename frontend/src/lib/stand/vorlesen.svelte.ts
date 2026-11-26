@@ -137,6 +137,8 @@ class Vorlesestand {
 
   /** Eine Strecke eines Buchs; die Ansicht läuft mit. buch: aus diesem Buch, dann merkt der Server die Stelle */
   liesBuch(quelle: Lesequelle, strecke: Strecke, was: string, werk: Werk = OHNE_WERK, buch: number | null = null): void {
+    // Wer liest, ohne dass jemand die Stimmen erfragt hat (etwa aus der Auswahl), fragt hier
+    this.pruefe();
     this.halt();
     this.#buch = buch;
     this.#gesichert = Date.now();

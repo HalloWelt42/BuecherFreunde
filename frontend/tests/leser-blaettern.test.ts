@@ -186,6 +186,16 @@ describe("Textseiten", () => {
     expect(await t.unten()).toBe(false);
   });
 
+  it("erkennen Seiten nur aus Bildern als Scan, auch wenn die Seitenbilder als Bausteine kommen", async () => {
+    const bild = { art: "bild" as const, text: "", titel: "", inhalt: [], bild: 0, verhaeltnis: 0.7, breite_em: null };
+    const mit = (bausteine: Textantwort["seiten"][number]["bausteine"]) => new Textseiten(1, async (tun) => void tun(), async () => ({ gesamt: 2, seiten: [{ nr: 1, gedruckt: "", bausteine: [bild] }, { nr: 2, gedruckt: "", bausteine }] }));
+    const scan = mit([bild]);
+    await scan.neu(1);
+    const kasten = mit([{ ...bild, art: "kasten", inhalt: [{ ...bild, art: "absatz", text: "Text im Kasten" }] }]);
+    await kasten.neu(1);
+    expect([scan.ohneText, kasten.ohneText]).toEqual([true, false]);
+  });
+
   it("melden einen Fehler und lassen den Text stehen", async () => {
     const t = new Textseiten(1, async (tun) => void tun(), async (_b, ab, n) => (ab > 10 ? Promise.reject(new Error("weg")) : antwort(ab, n)));
     await t.neu(5);

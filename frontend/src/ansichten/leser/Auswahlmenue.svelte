@@ -29,6 +29,9 @@
     return { links, oben: oben > 60 ? oben : Math.max(8, unten) };
   });
 
+  // Die Stimmen schon erfragen, wenn das Menü aufgeht: manche kommen erst etwas später
+  $effect(() => vorlesen.pruefe());
+
   // Esc und ein Druck daneben schließen, wie bei jedem Feld (lib/flucht.ts)
   let menue: HTMLElement | undefined = $state();
   $effect(() => offenesFeld(() => [menue], zu));

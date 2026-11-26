@@ -32,6 +32,19 @@ describe("Stimmenauswahl", () => {
   it("schweigt der Sprechdienst, springt keine andere Stimme ein", async () => {
     expect((await frisch({ da: false, stimmen: [], hinweis: "Der Sprechdienst antwortet nicht" })).stimmen).toEqual([]);
   });
+  it("liest auch dort, wo vorher niemand die Stimmen erfragt hat (Auswahl im Text)", async () => {
+    vi.resetModules();
+    const gesprochen: string[] = [];
+    vi.stubGlobal("speechSynthesis", { getVoices: () => [{ voiceURI: "de-1", name: "Gerät", lang: "de-DE" }], addEventListener: () => {}, cancel: () => {}, speak: (a: { text: string }) => gesprochen.push(a.text) });
+    vi.stubGlobal("SpeechSynthesisUtterance", class { constructor(public text: string) {} });
+    const { anschluesse } = await import("../src/lib/stand/anschluesse.svelte");
+    anschluesse.jetzt = { ...anschluesse.jetzt, vorlesen: false };
+    const { vorlesen } = await import("../src/lib/stand/vorlesen.svelte");
+    vorlesen.lies("Ein Satz aus der Auswahl.", "Auswahl");
+    await new Promise((r) => setTimeout(r, 5));
+    expect([vorlesen.aktiv, gesprochen]).toEqual([true, ["Ein Satz aus der Auswahl."]]);
+    vorlesen.halt();
+  });
   it("ohne Sprechdienst gelten die Stimmen des Geräts, eine verschwundene Wahl fällt weg", async () => {
     localStorage.setItem("vorlesen.stimme", "dienst:anna");
     const v = await frisch({}, false);
