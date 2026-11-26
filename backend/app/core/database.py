@@ -1,7 +1,18 @@
-"""SQLite-Datenbank mit FTS5 Volltextsuche."""
+"""SQLite-Datenbank mit FTS5 Volltextsuche.
 
+Transaktionen (BF-49): jede Anfrage und jeder Arbeitsschritt im Hintergrund, der mehr als eine Anweisung zusammen
+schreibt, ist eine Einheit (`db.einheit()`) mit eigener Verbindung: gebucht wird beim eigenen `commit()` und am Ende, bei
+einem Fehler (Ausnahme oder Antwort ab 400) wird zurückgerollt. Was außerhalb einer Einheit geschrieben wird, gilt sofort
+(jede Anweisung für sich); so bleibt nie eine halbe Änderung offen, die ein fremder Aufruf mitbucht. Eine Einheit gehört
+der Aufgabe (asyncio), die sie begonnen hat; Aufgaben, die daraus starten, schreiben nicht in sie hinein."""
+
+import asyncio
 import logging
 import sqlite3
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass
 from pathlib import Path
 
 import aiosqlite
@@ -358,6 +369,17 @@ NEUBAU_SPALTEN: tuple[tuple[str, str, str], ...] = (
 )
 
 
+@dataclass
+class Einheit:
+    aufgabe: asyncio.Task | None
+    verbindung: aiosqlite.Connection | None
+    verwerfen: bool = False              # am Ende zurückrollen, auch ohne Ausnahme (Antwort ab 400)
+
+
+_EINHEIT: ContextVar[Einheit | None] = ContextVar("bf_einheit", default=None)
+VORRAT = 8                               # so viele Verbindungen für Einheiten bleiben offen bereit
+
+
 class Database:
     """Asynchrone SQLite-Datenbank-Verbindung."""
 
@@ -365,6 +387,7 @@ class Database:
         self.db_path = db_path or settings.database_path
         self.suche_dir = db_path.parent if db_path else settings.suche_dir      # Tests: Suchindex neben der Probedatenbank
         self._connection: aiosqlite.Connection | None = None
+        self._vorrat: list[aiosqlite.Connection] = []
 
     async def connect(self) -> None:
         """Verbindung herstellen und Schema initialisieren."""
@@ -381,7 +404,53 @@ class Database:
         await self._connection.executescript(NEUBAU_SQL)
         await self._spalten_nachziehen()
         await suchindex.anhaengen(self._connection, self.suche_dir)
+        await self._connection.commit()
+        await self._connection.close()
+        # die gemeinsame Verbindung: außerhalb einer Einheit gilt jede Anweisung für sich
+        self._connection = await self._oeffnen(isolation_level=None)
         logger.info("Datenbank verbunden: %s", self.db_path)
+
+    async def _oeffnen(self, **art: object) -> aiosqlite.Connection:
+        v = await aiosqlite.connect(str(self.db_path), **art)
+        v.row_factory = aiosqlite.Row
+        await v.execute("PRAGMA foreign_keys=ON")
+        await v.execute("PRAGMA busy_timeout=5000")
+        await suchindex.verbinden(v, self.suche_dir)
+        return v
+
+    async def vorrat_leeren(self) -> None:
+        while self._vorrat:
+            await self._vorrat.pop().close()
+
+    @asynccontextmanager
+    async def einheit(self) -> AsyncIterator[Einheit]:
+        """Eine Transaktion mit eigener Verbindung für die laufende Aufgabe; innerhalb einer Einheit derselben Aufgabe
+        dieselbe. Bucht am Ende, was noch offen ist; rollt zurück bei einer Ausnahme oder wenn `verwerfen` gesetzt ist."""
+        aufgabe = asyncio.current_task()
+        laufend = _EINHEIT.get()
+        if laufend is not None and laufend.verbindung is not None and laufend.aufgabe is aufgabe:
+            yield laufend
+            return
+        v = self._vorrat.pop() if self._vorrat else await self._oeffnen()
+        e = Einheit(aufgabe, v)
+        marke = _EINHEIT.set(e)
+        gelungen = False
+        try:
+            yield e
+            gelungen = True
+        finally:
+            _EINHEIT.reset(marke)
+            e.verbindung = None
+            try:
+                if v.in_transaction:
+                    await (v.commit() if gelungen and not e.verwerfen else v.rollback())
+            except BaseException:
+                await v.close()
+                raise
+            if len(self._vorrat) < VORRAT:
+                self._vorrat.append(v)
+            else:
+                await v.close()
 
     async def _spalten_nachziehen(self) -> None:
         assert self._connection is not None
@@ -393,6 +462,7 @@ class Database:
 
     async def disconnect(self) -> None:
         """Verbindung trennen."""
+        await self.vorrat_leeren()
         if self._connection:
             await self._connection.close()
             self._connection = None
@@ -916,7 +986,10 @@ Verwende deutsche Begriffe. Sei spezifisch, nicht zu allgemein.',
 
     @property
     def connection(self) -> aiosqlite.Connection:
-        """Gibt die aktive Datenbankverbindung zurück."""
+        """Die Verbindung der laufenden Einheit dieser Aufgabe, sonst die gemeinsame (jede Anweisung für sich)."""
+        e = _EINHEIT.get()
+        if e is not None and e.verbindung is not None and e.aufgabe is asyncio.current_task():
+            return e.verbindung
         if self._connection is None:
             raise RuntimeError("Datenbank ist nicht verbunden")
         return self._connection

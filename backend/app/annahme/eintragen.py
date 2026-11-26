@@ -23,15 +23,16 @@ logger = logging.getLogger("buecherfreunde.eintragen")
 
 async def autoren_verknuepfen(buch: int, autor: str) -> None:
     """Autoren eines Buchs aus dem Autorenfeld: fehlende anlegen, Verknüpfung genau so wie das Feld."""
-    await db.execute("DELETE FROM book_authors WHERE book_id = ?", (buch,))
-    namen = [n for n in zerlegen(autor) if len(n) > 1]
-    for stelle, name in enumerate(namen):
-        slug = re.sub(r"[-\s]+", "-", re.sub(r"[^\w\s-]", "", name.lower())).strip("-")
-        if not slug:
-            continue
-        await db.execute("INSERT OR IGNORE INTO authors (name, slug) VALUES (?, ?)", (name, slug))
-        a = await db.fetch_one("SELECT id FROM authors WHERE slug = ?", (slug,))
-        await db.execute("INSERT OR IGNORE INTO book_authors (book_id, author_id, sort_order) VALUES (?, ?, ?)", (buch, a["id"], stelle))
+    async with db.einheit():
+        await db.execute("DELETE FROM book_authors WHERE book_id = ?", (buch,))
+        namen = [n for n in zerlegen(autor) if len(n) > 1]
+        for stelle, name in enumerate(namen):
+            slug = re.sub(r"[-\s]+", "-", re.sub(r"[^\w\s-]", "", name.lower())).strip("-")
+            if not slug:
+                continue
+            await db.execute("INSERT OR IGNORE INTO authors (name, slug) VALUES (?, ?)", (name, slug))
+            a = await db.fetch_one("SELECT id FROM authors WHERE slug = ?", (slug,))
+            await db.execute("INSERT OR IGNORE INTO book_authors (book_id, author_id, sort_order) VALUES (?, ?, ?)", (buch, a["id"], stelle))
 
 
 async def eintragen(file_hash: str, dateiname: str, groesse: int, e: Ergebnis) -> int:
@@ -46,19 +47,19 @@ async def eintragen(file_hash: str, dateiname: str, groesse: int, e: Ergebnis) -
         save_fulltext(file_hash, e.fulltext)
     if e.cover_data:
         save_cover(file_hash, e.cover_data)
-    c = await db.execute(
-        "INSERT INTO books (hash, title, author, isbn, publisher, year, language, description, file_format, file_size, file_name, "
-        "storage_path, cover_path, page_count, fts_content) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (file_hash, e.title, e.author or "", e.isbn or "", e.publisher or "", e.year, e.language or "", e.description or "", endung, groesse,
-         dateiname, str(get_storage_path(file_hash)), "cover.jpg" if e.cover_data else "", e.page_count, e.fulltext[:SUCHTEXT_ZEICHEN]))
-    buch = c.lastrowid
-    await db.execute("UPDATE books SET fts_content = '' WHERE id = ?", (buch,))      # steht im Suchindex
-    await autoren_verknuepfen(buch, e.author)
-    if not e.isbn:
-        await db.execute("INSERT OR IGNORE INTO categories (name, slug, description) VALUES ('Ungeordnet', 'ungeordnet', 'Bücher ohne ISBN oder Zuordnung')")
-        k = await db.fetch_one("SELECT id FROM categories WHERE slug = 'ungeordnet'")
-        await db.execute("INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'import')", (buch, k["id"]))
-    await db.commit()
+    async with db.einheit():                                # Buch, Autoren und Regal gelten zusammen oder gar nicht
+        c = await db.execute(
+            "INSERT INTO books (hash, title, author, isbn, publisher, year, language, description, file_format, file_size, file_name, "
+            "storage_path, cover_path, page_count, fts_content) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (file_hash, e.title, e.author or "", e.isbn or "", e.publisher or "", e.year, e.language or "", e.description or "", endung, groesse,
+             dateiname, str(get_storage_path(file_hash)), "cover.jpg" if e.cover_data else "", e.page_count, e.fulltext[:SUCHTEXT_ZEICHEN]))
+        buch = c.lastrowid
+        await db.execute("UPDATE books SET fts_content = '' WHERE id = ?", (buch,))      # steht im Suchindex
+        await autoren_verknuepfen(buch, e.author)
+        if not e.isbn:
+            await db.execute("INSERT OR IGNORE INTO categories (name, slug, description) VALUES ('Ungeordnet', 'ungeordnet', 'Bücher ohne ISBN oder Zuordnung')")
+            k = await db.fetch_one("SELECT id FROM categories WHERE slug = 'ungeordnet'")
+            await db.execute("INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'import')", (buch, k["id"]))
     return buch
 
 

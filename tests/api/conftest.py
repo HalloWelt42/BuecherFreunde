@@ -75,17 +75,18 @@ async def test_db(tmp_path: Path):
     test_database = Database(db_path=db_path)
     await test_database.connect()
 
-    # Globale db-Instanz temporaer ersetzen
-    original_connection = db._connection
-    original_path = db.db_path
+    # Globale db-Instanz vorübergehend ersetzen (auch Ort des Suchindex und der Vorrat an Verbindungen für Einheiten)
+    original_connection, original_path, original_suche = db._connection, db.db_path, db.suche_dir
+    await db.vorrat_leeren()
     db._connection = test_database._connection
     db.db_path = test_database.db_path
+    db.suche_dir = test_database.suche_dir
 
     yield test_database
 
-    # Wiederherstellen und aufraeuemen
-    db._connection = original_connection
-    db.db_path = original_path
+    # Wiederherstellen und aufräumen
+    await db.vorrat_leeren()
+    db._connection, db.db_path, db.suche_dir = original_connection, original_path, original_suche
     await test_database.disconnect()
 
 

@@ -285,10 +285,10 @@ async def _rescan_worker(buecher: list, typen: list[str], lauf: Anhalter):
                 if e.lesbar and e.fulltext.strip():
                     save_fulltext(book["hash"], e.fulltext)
                     # über fts_content in den Suchindex (Trigger), dann wieder leer; fehlende Seitenzahl gleich mit
-                    await db.execute("UPDATE books SET fts_content = ?, page_count = CASE WHEN COALESCE(page_count, 0) = 0 THEN ? "
-                                     "ELSE page_count END, updated_at = datetime('now') WHERE id = ?", (e.fulltext[:SUCHTEXT_ZEICHEN], e.page_count, book["id"]))
-                    await db.execute("UPDATE books SET fts_content = '' WHERE id = ?", (book["id"],))
-                    await db.commit()
+                    async with db.einheit():
+                        await db.execute("UPDATE books SET fts_content = ?, page_count = CASE WHEN COALESCE(page_count, 0) = 0 THEN ? "
+                                         "ELSE page_count END, updated_at = datetime('now') WHERE id = ?", (e.fulltext[:SUCHTEXT_ZEICHEN], e.page_count, book["id"]))
+                        await db.execute("UPDATE books SET fts_content = '' WHERE id = ?", (book["id"],))
                     status["volltext_extrahiert"] += 1
 
             # Fehlende Angaben aus den Quellen; den Takt hält der gemeinsame Abruf

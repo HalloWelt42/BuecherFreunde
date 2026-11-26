@@ -55,11 +55,11 @@ class Vorrat:
 
     async def aufraeumen(self) -> int:
         """Abgelaufenes geht, danach das Älteste, bis die Obergrenze hält. Liefert, wie viele gingen."""
-        c = await db.execute("DELETE FROM quelle_vorrat WHERE gilt_bis <= ?", (self._uhr(),))
-        weg = c.rowcount
-        grenze = settings.quellen_vorrat_mb * 1_000_000
-        c = await db.execute(
-            "DELETE FROM quelle_vorrat WHERE adresse IN (SELECT adresse FROM (SELECT adresse, SUM(LENGTH(COALESCE(inhalt, '')) + 200) "
-            "OVER (ORDER BY geholt_am DESC, adresse) AS summe FROM quelle_vorrat) WHERE summe > ?)", (grenze,))
-        await db.commit()
+        async with db.einheit():
+            c = await db.execute("DELETE FROM quelle_vorrat WHERE gilt_bis <= ?", (self._uhr(),))
+            weg = c.rowcount
+            grenze = settings.quellen_vorrat_mb * 1_000_000
+            c = await db.execute(
+                "DELETE FROM quelle_vorrat WHERE adresse IN (SELECT adresse FROM (SELECT adresse, SUM(LENGTH(COALESCE(inhalt, '')) + 200) "
+                "OVER (ORDER BY geholt_am DESC, adresse) AS summe FROM quelle_vorrat) WHERE summe > ?)", (grenze,))
         return weg + c.rowcount

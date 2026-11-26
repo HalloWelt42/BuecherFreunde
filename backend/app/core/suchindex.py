@@ -56,6 +56,13 @@ async def anhaengen(v: aiosqlite.Connection, ordner: Path) -> None:
     await _uebernehmen(v)
 
 
+async def verbinden(v: aiosqlite.Connection, ordner: Path) -> None:
+    """Für jede weitere Verbindung (eine je Anfrage): die Suchdatei anhängen und die flüchtigen Trigger setzen, die es je
+    Verbindung gibt. Schema und Übernahme hat die erste Verbindung schon erledigt."""
+    await v.execute("ATTACH DATABASE ? AS suche", (str(ordner / "suche.db"),))
+    await v.executescript(FLUECHTIG)
+
+
 async def _uebernehmen(v: aiosqlite.Connection) -> None:
     """Alter Index im Bestand (bis 0.13) oder eine frische Suchdatei: füllen, danach den alten Index entfernen."""
     alt = await (await v.execute("SELECT 1 FROM main.sqlite_master WHERE name = 'books_fts'")).fetchone()

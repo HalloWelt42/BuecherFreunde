@@ -43,9 +43,11 @@ async def _regal() -> int:
 async def nachher(z: dict, buch: int, file_hash: str) -> None:
     """Nummer bei Gutenberg, Regal und, wenn es einen gibt, der Umschlag des Verzeichnisses."""
     h = herkunft(z)
-    await db.execute("UPDATE books SET gutenberg_id = ? WHERE id = ?", (int(h.get("gutenberg_id") or 0) or None, buch))
-    await db.execute("INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'import')", (buch, await _regal()))
-    if h.get("cover_url") and (bild := await download_cover(str(h["cover_url"]))):
+    bild = await download_cover(str(h["cover_url"])) if h.get("cover_url") else None        # vor dem Schreiben, es kann dauern
+    if bild:
         await asyncio.to_thread(save_cover, file_hash, bild)
-        await db.execute("UPDATE books SET cover_path = 'cover.jpg' WHERE id = ?", (buch,))
-    await db.commit()
+    async with db.einheit():
+        await db.execute("UPDATE books SET gutenberg_id = ? WHERE id = ?", (int(h.get("gutenberg_id") or 0) or None, buch))
+        await db.execute("INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle) VALUES (?, ?, 'import')", (buch, await _regal()))
+        if bild:
+            await db.execute("UPDATE books SET cover_path = 'cover.jpg' WHERE id = ?", (buch,))

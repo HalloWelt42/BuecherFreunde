@@ -56,10 +56,10 @@ async def doppel(autor: int, felder: Mapping[str, Any]) -> dict[str, Any] | None
 
 async def zusammenlegen(autor: int, ziel: int) -> None:
     """Die Bücher eines Autors an einen anderen hängen; der leere Autor geht."""
-    await db.execute("UPDATE OR IGNORE book_authors SET author_id = ? WHERE author_id = ?", (ziel, autor))
-    await db.execute("DELETE FROM book_authors WHERE author_id = ?", (autor,))
-    await db.execute("DELETE FROM authors WHERE id = ?", (autor,))
-    await db.commit()
+    async with db.einheit():
+        await db.execute("UPDATE OR IGNORE book_authors SET author_id = ? WHERE author_id = ?", (ziel, autor))
+        await db.execute("DELETE FROM book_authors WHERE author_id = ?", (autor,))
+        await db.execute("DELETE FROM authors WHERE id = ?", (autor,))
 
 
 async def verweise(autor: int) -> list[Verweis]:
@@ -125,12 +125,12 @@ async def _foto_ablegen(autor: int, fotos: dict[str, bytes]) -> None:
 async def uebernehmen(autor: int, felder: Mapping[str, Any]) -> Uebernahme:
     """Nur was in `felder` steht. Das Foto wird vor dem Schreiben geholt, es kann dauern."""
     fotos, hinweis = await _foto_holen(felder.get("photo_url") or "")
-    gesetzt = await _felder_setzen(autor, felder)
-    gesetzt += await verweise_setzen(autor, felder.get("verweise") or {})
-    if fotos:
-        await _foto_ablegen(autor, fotos)
-    werke = await _werke_setzen(autor, felder["werke"]) if felder.get("werke") else 0
-    await db.commit()
+    async with db.einheit():
+        gesetzt = await _felder_setzen(autor, felder)
+        gesetzt += await verweise_setzen(autor, felder.get("verweise") or {})
+        if fotos:
+            await _foto_ablegen(autor, fotos)
+        werke = await _werke_setzen(autor, felder["werke"]) if felder.get("werke") else 0
     return Uebernahme(felder=gesetzt, foto_gespeichert=bool(fotos), werke_gespeichert=werke, hinweis=hinweis)
 
 
