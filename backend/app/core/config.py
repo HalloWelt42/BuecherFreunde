@@ -57,9 +57,13 @@ class Settings(BaseSettings):
     sprechdienst: str = "klangwerk-sprechen"                  # Vorlesen über diesen Dienst der Leitstelle; ohne: Stimmen des Geräts
     # Gestaltete Deckblätter (BF-59): die Umschlagprüfung findet schlichte Umschläge, die lokale KI ordnet diese Bücher ein
     umschlaege_pruefen_takt_s: float = Field(default=600, gt=0)   # so oft sieht die Umschlagprüfung nach neuen oder geänderten Umschlägen
-    einordnen_an: bool = True                                    # Art und Gattung schlichter Bücher von der lokalen KI vorschlagen lassen
-    einordnen_takt_s: float = Field(default=600, gt=0)          # so oft sieht das Einordnen von selbst nach offenen Büchern
-    einordnen_abstand_s: float = Field(default=20, ge=0)        # Pause zwischen zwei Anfragen an die KI
+    # Art aller Werke (BF-77): erst feste Regeln (services/artregeln.py), den Rest die lokale KI, gebündelt
+    einordnen_an: bool = True                                    # Art (und, wo das Deckblatt sie braucht, Gattung) bestimmen
+    einordnen_takt_s: float = Field(default=600, gt=0)          # so oft sieht das Einordnen von selbst nach offenen Werken
+    einordnen_abstand_s: float = Field(default=5, ge=0)         # Pause zwischen zwei Anfragen an die KI
+    einordnen_je_anfrage: int = Field(default=40, ge=1, le=200)  # so viele Werke je Anfrage an die KI
+    einordnen_buch_ab_seiten: int = Field(default=40, ge=0)      # mit ISBN und mehr Seiten: ein Buch
+    einordnen_dokument_bis_seiten: int = Field(default=4, ge=0)  # ohne ISBN und höchstens so viele Seiten: ein Dokument
     # Sammlungen finden (BF-66): Reihen aus Titeln und Dateinamen, geprüft von der lokalen KI
     sammlung_vorschlag_ab: int = Field(default=3, ge=2)          # ab so vielen Büchern einer Reihe ein Vorschlag
     sammlungen_finden_abstand_s: float = Field(default=5, ge=0)  # Pause zwischen zwei Anfragen an die KI

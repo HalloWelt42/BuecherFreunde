@@ -125,21 +125,38 @@ Zwei Läufe im Hintergrund, gestartet mit der App:
   Buch, dessen Befund fehlt oder zu einem älteren Umschlag gehört (Spalte `umschlag_geprueft` gegen den Stand des Umschlags).
   Schlicht heißt: auf 60 x 90 verkleinert haben mindestens 85 % der Bildpunkte eine Helligkeit über 230 und die mittlere
   Sättigung liegt unter 0,08 (`services/deckblatt.py`). Ohne Umschlagdatei gilt ein Buch als schlicht.
-- Einordnen mit der lokalen KI (`services/einordnung.py`): für schlichte Bücher, die noch niemand eingeordnet hat und die
-  noch keine Art haben (eine schon gesetzte Art stammt vom Nutzer und bleibt), schlägt die KI über die Leitstelle Art und
-  Gattung vor (aus Titel, Autor, Verlag, Jahr, ISBN, Format und dem Anfang des Volltexts),
-  ein Buch je Anfrage, mit `EINORDNEN_ABSTAND_S` (20) Sekunden Abstand, abschaltbar mit `EINORDNEN_AN` (true). Es sieht
-  nach jeder Umschlagprüfung mit schlichten Umschlägen nach, sonst alle `EINORDNEN_TAKT_S` (600) Sekunden. Antwortet die KI
-  zu einem Buch nichts Brauchbares, bleibt es offen und kommt in einer späteren Runde wieder dran; lehnt die Leitstelle ab,
-  hält das Einordnen an, bis es fortgesetzt wird.
+- Einordnen (`services/einordnung.py`, seit BF-77 für alle Werke): offen ist jedes Werk, das noch niemand eingeordnet hat
+  und das keine Art hat (eine schon gesetzte Art stammt vom Nutzer und bleibt). Eine Runde wendet erst feste Regeln an
+  (`services/artregeln.py`, Herkunft `regel`, Begründung in `einordnung_grund`): ISBN und mehr als `EINORDNEN_BUCH_AB_SEITEN`
+  (40) Seiten ist ein Buch, aber nur bei einem sicher nicht schlichten Umschlag (sonst braucht das Deckblatt die Gattung);
+  ohne ISBN ist ein Dokument, was im Titel das Programm nennt, aus dem es stammt, eine Endung .docx, .pptx oder .xlsx im
+  Titel oder Dateinamen trägt, dort am Wortanfang Rechnung, Beleg, Datenblatt, datasheet, Bedienungsanleitung,
+  Gebrauchsanweisung, user manual, Folien, slides oder lecture nennt oder höchstens `EINORDNEN_DOKUMENT_BIS_SEITEN` (4) Seiten
+  hat. Den Rest bestimmt die KI über die Leitstelle, gebündelt: bis zu `EINORDNEN_JE_ANFRAGE` (40) Werke je Anfrage (Titel,
+  Autor, Verlag, Seiten, ISBN ja oder nein, Dateiname, Anfang des Volltexts), Antwort als Liste fester Länge, mit
+  `EINORDNEN_ABSTAND_S` (5) Sekunden Abstand. Die KI bekommt nur Werke mit geprüftem Umschlag und fragt die Gattung nur, wo
+  das gezeichnete Deckblatt sie braucht (Umschlag schlicht), und nur bei Büchern. Abschaltbar mit `EINORDNEN_AN` (true).
+  Eine Runde beginnt beim Start (was vor einem Neustart offen blieb, geht gleich weiter), nach jeder Runde der
+  Umschlagprüfung, die Umschläge geprüft hat, und sonst alle `EINORDNEN_TAKT_S` (600) Sekunden. Was die KI zu einem Werk nicht brauchbar sagt, bleibt offen und kommt in
+  einer späteren Runde wieder dran; lehnt die Leitstelle ab, hält das Einordnen an, bis es fortgesetzt wird. Von Hand
+  (`hand`) fassen weder Regel noch KI ein Werk wieder an, auch nicht während einer Anfrage.
 
 | Weg | Zweck |
 |---|---|
-| `GET /api/einordnung/stand` | `{an, bereit, laeuft, angehalten, grund, offen, erledigt}`: `bereit` heißt eingeschaltet und Leitstelle eingetragen, `offen` schlichte Bücher ohne Einordnung und ohne Art, `erledigt` von der KI eingeordnete, `grund` warum angehalten oder in der letzten Runde ein Buch offen blieb |
+| `GET /api/einordnung/stand` | `{an, bereit, laeuft, angehalten, grund, gesamt, nach_regel, durch_ki, offen, erledigt}`: `bereit` heißt eingeschaltet und Leitstelle eingetragen (die Regeln laufen auch ohne), `gesamt` alle Werke, `nach_regel` und `durch_ki` wer eingeordnet hat, `offen` Werke ohne Einordnung und ohne Art, `erledigt` wie `durch_ki` (bleibt vorerst), `grund` warum angehalten oder in der letzten Runde ein Werk offen blieb |
 | `POST /api/einordnung/fortsetzen` | nach einer Ablehnung der Leitstelle weiter einordnen; antwortet mit dem Stand |
 
 Spalten in `books`: `gattung`, `umschlag_wahl`, `umschlag_schlicht` (NULL noch nicht geprüft, 0, 1), `umschlag_geprueft`
-(Stand des geprüften Umschlags), `einordnung` (leer offen, `ki`, `hand`).
+(Stand des geprüften Umschlags), `einordnung` (leer offen, `regel`, `ki`, `hand`), `einordnung_grund` (bei `regel` warum).
+`GET /api/books/{id}` trägt `einordnung` und `einordnung_grund`; wer Art oder Gattung setzt, leert den Grund.
+
+### Bücher und Besonderes (BF-77)
+
+Ein Werk ist ein Buch (`typ` leer) oder etwas Besonderes (`dokument`, `heft`, `katalog`, `broschuere`).
+
+- `GET /api/books?art=buch|besonderes` filtert danach (sonst 422), mit jedem anderen Filter und mit `zusammenfassen=true`.
+- `GET /api/config/stats` zählt dazu `buecher` und `besonderes`; `buecher_mit_isbn` und `dokumente` bleiben vorerst für
+  Stellen, die sie noch lesen.
 
 - Wortsuche (`GET /api/search`), Suche nach Bedeutung und Autorenseite (`books`) tragen je Buch `deckblatt` bzw. dieselben Felder:
   `{typ, gattung, umschlag_wahl, umschlag_schlicht, umschlag, cover_path, file_format, year}` (services/deckblattangaben.py), damit

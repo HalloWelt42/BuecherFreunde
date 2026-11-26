@@ -16,8 +16,16 @@ from typing import Literal
 from pydantic import BaseModel
 
 from backend.app.core.database import db
+from backend.app.models.book import BESONDERES, Werkart
 
 STAPEL = 3                                      # so viele Umschläge zeigt ein Sammlungseintrag
+
+
+def nach_art(art: Werkart, spalte: str = "b.typ") -> tuple[str, tuple]:
+    """Bedingung für Bücher (Art leer) oder Besonderes (alles, was kein Buch ist, BF-77)."""
+    if art == "buch":
+        return f"COALESCE({spalte}, '') = ''", ()
+    return f"{spalte} IN ({','.join('?' * len(BESONDERES))})", BESONDERES
 
 
 @dataclass(frozen=True)

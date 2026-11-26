@@ -1,20 +1,31 @@
-"""Einordnen mit der lokalen KI (BF-59): Art und Gattung der Bücher mit schlichtem Umschlag.
+"""Art und Gattung der Werke bestimmen (BF-59, BF-77).
 
-Ein Buch mit schlichtem Umschlag (services/umschlagpruefung.py) bekommt in der Oberfläche ein gestaltetes Deckblatt; wie es
-aussieht, hängt an der Art (books.typ, leer: ein Buch) und bei Büchern an der Gattung. Beides schlägt beim ersten Mal die
-lokale KI über die Leitstelle vor (services/ki.py), aus den Angaben und dem Anfang des Volltexts: ein Buch je Anfrage, im
-Hintergrund, mit Abstand (`EINORDNEN_ABSTAND_S`), ab- und anschaltbar (`EINORDNEN_AN`). Ändert der Nutzer Art oder
-Gattung, gilt `einordnung` "hand", und die KI fasst das Buch nie wieder an.
+Die Art (books.typ, leer: ein Buch) braucht jedes Werk: nach ihr steht es unter "Bücher" oder "Besonderes", und das
+gestaltete Deckblatt eines schlichten Umschlags (services/umschlagpruefung.py) hängt an ihr, bei Büchern auch an der
+Gattung. Offen ist ein Werk, das noch niemand eingeordnet hat und das keine Art hat (eine Art, die schon dasteht, hat vor
+BF-59 der Nutzer gesetzt und bleibt).
 
-Antwortet die KI zu einem Buch nicht brauchbar, bleibt es offen und kommt in einer späteren Runde wieder dran. Ist die
-Leitstelle länger weg, als die Geduld reicht, endet nur die Runde. Lehnt sie ab, hält das Einordnen mit dem Grund an, bis
-es fortgesetzt wird (ein Mensch ist gefragt; nichts wird von selbst wiederholt)."""
+Eine Runde ordnet alle offenen Werke ein:
+1. Feste Regeln (services/artregeln.py) mit kurzer Begründung; `einordnung` wird "regel", der Grund steht in
+   `einordnung_grund`.
+2. Den Rest die lokale KI über die Leitstelle (services/ki.py), gebündelt: bis zu `EINORDNEN_JE_ANFRAGE` (40) Werke je Anfrage
+   mit Titel, Autor, Verlag, Seiten, Dateiname und dem Anfang des Volltexts, Antwort als Liste fester Länge; zwischen zwei
+   Anfragen `EINORDNEN_ABSTAND_S`. Dran sind nur Werke mit geprüftem Umschlag: die Gattung fragt sie nur, wo das
+   gezeichnete Deckblatt sie braucht (Umschlag schlicht), und nur Bücher bekommen eine. `einordnung` wird "ki". Die
+   Umschlagprüfung stößt nach jeder Runde an, die Umschläge geprüft hat.
+
+Wer Art oder Gattung von Hand setzt, hat das letzte Wort (`einordnung` "hand"): weder Regel noch KI fasst das Werk wieder an,
+auch nicht, wenn es während einer Anfrage geschah. Was die KI zu einem Werk nicht brauchbar sagt, bleibt offen und kommt in
+einer späteren Runde wieder dran. Ist die Leitstelle länger weg, als die Geduld reicht, endet nur die Runde; lehnt sie ab,
+hält das Einordnen an, bis es fortgesetzt wird. Der Stand steht in `books`: nach einem Neustart beginnt sofort eine Runde
+mit dem, was noch offen ist."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 import uuid
+from collections.abc import Sequence
 
 from appkern.leitstelle.arbeit import LAUFENDE_ARBEIT
 from pydantic import BaseModel
@@ -22,47 +33,46 @@ from pydantic import BaseModel
 from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.models.book import GATTUNGEN, TYPEN, Gattung, Typ
+from backend.app.services import artregeln
 from backend.app.services.anhalten import Anhalter
+from backend.app.services.artregeln import Werk
 from backend.app.services.ki import Ki, KiFehler, ki
 from backend.app.services.storage import get_sidecar_path
 
 logger = logging.getLogger("buecherfreunde.einordnung")
-AUSZUG_ZEICHEN = 1500                      # so viel vom Anfang des Volltexts bekommt die KI
+AUSZUG_ZEICHEN = 300                       # so viel vom Anfang des Volltexts bekommt die KI je Werk
+TOKEN_JE_WERK = 30
 BUCH = "buch"                              # die Art, die in books.typ leer heißt
 ARTEN = (BUCH, *(t["id"] for t in TYPEN))
 GATTUNG_IDS = tuple(g["id"] for g in GATTUNGEN)
+SPALTEN = "id, hash, title, author, publisher, year, isbn, file_format, file_name, page_count, umschlag_schlicht"
 
-SYSTEM = ("Du ordnest die Dateien einer privaten Bibliothek ein. Aus Titel, Autor, Verlag, Jahr, ISBN, Format und dem "
-          "Anfang des Textes bestimmst du die Art und, bei einem Buch, die Gattung. Antworte mit einem Objekt aus zwei "
-          "Feldern. 'art' ist eins von: buch (ein Buch, etwa Roman, Sachbuch oder Fachbuch), "
+SYSTEM = ("Du ordnest die Werke einer privaten Bibliothek ein. Zu jedem nummerierten Werk bekommst du Titel, Autor, Verlag, "
+          "Seiten, Dateiname und den Anfang des Textes. Bestimme die Art: buch (ein Buch, etwa Roman, Sachbuch oder Fachbuch), "
           + ", ".join(f"{t['id']} ({t['beschreibung']})" for t in TYPEN)
-          + ". 'gattung' ist bei einem Buch eins von: " + ", ".join(f"{g['id']} ({g['name']})" for g in GATTUNGEN)
-          + "; bei jeder anderen Art und wenn keine passt, leer.")
-SCHEMA = {"type": "object", "additionalProperties": False, "required": ["art", "gattung"],
-          "properties": {"art": {"type": "string", "enum": list(ARTEN)},
-                         "gattung": {"type": "string", "enum": ["", *GATTUNG_IDS]}}}
+          + ". Steht bei einem Werk 'Gattung gefragt' und ist es ein Buch, bestimme auch die Gattung, eine von: "
+          + ", ".join(f"{g['id']} ({g['name']})" for g in GATTUNGEN)
+          + "; sonst, oder wenn keine passt, bleibt 'gattung' leer. Antworte mit einem Objekt mit dem Feld 'werke': genau ein "
+          "Eintrag je Werk in derselben Reihenfolge, je mit 'nummer', 'art' und 'gattung'.")
 
-# Offen: schlicht und von niemandem eingeordnet. Eine Art, die schon dasteht, hat vor BF-59 der Nutzer gesetzt (nur er
+# Offen: von niemandem eingeordnet und ohne Art. Eine Art, die schon dasteht, hat vor BF-59 der Nutzer gesetzt (nur er
 # schrieb typ); sie bleibt, auch wenn einordnung dort noch leer ist.
-OFFEN = "umschlag_schlicht = 1 AND einordnung = '' AND typ = ''"
+OFFEN = "einordnung = '' AND COALESCE(typ, '') = ''"
+FUER_DIE_KI = f"{OFFEN} AND umschlag_schlicht IS NOT NULL"     # erst mit Befund des Umschlags: braucht das Deckblatt die Gattung?
 
 
-class Buchangaben(BaseModel):
-    """Was die KI über ein Buch erfährt (dazu der Anfang des Volltexts)."""
-
-    id: int
-    hash: str
-    title: str = ""
-    author: str = ""
-    publisher: str | None = ""
-    year: int | None = None
-    isbn: str | None = ""
-    file_format: str = ""
+def schema(anzahl: int) -> dict:
+    """Die Antwort als Liste fester Länge: je Werk ein Eintrag."""
+    werk = {"type": "object", "additionalProperties": False, "required": ["nummer", "art", "gattung"],
+            "properties": {"nummer": {"type": "integer"}, "art": {"type": "string", "enum": list(ARTEN)},
+                           "gattung": {"type": "string", "enum": ["", *GATTUNG_IDS]}}}
+    return {"type": "object", "additionalProperties": False, "required": ["werke"],
+            "properties": {"werke": {"type": "array", "minItems": anzahl, "maxItems": anzahl, "items": werk}}}
 
 
 class Vorschlag(BaseModel):
     typ: Typ                                # leer: ein Buch
-    gattung: Gattung                        # nur bei Büchern
+    gattung: Gattung | None                 # leer bei allem außer Büchern; None: nicht gefragt, sie bleibt, wie sie ist
 
 
 class EinordnungStand(BaseModel):
@@ -70,23 +80,39 @@ class EinordnungStand(BaseModel):
     bereit: bool                            # an und eine Leitstelle eingetragen
     laeuft: bool
     angehalten: bool                        # die Leitstelle hat abgelehnt; weiter mit POST /api/einordnung/fortsetzen
-    grund: str = ""                         # warum angehalten, die Runde endete oder in ihr zuletzt ein Buch offen blieb
-    offen: int = 0                          # schlichte Bücher, die noch niemand eingeordnet hat
-    erledigt: int = 0                       # von der KI eingeordnet
+    grund: str = ""                         # warum angehalten, die Runde endete oder in ihr zuletzt ein Werk offen blieb
+    gesamt: int = 0                         # alle Werke
+    nach_regel: int = 0                     # von den festen Regeln eingeordnet
+    durch_ki: int = 0                       # von der KI eingeordnet
+    offen: int = 0                          # noch ohne Art und von niemandem eingeordnet
+    erledigt: int = 0                       # wie durch_ki (für Stellen, die es noch lesen)
 
 
 class Angehalten(Exception):
     pass
 
 
-def vorschlag_aus(roh: object) -> Vorschlag:
-    """Die Antwort der KI als Vorschlag; eine Gattung gibt es nur bei Büchern, eine unbekannte bleibt leer."""
-    if not isinstance(roh, dict) or roh.get("art") not in ARTEN:
+def vorschlaege_aus(roh: object, werke: Sequence[Werk]) -> dict[int, Vorschlag]:
+    """Je Werk (Nummer im Bestand) die Antwort der KI; unbekannte Nummern und Arten fallen weg, eine Gattung gilt nur bei
+    Büchern, nach deren Gattung gefragt war. Passt die Antwort gar nicht zur Form: KiFehler."""
+    if not isinstance(roh, dict) or not isinstance(roh.get("werke"), list):
         raise KiFehler("Die Antwort der KI passt nicht zur verlangten Form", "einzeln")
-    art, gattung = roh["art"], roh.get("gattung")
-    if art != BUCH or gattung not in GATTUNG_IDS:
-        gattung = ""
-    return Vorschlag(typ="" if art == BUCH else art, gattung=gattung)
+    aus: dict[int, Vorschlag] = {}
+    for e in roh["werke"]:
+        nummer = e.get("nummer") if isinstance(e, dict) else None
+        if not isinstance(nummer, int) or isinstance(nummer, bool) or not 1 <= nummer <= len(werke) or e.get("art") not in ARTEN:
+            continue
+        w = werke[nummer - 1]
+        if w.id in aus:
+            continue
+        if e["art"] != BUCH:
+            gattung: str | None = ""                     # nur Bücher haben eine Gattung
+        elif w.gattung_gefragt:
+            gattung = e.get("gattung") if e.get("gattung") in GATTUNG_IDS else ""
+        else:
+            gattung = None
+        aus[w.id] = Vorschlag(typ="" if e["art"] == BUCH else e["art"], gattung=gattung)
+    return aus
 
 
 def textanfang(file_hash: str) -> str:
@@ -98,10 +124,16 @@ def textanfang(file_hash: str) -> str:
         return ""
 
 
-def anfrage(buch: Buchangaben, text: str) -> str:
-    zeilen = [f"Titel: {buch.title or '-'}", f"Autor: {buch.author or '-'}", f"Verlag: {buch.publisher or '-'}",
-              f"Jahr: {buch.year or '-'}", f"ISBN: {buch.isbn or '-'}", f"Format: {buch.file_format or '-'}"]
-    return "\n".join(zeilen) + f"\n\nAnfang des Textes:\n{text or '-'}"
+def werkzeile(nummer: int, w: Werk, text: str) -> str:
+    teile = [f"Titel: {w.title or '-'}", f"Autor: {w.author or '-'}", f"Verlag: {w.publisher or '-'}",
+             f"Seiten: {w.seiten or '-'}", f"ISBN: {'ja' if w.hat_isbn else 'nein'}", f"Datei: {w.file_name or '-'}"]
+    if w.gattung_gefragt:
+        teile.append("Gattung gefragt")
+    return f"{nummer}. " + " | ".join(teile) + f"\n   Anfang: {text or '-'}"
+
+
+def anfrage(werke: Sequence[Werk], texte: Sequence[str]) -> str:
+    return "\n".join(werkzeile(i, w, t) for i, (w, t) in enumerate(zip(werke, texte, strict=True), 1))
 
 
 class Einordner:
@@ -116,7 +148,9 @@ class Einordner:
 
     # -- Leben und Bedienung ---------------------------------------------------------------------------------------------
     def starten(self) -> None:
+        """Im Hintergrund, mit einer Runde gleich zu Beginn: was vor einem Neustart offen blieb, geht sofort weiter."""
         self._wecker = asyncio.Event()
+        self._wecker.set()
         self._lauf = asyncio.create_task(self._arbeiten())
 
     async def stoppen(self) -> None:
@@ -137,9 +171,11 @@ class Einordner:
         return settings.einordnen_an and self.ki.bereit
 
     async def stand(self) -> EinordnungStand:
-        z = await db.fetch_one(f"SELECT SUM({OFFEN}) AS offen, SUM(einordnung = 'ki') AS erledigt FROM books")
+        z = await db.fetch_one(f"""SELECT COUNT(*) AS gesamt, SUM({OFFEN}) AS offen, SUM(einordnung = 'regel') AS regel,
+                                          SUM(einordnung = 'ki') AS ki FROM books""")
         return EinordnungStand(an=settings.einordnen_an, bereit=self.bereit, laeuft=self.laeuft, angehalten=self.angehalten,
-                               grund=self.grund, offen=z["offen"] or 0, erledigt=z["erledigt"] or 0)
+                               grund=self.grund, gesamt=z["gesamt"] or 0, nach_regel=z["regel"] or 0, durch_ki=z["ki"] or 0,
+                               offen=z["offen"] or 0, erledigt=z["ki"] or 0)
 
     # -- Arbeit ----------------------------------------------------------------------------------------------------------
     async def _arbeiten(self) -> None:
@@ -157,60 +193,91 @@ class Einordner:
                 logger.exception("Einordnen")
 
     async def runde(self) -> int:
-        """Die offenen Bücher der Reihe nach, bis keins mehr offen ist, abgeschaltet oder angehalten wird oder die Leitstelle
-        fehlt; gibt zurück, wie viele eingeordnet wurden. Ein Buch, zu dem die KI nichts Brauchbares sagt, bleibt offen."""
-        if not self.bereit or self.angehalten:
+        """Alle offenen Werke: erst die Regeln, dann die KI, bis keins mehr offen ist, abgeschaltet oder angehalten wird
+        oder die Leitstelle fehlt; gibt zurück, wie viele eingeordnet wurden."""
+        if not settings.einordnen_an or self.angehalten:
             return 0
         self._anhalter.beginne()
         marke = LAUFENDE_ARBEIT.set(f"bf-einordnen-{uuid.uuid4().hex[:12]}")
-        self.laeuft, self.grund, eingeordnet, zuletzt = True, "", 0, 0
+        self.laeuft, self.grund = True, ""
         try:
-            while self.bereit and not self.angehalten and (buch := await self._naechstes(zuletzt)) is not None:
-                zuletzt = buch.id
-                eingeordnet += await self._buch(buch)
-                await self._pause()
+            eingeordnet = await self.nach_regeln()
+            if self.ki.bereit:
+                eingeordnet += await self._mit_ki()
+            return eingeordnet
+        finally:
+            self.laeuft = False
+            LAUFENDE_ARBEIT.reset(marke)
+
+    @staticmethod
+    async def _offene(nach: int, anzahl: int, wo: str = OFFEN) -> list[Werk]:
+        zeilen = await db.fetch_all(f"SELECT {SPALTEN} FROM books WHERE {wo} AND id > ? ORDER BY id LIMIT ?", (nach, anzahl))
+        return [Werk(**z) for z in zeilen]
+
+    async def nach_regeln(self) -> int:
+        """Die festen Regeln über alle offenen Werke, in Teilen; gibt zurück, wie viele sie eingeordnet haben."""
+        eingeordnet, zuletzt = 0, 0
+        while werke := await self._offene(zuletzt, 500):
+            zuletzt = werke[-1].id
+            urteile = [(w.id, u) for w in werke if (u := artregeln.urteil(w))]
+            async with db.einheit():
+                for nr, u in urteile:
+                    c = await db.execute("""UPDATE books SET typ = ?, einordnung = 'regel', einordnung_grund = ?, updated_at = datetime('now')
+                                            WHERE id = ? AND einordnung = ''""", (u.typ, u.grund, nr))
+                    eingeordnet += c.rowcount
+        if eingeordnet:
+            logger.info("Einordnen: %d Werke nach Regeln", eingeordnet)
+        return eingeordnet
+
+    async def _mit_ki(self) -> int:
+        eingeordnet, zuletzt, gefragt = 0, 0, False
+        try:
+            while self.bereit and not self.angehalten and (werke := await self._offene(zuletzt, settings.einordnen_je_anfrage, FUER_DIE_KI)):
+                zuletzt = werke[-1].id
+                if gefragt:
+                    await self._pause()
+                gefragt = True
+                eingeordnet += await self._teil(werke)
         except Angehalten:
             pass
         except KiFehler as f:
             self._unterbrochen(f)
-        finally:
-            self.laeuft = False
-            LAUFENDE_ARBEIT.reset(marke)
         return eingeordnet
 
-    @staticmethod
-    async def _naechstes(nach: int) -> Buchangaben | None:
-        z = await db.fetch_one(f"""SELECT id, hash, title, author, publisher, year, isbn, file_format FROM books
-                                   WHERE {OFFEN} AND id > ? ORDER BY id LIMIT 1""", (nach,))
-        return Buchangaben(**z) if z else None
-
-    async def _buch(self, buch: Buchangaben) -> int:
-        """1, wenn das Buch eingeordnet wurde; wirft KiFehler, wenn es auch für die übrigen nicht weitergeht."""
+    async def _teil(self, werke: list[Werk]) -> int:
+        """Eine Anfrage für diese Werke; wirft KiFehler, wenn es auch für die übrigen nicht weitergeht."""
         try:
-            v = await self.vorschlagen(buch)
+            vorschlaege = await self.vorschlagen(werke)
         except KiFehler as f:
             if f.art != "einzeln":
                 raise
-            self.grund = f"{buch.title or buch.id}: {f.grund}"
-            logger.info("Einordnen von Buch %d bleibt offen: %s", buch.id, f.grund)
+            self.grund = f"{len(werke)} Werke ab {werke[0].title or werke[0].id}: {f.grund}"
+            logger.info("Einordnen von %d Werken bleibt offen: %s", len(werke), f.grund)
             return 0
-        return await self._merken(buch.id, v)
+        if len(vorschlaege) < len(werke):
+            self.grund = f"Zu {len(werke) - len(vorschlaege)} von {len(werke)} Werken sagte die KI nichts Brauchbares"
+        return await self._merken(vorschlaege)
 
-    async def vorschlagen(self, buch: Buchangaben) -> Vorschlag:
+    async def vorschlagen(self, werke: list[Werk]) -> dict[int, Vorschlag]:
         """Die lokale KI über die Leitstelle; im Hintergrund, wartet geduldig, wenn die Leitstelle gerade nicht kann."""
-        text = await asyncio.to_thread(textanfang, buch.hash)
-        roh = await self.ki.json_antwort(SYSTEM, anfrage(buch, text), "einordnung", SCHEMA, titel=f"Art und Gattung: {buch.title[:80]}",
+        texte = await asyncio.to_thread(lambda: [textanfang(w.hash) for w in werke])
+        titel = f"Art und Gattung: {len(werke)} {'Werk' if len(werke) == 1 else 'Werke'} ab {werke[0].title[:60]}"
+        roh = await self.ki.json_antwort(SYSTEM, anfrage(werke, texte), "einordnung", schema(len(werke)), titel=titel,
                                          prioritaet="hintergrund", geduld=True, pruefen=self._pruefen_waehrend_warten,
-                                         temperature=0.1, max_tokens=200)
-        return vorschlag_aus(roh)
+                                         temperature=0.1, max_tokens=TOKEN_JE_WERK * len(werke) + 200)
+        return vorschlaege_aus(roh, werke)
 
     @staticmethod
-    async def _merken(buch: int, v: Vorschlag) -> int:
-        """Nur, solange das Buch offen ist: hat der Nutzer es inzwischen eingeordnet, gilt seine Wahl."""
-        c = await db.execute("""UPDATE books SET typ = ?, gattung = ?, einordnung = 'ki', updated_at = datetime('now')
-                                WHERE id = ? AND einordnung = ''""", (v.typ, v.gattung, buch))
-        await db.commit()
-        return c.rowcount
+    async def _merken(vorschlaege: dict[int, Vorschlag]) -> int:
+        """Nur, solange ein Werk offen ist: hat der Nutzer es inzwischen eingeordnet, gilt seine Wahl. Eine Gattung, nach
+        der nicht gefragt war, bleibt, wie sie ist."""
+        eingeordnet = 0
+        async with db.einheit():
+            for nr, v in vorschlaege.items():
+                c = await db.execute("""UPDATE books SET typ = ?, gattung = COALESCE(?, gattung), einordnung = 'ki', einordnung_grund = '',
+                                        updated_at = datetime('now') WHERE id = ? AND einordnung = ''""", (v.typ, v.gattung, nr))
+                eingeordnet += c.rowcount
+        return eingeordnet
 
     def _unterbrochen(self, f: KiFehler) -> None:
         if f.art == "abgelehnt":

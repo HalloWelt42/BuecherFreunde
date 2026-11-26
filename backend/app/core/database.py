@@ -426,7 +426,8 @@ NEUBAU_SPALTEN: tuple[tuple[str, str, str], ...] = (
     ("books", "umschlag_wahl", "TEXT NOT NULL DEFAULT ''"),        # Wahl des Nutzers: leer automatisch, gestaltet, titelseite
     ("books", "umschlag_schlicht", "INTEGER DEFAULT NULL"),        # Befund der Umschlagprüfung: NULL noch nicht geprüft, 0, 1
     ("books", "umschlag_geprueft", "INTEGER NOT NULL DEFAULT 0"),  # der umschlag_stand, zu dem der Befund gehört
-    ("books", "einordnung", "TEXT NOT NULL DEFAULT ''"),           # wer Art und Gattung bestimmt hat: leer offen, ki, hand
+    ("books", "einordnung", "TEXT NOT NULL DEFAULT ''"),           # wer Art und Gattung bestimmt hat: leer offen, regel, ki, hand
+    ("books", "einordnung_grund", "TEXT NOT NULL DEFAULT ''"),     # warum die feste Regel so entschied (BF-77)
     ("sammlung_vorschlag", "ki_zweifel", "INTEGER NOT NULL DEFAULT 0"),  # die KI hält es für keine Reihe (BF-66)
     # Katalog (BF-69, docs/neubau/KATALOG.md): Bereiche und Kategorien stehen neben den Regalen in categories
     ("categories", "art", "TEXT NOT NULL DEFAULT 'regal'"),        # bereich, kategorie, regal

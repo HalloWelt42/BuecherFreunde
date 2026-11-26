@@ -5,7 +5,8 @@ Geprüft wird jedes Buch, dessen Befund fehlt oder zu einem anderen Stand des Um
 `storage.umschlag_stand`). So braucht kein Ort, der einen Umschlag speichert, etwas davon zu wissen: ein neuer Umschlag hat
 einen neuen Stand und kommt in der nächsten Runde dran. Die Prüfung läuft beim Start und dann im Takt der Einstellung
 (`UMSCHLAEGE_PRUEFEN_TAKT_S`), schonend in Teilen mit kurzen Pausen und mit der Bildarbeit in einem eigenen Faden, damit
-die App flüssig bleibt. Wer nach einer Runde mit schlichten Umschlägen Bescheid haben will, trägt sich in `nach_runde` ein."""
+die App flüssig bleibt. Wer nach einer Runde, die Umschläge geprüft hat, Bescheid haben will, trägt sich in `nach_runde`
+ein (das Einordnen wartet auf den Befund, BF-77)."""
 
 from __future__ import annotations
 
@@ -62,7 +63,7 @@ def befunde(teil: Sequence[Offen]) -> list[Befund]:
 class Umschlagpruefung:
     def __init__(self) -> None:
         self._lauf: asyncio.Task | None = None
-        self.nach_runde: list[Callable[[], None]] = []      # wer nach einer Runde mit schlichten Umschlägen Bescheid bekommt
+        self.nach_runde: list[Callable[[], None]] = []      # wer nach einer Runde mit geprüften Umschlägen Bescheid bekommt
 
     def starten(self) -> None:
         self._lauf = asyncio.create_task(self._arbeiten())
@@ -94,7 +95,7 @@ class Umschlagpruefung:
             await asyncio.sleep(PAUSE_S)
         if offen:
             logger.info("Umschläge geprüft: %d, davon schlicht %d", len(offen), schlichte)
-        if schlichte:
+        if offen:
             for melden in self.nach_runde:
                 melden()
         return len(offen)

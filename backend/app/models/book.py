@@ -49,6 +49,9 @@ def gattung_pruefen(wert: str) -> str:
 
 
 Typ = Annotated[str, AfterValidator(typ_pruefen)]
+# Bücher und Besonderes (BF-77): ein Werk ist ein Buch (typ leer) oder etwas Besonderes (eine der TYPEN)
+Werkart = Literal["buch", "besonderes"]
+BESONDERES = tuple(t["id"] for t in TYPEN)
 Gattung = Annotated[str, AfterValidator(gattung_pruefen)]
 
 # Umschlag (BF-59): was die Oberfläche zeigt, das gestaltete Deckblatt oder die gespeicherte Titelseite. `umschlag_wahl`
@@ -57,9 +60,9 @@ Gattung = Annotated[str, AfterValidator(gattung_pruefen)]
 Umschlag = Literal["gestaltet", "titelseite"]
 UmschlagWahl = Literal["", "gestaltet", "titelseite"]
 Schlicht = Annotated[bool, BeforeValidator(bool)]
-# Wer Art und Gattung bestimmt hat: leer offen, "ki" die lokale KI (services/einordnung.py), "hand" der Nutzer; dann
-# fasst die KI das Buch nie wieder an
-Einordnung = Literal["", "ki", "hand"]
+# Wer Art und Gattung bestimmt hat: leer offen, "regel" eine feste Regel (services/artregeln.py, BF-77), "ki" die lokale
+# KI (services/einordnung.py), "hand" der Nutzer; dann fassen Regeln und KI das Buch nie wieder an
+Einordnung = Literal["", "regel", "ki", "hand"]
 VON_HAND: Einordnung = "hand"
 FELDER_DER_EINORDNUNG = frozenset({"typ", "gattung"})     # wer eins davon setzt, hat von Hand eingeordnet
 DARSTELLUNG = frozenset({"umschlag_wahl"})                # Wahl der Darstellung: keine Bearbeitung der Angaben
@@ -155,6 +158,8 @@ class BookResponse(Umschlagangaben):
     categories: list[dict] = Field(default_factory=list)
     sammlung: dict | None = None
     authors: list[dict] = Field(default_factory=list)
+    einordnung: str = ""                            # wer die Art bestimmt hat: leer offen, regel, ki, hand
+    einordnung_grund: str = ""                      # bei einer festen Regel: warum
     created_at: str = ""
     updated_at: str = ""
 

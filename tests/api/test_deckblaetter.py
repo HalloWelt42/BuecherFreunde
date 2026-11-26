@@ -1,22 +1,17 @@
-"""Gestaltete Deckblätter (BF-59): Gattungen, Umschlagangaben an Liste und Buch, Einordnen von Hand, die Umschlagprüfung
-mit kleinen Testbildern und das Einordnen mit der lokalen KI gegen eine Attrappe der Leitstelle."""
+"""Gestaltete Deckblätter (BF-59): Gattungen, Umschlagangaben an Liste und Buch, Einordnen von Hand und die Umschlagprüfung
+mit kleinen Testbildern. Das Einordnen mit Regeln und der lokalen KI prüft tests/api/test_einordnung.py."""
 
 import asyncio
-import json
 import os
-from urllib.parse import unquote
 
-import httpx
 import pytest
 
 from backend.app.core.config import settings
 from backend.app.models.book import GATTUNGEN, umschlag_zeigen
 from backend.app.services import umschlagpruefung as pruefung_modul
-from backend.app.services.einordnung import einordner
-from backend.app.services.storage import get_sidecar_path, save_cover, save_fulltext
+from backend.app.services.storage import get_sidecar_path, save_cover
 from backend.app.services.umschlagpruefung import Umschlagpruefung
 from tests.api.conftest import buch_erstellen
-from tests.api.test_ausfuehren import LEITSTELLE, chat_antwort, leitstelle  # noqa: F401 - Attrappe der Leitstelle
 from tests.backend.test_deckblatt import bild, titelseite
 
 ROT = (200, 20, 20)
@@ -153,127 +148,3 @@ async def test_umschlagpruefung_laeuft_gleich_beim_start(test_db, orte, monkeypa
     finally:
         await pruefung.stoppen()
     assert (await zeile(test_db, buch))["umschlag_schlicht"] == 1
-
-
-# -- Einordnen mit der lokalen KI -------------------------------------------------------------------------------------------
-
-@pytest.fixture
-def einordnen(orte, leitstelle, monkeypatch):  # noqa: F811
-    """Das Einordnen ohne Pausen; `sagt` legt fest, was die KI zu einem Titel antwortet (Text oder Antwort der Leitstelle)."""
-    monkeypatch.setattr(settings, "einordnen_abstand_s", 0)
-    monkeypatch.setattr(settings, "einordnen_an", True)
-    einordner.angehalten, einordner.grund = False, ""
-    modelle, antworten = leitstelle.antwort, {}
-
-    async def antwort(r: httpx.Request):
-        if r.url.path == "/v1/models":
-            return modelle(r)
-        titel = unquote(r.headers["X-Leitstelle-Titel"]).split("Art und Gattung: ", 1)[1]
-        a = antworten[titel]
-        a = await a() if callable(a) else a
-        return a if isinstance(a, httpx.Response) else chat_antwort(a if isinstance(a, str) else json.dumps(a))
-
-    leitstelle.antwort = antwort
-    leitstelle.sagt = antworten.update
-    leitstelle.chats = lambda: [r for r in leitstelle.anfragen if r.url.path == "/v1/chat/completions"]
-    yield leitstelle
-    einordner.angehalten, einordner.grund = False, ""
-
-
-async def test_einordnen_schlichter_buecher(client, test_db, einordnen):
-    krimi = await buch_erstellen(test_db, hash="e1", title="Mord im Pfarrhaus", author="Agatha", isbn="", year=1930)
-    akte = await buch_erstellen(test_db, hash="e2", title="Bedienungsanleitung Waschmaschine", isbn="")
-    bunt = await buch_erstellen(test_db, hash="e3", title="Bunter Roman")
-    von_hand = await buch_erstellen(test_db, hash="e4", title="Mein Heft")
-    frueher = await buch_erstellen(test_db, hash="e5", title="Altes Heft")
-    for b in (krimi, akte, von_hand, frueher):
-        await setzen(test_db, b, umschlag_schlicht=1)
-    await setzen(test_db, bunt, umschlag_schlicht=0)
-    await setzen(test_db, von_hand, typ="heft", einordnung="hand")
-    await setzen(test_db, frueher, typ="heft")                         # vor BF-59 von Hand gesetzt, einordnung noch leer
-    save_fulltext("e1", "Kapitel 1\fDie Leiche lag im Arbeitszimmer des Pfarrers. " + "Wort " * 1000)
-    einordnen.sagt({"Mord im Pfarrhaus": {"art": "buch", "gattung": "krimi"},
-                    "Bedienungsanleitung Waschmaschine": {"art": "dokument", "gattung": "krimi"}})     # Gattung nur bei Büchern
-
-    assert await einordner.runde() == 2
-    z = {b: await zeile(test_db, b) for b in (krimi, akte, bunt, von_hand, frueher)}
-    assert (z[krimi]["typ"], z[krimi]["gattung"], z[krimi]["einordnung"]) == ("", "krimi", "ki")
-    assert (z[akte]["typ"], z[akte]["gattung"], z[akte]["einordnung"]) == ("dokument", "", "ki")
-    assert (z[bunt]["einordnung"], z[von_hand]["typ"], z[von_hand]["einordnung"]) == ("", "heft", "hand")   # nicht angefasst
-    assert (z[frueher]["typ"], z[frueher]["einordnung"]) == ("heft", "")
-    assert all(x["manuell_bearbeitet"] == 0 for x in z.values())
-
-    chats = einordnen.chats()
-    assert len(chats) == 2
-    anfrage = chats[0]
-    koerper = json.loads(anfrage.content)
-    nutzer = koerper["messages"][1]["content"]
-    assert "Titel: Mord im Pfarrhaus" in nutzer and "Autor: Agatha" in nutzer and "Jahr: 1930" in nutzer and "Format: pdf" in nutzer
-    assert "Kapitel 1 Die Leiche lag im Arbeitszimmer" in nutzer and len(nutzer) < 1800           # nur der Anfang des Volltexts
-    schema = koerper["response_format"]["json_schema"]["schema"]
-    assert schema["properties"]["art"]["enum"] == ["buch", "dokument", "heft", "katalog", "broschuere"]
-    assert schema["properties"]["gattung"]["enum"][:2] == ["", "krimi"]
-    assert anfrage.headers["X-Leitstelle-Prioritaet"] == "hintergrund"
-    assert anfrage.headers["X-Leitstelle-Arbeit"].startswith("bf-einordnen-")
-
-    assert await einordner.runde() == 0 and len(einordnen.chats()) == 2                           # nichts mehr offen
-    s = (await client.get("/api/einordnung/stand")).json()
-    assert s == {"an": True, "bereit": True, "laeuft": False, "angehalten": False, "grund": "", "offen": 0, "erledigt": 2}
-
-
-async def test_fehler_der_ki_ueberspringt_das_buch(client, test_db, einordnen):
-    erstes = await buch_erstellen(test_db, hash="f1", title="Erstes")
-    zweites = await buch_erstellen(test_db, hash="f2", title="Zweites")
-    for b in (erstes, zweites):
-        await setzen(test_db, b, umschlag_schlicht=1)
-    einordnen.sagt({"Erstes": "Das weiß ich nicht.", "Zweites": {"art": "buch", "gattung": "roman"}})
-
-    assert await einordner.runde() == 1 and not einordner.angehalten
-    assert (await zeile(test_db, erstes))["einordnung"] == "" and (await zeile(test_db, zweites))["gattung"] == "roman"
-    s = (await client.get("/api/einordnung/stand")).json()
-    assert s["offen"] == 1 and s["erledigt"] == 1 and "kein JSON" in s["grund"]
-    einordnen.sagt({"Erstes": {"art": "katalog", "gattung": ""}})                                   # später: erneut
-    assert await einordner.runde() == 1 and (await zeile(test_db, erstes))["typ"] == "katalog"
-    assert einordner.grund == ""
-
-
-async def test_von_hand_gewinnt_auch_waehrend_die_ki_denkt(test_db, einordnen):
-    buch = await buch_erstellen(test_db, hash="h1", title="Umstritten")
-    await setzen(test_db, buch, umschlag_schlicht=1)
-
-    async def inzwischen_von_hand():
-        await setzen(test_db, buch, typ="heft", einordnung="hand")
-        return {"art": "buch", "gattung": "thriller"}
-
-    einordnen.sagt({"Umstritten": inzwischen_von_hand})
-    assert await einordner.runde() == 0
-    z = await zeile(test_db, buch)
-    assert (z["typ"], z["gattung"], z["einordnung"]) == ("heft", "", "hand")
-
-
-async def test_ablehnung_haelt_an_bis_fortgesetzt(client, test_db, einordnen):
-    for i in range(2):
-        await setzen(test_db, await buch_erstellen(test_db, hash=f"x{i}", title=f"Buch {i}"), umschlag_schlicht=1)
-    abgelehnt = httpx.Response(403, json={"error": {"code": "faehigkeit_nicht_erlaubt", "message": "Fähigkeit text fehlt"}})
-    einordnen.sagt({"Buch 0": abgelehnt, "Buch 1": abgelehnt})
-
-    assert await einordner.runde() == 0 and len(einordnen.chats()) == 1                           # nie in einer Schleife
-    s = (await client.get("/api/einordnung/stand")).json()
-    assert s["angehalten"] and "Fähigkeit text fehlt" in s["grund"] and s["offen"] == 2
-    assert await einordner.runde() == 0 and len(einordnen.chats()) == 1
-    einordnen.sagt({"Buch 0": {"art": "heft", "gattung": ""}, "Buch 1": {"art": "heft", "gattung": ""}})
-    s = (await client.post("/api/einordnung/fortsetzen")).json()
-    assert not s["angehalten"] and s["grund"] == ""
-    assert await einordner.runde() == 2
-
-
-async def test_abgeschaltet_oder_ohne_leitstelle_fragt_niemand(client, test_db, einordnen, monkeypatch):
-    await setzen(test_db, await buch_erstellen(test_db, hash="o1", title="Offen"), umschlag_schlicht=1)
-    monkeypatch.setattr(settings, "einordnen_an", False)
-    assert await einordner.runde() == 0
-    s = (await client.get("/api/einordnung/stand")).json()
-    assert (s["an"], s["bereit"], s["offen"]) == (False, False, 1)
-    monkeypatch.setattr(settings, "einordnen_an", True)
-    monkeypatch.setattr(settings, "leitstelle_adresse", "")
-    assert await einordner.runde() == 0 and not (await client.get("/api/einordnung/stand")).json()["bereit"]
-    assert einordnen.chats() == []

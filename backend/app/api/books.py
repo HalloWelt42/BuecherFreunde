@@ -19,7 +19,7 @@ from backend.app.core.database import db
 from backend.app.api import vorhanden
 from backend.app.models.book import (
     DARSTELLUNG, FELDER_DER_EINORDNUNG, VON_HAND, BookListResponse, BookListItem, BookResponse, BookUpdate, BuchEintrag,
-    Listeneintrag, SammlungsEintrag, Sammlungsstapel, typ_pruefen,
+    Listeneintrag, SammlungsEintrag, Sammlungsstapel, Werkart, typ_pruefen,
 )
 from backend.app.models.textansicht import TextBaustein, TextSeite, TextSeitenAntwort
 from backend.app.services.textansicht import Baustein, Codeteil, abbildung_png, seiten_lesen
@@ -185,6 +185,7 @@ async def list_books(
     nicht_kategorie: Nr | None = Query(None, description="Nur Bücher, die nicht in diesem Regal stehen"),
     ohne_kategorie: bool | None = Query(None, description="True: nur Bücher in keiner Kategorie des Katalogs, False: nur die in einer"),
     typ: str | None = Query(None, description="Typ-Filter (dokument, heft, katalog, broschuere)"),
+    art: Werkart | None = Query(None, description="buch: nur Bücher (Art leer), besonderes: alles, was kein Buch ist"),
     favorit: bool | None = Query(None, description="Nur Favoriten"),
     zu_lesen: bool | None = Query(None, description="Nur Zum-Lesen"),
     bewertung_min: int | None = Query(None, ge=0, le=5, description="Mindestbewertung"),
@@ -239,6 +240,11 @@ async def list_books(
     if typ is not None and typ.strip():
         conditions.append("b.typ = ?")
         params.append(typ.strip())
+
+    if art is not None:
+        bedingung, werte = buchliste.nach_art(art)
+        conditions.append(bedingung)
+        params.extend(werte)
 
     if favorit is not None:
         conditions.append(ob(favorit, "SELECT book_id FROM user_book_data WHERE is_favorite = 1"))
@@ -503,7 +509,7 @@ async def update_book(
     if updates.keys() - DARSTELLUNG:                 # die Wahl der Darstellung allein bearbeitet keine Angabe
         zuweisungen += ["manuell_bearbeitet = 1", "updated_at = datetime('now')"]
     if updates.keys() & FELDER_DER_EINORDNUNG:
-        zuweisungen.append(f"einordnung = '{VON_HAND}'")
+        zuweisungen.append(f"einordnung = '{VON_HAND}', einordnung_grund = ''")
     await db.execute(f"UPDATE books SET {', '.join(zuweisungen)} WHERE id = ?", (*updates.values(), book_id))
 
     if "author" in updates:
@@ -604,7 +610,7 @@ async def bulk_action(
         typ_wert = _typ(action.wert)
         for bid in action.book_ids:
             betroffen += (await db.execute(
-                f"UPDATE books SET typ = ?, einordnung = '{VON_HAND}' WHERE id = ?",
+                f"UPDATE books SET typ = ?, einordnung = '{VON_HAND}', einordnung_grund = '' WHERE id = ?",
                 (typ_wert, bid),
             )).rowcount
         await db.commit()

@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from backend.app.core.auth import verify_token, verify_token_inhalt
 from backend.app.core.config import settings
 from backend.app.core.database import db
-from backend.app.services import schnellfilter
+from backend.app.services import buchliste, schnellfilter
 
 logger = logging.getLogger("buecherfreunde")
 
@@ -101,6 +101,8 @@ async def get_stats(_token: str = Depends(verify_token)) -> dict:
     mit_highlights = await db.fetch_one(
         "SELECT COUNT(DISTINCT book_id) as n FROM book_highlights"
     )
+    je_art = {art: await db.fetch_one(f"SELECT COUNT(*) AS n FROM books b WHERE {bedingung}", werte)
+              for art, (bedingung, werte) in (("buch", buchliste.nach_art("buch")), ("besonderes", buchliste.nach_art("besonderes")))}
     total_n = total["n"] if total else 0
     gelesen_n = gelesen["n"] if gelesen else 0
     return {
@@ -109,7 +111,9 @@ async def get_stats(_token: str = Depends(verify_token)) -> dict:
         "leseliste": to_read["n"] if to_read else 0,
         "gelesen": gelesen_n,
         "ungelesen": total_n - gelesen_n,
-        "buecher_mit_isbn": mit_isbn["n"] if mit_isbn else 0,
+        "buecher": je_art["buch"]["n"],                  # Art Buch (BF-77)
+        "besonderes": je_art["besonderes"]["n"],         # alles, was kein Buch ist
+        "buecher_mit_isbn": mit_isbn["n"] if mit_isbn else 0,        # bis die Oberfläche nur noch nach Art zählt
         "dokumente": ohne_isbn["n"] if ohne_isbn else 0,
         "weiterlesen": weiterlesen["n"] if weiterlesen else 0,
         "autoren": autoren["n"] if autoren else 0,

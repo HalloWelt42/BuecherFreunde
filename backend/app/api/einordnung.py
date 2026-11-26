@@ -1,4 +1,4 @@
-"""Stand des Einordnens mit der lokalen KI (BF-59, services/einordnung.py) für die Einstellungen."""
+"""Stand des Einordnens (BF-59, BF-77, services/einordnung.py): Art aller Werke nach Regeln und mit der lokalen KI."""
 
 from fastapi import APIRouter, Depends
 
