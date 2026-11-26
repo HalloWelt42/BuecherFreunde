@@ -140,3 +140,7 @@ Zwei Läufe im Hintergrund, gestartet mit der App:
 
 Spalten in `books`: `gattung`, `umschlag_wahl`, `umschlag_schlicht` (NULL noch nicht geprüft, 0, 1), `umschlag_geprueft`
 (Stand des geprüften Umschlags), `einordnung` (leer offen, `ki`, `hand`).
+
+- Wortsuche (`GET /api/search`), Suche nach Bedeutung und Autorenseite (`books`) tragen je Buch `deckblatt` bzw. dieselben Felder:
+  `{typ, gattung, umschlag_wahl, umschlag_schlicht, umschlag, cover_path, file_format, year}` (services/deckblattangaben.py), damit
+  überall dasselbe Deckblatt erscheint wie in der Bücherliste.

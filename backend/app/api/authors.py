@@ -19,7 +19,7 @@ from backend.app.quellen import autoren as quellen
 from backend.app.quellen.autoren import Autorauskunft
 from backend.app.quellen.modelle import Autorfrage
 from backend.app.quellen.vorrang import hintergrund
-from backend.app.services import autoren_uebernahme as uebernahme
+from backend.app.services import autoren_uebernahme as uebernahme, deckblattangaben
 from backend.app.services.anhalten import Anhalter
 from backend.app.services.autoren_uebernahme import OHNE_EINTRAG
 from backend.app.services.autoren_uebernahme import slug as _slugify
@@ -390,7 +390,9 @@ async def get_author(author_id: Nr, _token: str = Depends(verify_token)):
         (author_id,),
     )
 
-    return AuthorResponse(**author, books=books, werke=[dict(w) for w in werke], verweise=await uebernahme.verweise(author_id))
+    angaben = await deckblattangaben.fuer([b["id"] for b in books])
+    mit_deckblatt = [dict(b) | (angaben[b["id"]].model_dump() if b["id"] in angaben else {}) for b in books]
+    return AuthorResponse(**author, books=mit_deckblatt, werke=[dict(w) for w in werke], verweise=await uebernahme.verweise(author_id))
 
 
 @router.patch("/{author_id}")

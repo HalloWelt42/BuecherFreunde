@@ -1,6 +1,7 @@
 <script lang="ts">
   // Rahmen eines Treffers: Umschlag, Titel, Auszug, rechts Art und Sprung. Ein Klick daneben zeigt das Buch in der Vorschau.
   import type { Snippet } from "svelte";
+  import type { Deckblattangaben } from "../../lib/typen";
   import { holeBuch } from "../../lib/api/books";
   import { schale } from "../../lib/stand/schale.svelte";
   import { wahl } from "../../lib/stand/wahl.svelte";
@@ -9,7 +10,7 @@
   import { kontext } from "../../lib/stand/kontextmenue.svelte";
   import { buchmenue } from "../bibliothek/buchmenue";
 
-  let { buch, titel, autor, ort, symbol, ton, wort, children, knopf }: { buch: number; titel: string; autor: string; ort: string; symbol: string; ton: "gut" | "info"; wort: string; children: Snippet; knopf: Snippet } = $props();
+  let { buch, titel, autor, deckblatt = null, ort, symbol, ton, wort, children, knopf }: { buch: number; titel: string; autor: string; deckblatt?: Deckblattangaben | null; ort: string; symbol: string; ton: "gut" | "info"; wort: string; children: Snippet; knopf: Snippet } = $props();
 
   async function zeige(e: MouseEvent) {
     if (!schale.mitVorschau || (e.target as Element).closest("a, button")) return;
@@ -23,7 +24,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <article class="treffer platte" class:gewaehlt={schale.mitVorschau && wahl.buch?.id === buch} onclick={zeige} use:kontext={buchmenue(buch)}>
-  <a href="/book/{buch}" aria-label={titel} tabindex="-1"><Umschlag buch={{ id: buch, title: titel, author: autor }} /></a>
+  <a href="/book/{buch}" aria-label={titel} tabindex="-1"><Umschlag buch={{ ...deckblatt, id: buch, title: titel, author: autor }} /></a>
   <div class="mitte">
     <h3><a href="/book/{buch}">{titel}</a></h3>
     <p class="leise">{[autor, ort].filter(Boolean).join(", ")}</p>

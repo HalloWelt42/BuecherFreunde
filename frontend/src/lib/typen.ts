@@ -164,12 +164,25 @@ export interface Etikett {
   created_at: string;
 }
 
+/** Was ein Treffer braucht, um sein Deckblatt zu zeigen wie die Bücherliste (BF-59, services/deckblattangaben.py) */
+export interface Deckblattangaben {
+  typ: string;
+  gattung: string;
+  umschlag: Umschlagart;
+  umschlag_schlicht: boolean;
+  umschlag_wahl: "" | Umschlagart;
+  cover_path: string;
+  file_format: string;
+  year: number | null;
+}
+
 export interface Treffer {
   book_id: number;
   titel: string;
   autor: string;
   snippet: string;
   relevanz: number;
+  deckblatt: Deckblattangaben | null;
 }
 
 export interface Bedeutungstreffer {
@@ -181,6 +194,7 @@ export interface Bedeutungstreffer {
   auszug: string;
   naehe: "sehr nah" | "verwandt";
   wert: number;
+  deckblatt: Deckblattangaben | null;
 }
 
 export interface BedeutungAntwort {

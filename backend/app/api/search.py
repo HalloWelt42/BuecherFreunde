@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from backend.app.core.auth import verify_token
 from backend.app.models.grenzen import VERSATZ
+from backend.app.services import deckblattangaben
 from backend.app.services.search import (
     SearchResult,
     optimize_index,
@@ -52,6 +53,7 @@ async def search(
     """
     results, parsed = await search_books(q, limit, offset)
     total = await search_count(q)
+    angaben = await deckblattangaben.fuer([r.book_id for r in results])
 
     treffer = [
         {
@@ -60,6 +62,7 @@ async def search(
             "autor": r.author,
             "snippet": r.snippet,
             "relevanz": r.relevance,
+            "deckblatt": angaben[r.book_id].model_dump() if r.book_id in angaben else None,
         }
         for r in results
     ]

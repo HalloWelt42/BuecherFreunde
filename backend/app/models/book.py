@@ -85,6 +85,15 @@ class Umschlagangaben(BaseModel):
         return umschlag_zeigen(self.umschlag_wahl, self.umschlag_schlicht)
 
 
+class Deckblatt(Umschlagangaben):
+    """Was ein Treffer oder ein Werk braucht, um sein Deckblatt zu zeigen (Suche, Autorenseite; services/deckblattangaben.py)."""
+
+    typ: str = ""
+    cover_path: str = ""
+    file_format: str = ""
+    year: int | None = None
+
+
 class BookListItem(Umschlagangaben):
     """Buch in der Listendarstellung (kompakt)."""
 

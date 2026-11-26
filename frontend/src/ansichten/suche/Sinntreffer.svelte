@@ -11,7 +11,7 @@
   let ort = $derived([treffer.seite ? `Seite ${zahl(treffer.seite)}` : "", treffer.gedruckt ? `gedruckt ${treffer.gedruckt}` : ""].filter(Boolean).join(", "));
 </script>
 
-<Trefferkarte buch={treffer.buch_id} titel={treffer.titel} autor={treffer.autor} {ort} symbol="brain" ton="gut" wort={treffer.naehe}>
+<Trefferkarte buch={treffer.buch_id} titel={treffer.titel} autor={treffer.autor} deckblatt={treffer.deckblatt} {ort} symbol="brain" ton="gut" wort={treffer.naehe}>
   <p class="zitat">{treffer.auszug}</p>
   {#snippet knopf()}<Knopf text={treffer.seite ? `Seite ${zahl(treffer.seite)}` : "Lesen"} symbol="book-open" klein href={leseAdresse(treffer.buch_id, { page: treffer.seite ?? undefined, stelle: treffer.auszug.slice(0, STUECK) })} />{/snippet}
 </Trefferkarte>

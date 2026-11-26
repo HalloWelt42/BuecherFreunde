@@ -37,7 +37,7 @@
 </script>
 
 <div use:sobaldSichtbar>
-<Trefferkarte buch={treffer.book_id} titel={treffer.titel} autor={treffer.autor} ort={stellen ? `Seite ${zahl(stellen.seite)}` : ""} symbol="font" ton="info" wort={stellen ? `wörtlich, ${anzahl(stellen.zahl, "Stelle", "Stellen")}` : begriff ? "wörtlich" : "passt zum Filter"}>
+<Trefferkarte buch={treffer.book_id} titel={treffer.titel} autor={treffer.autor} deckblatt={treffer.deckblatt} ort={stellen ? `Seite ${zahl(stellen.seite)}` : ""} symbol="font" ton="info" wort={stellen ? `wörtlich, ${anzahl(stellen.zahl, "Stelle", "Stellen")}` : begriff ? "wörtlich" : "passt zum Filter"}>
   {#if treffer.snippet}<p class="zitat"><Auszug text={treffer.snippet} /></p>{/if}
   {#snippet knopf()}<Knopf text={stellen ? `Seite ${zahl(stellen.seite)}` : "Lesen"} symbol="book-open" klein href={ziel} />{/snippet}
 </Trefferkarte>

@@ -12,6 +12,7 @@ import httpx
 from backend.app.ablage.wolke import _pruefung, app_kopf
 from backend.app.core.config import settings
 from backend.app.core.database import db
+from backend.app.services import deckblattangaben
 
 logger = logging.getLogger("buecherfreunde.bedeutung")
 SEHR_NAH = 0.60
@@ -78,13 +79,15 @@ async def suchen(frage: str, anzahl: int = 20, buch: int | None = None) -> dict:
         return leer | {"grund": "Der Rechner für die Bedeutung schläft"}
     nummern = [int(t["herkunft"][5:]) for t in d["treffer"] if t["herkunft"].startswith("buch:")]
     namen = {z["id"]: z for z in await db.fetch_all(f"SELECT id, title, author FROM books WHERE id IN ({','.join('?' * len(nummern)) or 'NULL'})", tuple(nummern))}
+    angaben = await deckblattangaben.fuer(nummern)
     treffer = []
     for t, nr in zip([t for t in d["treffer"] if t["herkunft"].startswith("buch:")], nummern):
         if nr not in namen or (buch and nr != buch):
             continue
         wert = round(t.get("dicht") or 0, 3)
         treffer.append({"buch_id": nr, "titel": namen[nr]["title"], "autor": namen[nr]["author"], "seite": t.get("dateiseite") or (int(t["seite"]) if (t.get("seite") or "").isdigit() else None),
-                        "gedruckt": t.get("gedruckt") or "", "auszug": _auszug(t["text"]), "naehe": "sehr nah" if wert >= SEHR_NAH else "verwandt", "wert": wert})
+                        "gedruckt": t.get("gedruckt") or "", "auszug": _auszug(t["text"]), "naehe": "sehr nah" if wert >= SEHR_NAH else "verwandt", "wert": wert,
+                        "deckblatt": angaben[nr].model_dump() if nr in angaben else None})
     return {"verfuegbar": True, "grund": "", "treffer": treffer[:anzahl]}
 
 
