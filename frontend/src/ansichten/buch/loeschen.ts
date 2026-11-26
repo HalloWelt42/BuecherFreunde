@@ -3,9 +3,11 @@ import { loescheBuch, loeschfolgen } from "../../lib/api/books";
 import { groesse, zahl } from "../../lib/format";
 import { navigate } from "../../lib/router.svelte";
 import { bestand } from "../../lib/stand/bestand.svelte";
+import { buecher } from "../../lib/stand/buecher.svelte";
 import { filter } from "../../lib/stand/filter.svelte";
 import { melde } from "../../lib/stand/meldungen.svelte";
 import { frage } from "../../lib/stand/rueckfrage.svelte";
+import { wahl } from "../../lib/stand/wahl.svelte";
 import type { Loeschfolgen } from "../../lib/typen";
 
 const anzahl = (n: number, eins: string, mehr: string) => `${zahl(n)} ${n === 1 ? eins : mehr}`;
@@ -52,6 +54,8 @@ export async function buchLoeschen(id: number): Promise<boolean> {
     return false;
   }
   melde.gut(f.datei?.papierkorb ? `${f.titel} gelöscht. Die Datei liegt im Papierkorb der Kellerwolke.` : `${f.titel} gelöscht.`);
+  wahl.vergiss(id);
+  buecher.entferne(id);
   void bestand.laden();
   navigate(filter.letzteAdresse, true);
   return true;

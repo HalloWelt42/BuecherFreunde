@@ -33,6 +33,11 @@ class Wahl {
     this.#farben[id] = farben;
   }
 
+  /** Ein gelöschtes Buch steht nicht mehr in der Vorschau (BF-60); die nächste Liste wählt neu */
+  vergiss(id: number): void {
+    if (this.buch?.id === id) this.buch = null;
+  }
+
   /** Änderungen an einem Buch (Favorit, Sterne) auch in der Vorschau zeigen */
   aktualisiere(id: number, neu: Partial<Buch>): void {
     if (this.buch?.id === id) this.buch = { ...this.buch, ...neu };

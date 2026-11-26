@@ -105,6 +105,13 @@ class Buecher {
     void this.laden();
   }
 
+  /** Ein gelöschtes Buch verlässt die Liste gleich, ohne sie neu zu laden (BF-60) */
+  entferne(id: number): void {
+    const vorher = this.liste.length;
+    this.liste = this.liste.filter((b) => b.id !== id);
+    if (this.liste.length < vorher) this.gesamt = Math.max(0, this.gesamt - 1);
+  }
+
   /** Ein einzelnes Buch in der Liste ändern (Favorit, Sterne, Lesesofa) */
   aktualisiere(id: number, neu: Partial<Buch>): void {
     this.liste = this.liste.map((b) => (b.id === id ? { ...b, ...neu } : b));

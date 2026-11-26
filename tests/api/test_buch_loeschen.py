@@ -43,6 +43,9 @@ async def _buch_mit_allem(test_db, in_der_wolke: bool = True) -> int:
     await test_db.execute("INSERT INTO user_book_data (book_id, reading_position) VALUES (?, 'epubcfi(/6/4)')", (buch,))
     await test_db.execute("INSERT INTO vorlesestelle (buch_id, einheit, zeichen) VALUES (?, 2, 10)", (buch,))
     await test_db.execute("INSERT INTO book_categories (book_id, category_id) VALUES (?, ?)", (buch, await kategorie_erstellen(test_db, name="Klassiker")))
+    ungeordnet = await kategorie_erstellen(test_db, name="Ungeordnet")          # vergibt die App selbst, zählt nicht als Regal
+    await test_db.execute("UPDATE categories SET spezial = 1 WHERE id = ?", (ungeordnet,))
+    await test_db.execute("INSERT INTO book_categories (book_id, category_id) VALUES (?, ?)", (buch, ungeordnet))
     if in_der_wolke:
         await test_db.execute("INSERT INTO ablage_datei (hash, knoten, name, pfad, groesse) VALUES ('loesch01', 'k7', 'Der Prozeß.epub', "
                               "'Apps/BücherFreunde/Bücher/D/Der Prozeß.epub', 173000)")
