@@ -5,7 +5,8 @@ Dran sind die Werke, die in keiner Kategorie stehen und keinen offenen Vorschlag
 
 1. Regeln für jedes Werk und jede sichtbare Kategorie, die für seine Art gilt (`arten` ihres Bereichs).
 2. Die KI in Anfragen zu `katalog_ki_je_anfrage` Werken einer Art, mit den Kategorien, die für diese Art gelten.
-3. Regel und KI zusammen (katalog/vorschlaege.py) als offene Vorschläge, in einer Einheit mit dem Stand des Laufs.
+3. Regel und KI zusammen (katalog/vorschlaege.py) als offene Vorschläge, in einer Einheit mit dem Stand des Laufs. Passt
+   ein Werk zu einem Teil einer großen Kategorie, wird der Teil vorgeschlagen, sonst die große.
 
 Vor dem ersten Stapel fragt der Lauf die KI nach den alten Regalen, zu denen keine Regel passt (katalog/alt.py).
 Antwortet die KI zu einer Anfrage nicht brauchbar, bleibt es für diese Werke bei den Regeln. Kann sie gar nicht (weg,
@@ -41,8 +42,14 @@ class KeinKatalog(Exception):
     pass
 
 
-def teile(folge: Sequence, groesse: int) -> list[Sequence]:
+def stuecke(folge: Sequence, groesse: int) -> list[Sequence]:
     return [folge[i:i + groesse] for i in range(0, len(folge), groesse)]
+
+
+def teile(kats: Sequence[Einordnungskategorie]) -> dict[int, int]:
+    """Je Teil einer großen Kategorie die Nummer der großen, soweit beide eingeordnet werden."""
+    nummer = {k.schluessel: k.id for k in kats}
+    return {k.id: nummer[k.teil_von] for k in kats if k.teil_von in nummer}
 
 
 def regelfunde(buecher: Sequence[Buchmerkmale], pruefer: Sequence[tuple[Einordnungskategorie, Pruefer]]) -> dict[tuple[int, int], list[Regeltreffer]]:
@@ -115,7 +122,7 @@ class Einordner(Hintergrundlauf):
         await lauf.setzen(nr, stapel_gesamt=gesamt, schritt=f"Stapel {stapel} von {gesamt}: Regeln")
         regeln = await asyncio.to_thread(regelfunde, buecher, pruefer)
         ki_funde = await self._ki(nr, stapel, gesamt, buecher, kats) if self.ki.bereit else {}
-        await self._merken(nr, buecher, vorschlaege.zusammenfuehren(regeln, ki_funde))
+        await self._merken(nr, buecher, vorschlaege.teil_vor_ganzem(vorschlaege.zusammenfuehren(regeln, ki_funde), teile(kats)))
         return True
 
     async def _ki(self, nr: int, stapel: int, gesamt: int, buecher: list[Buchmerkmale],
@@ -125,7 +132,7 @@ class Einordner(Hintergrundlauf):
         je_art: dict[str, list[Buchmerkmale]] = defaultdict(list)
         for b in buecher:
             je_art[b.typ].append(b)
-        anfragen = [(art, t) for art, bs in je_art.items() for t in teile(bs, je_anfrage)]
+        anfragen = [(art, t) for art, bs in je_art.items() for t in stuecke(bs, je_anfrage)]
         aus: dict[tuple[int, int], KiFund] = {}
         for i, (art, teil) in enumerate(anfragen, 1):
             passend = [k for k in kats if art in k.arten]
@@ -161,7 +168,7 @@ class Einordner(Hintergrundlauf):
         """Die KI zu den alten Regalen, zu denen keine Regel passt."""
         offen = await alt.ohne_regelvorschlag(pruefer)
         nummern = {k.schluessel: k.id for k in kats}
-        anfragen = teile(offen, (await einstellungen.lesen()).ki_je_anfrage)
+        anfragen = stuecke(offen, (await einstellungen.lesen()).ki_je_anfrage)
         for i, teil in enumerate(anfragen, 1):
             await lauf.setzen(nr, schritt=f"Alte Regale: KI, Anfrage {i} von {len(anfragen)}")
             try:

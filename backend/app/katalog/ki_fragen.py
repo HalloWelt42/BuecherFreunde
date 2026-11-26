@@ -67,7 +67,17 @@ def _liste(roh: object, feld: str) -> list:
 
 
 def katalogtext(kategorien: Sequence[Einordnungskategorie]) -> str:
-    return "\n".join(f"- {k.schluessel}: {k.name}" + (f" ({k.ki_beschreibung})" if k.ki_beschreibung else "") for k in kategorien)
+    """Je Kategorie Schlüssel, Name und was hineingehört; eine große mit Teilen nur für das, was zu keinem Teil passt."""
+    mit_teilen = {k.teil_von for k in kategorien if k.teil_von}
+    zeilen = []
+    for k in kategorien:
+        was = [k.ki_beschreibung] if k.ki_beschreibung else []
+        if k.schluessel in mit_teilen:
+            was.append("nur, wenn keiner ihrer Teile passt")
+        if k.teil_von:
+            was.append(f"Teil von {k.teil_von}")
+        zeilen.append(f"- {k.schluessel}: {k.name}" + (f" ({'; '.join(was)})" if was else ""))
+    return "\n".join(zeilen)
 
 
 # -- Einordnen --------------------------------------------------------------------------------------------------------------

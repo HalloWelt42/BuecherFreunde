@@ -436,6 +436,7 @@ NEUBAU_SPALTEN: tuple[tuple[str, str, str], ...] = (
     ("categories", "verborgen", "INTEGER NOT NULL DEFAULT 0"),     # 1: ohne Bücher, nicht in der Leiste
     ("categories", "herkunft", "TEXT NOT NULL DEFAULT ''"),        # standard, geteilt, neu, eigen
     ("categories", "arten", "TEXT NOT NULL DEFAULT '[\"\"]'"),      # Bereich: JSON, für welche Arten (books.typ) er gilt; "" Buch
+    ("categories", "teil_von", "TEXT NOT NULL DEFAULT ''"),        # Kategorie: Schlüssel der großen, deren Teil sie ist
 )
 
 

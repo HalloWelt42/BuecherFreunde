@@ -130,6 +130,8 @@ async def test_entwurf_aus_dem_bestand(client, test_db):
     assert (await client.put("/api/katalog/einstellungen", json={"stapel": 500, "ki_je_anfrage": 40, "sicher_ab": 80, "teilen_ab": 2})).status_code == 200
     for t in ("Python für Neugierige", "Webseiten bauen mit HTML", "Rechnernetze im Haus"):
         await werk(test_db, t, regale=("Informatik",))
+    for t, r in (("Kräfte und Felder", "Physik"), ("Stoffe im Alltag", "Chemie"), ("Zellen verstehen", "Biologie")):
+        await werk(test_db, t, regale=(r,))                                  # jedes trifft auch einen Teil
     await werk(test_db, "Nebel über der Marsch", regale=("Kriminalroman",))
     await werk(test_db, "Gebrauchsanleitung Kaffeemühle", typ="dokument")
     await werk(test_db, "Bedienungsanleitung für den Roman")               # ein Buch: Besonderes gilt nur für Dokumente
@@ -139,19 +141,30 @@ async def test_entwurf_aus_dem_bestand(client, test_db):
     assert r.json()["entwurf"] is None and r.json()["lauf"]["laeuft"] is True
     await bestandslauf.warten()
     s = await entwurf(client)
-    assert (s["lauf"]["stand"], s["lauf"]["grund"], s["lauf"]["regeln"], s["lauf"]["ki"]) == ("fertig", OHNE_KI, 6, 0)
+    assert (s["lauf"]["stand"], s["lauf"]["grund"], s["lauf"]["regeln"], s["lauf"]["ki"]) == ("fertig", OHNE_KI, 9, 0)
     bereiche = {b["schluessel"]: b for b in s["entwurf"]["bereiche"]}
     kategorien = {k["schluessel"]: k for b in bereiche.values() for k in b["kategorien"]}
 
-    assert "technik/informatik" not in kategorien                           # 3 Treffer über 2: geteilt
+    # 3 Treffer über 2: geteilt; die große bleibt für das Buch, das zu keinem Teil passt
+    informatik = kategorien["technik/informatik"]
+    assert (informatik["herkunft"], informatik["anzahl"], informatik["verborgen"], informatik["teile"]) == ("standard", 1, False, [])
+    technik = [k["schluessel"] for k in bereiche["technik"]["kategorien"]]
+    assert technik[technik.index("technik/informatik"):][:3] == ["technik/informatik", "technik/programmierung", "technik/web"]
     assert (kategorien["technik/programmierung"]["herkunft"], kategorien["technik/programmierung"]["anzahl"]) == ("geteilt", 1)
+    assert kategorien["technik/programmierung"]["teil_von"] == "technik/informatik"
+    # alle Treffer in Teilen: die große ist verborgen, ihre Teile nicht
+    natur = kategorien["wissen/naturwissenschaften"]
+    assert (natur["anzahl"], natur["verborgen"], natur["herkunft"]) == (0, True, "standard")
+    assert [(kategorien[s]["anzahl"], kategorien[s]["verborgen"]) for s in ("wissen/physik", "wissen/chemie", "wissen/biologie", "wissen/erde")] == [
+        (1, False), (1, False), (1, False), (0, True)]
+    assert bereiche["wissen"]["anzahl"] == 3
     assert kategorien["technik/web"]["anzahl"] == 1 and kategorien["technik/sicherheit"]["verborgen"] is True
     assert (kategorien["romane/krimi"]["anzahl"], kategorien["romane/krimi"]["verborgen"]) == (1, False)
     assert (kategorien["romane/fantasy"]["anzahl"], kategorien["romane/fantasy"]["verborgen"], kategorien["romane/fantasy"]["herkunft"]) == (0, True, "standard")
     assert kategorien["besonderes/gebrauchsanleitungen"]["anzahl"] == 1    # nur das Dokument
     assert kategorien["romane/roman"]["anzahl"] == 1                       # das Buch mit "Roman" im Titel
     assert bereiche["comics"]["verborgen"] is True and bereiche["technik"]["verborgen"] is False
-    assert bereiche["technik"]["anzahl"] == 2                               # das Buch, das nur Informatik traf, in keinem Teil
+    assert bereiche["technik"]["anzahl"] == 3                               # kein Buch fällt beim Teilen heraus
 
     r = await client.post("/api/katalog/entwurf", json={"weg": "standard"})  # ein anderer Weg ersetzt
     assert r.json()["lauf"] is None

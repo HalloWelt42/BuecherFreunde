@@ -386,3 +386,33 @@ async def test_neue_kategorien_aus_dem_bestand(client, test_db, ki_sagt, monkeyp
     assert [(k["schluessel"], k["name"], k["zeichen"], k["regeln"]["schlagworte"], k["anzahl"], k["verborgen"]) for k in neu] == [
         ("leben/imkerei", "Imkerei", "seedling", ["Imkerei"], 4, False)]
     assert leben["verborgen"] is False
+
+
+# -- große Kategorie und ihre Teile -----------------------------------------------------------------------------------------
+
+async def test_teil_vor_der_grossen_kategorie(client, test_db, ki_sagt):
+    """Passt ein Werk zu einem Teil, wird der Teil vorgeschlagen, sonst die große Kategorie; kein Werk fällt heraus."""
+    katalog = {"fassung": 1, "bereiche": [{"schluessel": "technik", "name": "Technik", "farbe": "#2f6fb3", "kategorien": [
+        {"schluessel": "technik/informatik", "name": "Informatik", "regeln": {"schlagworte": ["Informatik"], "titelwoerter": ["Python"]}},
+        {"schluessel": "technik/programmierung", "name": "Programmierung", "teil_von": "technik/informatik",
+         "regeln": {"titelwoerter": ["Python"]}},
+        {"schluessel": "technik/netzwerke", "name": "Netzwerke", "teil_von": "technik/informatik", "regeln": {"titelwoerter": ["Netzwerk"]}}]}]}
+    n = nummern(await katalog_annehmen(client, katalog))
+    python = await werk(test_db, "Python für Neugierige", regale=("Informatik",))       # Regel trifft Teil und große
+    allgemein = await werk(test_db, "Rechnen mit Maschinen", regale=("Informatik",))    # nur die große
+    netz = await werk(test_db, "Leitungen im Haus")                                     # die KI nennt die große, die Regel nichts
+    kabel = await werk(test_db, "Kabel und Knoten")                                     # die KI nennt große und Teil
+    ki_sagt.buecher = {"Leitungen im Haus": [("technik/informatik", 70, "Etwas mit Rechnern.")],
+                       "Kabel und Knoten": [("technik/informatik", 80, "Rechner."), ("technik/netzwerke", 85, "Netze.")]}
+
+    await einordnen(client)
+    assert je_buch(await vorschlaege(client), n) == {(python, "technik/programmierung", "regel"), (allgemein, "technik/informatik", "regel"),
+                                                     (netz, "technik/informatik", "ki"), (kabel, "technik/netzwerke", "ki")}
+    katalogtext = nutzertext(next(r for r in ki_sagt.chats() if frage(r).startswith("Katalog einordnen")))
+    assert "- technik/informatik: Informatik (nur, wenn keiner ihrer Teile passt)" in katalogtext
+    assert "- technik/netzwerke: Netzwerke (Teil von technik/informatik)" in katalogtext
+    k = (await client.get("/api/katalog")).json()
+    assert [(x["schluessel"], x["teil_von"]) for x in k["bereiche"][0]["kategorien"]] == [
+        ("technik/informatik", ""), ("technik/programmierung", "technik/informatik"), ("technik/netzwerke", "technik/informatik")]
+    datei = (await client.get("/api/katalog/datei")).json()
+    assert datei["bereiche"][0]["kategorien"][1]["teil_von"] == "technik/informatik"

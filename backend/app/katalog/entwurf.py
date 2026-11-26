@@ -3,8 +3,8 @@ bis er angenommen (katalog/kategorien.py) oder verworfen wird.
 
 Wege zum Entwurf: der Standard, eine geladene Datei, leer, oder der Standard nach dem Bestand (`aus_bestand`, im Lauf von
 katalog/bestandslauf.py): Kategorien ohne Treffer der Regeln sind verborgen (Herkunft bleibt standard), große mit Teilen
-werden durch die Teile ersetzt (Herkunft geteilt), Bereiche ohne sichtbare Kategorie verborgen, die Zahlen sind die
-Treffer der Regeln.
+bekommen ihre Teile daneben (Herkunft geteilt) und behalten die Bücher, die zu keinem Teil passen, Bereiche ohne sichtbare
+Kategorie sind verborgen, die Zahlen sind die Treffer der Regeln.
 
 Gespeichert erbt eine Kategorie ohne eigene Farbe die ihres Bereichs (leer); gezeigt wird die Farbe, die gilt."""
 
@@ -71,16 +71,21 @@ def leer() -> Katalog:
     return Katalog()
 
 
-def _aus_teil(t: Teil, treffer: set[int]) -> Katalogkategorie:
-    return Katalogkategorie(**t.model_dump(), herkunft="geteilt", anzahl=len(treffer), verborgen=not treffer)
+def _aus_teil(t: Teil, treffer: set[int], teil_von: str) -> Katalogkategorie:
+    return Katalogkategorie(**t.model_dump(), herkunft="geteilt", anzahl=len(treffer), verborgen=not treffer, teil_von=teil_von)
 
 
 def _kategorien_nach_bestand(b: Katalogbereich, treffer: dict[str, set[int]], teilen_ab: int) -> list[Katalogkategorie]:
+    """Je Kategorie des Standards ihre Treffer; eine große zerfällt in ihre Teile und bleibt daneben für die Bücher stehen,
+    die zu keinem Teil passen (ohne solche verborgen). So fällt beim Teilen kein Buch heraus."""
     aus = []
     for k in b.kategorien:
         getroffen = treffer.get(k.schluessel, set())
         if k.teile and len(getroffen) > teilen_ab:
-            aus += [_aus_teil(t, treffer.get(t.schluessel, set())) for t in k.teile]
+            in_teilen = set().union(*(treffer.get(t.schluessel, set()) for t in k.teile))
+            rest = getroffen - in_teilen
+            aus.append(k.model_copy(update={"anzahl": len(rest), "verborgen": not rest, "herkunft": "standard", "teile": []}))
+            aus += [_aus_teil(t, treffer.get(t.schluessel, set()), k.schluessel) for t in k.teile]
         else:
             aus.append(k.model_copy(update={"anzahl": len(getroffen), "verborgen": not getroffen, "herkunft": "standard"}))
     return aus

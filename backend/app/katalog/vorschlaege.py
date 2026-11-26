@@ -33,6 +33,13 @@ def zusammenfuehren(regeln: dict[tuple[int, int], list[Regeltreffer]], ki: dict[
     return aus
 
 
+def teil_vor_ganzem(funde: list[Fund], teil_von: dict[int, int]) -> list[Fund]:
+    """Passt ein Buch zu einem Teil einer großen Kategorie (`teil_von`: Teil -> große), wird nur der Teil vorgeschlagen,
+    sonst die große Kategorie."""
+    ganz = {(f.buch_id, teil_von[f.kategorie_id]) for f in funde if f.kategorie_id in teil_von}
+    return [f for f in funde if (f.buch_id, f.kategorie_id) not in ganz]
+
+
 async def merken(funde: list[Fund], lauf_id: int | None) -> list[Fund]:
     """Neue Funde als offene Vorschläge, offene werden erneuert; gibt zurück, was gemerkt wurde. Steht das Buch schon in
     der Kategorie oder wurde der Vorschlag schon entschieden, bleibt es dabei."""

@@ -4,7 +4,10 @@ gültige Katalog, wie die Schnittstelle ihn zeigt, die Eingaben, Vorschläge, al
 Ein Katalog hat zwei Ebenen: Bereiche und darunter Kategorien. Ein Bereich gilt für bestimmte Arten von Werken
 (`arten`, die Werte von `books.typ`, leer heißt Buch); vorgeschlagen werden einem Werk nur Kategorien aus Bereichen seiner
 Art. Eine Kategorie hat ein eigenes Zeichen und erbt die Farbe ihres Bereichs, solange sie keine eigene hat: gespeichert
-wird dann eine leere Farbe, gezeigt die des Bereichs."""
+wird dann eine leere Farbe, gezeigt die des Bereichs.
+
+Eine große Kategorie kann in Teile zerfallen (`teile` im Standard). Dann bleibt sie neben ihren Teilen stehen und fasst die
+Werke, die zu keinem Teil passen; jeder Teil nennt sie in `teil_von`."""
 
 from __future__ import annotations
 
@@ -62,6 +65,7 @@ Bereichsschluessel = Annotated[str, StringConstraints(strip_whitespace=True, max
 Kategorieschluessel = Annotated[str, StringConstraints(strip_whitespace=True, max_length=KATALOG_SCHLUESSEL,
                                                        pattern=rf"^{_TEIL}/{_TEIL}$")]
 Regelwerte = Annotated[list[Regelwert], Field(max_length=REGELWERTE)]
+TeilVon = Annotated[str, StringConstraints(strip_whitespace=True, max_length=KATALOG_SCHLUESSEL, pattern=rf"^(?:{_TEIL}/{_TEIL})?$")]
 HerkunftOderLeer = Annotated[Herkunft | None, BeforeValidator(_leer_wie_keine)]
 Arten = Annotated[list[Typ], Field(min_length=1, max_length=10)]
 
@@ -106,6 +110,7 @@ class Katalogkategorie(Teil):
     verborgen: bool = False
     herkunft: HerkunftOderLeer = None          # in einer Datei frei; im Entwurf immer gesetzt
     anzahl: int | None = None                  # im Entwurf: Treffer der Regeln im Bestand
+    teil_von: TeilVon = ""                     # Schlüssel der großen Kategorie, in die sie zerfiel; leer: keine
     teile: Annotated[list[Teil], Field(max_length=TEILE_HOECHSTENS)] = Field(default_factory=list)
 
 
@@ -177,6 +182,7 @@ class Kategorie(BaseModel):
     regeln: Regeln
     verborgen: bool
     herkunft: str
+    teil_von: str                              # Schlüssel der großen Kategorie, deren Teil sie ist; leer: keine
     anzahl: int                                # Bücher in der Kategorie
 
 
@@ -218,6 +224,7 @@ class Einordnungskategorie(BaseModel):
     ki_beschreibung: str
     regeln: Regeln
     arten: list[str]                           # die Arten ihres Bereichs
+    teil_von: str = ""                         # Schlüssel der großen Kategorie, deren Teil sie ist
 
 
 class BereichEingabe(BaseModel):

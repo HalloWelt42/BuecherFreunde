@@ -256,8 +256,11 @@ Plan, Begriffe und alle Wege unter `/api/katalog` stehen in [KATALOG.md](KATALOG
   und Namen je Bereich eindeutig.
 - **Entwurf**: `POST /api/katalog/entwurf` antwortet immer wie `GET` mit `{entwurf, lauf}`; bei `"bestand"` ist `entwurf` leer,
   bis der Lauf fertig ist. `lauf` steht da, solange er läuft oder scheiterte, und solange sein Entwurf steht (dann mit `grund`,
-  etwa ohne KI); jeder andere Weg (standard, leer, Datei, `PUT`, `DELETE`) ersetzt ihn. Zerfällt eine Kategorie in ihre Teile,
-  zählt der Bereich nur noch die Bücher in den Teilen.
+  etwa ohne KI); jeder andere Weg (standard, leer, Datei, `PUT`, `DELETE`) ersetzt ihn.
+- **Teile**: zerfällt eine große Kategorie im Entwurf in ihre Teile, bleibt sie daneben stehen (Name und Herkunft standard,
+  ohne `teile`) und fasst die Bücher, die zu keinem Teil passen; ohne solche ist sie verborgen. Jeder Teil nennt sie in
+  `teil_von` (Spalte `categories.teil_von`, auch in der Datei und in `GET /api/katalog`). Beim Einordnen wird ein Teil
+  vorgeschlagen, wenn das Werk zu ihm passt (Regel oder KI), sonst die große Kategorie; die KI liest das im Katalog mit.
 - **Laufstand** dazu `stand` (`""` noch keiner, `laeuft`, `pause`, `fertig`, `fehler`); `schritt` nur, solange er läuft.
   Beim Einordnen zählen `regeln` die Vorschläge mit Regel (auch `beide`), `ki` die mit KI (auch `beide`); beim Entwurf aus dem
   Bestand `regeln` die Werke mit einem Treffer, `ki` die neuen Kategorien.

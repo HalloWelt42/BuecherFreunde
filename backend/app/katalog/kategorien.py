@@ -28,7 +28,7 @@ TITEL_IN_DEN_FOLGEN = 10
 BEREICH_FEHLT = "Bereich nicht gefunden"
 KATEGORIE_FEHLT = "Kategorie nicht gefunden"
 SPALTEN = """c.id, c.art, c.schluessel, c.name, c.icon, c.color, c.description, c.ki_beschreibung, c.regeln, c.verborgen,
-             c.herkunft, c.arten, c.parent_id, c.spezial"""
+             c.herkunft, c.arten, c.teil_von, c.parent_id, c.spezial"""
 
 
 class Fehlt(LookupError):
@@ -79,7 +79,7 @@ async def _bereichszahlen() -> dict[int, int]:
 def _kategorie(z: dict, bereichsfarbe: str) -> Kategorie:
     return Kategorie(id=z["id"], schluessel=z["schluessel"], name=z["name"], zeichen=zeichen(z["icon"]), farbe=z["color"] or bereichsfarbe,
                      ki_beschreibung=z["ki_beschreibung"], regeln=regeln_aus(z["regeln"]), verborgen=bool(z["verborgen"]),
-                     herkunft=z["herkunft"], anzahl=z["anzahl"])
+                     herkunft=z["herkunft"], teil_von=z["teil_von"], anzahl=z["anzahl"])
 
 
 def _gliedern(zeilen: list[dict]) -> list[tuple[dict, list[dict]]]:
@@ -127,7 +127,7 @@ async def als_datei() -> Katalog:
     for b, ks in _gliedern(await _zeilen()):
         kategorien = [Katalogkategorie(schluessel=k["schluessel"], name=k["name"], zeichen=zeichen(k["icon"]), farbe=k["color"] or "",
                                        ki_beschreibung=k["ki_beschreibung"], regeln=regeln_aus(k["regeln"]), verborgen=bool(k["verborgen"]),
-                                       herkunft=k["herkunft"] or None) for k in ks]
+                                       herkunft=k["herkunft"] or None, teil_von=k["teil_von"]) for k in ks]
         bereiche.append(Katalogbereich(schluessel=b["schluessel"], name=b["name"], zeichen=zeichen(b["icon"]), farbe=b["color"] or "#6b7280",
                                        beschreibung=b["description"] or "", arten=arten_aus(b["arten"]) or [BUCH],
                                        verborgen=bool(b["verborgen"]), herkunft=b["herkunft"] or None, kategorien=kategorien))
@@ -136,12 +136,12 @@ async def als_datei() -> Katalog:
 
 async def zum_einordnen() -> list[Einordnungskategorie]:
     """Die sichtbaren Kategorien sichtbarer Bereiche, mit den Arten ihres Bereichs."""
-    zeilen = await db.fetch_all("""SELECT k.id, k.schluessel, k.name, k.ki_beschreibung, k.regeln, p.arten FROM categories k
+    zeilen = await db.fetch_all("""SELECT k.id, k.schluessel, k.name, k.ki_beschreibung, k.regeln, k.teil_von, p.arten FROM categories k
                                    JOIN categories p ON p.id = k.parent_id AND p.art = 'bereich'
                                    WHERE k.art = 'kategorie' AND k.verborgen = 0 AND p.verborgen = 0
                                    ORDER BY p.sort_order, p.id, k.sort_order, k.id""")
     return [Einordnungskategorie(id=z["id"], schluessel=z["schluessel"], name=z["name"], ki_beschreibung=z["ki_beschreibung"],
-                                 regeln=regeln_aus(z["regeln"]), arten=arten_aus(z["arten"])) for z in zeilen]
+                                 regeln=regeln_aus(z["regeln"]), arten=arten_aus(z["arten"]), teil_von=z["teil_von"]) for z in zeilen]
 
 
 async def kategorien_eines_buchs(buch: int) -> list[dict]:
@@ -180,7 +180,7 @@ async def _bereich_schreiben(b: Katalogbereich, stelle: int) -> int:
 async def _kategorie_schreiben(k: Katalogkategorie, bereich_nr: int, bereichsfarbe: str, stelle: int) -> int:
     werte = {"name": k.name, "icon": k.zeichen, "color": eigene_farbe(k.farbe, bereichsfarbe), "ki_beschreibung": k.ki_beschreibung,
              "regeln": k.regeln.model_dump_json(), "verborgen": int(k.verborgen), "herkunft": k.herkunft or herkunft(k.schluessel),
-             "parent_id": bereich_nr, "sort_order": stelle}
+             "teil_von": k.teil_von, "parent_id": bereich_nr, "sort_order": stelle}
     return await _schreiben("kategorie", k.schluessel, werte)
 
 
