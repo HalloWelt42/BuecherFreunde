@@ -16,8 +16,11 @@ from backend.app.core.auth import verify_token, verify_token_inhalt
 from backend.app.core.database import db
 from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate
 from backend.app.models.textansicht import TextBaustein, TextSeite, TextSeitenAntwort
-from backend.app.services.textansicht import Baustein, abbildung_png, seiten_lesen
+from backend.app.services.textansicht import Baustein, Codeteil, abbildung_png, seiten_lesen
+import fitz
+
 from backend.app.ablage import originale
+from backend.app.codestellen.dienst import codestellen
 from backend.app.ablage.antwort import FEHLT, original_antwort
 from backend.app.ablage.wolke import wolke
 from backend.app.annahme.eintragen import autoren_verknuepfen
@@ -953,9 +956,26 @@ async def rescan_kategorien(
 
 
 def _baustein(b: Baustein) -> TextBaustein:
+    if b.code is not None:
+        c = b.code
+        return TextBaustein(art="code", titel=b.titel, zeilen=c.zeilen, sprache=c.sprache, kennung=c.kennung, teil=c.teil, teile=c.teile)
     verhaeltnis = round(b.rechteck.width / b.rechteck.height, 4) if b.rechteck and b.rechteck.height else None
     return TextBaustein(art=b.art, text=b.text, titel=b.titel, inhalt=[_baustein(t) for t in b.inhalt],
                         bild=b.bild, verhaeltnis=verhaeltnis, breite_em=b.breite_em)
+
+
+async def _codeteile(book_id: int) -> dict[int, list[Codeteil]]:
+    """Je Dateiseite die Teile der erkannten Codestellen; leer, solange das Buch nicht erkannt ist (es kommt dann dran)."""
+    try:
+        _stand, begleiter = await codestellen.stellen(book_id)
+    except KeyError:
+        return {}
+    je_seite: dict[int, list[Codeteil]] = {}
+    for s in begleiter.stellen if begleiter and begleiter.format == "pdf" else []:
+        for i, (t, zeilen) in enumerate(zip(s.teile, s.zeilen_der_teile())):
+            if t.seite is not None and t.rechteck:
+                je_seite.setdefault(t.seite, []).append(Codeteil(fitz.Rect(t.rechteck), s.kennung, s.sprache, s.titel, i, len(s.teile), zeilen))
+    return je_seite
 
 
 async def _pdf_zum_lesen(book_id: int) -> tuple[dict, Path]:
@@ -980,7 +1000,7 @@ async def text_seiten(
     """Seiten eines PDF als Bausteine für die Textansicht: umfließende Absätze, Überschriften, Kästen und Abbildungen
     (über den Bild-Endpunkt), ohne Kopf- und Fußzeilen."""
     book, pfad = await _pdf_zum_lesen(book_id)
-    gesamt, seiten = await asyncio.to_thread(seiten_lesen, pfad, ab, anzahl)
+    gesamt, seiten = await asyncio.to_thread(seiten_lesen, pfad, ab, anzahl, await _codeteile(book_id))
     _texte, gedruckt = await asyncio.to_thread(buch_seiten, book["hash"], book["file_format"], book["page_count"])
     return TextSeitenAntwort(
         gesamt=gesamt,
@@ -994,7 +1014,7 @@ async def text_seiten(
 async def text_seiten_bild(book_id: int, seite: int, nr: int, _token: str = Depends(verify_token_inhalt)):
     """Abbildung `nr` einer Seite der Textansicht als PNG (Ausschnitt der Originalseite)."""
     _book, pfad = await _pdf_zum_lesen(book_id)
-    png = await asyncio.to_thread(abbildung_png, pfad, seite, nr)
+    png = await asyncio.to_thread(abbildung_png, pfad, seite, nr, codeteile=await _codeteile(book_id))
     if png is None:
         raise HTTPException(status_code=404, detail="Abbildung nicht gefunden")
     return Response(content=png, media_type="image/png", headers={"Cache-Control": "private, max-age=604800"})

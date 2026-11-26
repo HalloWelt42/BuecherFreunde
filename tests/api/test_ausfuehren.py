@@ -292,3 +292,23 @@ def test_fehlerzeile():
     assert fehlerzeile("Traceback (most recent call last):\n  File \"x\", line 1\nNameError: name 'np' is not defined\n") == "NameError: name 'np' is not defined"
     assert fehlerzeile("PHP Fatal error:  Uncaught Error: Call to undefined function f() in /tmp/beispiel.php:3") .startswith("PHP Fatal error")
     assert fehlerzeile("") == ""
+
+
+# -- Textansicht mit Baustein "code" ------------------------------------------------------------------------------------------
+
+async def test_textansicht_zeigt_codestellen_als_code(client, buch):
+    vorher = (await client.get(f"/api/books/{buch}/textseiten", params={"ab": 1, "anzahl": 2})).json()
+    assert not any(b["art"] == "code" for s in vorher["seiten"] for b in s["bausteine"])      # noch nicht erkannt: wie bisher
+    await codestellen.erkennen(buch)
+    seiten = (await client.get(f"/api/books/{buch}/textseiten", params={"ab": 1, "anzahl": 2})).json()["seiten"]
+    code = [b for s in seiten for b in s["bausteine"] if b["art"] == "code"]
+    stellen = (await client.get(f"/api/books/{buch}/codestellen")).json()["stellen"]
+    assert [(c["kennung"], c["teil"], c["teile"]) for c in code] == [(stellen[0]["kennung"], 0, 2), (stellen[0]["kennung"], 1, 2),
+                                                                      (stellen[1]["kennung"], 0, 1), (stellen[2]["kennung"], 0, 1)]
+    assert "\n".join(code[0]["zeilen"] + code[1]["zeilen"]) == stellen[0]["code"]           # die Kette am Stück
+    assert code[0]["titel"] == "Ausprobieren - kap01/summe.py" and code[1]["titel"] == ""
+    assert [c["sprache"] for c in code] == ["python", "python", "javascript", "ausgabe"]
+    eins = [b["art"] for b in seiten[0]["bausteine"]]
+    assert "bild" not in eins and "kasten" not in eins and eins.count("absatz") == 1         # der Kasten ist kein Ausschnitt mehr
+    texte = " ".join(b["text"] for s in seiten for b in s["bausteine"])
+    assert "Ausprobieren" not in texte and "def summe" not in texte                          # Titel und Code nicht doppelt

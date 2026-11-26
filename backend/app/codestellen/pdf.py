@@ -545,15 +545,18 @@ def _umbruch_text(z: Zeile, breite: float) -> str:
     return " " * leer + _zeile_lesen(z, _zeilentext(Zeile(rest), beginn, breite))
 
 
-def text_der_kette(kette: list[Block]) -> tuple[str, int | None]:
-    """Der Code einer Kette und die erste gedruckte Zeilennummer. Ein Leerzeichen genau an der Bruchstelle einer
-    umbrochenen Zeile ist nicht zu sehen und fehlt dann (gemessen: seltener als ein falsch eingefügtes)."""
+def text_der_kette(kette: list[Block]) -> tuple[str, int | None, list[int]]:
+    """Der Code einer Kette, die erste gedruckte Zeilennummer und je Teil, wie viele Zeilen des Codes er trägt. Ein
+    Leerzeichen genau an der Bruchstelle einer umbrochenen Zeile ist nicht zu sehen und fehlt dann (gemessen: seltener als
+    ein falsch eingefügtes)."""
     erste = kette[0]
     breite = erste.zeichenbreite
     abstand = min(b.x0 - b.rand for b in kette)       # Spalte 0 der ganzen Kette, gemessen vom Rand ihrer Seite
     zeilen: list[str] = []
+    je_teil: list[int] = []
     vorige: Zeile | None = None
     for b in kette:
+        bisher = len(zeilen)
         bezug = b.rand + abstand
         if vorige is not None and vorige.nummer is None:
             vorige = None                                 # über den Seitenwechsel zählen nur Nummern
@@ -579,7 +582,8 @@ def text_der_kette(kette: list[Block]) -> tuple[str, int | None]:
                 zeilen.extend([""] * max(0, min(leer, 20)))
             zeilen.append(inhalt)
             vorige = z
-    return "\n".join(zeilen), (erste.nummern[0] if erste.nummern else None)
+        je_teil.append(len(zeilen) - bisher)
+    return "\n".join(zeilen), (erste.nummern[0] if erste.nummern else None), je_teil
 
 
 # -- Datei -----------------------------------------------------------------------------------------------------------------

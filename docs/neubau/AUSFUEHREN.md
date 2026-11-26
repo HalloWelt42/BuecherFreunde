@@ -49,16 +49,16 @@ erkannt.
 ## Begleiter codestellen.json
 
 ```
-{ "fassung": 1, "format": "pdf", "grund": "",
+{ "fassung": 2, "format": "pdf", "grund": "",
   "stellen": [ { "kennung": "s1-664-3f2a9c1e",
-                 "teile": [ {"seite": 1, "rechteck": [74.0, 640.0, 521.0, 790.0], "offen_oben": false, "offen_unten": true},
-                            {"seite": 2, "rechteck": [74.0, 70.0, 521.0, 120.0], "offen_oben": true, "offen_unten": false} ],
+                 "teile": [ {"seite": 1, "rechteck": [74.0, 640.0, 521.0, 790.0], "offen_oben": false, "offen_unten": true, "zeilen": 4},
+                            {"seite": 2, "rechteck": [74.0, 70.0, 521.0, 120.0], "offen_oben": true, "offen_unten": false, "zeilen": 3} ],
                  "sprache": "python", "sicherheit": 0.95, "quelle": "datei", "titel": "Ausprobieren - kap01/summe.py",
                  "datei": "kap01/summe.py", "code": "def summe(zahlen): ...", "zeilennummern_ab": 1, "pruefsumme": "3f2a9c1e..." } ] }
 ```
 
-- `teile`: PDF mit Dateiseite und Rechteck in Punkten der Seite (oben links, wie PyMuPDF); EPUB mit `kapitel` und `nr`
-  (der wievielte Codeblock im Kapitel); Markdown und Text mit `zeile`.
+- `teile`: PDF mit Dateiseite, Rechteck in Punkten der Seite (oben links, wie PyMuPDF) und der Zahl der Codezeilen dieses
+  Teils (der Reihe nach); EPUB mit `kapitel` und `nr` (der wievielte Codeblock im Kapitel); Markdown und Text mit `zeile`.
 - `kennung`: Lage des ersten Teils und Prüfsumme des Codes. `sicherheit` ab 0,6 gilt als sicherer Befund.
 
 ## Schnittstelle
@@ -84,6 +84,15 @@ nutzen", "Die Sandbox rechnet gerade für BücherFreunde; gleich noch einmal", s
 
 `GET /api/config/oberflaeche` nennt in `anschluesse.ausfuehren`, ob eine Codeschmiede eingetragen ist (ohne sie keine
 Taste); `GET /api/verbindungen` zeigt Codeschmiede und Leitstelle mit Stand und Grund.
+
+## Textansicht
+
+`GET /api/books/{id}/textseiten` setzt für jeden Teil einer erkannten Codestelle einen Baustein `code` an ihren Ort, statt
+Textblöcken und Ausschnitt: `{art: "code", titel, zeilen, sprache, kennung, teil, teile}`. `zeilen` sind die Zeilen dieses
+Teils; aufeinanderfolgende Teile derselben `kennung` (Teil 0 bis `teile - 1`) ergeben am Stück den Code der Stelle, die
+Seitenmarke gehört danach. Den Titel trägt nur Teil 0. Alles im Kasten (Titel auf der Kante, Zeilennummern, Rahmen) gehört
+zum Baustein; die Abbildungen der Seite zählen ohne ihn (Bild-Endpunkt mit derselben Zählung). Ist ein Buch noch nicht
+erkannt, bleibt die Seite wie bisher, und das Buch kommt sofort an die Reihe.
 
 ## Sandbox
 

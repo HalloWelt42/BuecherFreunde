@@ -11,7 +11,8 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 #: steigt, wenn die Erkennung anders arbeitet; Begleiter einer älteren Fassung werden neu erkannt
-FASSUNG = 1
+#: (2: je Teil die Zahl seiner Zeilen, für den Baustein der Textansicht)
+FASSUNG = 2
 
 #: ab dieser Sicherheit gilt eine Sprache als sicherer Befund (die Taste erscheint nur dann)
 SICHER = 0.6
@@ -29,6 +30,7 @@ class Teil(BaseModel):
     rechteck: list[float] | None = None
     offen_oben: bool = False
     offen_unten: bool = False
+    zeilen: int | None = None            # PDF: so viele Zeilen des Codes stehen in diesem Teil (der Reihe nach)
     kapitel: str | None = None
     nr: int | None = None
     zeile: int | None = None
@@ -49,6 +51,17 @@ class Codestelle(BaseModel):
     @property
     def sicher(self) -> bool:
         return self.sprache is not None and self.sicherheit >= SICHER
+
+    def zeilen_der_teile(self) -> list[list[str]]:
+        """Der Code Teil für Teil; ohne Angabe je Teil steht alles im ersten."""
+        zeilen = self.code.split("\n")
+        if any(t.zeilen is None for t in self.teile):
+            return [zeilen] + [[] for _ in self.teile[1:]]
+        aus, ab = [], 0
+        for t in self.teile:
+            aus.append(zeilen[ab:ab + (t.zeilen or 0)])
+            ab += t.zeilen or 0
+        return aus
 
 
 class Begleiter(BaseModel):

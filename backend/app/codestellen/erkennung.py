@@ -30,12 +30,12 @@ def _stelle(kennung_lage: str, teile: list[Teil], code: str, titel: str, datei: 
 def aus_pdf(pfad: Path) -> list[Codestelle]:
     stellen = []
     for kette in pdf.ketten(list(pdf.seiten_lesen(pfad))):
-        code, nummer = pdf.text_der_kette(kette)
+        code, nummer, je_teil = pdf.text_der_kette(kette)
         if not code.strip():
             continue
         erste = kette[0]
         teile = [Teil(seite=b.seite, rechteck=[round(v, 1) for v in b.rechteck], offen_oben=b.offen_oben or i > 0,
-                      offen_unten=b.offen_unten or i < len(kette) - 1) for i, b in enumerate(kette)]
+                      offen_unten=b.offen_unten or i < len(kette) - 1, zeilen=je_teil[i]) for i, b in enumerate(kette)]
         stellen.append(_stelle(f"s{erste.seite}-{int(erste.zeilen[0].y0)}", teile, code, erste.titel, erste.datei, nummer))
     return stellen
 

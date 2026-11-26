@@ -13,6 +13,9 @@ Gelesen wird direkt aus der PDF-Datei, in Lesereihenfolge von oben nach unten:
   Ausschnitt gezeigt, auch innerhalb eines Kastens.
 - Hochgestellte Ziffern im Fließtext werden zu Hochzahlen ("m/s2" wird "m/s" mit hochgestellter 2).
 - Kopf- und Fußzeilen (Blöcke im oberen und unteren Rand) fallen weg.
+- Codestellen (BF-29, erkannt in codestellen/): wo die Erkennung ein Listing gefunden hat, steht ein Baustein "code" mit
+  den Zeilen dieses Teils, der Sprache, der Kennung der Stelle und der Nummer des Teils, statt Textblöcken und Ausschnitt.
+  Alles im Kasten (Kastentitel, Zeilennummern, Rahmen) gehört dazu. Ohne erkannte Codestellen bleibt die Seite, wie sie war.
 
 Seiten ohne lesbaren Text (Scan ohne Textschicht, oder eine Schrift ohne Zeichenzuordnung, die nur Steuer- und
 Sonderzeichen liefert) tragen keine Textbausteine; die Oberfläche weist dann auf die Originalansicht hin.
@@ -63,8 +66,20 @@ def _formelzeichen(text: str) -> bool:
 
 
 @dataclass
+class Codeteil:
+    """Ein Teil einer erkannten Codestelle auf dieser Seite (aus dem Begleiter codestellen.json)."""
+    rechteck: fitz.Rect
+    kennung: str
+    sprache: str | None
+    titel: str
+    teil: int                   # der wievielte Teil der Stelle, ab 0
+    teile: int                  # so viele Teile hat die Stelle (über Seitenwechsel)
+    zeilen: list[str]
+
+
+@dataclass
 class Baustein:
-    art: str                    # absatz, ueberschrift, unterschrift, kasten, bild
+    art: str                    # absatz, ueberschrift, unterschrift, kasten, bild, code
     oben: float
     links: float
     text: str = ""
@@ -73,6 +88,7 @@ class Baustein:
     rechteck: fitz.Rect | None = None
     bild: int | None = None     # Nummer der Abbildung auf der Seite (Bild-Endpunkt)
     breite_em: float | None = None  # Breite einer Abbildung in Schriftgrößen des Fließtexts
+    code: Codeteil | None = None    # bei art "code"
 
 
 @dataclass
@@ -218,11 +234,32 @@ def _kastentitel(bloecke: list[_Block], frei: list[int], innen: list[int], flaec
     return None
 
 
-def seitenaufbau(seite: fitz.Page) -> list[Baustein]:
+_CODE_RAND = 4.0                # Punkte um eine Codestelle, die noch zu ihr gehören (Rahmen, Titel auf der Kante)
+_CODE_NUMMERN = 32.0            # Punkte links einer Codestelle ohne Kasten, in denen ihre Zeilennummern stehen
+
+
+def _im_code(r: fitz.Rect, codeteile: list[Codeteil]) -> bool:
+    """Gehört ein Textblock oder eine Zeichnung zu einer Codestelle: liegt seine Mitte darin, oder ist es eine Zeilennummer
+    links davon."""
+    mitte = fitz.Point((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2)
+    return any(mitte in c.rechteck + (-_CODE_RAND, -_CODE_RAND, _CODE_RAND, _CODE_RAND)
+               or (c.rechteck + (-_CODE_RAND, -_CODE_RAND, _CODE_RAND, _CODE_RAND)).contains(r) for c in codeteile)
+
+
+def _zeilennummer(b: _Block, codeteile: list[Codeteil]) -> bool:
+    return b.text.replace(" ", "").isdigit() and any(
+        c.rechteck.x0 - _CODE_NUMMERN <= b.rechteck.x0 and b.rechteck.x1 <= c.rechteck.x0 + _CODE_RAND
+        and c.rechteck.y0 - _CODE_RAND <= b.rechteck.y0 and b.rechteck.y1 <= c.rechteck.y1 + _CODE_RAND for c in codeteile)
+
+
+def seitenaufbau(seite: fitz.Page, codeteile: list[Codeteil] | None = None) -> list[Baustein]:
     """Die Bausteine einer Seite in Lesereihenfolge (siehe Moduldokumentation)."""
+    codeteile = codeteile or []
     hoehe, breite = seite.rect.height, seite.rect.width
     bloecke = [b for b in _bloecke(seite)
                if b.rechteck.y1 > hoehe * _RAND_OBEN and b.rechteck.y0 < hoehe * _RAND_UNTEN]
+    if codeteile:
+        bloecke = [b for b in bloecke if not _im_code(b.rechteck, codeteile) and not _zeilennummer(b, codeteile)]
     if not lesbar(" ".join(b.text for b in bloecke)):
         bloecke = []
     fliesstext = statistics.median([b.groesse for b in bloecke if len(b.text) > 200]
@@ -231,7 +268,8 @@ def seitenaufbau(seite: fitz.Page) -> list[Baustein]:
     formelbloecke = {i for i, b in enumerate(bloecke) if _ist_formel(b, breite)}
     vergeben: set[int] = set()
 
-    zeichnungen = [r for r in seite.cluster_drawings() if r.width >= _MINDESTGROESSE or r.height >= _MINDESTGROESSE]
+    zeichnungen = [r for r in seite.cluster_drawings() if (r.width >= _MINDESTGROESSE or r.height >= _MINDESTGROESSE)
+                   and not _im_code(r, codeteile)]
     bilder = [fitz.Rect(b["bbox"]) for b in seite.get_image_info()]
     bilder = [r for r in bilder if r.width >= _MINDESTGROESSE and r.height >= _MINDESTGROESSE]
     flaechen = _vereinigen(zeichnungen + bilder, _NAEHE)
@@ -297,6 +335,8 @@ def seitenaufbau(seite: fitz.Page) -> list[Baustein]:
     for i, b in enumerate(bloecke):
         if i not in vergeben:
             bausteine.append(Baustein(_textart(b, fliesstext), b.rechteck.y0, b.rechteck.x0, text=b.text))
+    for c in codeteile:
+        bausteine.append(Baustein("code", c.rechteck.y0, c.rechteck.x0, titel=c.titel if c.teil == 0 else "", code=c))
 
     bausteine.sort(key=lambda b: (b.oben, b.links))
     nummer = 0
@@ -309,25 +349,25 @@ def seitenaufbau(seite: fitz.Page) -> list[Baustein]:
     return bausteine
 
 
-def abbildungen(seite: fitz.Page) -> list[fitz.Rect]:
-    """Die Ausschnitte der Abbildungen einer Seite, nummeriert wie in `seitenaufbau` (ab 0)."""
-    return [t.rechteck for b in seitenaufbau(seite) for t in [b, *b.inhalt] if t.art == "bild"]
+def abbildungen(seite: fitz.Page, codeteile: list[Codeteil] | None = None) -> list[fitz.Rect]:
+    """Die Ausschnitte der Abbildungen einer Seite, nummeriert wie in `seitenaufbau` (ab 0, mit denselben Codestellen)."""
+    return [t.rechteck for b in seitenaufbau(seite, codeteile) for t in [b, *b.inhalt] if t.art == "bild"]
 
 
-def seiten_lesen(pfad: Path, ab: int, anzahl: int) -> tuple[int, list[tuple[int, list[Baustein]]]]:
-    """Gesamtzahl der Seiten und die Bausteine der Seiten ab `ab` (Dateiseite, ab 1)."""
+def seiten_lesen(pfad: Path, ab: int, anzahl: int, codeteile: dict[int, list[Codeteil]] | None = None) -> tuple[int, list[tuple[int, list[Baustein]]]]:
+    """Gesamtzahl der Seiten und die Bausteine der Seiten ab `ab` (Dateiseite, ab 1); `codeteile` je Dateiseite."""
     with fitz.open(str(pfad)) as doc:
         bis = min(ab + anzahl - 1, doc.page_count)
-        return doc.page_count, [(nr, seitenaufbau(doc[nr - 1])) for nr in range(ab, bis + 1)]
+        return doc.page_count, [(nr, seitenaufbau(doc[nr - 1], (codeteile or {}).get(nr))) for nr in range(ab, bis + 1)]
 
 
-def abbildung_png(pfad: Path, seite: int, nr: int, zoom: float = 2.5) -> bytes | None:
+def abbildung_png(pfad: Path, seite: int, nr: int, zoom: float = 2.5, codeteile: dict[int, list[Codeteil]] | None = None) -> bytes | None:
     """Abbildung `nr` der Dateiseite `seite` als PNG; None, wenn es sie nicht gibt."""
     with fitz.open(str(pfad)) as doc:
         if not 1 <= seite <= doc.page_count:
             return None
         blatt = doc[seite - 1]
-        ausschnitte = abbildungen(blatt)
+        ausschnitte = abbildungen(blatt, (codeteile or {}).get(seite))
         if not 0 <= nr < len(ausschnitte):
             return None
         ausschnitt = (ausschnitte[nr] + (-4, -4, 4, 4)) & blatt.rect

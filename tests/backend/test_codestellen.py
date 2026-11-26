@@ -100,7 +100,8 @@ def test_umbrochene_zeilen_werden_angehaengt():
         for s in z.spannen:
             s.basis = s.y1 = 10 + i * 12.9
     b = pdf.Block(1, [vorher, marke, wort, weiter], None, rand=LINKS)
-    text, _ = pdf.text_der_kette([b])
+    text, _, je_teil = pdf.text_der_kette([b])
+    assert je_teil == [2]
     assert text == "$ini = '/etc/php/conf.d/opcache.ini';\n$text = 'eine Datei gelesen';"
 
 
@@ -159,3 +160,12 @@ def test_epub_codebloecke(tmp_path):
     assert [(s.sprache, s.teile[0].kapitel, s.teile[0].nr, s.titel) for s in stellen][0] == ("python", "kap1.xhtml", 0, "Listing 1: Hallo")
     assert stellen[0].code == "print('hallo')\nprint('welt')" and stellen[0].kennung.startswith("kap1.xhtml#0-")
     assert len(stellen) == 2 and stellen[1].teile[0].nr == 1
+
+
+def test_zeilen_je_teil(tmp_path):
+    pfad = tmp_path / "buch.pdf"
+    probebuch(pfad)
+    summe = aus_pdf(pfad)[0]
+    assert [t.zeilen for t in summe.teile] == [4, 3]
+    assert summe.zeilen_der_teile() == [["def summe(zahlen):", "    gesamt = 0", "    for z in zahlen:", "        gesamt += z"],
+                                        ["    return gesamt", "", "print(summe([1, 2, 3]))"]]
