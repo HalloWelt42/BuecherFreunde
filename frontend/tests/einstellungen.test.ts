@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { reiterAus } from "../src/ansichten/einstellungen/reiter";
-import { kiAdresse } from "../src/ansichten/einstellungen/kiadresse";
 import { strenge } from "../src/ansichten/einstellungen/drittanbieter";
 import { codeAusAnker, codeNormal, geraetename } from "../src/ansichten/anmeldung/kopplung";
 import { alsHex, hexZuTon, tonZuHex } from "../src/lib/farbton";
@@ -22,19 +21,6 @@ describe("Reiter der Einstellungen", () => {
 
   it("kennt die neuen Adressen", () => {
     for (const r of ["darstellung", "verbindungen", "regale", "wartung", "mehr"]) expect(reiterAus(`/settings/${r}`)).toEqual({ reiter: r, stelle: "" });
-  });
-});
-
-describe("Adresse der KI", () => {
-  it("ergänzt /v1 und das Protokoll", () => {
-    expect(kiAdresse("http://rechner.lan:1234")).toBe("http://rechner.lan:1234/v1");
-    expect(kiAdresse("http://rechner.lan:1234/")).toBe("http://rechner.lan:1234/v1");
-    expect(kiAdresse("rechner.lan:1234")).toBe("http://rechner.lan:1234/v1");
-  });
-
-  it("lässt eine vollständige Adresse stehen", () => {
-    expect(kiAdresse(" https://ki.lan/v1/ ")).toBe("https://ki.lan/v1");
-    expect(kiAdresse("")).toBe("");
   });
 });
 

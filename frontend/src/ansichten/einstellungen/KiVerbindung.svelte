@@ -1,111 +1,61 @@
 <script lang="ts">
-  import { kiEinstellungen, kiStatus, speichereKi, sucheKiImNetz, type KiEinstellungen, type KiStatus, type KiTreffer } from "../../lib/api/ai";
-  import { anzahl } from "../../lib/format";
+  // KI über die Leitstelle: eingerichtet oder nicht, angeschlossen mit Grund (dieselbe Zeile wie unter Verbindungen) und die
+  // Modellwahl, wenn die Leitstelle Modelle anbietet. Adresse und Schlüssel stehen in der Einrichtung des Servers.
+  import { kiStatus, waehleKiModell, type KiStatus } from "../../lib/api/ai";
+  import { anschluesse } from "../../lib/stand/anschluesse.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
+  import { verbindungen } from "../../lib/stand/verbindungen.svelte";
   import Auswahl from "../../lib/teile/Auswahl.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
-  import Zustand from "../../lib/teile/Zustand.svelte";
-  import { kiAdresse } from "./kiadresse";
 
-  let einstellungen = $state<KiEinstellungen | null>(null);
   let status = $state<KiStatus | null>(null);
-  let fehler = $state("");
-  let adresse = $state("");
-  let arbeit = $state<"" | "speichern" | "testen" | "suchen" | "modell">("");
-  let treffer = $state<KiTreffer[] | null>(null);
+  let arbeit = $state<"" | "pruefen" | "modell">("");
 
+  let eingerichtet = $derived(anschluesse.jetzt.ki);
+  let eintrag = $derived(verbindungen.liste.find((v) => v.kennung === "leitstelle"));
+  let led = $derived(eingerichtet ? (eintrag?.stand ?? "aus") : "aus");
+  let wort = $derived(!eingerichtet ? "nicht eingerichtet" : !eintrag ? "wird geprüft" : eintrag.stand === "schlecht" ? "antwortet nicht" : "angeschlossen");
+  let grund = $derived(!eingerichtet ? "Adresse oder Schlüssel fehlen in der Einrichtung des Servers" : eintrag && eintrag.stand !== "gut" ? eintrag.text : "");
+  let modell = $derived(status?.modell ?? "");
   let modelle = $derived<[string, string][]>((status?.modelle ?? []).map((m) => [m, m]));
-  let wort = $derived(!status ? "nicht geprüft" : status.erreichbar ? "antwortet" : status.aktiviert === false ? "ausgeschaltet" : "antwortet nicht");
-  let led = $derived(!status || status.aktiviert === false ? "aus" : status.erreichbar ? "gut" : "schlecht");
+  // Ein gewähltes Modell, das die Leitstelle nicht anbietet, bleibt sichtbar gewählt
+  let wahl = $derived<[string, string][]>(!modell || modelle.some(([m]) => m === modell) ? modelle : [[modell, modell], ...modelle]);
 
-  async function lade() {
-    fehler = "";
-    try {
-      einstellungen = await kiEinstellungen();
-      adresse = einstellungen.url;
-      status = await kiStatus().catch(() => null);
-    } catch (e) {
-      fehler = e instanceof Error ? e.message : String(e);
-    }
+  async function ladeStatus() {
+    status = eingerichtet ? await kiStatus().catch(() => null) : null;
   }
-  $effect(() => void lade());
+  $effect(() => void ladeStatus());
 
-  async function teste() {
-    arbeit = "testen";
-    status = await kiStatus().catch(() => null);
+  async function pruefe() {
+    arbeit = "pruefen";
+    await Promise.allSettled([verbindungen.pruefen(), ladeStatus()]);
     arbeit = "";
-    if (status?.erreichbar) melde.gut("Die KI antwortet");
-    else if (status?.aktiviert === false) melde.info("Die KI ist in der Einrichtung des Servers ausgeschaltet");
-    else melde.warn(`Die KI antwortet nicht${status?.grund ? `: ${status.grund}` : ""}`);
+    if (!eingerichtet) melde.info(`Leitstelle: ${grund}`);
+    else if (eintrag?.stand === "gut") melde.gut(`Leitstelle: ${eintrag.text}`);
+    else melde.warn(`Leitstelle: ${eintrag?.text || "antwortet nicht"}`);
   }
 
-  async function speichere(e: SubmitEvent) {
-    e.preventDefault();
-    arbeit = "speichern";
-    try {
-      einstellungen = await speichereKi({ lm_studio_url: kiAdresse(adresse) });
-      adresse = einstellungen.url;
-      melde.gut("Adresse gespeichert");
-      await teste();
-    } catch (err) {
-      melde.schlecht(err, "Nicht gespeichert");
-    }
-    arbeit = "";
-  }
-
-  async function suche() {
-    arbeit = "suchen";
-    treffer = null;
-    try {
-      treffer = (await sucheKiImNetz()).gefunden ?? [];
-    } catch (e) {
-      melde.schlecht(e, "Suche gescheitert");
-    }
-    arbeit = "";
-  }
-
-  async function waehleModell(modell: string) {
+  async function waehle(neu: string) {
     arbeit = "modell";
     try {
-      einstellungen = await speichereKi({ lm_studio_model: modell });
-      melde.gut(`Modell ${modell} gewählt`);
+      await waehleKiModell(neu);
+      await Promise.allSettled([verbindungen.pruefen(), ladeStatus()]);
+      melde.gut(`Modell ${neu} gewählt`);
     } catch (e) {
       melde.schlecht(e, "Nicht gewechselt");
     }
     arbeit = "";
   }
-
-  function uebernimm(t: KiTreffer) {
-    adresse = kiAdresse(t.url);
-    treffer = null;
-  }
 </script>
 
-{#if fehler}
-  <Zustand art="fehler" text={fehler} onerneut={() => void lade()} />
-{:else if !einstellungen}
-  <Zustand art="laedt" text="Wird geladen" />
-{:else}
-  <dl class="angaben">
-    <dt>Stand</dt><dd><span class="lampe"><span class="led {led}"></span>{wort}</span></dd>
-    <dt>Eingeschaltet</dt><dd>{einstellungen.aktiviert ? "ja" : "nein, in der Einrichtung des Servers"}</dd>
-    {#if !modelle.length}<dt>Modell</dt><dd>{einstellungen.modell}</dd>{/if}
-  </dl>
-  <form class="reihe schluessel" onsubmit={speichere}>
-    <input class="eingabe" type="text" inputmode="url" aria-label="Adresse der KI" placeholder="http://rechner.lan:1234/v1" spellcheck="false" bind:value={adresse} />
-    <Knopf text="Speichern" symbol="check" art="submit" laeuft={arbeit === "speichern"} gesperrt={!adresse.trim()} />
-  </form>
-  {#if modelle.length}
-    <div class="feld">Modell<Auswahl name="Modell" werte={modelle.some(([m]) => m === einstellungen?.modell) ? modelle : [[einstellungen.modell, einstellungen.modell], ...modelle]} wert={einstellungen.modell} gesperrt={arbeit === "modell"} onwahl={(m) => void waehleModell(m)} /></div>
-  {/if}
-  <div class="reihe">
-    <Knopf text="Testen" symbol="stethoscope" klein laeuft={arbeit === "testen"} onclick={() => void teste()} />
-    <Knopf text="Netz absuchen" symbol="magnifying-glass" klein laeuft={arbeit === "suchen"} onclick={() => void suche()} />
-  </div>
-  {#if treffer}
-    {#each treffer as t (t.url)}
-      <div class="stelle zeile-stand eins-knopf"><span><code class="pfad">{t.url}</code><br /><span class="leise zahl">{anzahl(t.modelle, "Modell", "Modelle")}</span></span><Knopf text="Übernehmen" symbol="check" klein onclick={() => uebernimm(t)} /></div>
-    {:else}<p class="leise">Im Netz antwortet gerade keine KI.</p>{/each}
-  {/if}
-  <p class="leise">Ordnet Bücher in Regale ein. Die KI läuft auf einem eigenen Rechner im Haus; Adresse eintragen oder das Netz absuchen und danach speichern.</p>
+<dl class="angaben">
+  <dt>Leitstelle</dt><dd><span class="lampe"><span class="led {led}"></span>{wort}</span></dd>
+  {#if grund}<dt>Grund</dt><dd>{grund}</dd>{/if}
+  {#if eingerichtet && status?.url}<dt>Adresse</dt><dd><code class="pfad">{status.url}</code></dd>{/if}
+  {#if eingerichtet && !modelle.length && modell}<dt>Modell</dt><dd>{modell}</dd>{/if}
+</dl>
+{#if eingerichtet && modelle.length}
+  <div class="feld">Modell<Auswahl name="Modell" werte={wahl} wert={modell} gesperrt={arbeit === "modell"} onwahl={(m) => void waehle(m)} /></div>
 {/if}
+<div class="reihe"><Knopf text="Prüfen" symbol="stethoscope" klein laeuft={arbeit === "pruefen"} onclick={() => void pruefe()} /></div>
+<p class="leise">Ordnet Bücher in Regale ein; die KI kommt über die Leitstelle.</p>

@@ -1,6 +1,6 @@
 // Quellen und Dienste: was sie liefern, welche Felder daraus werden, und ihr gemerkter Stand
 import { kiStatus } from "../../lib/api/ai";
-import { healthCheck, ladeConfig } from "../../lib/api/config";
+import { healthCheck } from "../../lib/api/config";
 import type { Quellenstand } from "../../lib/api/metadata";
 import { anzahl, zahl } from "../../lib/format";
 import type { Guete } from "../../lib/typen";
@@ -101,16 +101,15 @@ export function alsDienst(q: Quellenstand): Dienst {
 
 /** Server und KI werden gefragt; Quellen kommen aus dem Gemerkten */
 export async function pruefeDienste(quellen: Quellenstand[]): Promise<Dienst[]> {
-  const [gesund, konfiguration, ki] = await Promise.allSettled([healthCheck(), ladeConfig(), kiStatus()]);
+  const [gesund, ki] = await Promise.allSettled([healthCheck(), kiStatus()]);
   const g = gesund.status === "fulfilled" ? (gesund.value as { version?: string }) : null;
   const b = beschreibungen;
   const dienste: Dienst[] = [
     { ...b.server, adresse: `${location.origin}/api`, ...(g ? { stand: "gut" as const, wort: "Verbunden" } : { stand: "schlecht" as const, wort: "Nicht erreichbar" }), text: g?.version ? `Fassung ${g.version}` : "" },
     { ...b.oberflaeche, adresse: location.origin, stand: "gut", wort: "Läuft", text: "Diese Seite" },
   ];
-  const k = konfiguration.status === "fulfilled" ? konfiguration.value : null;
-  if (!k) return dienste;
+  // Die KI kommt über die Leitstelle; ohne deren Einrichtung ist sie aus
   const kis = ki.status === "fulfilled" ? ki.value : null;
-  const kiStand: Pick<Dienst, "stand" | "wort"> = !k.lm_studio?.aktiviert ? { stand: "aus", wort: "Aus" } : kis?.erreichbar ? { stand: "gut", wort: "Verbunden" } : { stand: "schlecht", wort: "Nicht erreichbar" };
-  return [...dienste, ...quellen.map(alsDienst), { ...b.ki, adresse: k.lm_studio?.url ?? "", ...kiStand, text: kis?.erreichbar ? `Modell ${kis.modell}` : kis?.grund && kis.grund !== "Deaktiviert" ? kis.grund : "" }];
+  const kiStand: Pick<Dienst, "stand" | "wort"> = !kis ? { stand: "schlecht", wort: "Nicht erreichbar" } : !kis.aktiviert ? { stand: "aus", wort: "Aus" } : kis.erreichbar ? { stand: "gut", wort: "Verbunden" } : { stand: "schlecht", wort: "Nicht bereit" };
+  return [...dienste, ...quellen.map(alsDienst), { ...b.ki, adresse: kis?.url ?? "", ...kiStand, text: kis?.erreichbar ? `Modell ${kis.modell}` : kis?.grund ?? "" }];
 }

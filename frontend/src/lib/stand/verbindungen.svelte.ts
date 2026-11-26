@@ -1,7 +1,7 @@
-// Lampen unten in der Leiste und Kacheln in den Einstellungen: Dienste, Fassung, Adresse des Assistenten
+// Lampen unten in der Leiste und Kacheln in den Einstellungen: Dienste, Fassung, Adresse des Assistenten. Die KI steht als
+// Leitstelle in der Liste des Servers, wie jede andere Verbindung.
 import { get } from "../api/client";
-import { kiStatus } from "../api/ai";
-import { healthCheck, ladeConfig, ladeVersion } from "../api/config";
+import { healthCheck, ladeVersion } from "../api/config";
 import { ladeVerbindungen } from "../api/orte";
 import type { Guete, Verbindung } from "../typen";
 import { anschluesse } from "./anschluesse.svelte";
@@ -18,7 +18,6 @@ const TAKT_MS = 300_000;
 class Verbindungen {
   liste = $state<Verbindung[]>([]);
   app = $state<Dienststand>(PRUEFT);
-  ki = $state<Dienststand>(PRUEFT);
   fassung = $state("");
   neueFassung = $state("");
   assistent = $derived(anschluesse.jetzt.assistent);
@@ -40,7 +39,7 @@ class Verbindungen {
   }
 
   async pruefen(): Promise<void> {
-    await Promise.allSettled([this.#appPruefen(), this.#kiPruefen(), this.#listeLaden()]);
+    await Promise.allSettled([this.#appPruefen(), this.#listeLaden()]);
   }
 
   async #appPruefen(): Promise<void> {
@@ -49,16 +48,6 @@ class Verbindungen {
       this.app = { stand: "gut", text: "BücherFreunde antwortet" };
     } catch {
       this.app = { stand: "schlecht", text: "BücherFreunde antwortet nicht" };
-    }
-  }
-
-  async #kiPruefen(): Promise<void> {
-    try {
-      const { lm_studio: ki } = await ladeConfig();
-      if (!ki?.aktiviert) this.ki = { stand: "aus", text: "KI ist ausgeschaltet" };
-      else this.ki = (await kiStatus()).erreichbar ? { stand: "gut", text: "KI antwortet" } : { stand: "schlecht", text: "KI antwortet nicht" };
-    } catch {
-      this.ki = { stand: "schlecht", text: "KI antwortet nicht" };
     }
   }
 

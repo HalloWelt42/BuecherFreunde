@@ -15,7 +15,6 @@
   let zeilen = $derived<Zeile[]>([
     { name: "BücherFreunde", ...verbindungen.app },
     ...verbindungen.liste.map((v) => ({ name: v.name, stand: v.stand, text: v.text })),
-    ...(anschluesse.jetzt.ki ? [{ name: "KI", ...verbindungen.ki }] : []),
   ]);
 
   async function pruefe(name: string) {
