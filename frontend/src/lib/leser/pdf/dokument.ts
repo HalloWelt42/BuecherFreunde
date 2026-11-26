@@ -19,7 +19,8 @@ export interface PdfBuch {
 export async function ladePdf(id: number): Promise<PdfBuch> {
   const lib = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as unknown as PdfJs;
   lib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).href;
-  const doc = await lib.getDocument({ url: dateiUrl(id), httpHeaders: { Authorization: `Bearer ${getToken()}` } }).promise;
+  // Rechenfunktionen im PDF ohne eval: die Content-Security-Policy (BF-5) lässt keinen Code aus Zeichenketten zu
+  const doc = await lib.getDocument({ url: dateiUrl(id), httpHeaders: { Authorization: `Bearer ${getToken()}` }, isEvalSupported: false }).promise;
   const blick = (await doc.getPage(1)).getViewport({ scale: 1 });
   const beschriftung = await doc.getPageLabels().catch(() => null);
   return { lib, doc, seiten: doc.numPages, mass: { breite: blick.width, hoehe: blick.height }, beschriftung };
