@@ -185,19 +185,22 @@ async def test_einordnen_schlichter_buecher(client, test_db, einordnen):
     akte = await buch_erstellen(test_db, hash="e2", title="Bedienungsanleitung Waschmaschine", isbn="")
     bunt = await buch_erstellen(test_db, hash="e3", title="Bunter Roman")
     von_hand = await buch_erstellen(test_db, hash="e4", title="Mein Heft")
-    for b in (krimi, akte, von_hand):
+    frueher = await buch_erstellen(test_db, hash="e5", title="Altes Heft")
+    for b in (krimi, akte, von_hand, frueher):
         await setzen(test_db, b, umschlag_schlicht=1)
     await setzen(test_db, bunt, umschlag_schlicht=0)
     await setzen(test_db, von_hand, typ="heft", einordnung="hand")
+    await setzen(test_db, frueher, typ="heft")                         # vor BF-59 von Hand gesetzt, einordnung noch leer
     save_fulltext("e1", "Kapitel 1\fDie Leiche lag im Arbeitszimmer des Pfarrers. " + "Wort " * 1000)
     einordnen.sagt({"Mord im Pfarrhaus": {"art": "buch", "gattung": "krimi"},
                     "Bedienungsanleitung Waschmaschine": {"art": "dokument", "gattung": "krimi"}})     # Gattung nur bei Büchern
 
     assert await einordner.runde() == 2
-    z = {b: await zeile(test_db, b) for b in (krimi, akte, bunt, von_hand)}
+    z = {b: await zeile(test_db, b) for b in (krimi, akte, bunt, von_hand, frueher)}
     assert (z[krimi]["typ"], z[krimi]["gattung"], z[krimi]["einordnung"]) == ("", "krimi", "ki")
     assert (z[akte]["typ"], z[akte]["gattung"], z[akte]["einordnung"]) == ("dokument", "", "ki")
     assert (z[bunt]["einordnung"], z[von_hand]["typ"], z[von_hand]["einordnung"]) == ("", "heft", "hand")   # nicht angefasst
+    assert (z[frueher]["typ"], z[frueher]["einordnung"]) == ("heft", "")
     assert all(x["manuell_bearbeitet"] == 0 for x in z.values())
 
     chats = einordnen.chats()

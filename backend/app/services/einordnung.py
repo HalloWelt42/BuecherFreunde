@@ -42,7 +42,9 @@ SCHEMA = {"type": "object", "additionalProperties": False, "required": ["art", "
           "properties": {"art": {"type": "string", "enum": list(ARTEN)},
                          "gattung": {"type": "string", "enum": ["", *GATTUNG_IDS]}}}
 
-OFFEN = "umschlag_schlicht = 1 AND einordnung = ''"
+# Offen: schlicht und von niemandem eingeordnet. Eine Art, die schon dasteht, hat vor BF-59 der Nutzer gesetzt (nur er
+# schrieb typ); sie bleibt, auch wenn einordnung dort noch leer ist.
+OFFEN = "umschlag_schlicht = 1 AND einordnung = '' AND typ = ''"
 
 
 class Buchangaben(BaseModel):
