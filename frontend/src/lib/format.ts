@@ -48,6 +48,19 @@ export function datumZeit(wert: string | null | undefined): string {
   return d ? `${datum(wert)}, ${d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}` : "";
 }
 
+/** Seit wann etwas wartet: "seit heute 14:12", "seit gestern 9:05", "seit Montag, 24.11.", sonst "seit 24.11.2026" */
+export function seitWann(wert: string | null | undefined, jetzt = new Date()): string {
+  const d = zeitpunkt(wert);
+  if (!d) return "";
+  const tag = (x: Date) => Math.floor((x.getTime() - x.getTimezoneOffset() * 60_000) / 86_400_000);
+  const tage = tag(jetzt) - tag(d);
+  const uhr = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  if (tage <= 0) return `seit heute ${uhr}`;
+  if (tage === 1) return `seit gestern ${uhr}`;
+  if (tage < 7) return `seit ${d.toLocaleDateString("de-DE", { weekday: "long" })}, ${d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}`;
+  return `seit ${datum(wert)}`;
+}
+
 /** "heute", "gestern", "vor 3 Tagen", sonst das Datum */
 export function tagWort(wert: string | null | undefined): string {
   const d = zeitpunkt(wert);
@@ -60,6 +73,9 @@ export function tagWort(wert: string | null | undefined): string {
 }
 
 const sprachen: Record<string, string> = { de: "Deutsch", en: "Englisch", fr: "Französisch", es: "Spanisch", it: "Italienisch", nl: "Niederländisch", la: "Latein", pt: "Portugiesisch", ru: "Russisch", pl: "Polnisch", sv: "Schwedisch", da: "Dänisch" };
+
+/** Sprachen zur Wahl, mit Namen */
+export const SPRACHEN: [string, string][] = Object.entries(sprachen);
 
 export function sprache(kuerzel: string | null | undefined): string {
   const k = (kuerzel ?? "").trim();

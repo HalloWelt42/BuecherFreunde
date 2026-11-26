@@ -26,6 +26,7 @@
   import { nutztKinderbereich } from "./lib/kind/ich";
   import Einstellungen from "./ansichten/einstellungen/Einstellungen.svelte";
   import Hinzufuegen from "./ansichten/hinzu/Hinzufuegen.svelte";
+  import Vorschau from "./ansichten/hinzu/vorschau/Vorschau.svelte";
   import Leser from "./ansichten/leser/Leser.svelte";
   import Sammlung from "./ansichten/sammlung/Sammlung.svelte";
   import Suche from "./ansichten/suche/Suche.svelte";
@@ -47,6 +48,8 @@
     { muster: "/", ansicht: Bibliothek, vorschau: true },
     { muster: "/book/:id/read", ansicht: Leser, ohneLeiste: true },
     { muster: "/book/:id/read/:sprache", ansicht: Leser, ohneLeiste: true },
+    { muster: "/book/:id/read/format/:format", ansicht: Leser, ohneLeiste: true },
+    { muster: "/book/:id/material/:mid", ansicht: Leser, ohneLeiste: true },
     { muster: "/book/:id/uebersetzung", ansicht: Lauf },
     { muster: "/book/:id/pruefbericht", ansicht: Pruefbericht },
     { muster: "/book/:id/begriffe", ansicht: Begriffsliste },
@@ -57,6 +60,7 @@
     { muster: "/collection/:id", ansicht: Sammlung, vorschau: true },
     { muster: "/zuordnen/:art/:id", ansicht: Zuordnen },
     { muster: "/import", ansicht: Hinzufuegen },
+    { muster: "/import/vorschau/:id", ansicht: Vorschau },
     { muster: "/settings/*", ansicht: Einstellungen },
     { muster: "/settings", ansicht: Einstellungen },
     { muster: "/danke", ansicht: Danke },

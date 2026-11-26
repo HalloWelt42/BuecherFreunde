@@ -2,7 +2,6 @@
   // Text und Markdown auf einem Blatt, geblättert oder gescrollt
   import "../../stil/lesetext.css";
   import { onDestroy, setContext, tick, untrack } from "svelte";
-  import { dateiUrl } from "../../lib/api/books";
   import { anfrage } from "../../lib/api/client";
   import { formatName } from "../../lib/format";
   import { beobachteAuswahl, nimmAuswahl } from "../../lib/leser/auswahl";
@@ -49,9 +48,11 @@
 
   const ZEICHEN_JE_SEITE = 2000;
   const start = untrack(() => ziel);
-  const alt: Lesewerte = untrack(() => gemerkt(ziel, lesewerte(buch.reading_position)));
-  const speicher = new Positionsspeicher(untrack(() => sitzung.fassung.ort), "txt");
-  const istMarkdown = untrack(() => buch.file_format === "md");
+  // Was gelesen wird (lib/leser/lesefassung): das Original, ein weiteres Format oder Begleitmaterial
+  const fassung = untrack(() => sitzung.fassung);
+  const alt: Lesewerte = untrack(() => gemerkt(ziel, lesewerte(fassung.position)));
+  const speicher = new Positionsspeicher(fassung.ort, "txt");
+  const istMarkdown = fassung.format === "md";
 
   let eigeneFarben = $state(!!(alt.fgColor && alt.bgColor));
   let w = $state<Textdarstellung>({
@@ -65,7 +66,7 @@
   let inhalt = $state<string | null>(null);
 
   // Codestellen mit Taste, nur mit der Sandbox (BF-29): in Markdown die Codeblöcke, im Text die erste Zeile der Stelle
-  const codestellen = untrack(() => anschluesse.jetzt.ausfuehren) ? new Codestellenstand(untrack(() => buch.id), false) : null;
+  const codestellen = untrack(() => anschluesse.jetzt.ausfuehren) && fassung.mitBuchtext ? new Codestellenstand(untrack(() => buch.id), false) : null;
   const zeilenorte = new Map<string, Zeilenorte>();
   $effect(() => {
     if (!codestellen || inhalt === null) return;
@@ -89,15 +90,15 @@
   let quelle: Blattquelle | null = null;
   let trefferNr = $state(-1);
 
-  let gesamt = $derived(buch.page_count > 1 ? buch.page_count : Math.max(1, Math.ceil((inhalt?.length ?? 0) / ZEICHEN_JE_SEITE)));
+  let gesamt = $derived(fassung.mitBuchtext && buch.page_count > 1 ? buch.page_count : Math.max(1, Math.ceil((inhalt?.length ?? 0) / ZEICHEN_JE_SEITE)));
   let seite = $derived(Math.max(1, Math.min(gesamt, Math.ceil(stand.anteil * gesamt) || 1)));
 
   async function lade() {
     fehler = null;
     try {
-      inhalt = await (await anfrage(dateiUrl(buch.id))).text();
+      inhalt = await (await anfrage(fassung.datei)).text();
     } catch {
-      fehler = await ladefehler(dateiUrl(buch.id));
+      fehler = await ladefehler(fassung.datei);
     }
   }
 
@@ -289,7 +290,7 @@
 
 <Leserahmen {sitzung} {art} onart={(a) => leseart.blatt.setze(a)} grund={d.bg} tinte={d.fg} bereit={inhalt !== null} {onzurueck} onabwahl={abwahl} treffer={trefferliste.length ? trefferleiste : undefined}>
   {#if inhalt === null}
-    <Ladehinweis {fehler} adresse={dateiUrl(buch.id)} name={buch.file_name || buch.title} onerneut={() => void lade()} />
+    <Ladehinweis {fehler} adresse={fassung.datei} name={fassung.dateiname === true ? buch.title : fassung.dateiname} onerneut={() => void lade()} />
   {:else}
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div class="seiten lesetext textbuch rollen" tabindex="0" role="document" aria-label="Text" bind:this={flaeche}>
@@ -307,7 +308,7 @@
   {#snippet fuss()}
     <Fussleiste {sitzung} anteil={stand.anteil} anAnfang={stand.amAnfang} amEnde={stand.amEnde} onzurueck={zurueck} onvor={vor} onanteil={(a) => fluss?.zuAnteil(a)}>
       <Seitenstand {seite} {gesamt} onseite={(nr) => fluss?.zuAnteil((nr - 1) / gesamt)} />
-      <span class="stand zahl klein nur-breit">{Math.round(stand.anteil * 100)} %, {formatName(buch.file_format)}</span>
+      <span class="stand zahl klein nur-breit">{Math.round(stand.anteil * 100)} %, {formatName(fassung.format)}</span>
     </Fussleiste>
   {/snippet}
 </Leserahmen>

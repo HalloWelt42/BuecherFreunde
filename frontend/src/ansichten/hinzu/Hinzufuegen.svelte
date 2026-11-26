@@ -10,7 +10,7 @@
   import Quellen from "./quellen/Quellen.svelte";
 
   type Filter = "alle" | Gruppe;
-  const filter: [Filter, string][] = [["alle", "Alle"], ["laeuft", "Läuft"], ["klaeren", "Zu klären"], ["da", "Schon da"], ["fertig", "Fertig"]];
+  const filter: [Filter, string][] = [["alle", "Alle"], ["bestaetigen", "Zum Bestätigen"], ["laeuft", "Läuft"], ["klaeren", "Zu klären"], ["da", "Schon da"], ["fertig", "Fertig"]];
   let gewaehlt = $state<Filter>("alle");
   let ablage: Ablage | undefined = $state();
 

@@ -2,12 +2,13 @@
 // folgt seinen Fähigkeiten (BF-78): Familie für Verwaltung und Eltern, alles andere nur mit "einstellungen".
 import type { Faehigkeit } from "../../lib/api/familie";
 
-export type Reiter = "darstellung" | "familie" | "verbindungen" | "regale" | "katalog" | "wartung" | "mehr";
+export type Reiter = "darstellung" | "familie" | "verbindungen" | "hinzufuegen" | "regale" | "katalog" | "wartung" | "mehr";
 
 export const reiter: [Reiter, string, string][] = [
   ["darstellung", "Darstellung", "palette"],
   ["familie", "Familie", "people-roof"],
   ["verbindungen", "Verbindungen", "plug"],
+  ["hinzufuegen", "Hinzufügen", "cloud-arrow-up"],
   ["regale", "Regale und Sammlungen", "folder-tree"],
   ["katalog", "Katalog", "sitemap"],
   ["wartung", "Wartung und Sicherung", "screwdriver-wrench"],
@@ -28,6 +29,7 @@ const BRAUCHT: Record<Reiter, Faehigkeit[]> = {
   darstellung: ["einstellungen"],
   familie: ["profile", "freigeben"],
   verbindungen: ["einstellungen"],
+  hinzufuegen: ["einstellungen"],
   regale: ["einstellungen"],
   katalog: ["einstellungen"],
   wartung: ["einstellungen"],

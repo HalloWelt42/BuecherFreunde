@@ -219,7 +219,7 @@ describe("Reiter der Einstellungen nach Fähigkeiten", () => {
   it("zeigt Eltern nur Familie, der Verwaltung alles", () => {
     const eltern = sichtbareReiter((f) => f === "freigeben").map(([r]) => r);
     expect(eltern).toEqual(["familie"]);
-    expect(sichtbareReiter((f) => f === "einstellungen" || f === "profile")).toHaveLength(7);
+    expect(sichtbareReiter((f) => f === "einstellungen" || f === "profile")).toHaveLength(8);
     expect(reiterAus("/settings/katalog", eltern)).toEqual({ reiter: "familie", stelle: "" });
     expect(reiterAus("/settings/ai", eltern).reiter).toBe("familie");
     expect(reiterAus("/settings/familie/k-1").reiter).toBe("familie");

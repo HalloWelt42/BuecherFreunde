@@ -16,6 +16,17 @@ function aufzaehlung(teile: string[]): string {
   return teile.length < 2 ? (teile[0] ?? "") : `${teile.slice(0, -1).join(", ")} und ${teile.at(-1)}`;
 }
 
+/** Weitere Formate und Begleitmaterial gehen mit dem Buch: in den Papierkorb der Kellerwolke oder auf dem Gerät fort */
+function dateisaetze(dateien: NonNullable<Loeschfolgen["material"]>, eins: string, mehr: string): string[] {
+  const korb = dateien.filter((d) => d.papierkorb);
+  const fort = dateien.filter((d) => !d.papierkorb);
+  const liste = (d: typeof dateien) => d.map((x) => `${x.pfad}, ${groesse(x.groesse)}`).join("; ");
+  const aus: string[] = [];
+  if (korb.length) aus.push(`${anzahl(korb.length, eins, mehr)} ${korb.length === 1 ? "kommt" : "kommen"} mit in den Papierkorb der Kellerwolke: ${liste(korb)}.`);
+  if (fort.length) aus.push(`${anzahl(fort.length, eins, mehr)} auf diesem Gerät ${fort.length === 1 ? "ist" : "sind"} danach fort: ${liste(fort)}.`);
+  return aus;
+}
+
 /** Nur die Folgen, die es bei diesem Buch gibt, als ganze Sätze */
 export function folgensaetze(f: Loeschfolgen): string[] {
   const aus: string[] = [];
@@ -32,6 +43,7 @@ export function folgensaetze(f: Loeschfolgen): string[] {
   if (f.regale) aus.push(`Das Buch fehlt danach in ${anzahl(f.regale, "Regal", "Regalen")}.`);
   if (f.datei?.papierkorb) aus.push(`Die Datei kommt in den Papierkorb der Kellerwolke und lässt sich dort zurückholen: ${f.datei.pfad}, ${groesse(f.datei.groesse)}.`);
   else if (f.datei) aus.push(`Die Datei liegt nur auf diesem Gerät und ist danach fort: ${f.datei.pfad}, ${groesse(f.datei.groesse)}.`);
+  aus.push(...dateisaetze(f.formate ?? [], "weiteres Format", "weitere Formate"), ...dateisaetze(f.material ?? [], "Datei Begleitmaterial", "Dateien Begleitmaterial"));
   if (f.abschnitte) aus.push(`Die Suche nach Bedeutung vergisst das Buch (${anzahl(f.abschnitte, "Abschnitt", "Abschnitte")}).`);
   return aus;
 }

@@ -1,5 +1,6 @@
 <script lang="ts">
-  // Ablegefläche und Dateiwahl
+  // Ablegefläche und Dateiwahl; was hier hochkommt, geht immer über die Vorschau (BF-80)
+  import { navigate } from "../../lib/router.svelte";
   import { lies, merke } from "../../lib/speicher";
   import { annahme } from "../../lib/stand/annahme.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
@@ -18,9 +19,13 @@
     merke(SCHLUESSEL, an ? "1" : "");
   }
 
-  function nimm(dateien: File[]) {
-    if (dateien.length) annahme.nimmAn(dateien, ergaenzen);
-    else melde.info("Keine Datei dabei");
+  async function nimm(dateien: File[]) {
+    if (!dateien.length) return melde.info("Keine Datei dabei");
+    try {
+      navigate(`/import/vorschau/${await annahme.nimmAn(dateien, ergaenzen)}`);
+    } catch (e) {
+      melde.schlecht(e, "Nicht hochgeladen");
+    }
   }
 
   export function waehle() {
@@ -28,13 +33,14 @@
   }
 
   function gewaehlt() {
-    nimm(brauchbar(feld?.files ?? []));
+    const dateien = brauchbar(feld?.files ?? []);
     if (feld) feld.value = "";
+    void nimm(dateien);
   }
 
   async function abgelegt(e: DragEvent) {
     ueber = false;
-    if (e.dataTransfer) nimm(await gezogeneDateien(e.dataTransfer));
+    if (e.dataTransfer) await nimm(await gezogeneDateien(e.dataTransfer));
   }
 
   const mitDateien = (e: DragEvent) => !!e.dataTransfer?.types.includes("Files");
@@ -51,11 +57,11 @@
   <Symbol name="cloud-arrow-up" />
   <div>
     <b>Bücher hierher ziehen</b>
-    <p class="leise">PDF, EPUB, MOBI, TXT und MD, auch ganze Ordner. Vor dem Hochladen wird geprüft, ob es das Buch schon gibt.</p>
+    <p class="leise">PDF, EPUB, MOBI, TXT, MD und ZIP, auch ganze Ordner. Vor dem Übernehmen kommt die Vorschau.</p>
     <Haekchen text="Danach Angaben aus Verzeichnissen ergänzen" an={ergaenzen} onwahl={setzeErgaenzen} />
   </div>
   <Knopf text="Dateien wählen" symbol="plus" haupt onclick={waehle} />
-  <input type="file" multiple accept=".pdf,.epub,.mobi,.txt,.md" hidden bind:this={feld} onchange={gewaehlt} />
+  <input type="file" multiple accept=".pdf,.epub,.mobi,.txt,.md,.zip" hidden bind:this={feld} onchange={gewaehlt} />
 </section>
 
 <style>

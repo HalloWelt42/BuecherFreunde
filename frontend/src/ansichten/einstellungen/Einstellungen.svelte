@@ -5,6 +5,7 @@
   import Chip from "../../lib/teile/Chip.svelte";
   import Darstellungsreiter from "./Darstellungsreiter.svelte";
   import Familienreiter from "./familie/Familienreiter.svelte";
+  import Hinzufuegenreiter from "./Hinzufuegenreiter.svelte";
   import Katalogreiter from "./katalog/Katalogreiter.svelte";
   import Mehrreiter from "./Mehrreiter.svelte";
   import Regalreiter from "./Regalreiter.svelte";
@@ -60,6 +61,7 @@
   {#if hier.reiter === "darstellung"}<Darstellungsreiter />
   {:else if hier.reiter === "familie"}<Familienreiter />
   {:else if hier.reiter === "verbindungen"}<Verbindungsreiter />
+  {:else if hier.reiter === "hinzufuegen"}<Hinzufuegenreiter />
   {:else if hier.reiter === "regale"}<Regalreiter />
   {:else if hier.reiter === "katalog"}<Katalogreiter />
   {:else if hier.reiter === "wartung"}<Wartungsreiter />

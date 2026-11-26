@@ -1,4 +1,4 @@
-// Welches Muster in welchen Farben (BF-59): Dokumente, Hefte, Kataloge und Broschüren nach ihrer Art, Bücher nach ihrer
+// Welches Muster in welchen Farben (BF-59): Dokumente, Hefte, Kataloge, Broschüren und Anleitungen (BF-80) nach ihrer Art, Bücher nach ihrer
 // Gattung, alles wie in der Stilprobe. Mehrere Farbsätze wechseln nach der Nummer des Buchs; die Schlüssel sind die
 // Kennungen des Servers (GET /api/collections/typen und /gattungen). Als Map, damit Schlüssel wie "constructor" nichts finden.
 import type { Dreiklang } from "../farben";
@@ -18,6 +18,7 @@ const ARTEN = new Map<string, Gestalt>(Object.entries({
   heft: { muster: "heft", farben: [["#b3402a", "#f0e3c4", "#20323b"], ["#2c4a63", "#e7dfc8", "#d86a2a"]] },
   katalog: { muster: "katalog", farben: [["#e9e2d0", "#c4572e", "#253646"], ["#e4eadf", "#4f8a3c", "#23332b"]] },
   broschuere: { muster: "broschuere", farben: [["#f3efe6", "#c4572e", "#253646"], ["#eef2f5", "#2f6d7a", "#1d2a33"]] },
+  anleitung: { muster: "anleitung", farben: [["#eef1f4", "#2f6fb3", "#1d2a38"], ["#f2efe6", "#c4572e", "#253646"]] },
 } satisfies Record<string, Gestalt>));
 
 const GATTUNGEN = new Map<string, Gestalt>(Object.entries({

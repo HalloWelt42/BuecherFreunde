@@ -90,7 +90,7 @@
     try {
       const cfi = nenntStelle(start) ? start.cfi : (alt.cfi ?? "");
       const gedacht = nenntStelle(start) ? start.prozent : cfi ? 0 : (alt.percent ?? 0);
-      const mitte = gedacht / 100 || (start.seite > 0 && buch.page_count > 0 ? (start.seite - 1) / buch.page_count : 0);
+      const mitte = gedacht / 100 || (start.seite > 0 && buch.page_count > 0 && fassung.mitBuchtext ? (start.seite - 1) / buch.page_count : 0);
       await anzeige.oeffne(fassung.datei, cfi);
       sitzung.kapitel = anzeige.kapitel;
       const a = anzeige;

@@ -281,6 +281,18 @@ export interface Buch {
   alter_bis?: number | null;
   /** Woher die Altersangabe kommt, etwa der Name einer Quelle oder "eigen" */
   alter_quelle?: string;
+  /** So viele Dateien Begleitmaterial (BF-81) */
+  material?: number;
+}
+
+/** Eine Datei des Buchs (BF-80): das Original oder ein weiteres Format */
+export interface Buchdatei {
+  id: string;
+  format: string;
+  name: string;
+  groesse: number;
+  /** Das Original, aus dem Text, Umschlag und Angaben stammen */
+  haupt: boolean;
 }
 
 /** Was mit einem Buch verloren geht (BF-60, GET /api/books/{id}/loeschfolgen) */
@@ -297,6 +309,9 @@ export interface Loeschfolgen {
   datei: { pfad: string; groesse: number; papierkorb: boolean } | null;
   /** Abschnitte der Suche nach Bedeutung; null ohne Anschluss */
   abschnitte: number | null;
+  /** Weitere Formate (BF-80) und Begleitmaterial (BF-81), gehen mit dem Buch */
+  formate?: { pfad: string; groesse: number; papierkorb: boolean }[];
+  material?: { pfad: string; groesse: number; papierkorb: boolean }[];
 }
 
 export interface BuchEinzeln extends Buch {
@@ -304,6 +319,8 @@ export interface BuchEinzeln extends Buch {
   description: string;
   file_name: string;
   authors: AutorKurz[];
+  /** Das Original zuerst, dann weitere Formate (BF-80) */
+  dateien?: Buchdatei[];
 }
 
 /** Eine große Sammlung als ein Eintrag der Bibliothek (BF-66) */
@@ -447,6 +464,18 @@ export interface Treffer {
   autor: string;
   snippet: string;
   relevanz: number;
+  deckblatt: Deckblattangaben | null;
+}
+
+/** Ein Treffer im Begleitmaterial (BF-81): er nennt das Buch und die Datei, bei einem PDF die Seite */
+export interface Materialtreffer {
+  material_id: string;
+  buch_id: number;
+  titel: string;
+  autor: string;
+  name: string;
+  seite: number | null;
+  auszug: string;
   deckblatt: Deckblattangaben | null;
 }
 

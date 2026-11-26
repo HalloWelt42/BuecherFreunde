@@ -1,6 +1,8 @@
 // Ein Eintrag der Annahme, so wie der Server ihn führt (docs/neubau/SCHNITTSTELLE.md)
 
-export type Annahmestand = "wartet" | "laedt" | "angehalten" | "liest" | "angaben" | "regal" | "wissen" | "fertig" | "ohne_text" | "da" | "format" | "kaputt" | "fehler";
+export type Annahmestand =
+  | "wartet" | "laedt" | "angehalten" | "liest" | "angaben" | "entpacken" | "bestaetigen" | "regal" | "wissen" | "fertig" | "ohne_text" | "da"
+  | "entpackt" | "format" | "kaputt" | "fehler" | "verworfen";
 
 /** Woher die Datei kommt: Browser, Eingangsordner der Kellerwolke, Einlese-Ordner, externe Sammlung, gemeinfreie Bücher */
 export type Annahmequelle = "hochladen" | "eingangsordner" | "ordner" | "extern" | "gemeinfrei";
@@ -20,11 +22,19 @@ export interface AnnahmeEintrag {
   quelle: Annahmequelle;
   angelegt_am: string;
   geaendert_am: string;
+  /** Die Vorschau, zu der die Aufnahme gehört (BF-80); leer: ohne Halt vor dem Regal */
+  vorschau?: string | null;
+  /** Die Aufnahme der ZIP, aus der sie stammt */
+  teil_von?: number | null;
+  /** Begleitmaterial zu diesem Buch (BF-81) */
+  material_fuer?: number | null;
 }
 
 export interface AnnahmeZaehler {
   alle: number;
   laeuft: number;
+  /** Warten vor dem Regal auf die Bestätigung (BF-80) */
+  bestaetigen?: number;
   klaeren: number;
   da: number;
   fertig: number;
@@ -34,6 +44,7 @@ export interface AnnahmeZaehler {
 export interface Quellenzahlen {
   gesamt: number;
   laeuft: number;
+  bestaetigen?: number;
   fertig: number;
   da: number;
   gescheitert: number;
@@ -46,14 +57,42 @@ export interface AnnahmeListe {
   weitere?: number;
   zaehler: AnnahmeZaehler;
   quellen?: Partial<Record<Annahmequelle, Quellenzahlen>>;
+  /** Die offenen Vorschauen, die auf die Bestätigung warten ("Zum Bestätigen", BF-80) */
+  vorschauen?: Vorschaukurz[];
 }
+
+/** Eine Vorschau vor dem Übernehmen, kurz (BF-80, docs/neubau/SCHNITTSTELLE.md) */
+export interface Vorschaukurz {
+  id: string;
+  name: string;
+  quelle: Annahmequelle;
+  stand: "offen" | "uebernommen" | "verworfen";
+  /** ohne die ZIP selbst */
+  dateien: number;
+  /** stehen auf "bestaetigen" */
+  warten: number;
+  /** werden noch hochgeladen, gelesen oder ausgepackt */
+  laeuft: number;
+  /** prüft die KI noch */
+  ki: number;
+  groesse: number;
+  /** nach dem Übernehmen, etwa "3 Dateien blieben im Eingang" */
+  hinweis: string;
+  angelegt_am: string;
+  geaendert_am: string;
+}
+
+/**
+ * Wohin eine Datei aus dem Browser geht: in eine Vorschau (Hochladen, BF-80), ohne Vorschau bekommt jede Datei ihre eigene;
+ * oder als Begleitmaterial zu einem Buch (BF-81), eine ZIP auf Wunsch ausgepackt.
+ */
+export type Annahmeziel = { art: "vorschau"; vorschau: string | null; anreichern: boolean } | { art: "material"; buch: number; entpacken: boolean };
 
 export interface NeueDatei {
   name: string;
   groesse: number;
   sha256: string;
-  /** Nach dem Eintragen Angaben aus Verzeichnissen holen */
-  anreichern: boolean;
+  ziel: Annahmeziel;
 }
 
 /** Was der Hochlader vom Server braucht; im Test durch nachgebaute Antworten ersetzt. */
@@ -86,4 +125,5 @@ export interface Hochladung {
   gesendet: number;
   text: string;
   eintrag: AnnahmeEintrag | null;
+  ziel: Annahmeziel;
 }

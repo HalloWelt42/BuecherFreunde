@@ -1,0 +1,157 @@
+/* Hochladen mit Vorschau (BF-80) und Begleitmaterial (BF-81), nach dem abgenommenen Entwurf "Hochladen und Zuordnen" */
+
+/* Herkunft eines Vorschlags: kleines Zeichen hinter dem Wert, mit Legende; "von dir" in Messing */
+.hk { flex: none; display: inline-flex; font-size: .6875rem; line-height: 1; color: var(--tinte-3); }
+.hk.du { color: var(--messing); }
+.hklegende { display: flex; flex-wrap: wrap; gap: .25rem 1rem; font-size: .8125rem; color: var(--tinte-3); }
+.hklegende > span { display: inline-flex; align-items: center; gap: .3125rem; }
+.hklegende > span:last-child i { color: var(--messing); }
+.hklegende.unten { display: none; }
+.hktext { display: inline-flex; align-items: center; gap: .25rem; margin-left: .375rem; font-size: .75rem; color: var(--tinte-3); font-weight: 500; }
+.hktext.du { color: var(--messing); }
+
+/* Die Vorschau als Arbeitsplatz: Werkzeug, Auswahl und Fuß stehen, nur die Liste rollt */
+.inhalt.vflaeche { display: flex; flex-direction: column; gap: .5rem; min-height: 0; overflow: hidden; padding-bottom: .75rem; }
+.vflaeche > * { flex: none; }
+.vflaeche > .vliste { flex: 1 1 0; min-height: 0; }
+.vauswahl { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; }
+.vauswahl > b { min-width: 5.5rem; }
+.vaendern { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .375rem; flex: 0 1 46rem; min-width: 0; }
+.vaendern .knopf { min-width: 0; }
+.vaendern-tel, .vfilterwahl { display: none; }
+.vliste { display: grid; gap: 2px; align-content: start; overflow: auto; padding: 1px; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgb(var(--kante) / .5) transparent; }
+
+/* Eine Zeile je Datei: am Rechner eine Tabelle, schmal als Karte */
+.vzeile { display: grid; grid-template-columns: 1.25rem 2.25rem minmax(0, 1.6fr) 7.25rem minmax(0, 1.15fr) minmax(0, 1fr) 6.25rem minmax(0, 1fr) 2.75rem 1.875rem; gap: .625rem; align-items: center; padding: .3125rem .5rem; border-radius: var(--r1); background: var(--platte); box-shadow: 0 0 0 1px var(--linie); font-size: .875rem; }
+.vzeile.kopfzeile { background: none; box-shadow: none; padding-block: 0; font-size: .75rem; font-weight: 600; color: var(--tinte-3); }
+.vzeile.gewaehlt { background: var(--messing-hauch); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--messing) 50%, transparent); }
+.vzeile.weglassen > :is(.bild, .vdatei), .vzeile.weglassen .felder > :not(.vdoppel) { opacity: .5; }
+.vzeile > .felder { display: contents; }
+.vzeile > .tun { grid-row: 1; grid-column: -2 / -1; }
+.vzeile > .wahl { min-height: 0; }
+.vzeile .bild { display: block; min-width: 0; }
+.vzeile .bild .umschlag, .dateikopf .umschlag { aspect-ratio: 2 / 3; border-radius: 2px; box-shadow: 0 0 0 .5px rgb(0 0 0 / .4), 0 2px 4px rgb(var(--schatten) / .3); }
+.vzeile .bild .umschlag :is(svg, img), .dateikopf .umschlag :is(svg, img) { height: 100%; max-height: none; object-fit: cover; }
+.dateizeichen { display: grid; place-items: center; width: 100%; aspect-ratio: 2 / 3; border-radius: 2px; background: var(--vertieft-2); color: var(--tinte-2); font-size: 1rem; box-shadow: inset 0 0 0 1px var(--linie); }
+.vdatei { min-width: 0; display: grid; }
+.vdatei b, .vdatei small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vdatei b { font-weight: 600; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
+.vdatei small { font-size: .75rem; color: var(--tinte-3); }
+.vwert { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .375rem; align-items: center; min-width: 0; }
+.vwert > .text { min-width: 0; display: grid; }
+.vwert > .text > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vwert > .text small { font-size: .75rem; color: var(--tinte-3); }
+.vwert > .text small .hk { margin-left: .25rem; }
+.vwert > .farbe { margin: 0; }
+.vwert.zu { grid-column: span 3; }
+.vwert.zu > .umschlag { width: 1.25rem; border-radius: 1px; }
+.vwert.zu > .umschlag :is(img, svg) { aspect-ratio: 2 / 3; object-fit: cover; }
+.vdoppel { display: grid; gap: .125rem; min-width: 0; }
+.vdoppel .auswahl { width: 100%; }
+.vdoppel small { font-size: .75rem; color: var(--tinte-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vohne { min-height: 1px; }
+.vwarnung { grid-column: 3 / -1; }
+.vlaeuft { grid-column: 4 / -2; min-width: 0; }
+
+/* Nicht übernommen, mit Grund */
+.vnicht { display: grid; gap: 2px; margin-top: .75rem; }
+.vnicht h3 { font-size: .9375rem; display: flex; align-items: center; gap: .5rem; padding: 0 .25rem .25rem; }
+.vnicht h3 > i { color: var(--tinte-3); }
+.nichtzeile { display: grid; grid-template-columns: 2.25rem minmax(0, 1.6fr) minmax(0, 1.4fr) 9rem; gap: .625rem; align-items: center; padding: .3125rem .5rem; border-radius: var(--r1); background: var(--platte); box-shadow: 0 0 0 1px var(--linie); font-size: .875rem; }
+.nichtzeile > .marke-text { min-width: 0; }
+
+/* Fuß: Zahlen, KI, Verwerfen und Übernehmen */
+.vfuss { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .875rem; padding-top: .625rem; border-top: 1px solid var(--linie); }
+.tasten2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.tasten2 .knopf { min-width: 0; }
+
+/* Eine Datei zuordnen (Fenster) */
+.dateikopf { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); gap: .625rem; align-items: center; }
+.dateikopf .vdatei b { display: block; -webkit-line-clamp: none; line-clamp: none; }
+.dateikopf .vdatei small { white-space: normal; overflow-wrap: anywhere; }
+.segmentvoll { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+.segmentvoll button { white-space: normal; line-height: 1.2; }
+.feldkopf { display: flex; align-items: center; gap: .5rem; flex-wrap: nowrap; }
+.feldkopf b { font-size: 1rem; min-width: 0; }
+.feldliste { display: grid; grid-template-columns: minmax(0, 1fr); max-height: 18rem; overflow: auto; margin-top: .25rem; }
+.feldliste .gruppe { font-size: .8125rem; font-weight: 600; color: var(--tinte-3); padding: .375rem .5rem .125rem; }
+.feldliste .punkt:disabled { opacity: .45; cursor: default; }
+.feldliste .punkt:disabled:hover { background: none; }
+
+@container app (max-width: 80rem) {
+  .vzeile.kopfzeile, .hklegende.oben { display: none; }
+  .hklegende.unten { display: flex; padding: .75rem .25rem .25rem; }
+  .vzeile { grid-template-columns: 1.25rem 2.5rem minmax(0, 1fr) auto; grid-template-areas: "wahl bild datei tun" "wahl bild felder felder"; align-items: start; row-gap: .375rem; padding: .5rem; }
+  .vzeile > .wahl { grid-area: wahl; padding-top: .125rem; }
+  .vzeile > .bild { grid-area: bild; }
+  .vzeile > .vdatei { grid-area: datei; }
+  .vzeile > .tun { grid-area: tun; }
+  .vzeile > .felder { grid-area: felder; display: flex; flex-wrap: wrap; gap: .25rem; min-width: 0; }
+  .vdatei b { white-space: normal; overflow-wrap: anywhere; }
+  .vwert { display: inline-flex; padding: .1875rem .5rem; border-radius: var(--r2); background: var(--vertieft); max-width: 100%; }
+  .vwert > .text { display: block; min-width: 0; hyphens: auto; overflow-wrap: anywhere; }
+  .vwert > .text > * { display: inline; white-space: normal; }
+  .vwert > .text small { margin-left: .125rem; }
+  .vohne { display: none; }
+  .vdoppel { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; }
+  .vdoppel:has(.auswahl) { flex: 1 1 100%; }
+  .vdoppel .auswahl { width: auto; flex: 0 1 12rem; }
+  .vdoppel small { white-space: normal; }
+  .vwarnung, .vlaeuft { flex: 1 1 100%; }
+  .nichtzeile { grid-template-columns: 2.25rem minmax(0, 1fr) auto; }
+  .nichtzeile > .marke-text { grid-column: 2 / -1; grid-row: 2; }
+  .nichtzeile > .knopf { grid-column: 3; grid-row: 1; }
+}
+@container app (max-width: 720px) {
+  .vfilter, .vaendern { display: none; }
+  .vfilterwahl { display: contents; }
+  .vaendern-tel { display: flex; gap: .25rem; margin-left: auto; }
+  .vfuss { gap: .25rem .75rem; padding-top: .5rem; }
+  .vfuss > .tasten2 { flex: 1 1 100%; margin-left: 0; }
+  :is(.vfuss, .fund) > .tasten2 { grid-template-columns: repeat(auto-fit, minmax(min(8rem, 100%), 1fr)); }
+}
+
+/* Begleitmaterial auf der Buchseite (BF-81) */
+.karte > h2 { flex-wrap: wrap; row-gap: .375rem; }
+.materialliste { display: grid; gap: 2px; }
+.materialzeile { display: grid; grid-template-columns: 2rem minmax(0, 1fr) 9.25rem 1.875rem 1.875rem; gap: .625rem; align-items: center; padding: .3125rem .5rem; border-radius: var(--r1); background: var(--platte); box-shadow: 0 0 0 1px var(--linie); font-size: .9375rem; }
+.materialzeile .dateizeichen { aspect-ratio: auto; height: 2rem; border-radius: var(--r1); }
+.materialzeile .name { min-width: 0; display: grid; }
+.materialzeile .name b { font-weight: 500; overflow-wrap: anywhere; }
+.materialzeile .name small { color: var(--tinte-3); font-size: .8125rem; }
+.materialzeile .tun { display: grid; }
+.materialzeile.umbenennen { grid-template-columns: 2rem minmax(0, 1fr) auto; }
+.materialzeile.ohne-tasten { grid-template-columns: 2rem minmax(0, 1fr) 9.25rem; }
+.umbenennen .namensfeld { display: flex; align-items: center; gap: .375rem; min-width: 0; }
+.umbenennen .namensfeld .eingabe { flex: 1; min-width: 0; height: 1.875rem; font-size: .9375rem; }
+.zweinur { display: flex; gap: .25rem; }
+.fund { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .75rem; align-items: center; padding: .625rem .75rem; }
+.fund > i { color: var(--messing); font-size: 1.125rem; }
+.fund b { font-weight: 600; }
+.fund .name { min-width: 0; overflow-wrap: anywhere; }
+@container app (max-width: 720px) {
+  .materialzeile { grid-template-columns: 2rem minmax(0, 1fr) 2.75rem 2.75rem 2.75rem; gap: .375rem; }
+  .materialzeile.ohne-tasten { grid-template-columns: 2rem minmax(0, 1fr) 2.75rem; }
+  .materialzeile .tun .knopf { width: 2.75rem; padding: 0; }
+  .materialzeile .tun .knopf > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .fund { grid-template-columns: auto minmax(0, 1fr); }
+  .fund > .tasten2 { grid-column: 1 / -1; }
+}
+/* Sehr große Schrift am Telefon: die Tasten unter den Namen */
+@container app (max-width: 21rem) {
+  .materialzeile:not(.umbenennen) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .materialzeile:not(.umbenennen) > .dateizeichen { width: 2rem; justify-self: start; }
+  .materialzeile:not(.umbenennen) > .name { grid-column: 2 / -1; }
+  .materialzeile:not(.umbenennen) .knopf, .materialzeile:not(.umbenennen) .tun .knopf { width: 100%; }
+  .materialzeile.umbenennen { grid-template-columns: 2rem minmax(0, 1fr); }
+  .materialzeile.umbenennen > .zweinur { grid-column: 2; justify-content: flex-end; }
+}
+
+/* Einstellungen, Reiter Hinzufügen (BF-80) */
+.wegzeile { display: grid; grid-template-columns: 1.5rem minmax(0, 1fr) auto; gap: .625rem; align-items: center; padding: .5rem 0; border-top: 1px solid var(--linie); font-size: .9375rem; }
+.wegzeile:first-child { border-top: 0; }
+.wegzeile > i { color: var(--messing); text-align: center; }
+.wegzeile small { display: block; color: var(--tinte-3); font-size: .8125rem; overflow-wrap: anywhere; }
+
+/* Liste der Dateien in einer Rückfrage (Folgenvorschau) */
+.dateiliste { display: grid; gap: .125rem; max-height: 10.5rem; overflow: auto; padding: .375rem .625rem; }

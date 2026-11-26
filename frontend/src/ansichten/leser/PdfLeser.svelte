@@ -1,7 +1,7 @@
 <script lang="ts">
   // PDF: Seiten als Bild mit wählbarem Text, oder als umfließender Text; geblättert oder gescrollt
   import { onDestroy, untrack } from "svelte";
-  import { dateiUrl, volltextSuche } from "../../lib/api/books";
+  import { volltextSuche } from "../../lib/api/books";
   import { blaettertaste } from "../../lib/leser/blaettertasten";
   import { FARBTHEMEN, istDunkel, PAPIERFARBEN, papierOder, vorgabeThema, type Papier } from "../../lib/leser/darstellung";
   import type { Leseart } from "../../lib/leser/fluss/fluss";
@@ -42,11 +42,14 @@
 
   // Das Gerät zählt beim Öffnen: Telefon und Rechner merken Ansicht und Zoom getrennt
   const telefon = geraet.telefon;
-  const alt: Lesewerte = untrack(() => gemerkt(ziel, lesewerte(buch.reading_position)));
+  // Was gelesen wird (lib/leser/lesefassung): das Original mit dem Text des Servers, sonst nur die Datei
+  const fassung = untrack(() => sitzung.fassung);
+  const mitBuchtext = fassung.mitBuchtext;
+  const alt: Lesewerte = untrack(() => gemerkt(ziel, lesewerte(fassung.position)));
   const meine = telefon ? (alt.telefon ?? {}) : alt;
   const start = untrack(() => ziel);
   const speicher = new Positionsspeicher(untrack(() => sitzung.fassung.ort), "pdf");
-  const gedruckt = new Gedruckt(untrack(() => buch.id));
+  const gedruckt = new Gedruckt(mitBuchtext ? untrack(() => buch.id) : null);
   const ersteAnsicht = ansichtOder(start.ansicht || meine.ansicht, ansichtFuer(leseart.blatt.art, telefon));
 
   let pdf = $state.raw<PdfBuch | null>(null);
@@ -57,7 +60,7 @@
   let zoom = $state<number | null>(ersteAnsicht === "scroll" ? (start.zoom || meine.zoom || 100) / 100 : null);
   let mass = $state(1);
   let papierWahl = $state(start.papier || alt.papier || "");
-  let nurText = $state(telefon ? textansicht.an : (start.ansicht || alt.ansicht) === "text");
+  let nurText = $state(mitBuchtext && (telefon ? textansicht.an : (start.ansicht || alt.ansicht) === "text"));
   // Nur was für dieses Buch von Hand gewählt wurde, wird mit ihm gemerkt: Telefon und Rechner überschreiben einander nicht
   let ansichtGewaehlt = $state(false);
   let fundstelle = $state(start.stelle || start.wort);
@@ -78,11 +81,11 @@
   async function lade() {
     fehler = null;
     try {
-      const geladen = await ladePdf(buch.id);
-      if (!start.seite && start.wort) await sucheSeite();
+      const geladen = await ladePdf(fassung.datei);
+      if (!start.seite && start.wort && mitBuchtext) await sucheSeite();
       seite = Math.min(Math.max(1, seite), geladen.seiten);
       pdf = geladen;
-      sitzung.quelle = new Pdfquelle(buch.id, geladen, () => sitzung.kapitel, () => sitzung.kapitelJetzt, () => (nurText ? (text ?? null) : (seiten ?? null)));
+      sitzung.quelle = new Pdfquelle(mitBuchtext ? buch.id : null, geladen, () => sitzung.kapitel, () => sitzung.kapitelJetzt, () => (nurText ? (text ?? null) : (seiten ?? null)));
       sitzung.rand = {
         anteil: (e) => {
           const s = seiteVon(e);
@@ -111,7 +114,7 @@
       sitzung.farbwahl = { jetzt: () => farben, setze: setzeFarben };
       sitzung.kapitel = await verzeichnis(geladen.doc);
     } catch {
-      fehler = await ladefehler(dateiUrl(buch.id));
+      fehler = await ladefehler(fassung.datei);
     }
   }
 
@@ -249,7 +252,7 @@
 
   const aufraeumen = speicher.starte();
   // Codestellen mit Taste, nur mit der Sandbox (BF-29); geholt um die Seite, an der man liest
-  const codestellen = untrack(() => anschluesse.jetzt.ausfuehren) ? new Codestellenstand(untrack(() => buch.id), true, (nr) => (pdf ? gedruckteSeite(pdf, nr) : "")) : null;
+  const codestellen = untrack(() => anschluesse.jetzt.ausfuehren) && mitBuchtext ? new Codestellenstand(untrack(() => buch.id), true, (nr) => (pdf ? gedruckteSeite(pdf, nr) : "")) : null;
   $effect(() => codestellen?.lade(seite));
   async function oeffneCode(s: Codestelle) {
     const seiten = [...new Set(s.teile.map((t) => t.seite).filter((n): n is number => n !== null))];
@@ -277,7 +280,7 @@
 
 <Leserahmen {sitzung} {papier} {art} satz={nurText} onart={setzeArt} grund={farben.bg} tinte={farben.fg} bereit={!!pdf} {onzurueck} onabwahl={abwahl}>
   {#if !pdf}
-    <Ladehinweis {fehler} adresse={dateiUrl(buch.id)} name={buch.file_name || buch.title} onerneut={() => void lade()} />
+    <Ladehinweis {fehler} adresse={fassung.datei} name={fassung.dateiname === true ? buch.title : fassung.dateiname} onerneut={() => void lade()} />
   {:else if nurText}
     <Textansicht bind:this={text} {sitzung} {art} startSeite={seite} {fundstelle} grund={farben.bg} tinte={farben.fg} onstand={(s) => { textstand = s; if (s.seite !== seite) gelesen(s.seite); }} onoriginal={schalteText} onmitte={() => sitzung.tippeMitte()} belegt={(p) => sitzung.belegt(p)} onbeschriftet={() => (sitzung.quelle as Pdfquelle | null)?.gezeichnet()} {codestellen} oncode={oeffneCode} seitenname={(nr) => codestellen?.seitenname(nr) ?? String(nr)} />
   {:else}
@@ -285,11 +288,11 @@
   {/if}
 
   {#snippet darstellung()}
-    <PdfDarstellung {ansicht} {nurText} {mass} {papier} stufen={STUFEN} onansicht={setzeAnsicht} onzoom={zoome} onoriginalgroesse={() => setzeZoom(1)} onpapier={(p) => { papierWahl = p; merke(); }} />
+    <PdfDarstellung {ansicht} {nurText} {mass} {papier} stufen={STUFEN} mitText={mitBuchtext} onansicht={setzeAnsicht} onzoom={zoome} onoriginalgroesse={() => setzeZoom(1)} onpapier={(p) => { papierWahl = p; merke(); }} />
   {/snippet}
 
   {#snippet fuss()}
-    <Fussleiste {sitzung} {anteil} anAnfang={nurText ? textstand.amAnfang : seite <= 1 && !rest.oben} amEnde={nurText ? textstand.amEnde : seite >= gesamt && !rest.unten} onzurueck={zurueck} onvor={vor} onanteil={(a) => geheZu(Math.round(1 + a * (gesamt - 1)))} schalter={geraet.telefon ? umschalter : undefined}>
+    <Fussleiste {sitzung} {anteil} anAnfang={nurText ? textstand.amAnfang : seite <= 1 && !rest.oben} amEnde={nurText ? textstand.amEnde : seite >= gesamt && !rest.unten} onzurueck={zurueck} onvor={vor} onanteil={(a) => geheZu(Math.round(1 + a * (gesamt - 1)))} schalter={geraet.telefon && mitBuchtext ? umschalter : undefined}>
       <Seitenstand {seite} {gesamt} gedruckt={gedruckt.zahl} onseite={geheZu} />
     </Fussleiste>
   {/snippet}

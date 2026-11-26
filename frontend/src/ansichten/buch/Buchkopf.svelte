@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { datum, formatName, groesse, sprache, tagWort, zahl } from "../../lib/format";
   import { leseKnopf, lesestand, leseweise, schriftprobe, standText } from "../../lib/lesestand";
   import { arten } from "../../lib/stand/arten.svelte";
@@ -17,6 +18,7 @@
   import Kategoriechips from "./Kategoriechips.svelte";
   import Regalchips from "./Regalchips.svelte";
   import { buchLoeschen } from "./loeschen";
+  import { formatAdresse, gemerktesFormat, merkeFormat } from "./leseformat";
 
   let { buch, fassungen, onneu, ongeaendert }: { buch: BuchEinzeln; fassungen: Buchfassungen; onneu: (neu: Partial<BuchEinzeln>) => void; ongeaendert: () => void } = $props();
 
@@ -30,6 +32,19 @@
   // Vor dem Zerlegen gibt es noch nichts zu lesen
   let lesbar = $derived(!uebersetzung || !!uebersetzung.kapitel_gesamt);
 
+  // Hat das Buch mehrere Dateien (BF-80), wählt man, welches Format "Lesen" öffnet; die Wahl merkt sich das Gerät
+  let dateien = $derived(buch.dateien ?? []);
+  let format = $state(untrack(() => gemerktesFormat(buch.id, buch.dateien ?? [])));
+  let formatwerte = $derived(dateien.map((d): [string, string] => [d.haupt ? "" : d.format, formatName(d.format)]));
+  let mitFormatwahl = $derived(dateien.length > 1 && !uebersetzung);
+  const leseweg = (stelle: Record<string, string | number | undefined> = {}) =>
+    format && !uebersetzung ? formatAdresse(buch.id, format, stelle) : fassungsAdresse(buch.id, lesesprache, stelle);
+
+  function waehleFormat(f: string) {
+    format = f;
+    merkeFormat(buch.id, f, dateien);
+  }
+
   const UMSCHLAEGE: [Umschlagart, string][] = [["gestaltet", "Gestaltet"], ["titelseite", "Titelseite"]];
   let waehlt = $state(false);
   // Die Wahl gibt es, wo die Titelseite fast weiß ist oder schon gewählt wurde (BF-59)
@@ -39,7 +54,7 @@
     ([
       ["Art", arten.typName(buch.typ)],
       ["Gattung", buch.gattung ? arten.gattungName(buch.gattung) : ""],
-      ["Format", `${formatName(buch.file_format)}, ${groesse(buch.file_size)}`],
+      ["Format", dateien.length > 1 ? dateien.map((d) => `${formatName(d.format)}, ${groesse(d.groesse)}`).join("; ") : `${formatName(buch.file_format)}, ${groesse(buch.file_size)}`],
       ["Seiten", buch.page_count ? zahl(buch.page_count) : ""],
       ["ISBN", buch.isbn],
       ["Sprache", sprache(buch.language)],
@@ -88,8 +103,9 @@
       </div>
       <Fassungslabels {buch} {fassungen} />
       <div class="reihe">
-        <Knopf text={leseKnopf(gelesen)} symbol="book-open" haupt href={fassungsAdresse(buch.id, lesesprache)} gesperrt={!lesbar} titel={lesbar ? undefined : "Gleich gibt es die ersten Kapitel"} />
-        <Knopf text="Von vorn" symbol="backward-step" href={fassungsAdresse(buch.id, lesesprache, { restart: 1 })} gesperrt={!lesbar} />
+        <Knopf text={leseKnopf(gelesen)} symbol="book-open" haupt href={leseweg()} gesperrt={!lesbar} titel={lesbar ? undefined : "Gleich gibt es die ersten Kapitel"} />
+        <Knopf text="Von vorn" symbol="backward-step" href={leseweg({ restart: 1 })} gesperrt={!lesbar} />
+        {#if mitFormatwahl}<Segment name="Format zum Lesen" werte={formatwerte} wert={format} onwahl={waehleFormat} />{/if}
       </div>
       {#if uebersetzung}
         <!-- Was zur Übersetzung gehört; der Auftrag, solange sie nicht fertig ist -->

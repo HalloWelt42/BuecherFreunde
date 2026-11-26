@@ -1,16 +1,19 @@
-// Aus Einträgen des Servers und laufenden Hochladungen eine Liste für die Ansicht
-import { groesse as alsGroesse } from "../format";
-import type { AnnahmeEintrag, Hochladung } from "./typen";
+// Aus Einträgen des Servers und laufenden Hochladungen eine Liste für die Ansicht; was in einer offenen Vorschau auf die
+// Bestätigung wartet, steht als eine Zeile für die ganze Vorschau (BF-80)
+import { anzahl, groesse as alsGroesse, seitWann } from "../format";
+import type { AnnahmeEintrag, Hochladung, Vorschaukurz } from "./typen";
 
-export type Gruppe = "laeuft" | "klaeren" | "da" | "fertig";
+export type Gruppe = "bestaetigen" | "laeuft" | "klaeren" | "da" | "fertig";
 export type Ton = "info" | "warn" | "schlecht" | "gut";
-export type Handlung = "anhalten" | "weiter" | "jetzt" | "waehlen" | "erneut" | "buch" | "entfernen";
+export type Handlung = "anhalten" | "weiter" | "jetzt" | "waehlen" | "erneut" | "buch" | "entfernen" | "ansehen";
 export type Station = "fertig" | "jetzt" | "wartet" | "halt" | "offen";
 
 export interface Annahmezeile {
   schluessel: string;
   id: number | null;
   hochladung: string | null;
+  /** Die Vorschau, für die diese Zeile steht (Gruppe "bestaetigen") */
+  vorschau: string | null;
   name: string;
   groesse: string;
   gruppe: Gruppe;
@@ -47,18 +50,23 @@ const LAGEN: Record<string, Lage> = {
   neu: { gruppe: "laeuft", symbol: "plus", ton: "info", wort: "Neu", handlungen: [] },
   wartet: { gruppe: "laeuft", symbol: "hourglass-half", ton: "info", wort: "Wartet", handlungen: [] },
   laeuft: { gruppe: "laeuft", symbol: "circle-notch", ton: "info", wort: "Läuft", handlungen: [] },
-  angehalten: { gruppe: "laeuft", symbol: "circle-pause", ton: "warn", wort: "Angehalten", handlungen: ["waehlen", "entfernen"] },
+  angehalten: { gruppe: "laeuft", symbol: "circle-pause", ton: "warn", wort: "Pause", handlungen: ["waehlen", "entfernen"] },
+  bestaetigen: { gruppe: "bestaetigen", symbol: "list-check", ton: "info", wort: "Zum Bestätigen", handlungen: [] },
   wissen: { gruppe: "fertig", symbol: "moon", ton: "info", wort: "Wartet auf Bedeutung", handlungen: ["buch"] },
   fertig: { gruppe: "fertig", symbol: "circle-check", ton: "gut", wort: "Fertig", handlungen: ["buch"] },
   ohne_text: { gruppe: "klaeren", symbol: "image", ton: "warn", wort: "Ohne Text", handlungen: ["buch"] },
   da: { gruppe: "da", symbol: "clone", ton: "info", wort: "Schon da", handlungen: ["buch"] },
+  entpackt: { gruppe: "fertig", symbol: "file-zipper", ton: "info", wort: "Ausgepackt", handlungen: [] },
+  verworfen: { gruppe: "fertig", symbol: "trash", ton: "info", wort: "Verworfen", handlungen: [] },
   format: { gruppe: "klaeren", symbol: "ban", ton: "schlecht", wort: "Nicht möglich", handlungen: ["entfernen"] },
   kaputt: { gruppe: "klaeren", symbol: "file-circle-xmark", ton: "schlecht", wort: "Nicht möglich", handlungen: ["entfernen"] },
   fehler: { gruppe: "klaeren", symbol: "triangle-exclamation", ton: "schlecht", wort: "Gescheitert", handlungen: ["erneut", "entfernen"] },
 };
 
-const AM_SERVER = ["liest", "angaben", "regal"];
-const OHNE_STATIONEN = ["da", "format", "kaputt"];
+const AM_SERVER = ["liest", "angaben", "entpacken", "regal"];
+const OHNE_STATIONEN = ["da", "format", "kaputt", "entpackt", "verworfen"];
+/** Läuft noch, auch wenn es zu einer Vorschau gehört; alles andere einer offenen Vorschau steht in ihrer Zeile */
+const NOCH_UNTERWEGS = ["wartet", "laedt", "angehalten", "liest", "angaben", "entpacken"];
 
 /** Zeichen, Ton und Wort zu einem Stand vom Server; "neu" heißt: gefunden, aber noch nicht aufgenommen. */
 export function lageFuer(stand: string): Lage {
@@ -73,13 +81,14 @@ function vomServer(e: AnnahmeEintrag): Annahmezeile {
   // Der Server nimmt Teile an, dieser Browser schickt aber keine: hier fehlt die Datei
   const verwaist = e.stand === "laedt" || e.stand === "angehalten" || (e.stand === "wartet" && e.empfangen < e.groesse);
   const lage = verwaist ? LAGEN.angehalten : lageFuer(e.stand);
-  const jetzt: Station = ["wissen", "ohne_text"].includes(e.stand) ? "wartet" : e.stand === "fehler" ? "halt" : "jetzt";
+  const jetzt: Station = ["wissen", "ohne_text", "bestaetigen"].includes(e.stand) ? "wartet" : e.stand === "fehler" ? "halt" : "jetzt";
   const prozent = Math.round((verwaist && e.groesse ? e.empfangen / e.groesse : e.anteil) * 100);
   return {
     ...lage,
     schluessel: `eintrag-${e.id}`,
     id: e.id,
     hochladung: null,
+    vorschau: null,
     name: e.name,
     groesse: alsGroesse(e.groesse),
     text: verwaist ? `${alsGroesse(e.empfangen)} von ${alsGroesse(e.groesse)} liegen schon da. Datei noch einmal wählen, dann geht es dort weiter.` : e.text,
@@ -91,8 +100,8 @@ function vomServer(e: AnnahmeEintrag): Annahmezeile {
 }
 
 function vomBrowser(h: Hochladung): Annahmezeile {
-  const grund: Pick<Annahmezeile, "schluessel" | "id" | "hochladung" | "name" | "groesse" | "buch"> = {
-    schluessel: h.schluessel, id: h.eintrag?.id ?? null, hochladung: h.schluessel, name: h.name, groesse: alsGroesse(h.groesse), buch: null,
+  const grund: Pick<Annahmezeile, "schluessel" | "id" | "hochladung" | "vorschau" | "name" | "groesse" | "buch"> = {
+    schluessel: h.schluessel, id: h.eintrag?.id ?? null, hochladung: h.schluessel, vorschau: null, name: h.name, groesse: alsGroesse(h.groesse), buch: null,
   };
   const prozent = Math.round(h.anteil * 100);
   const schritt = h.eintrag ? 1 : 0;
@@ -104,9 +113,27 @@ function vomBrowser(h: Hochladung): Annahmezeile {
   return { ...grund, ...lage, text, stationen: stationen(schritt, h.lage === "ansteht" ? "wartet" : "jetzt"), prozent, handlungen: ["anhalten"] };
 }
 
-/** Was dieser Browser bearbeitet, steht oben; der Rest folgt in der Reihenfolge des Servers (neueste zuerst). */
-export function fuegeZusammen(eintraege: AnnahmeEintrag[], hochladungen: Hochladung[]): Annahmezeile[] {
+/** Eine offene Vorschau als eine Zeile: wartet vor dem Regal, bis jemand übernimmt oder verwirft */
+export function vorschauzeile(v: Vorschaukurz, jetzt = new Date()): Annahmezeile {
+  const teile = [anzahl(v.dateien, "Datei", "Dateien"), v.laeuft ? `${v.laeuft} ${v.laeuft === 1 ? "läuft" : "laufen"} noch` : "", seitWann(v.angelegt_am, jetzt)];
+  return {
+    ...LAGEN.bestaetigen,
+    schluessel: `vorschau-${v.id}`, id: null, hochladung: null, vorschau: v.id, name: v.name, groesse: alsGroesse(v.groesse),
+    text: teile.filter(Boolean).join(", "), stationen: stationen(4, "wartet"), prozent: 0, buch: null, handlungen: ["ansehen"],
+  };
+}
+
+/** Gehört der Eintrag in die Zeile einer offenen Vorschau? Was noch hochgeladen, gelesen oder ausgepackt wird, läuft für sich. */
+export const inVorschau = (e: AnnahmeEintrag, offen: ReadonlySet<string>): boolean => !!e.vorschau && offen.has(e.vorschau) && !NOCH_UNTERWEGS.includes(e.stand);
+
+/**
+ * Offene Vorschauen zuerst, dann was dieser Browser bearbeitet, dann der Rest in der Reihenfolge des Servers (neueste zuerst).
+ * Was zu einer offenen Vorschau gehört und nicht mehr läuft, steht nur in ihrer Zeile.
+ */
+export function fuegeZusammen(eintraege: AnnahmeEintrag[], hochladungen: Hochladung[], vorschauen: readonly Vorschaukurz[] = []): Annahmezeile[] {
+  const offen = new Set(vorschauen.map((v) => v.id));
   const eigene = hochladungen.filter((h) => h.lage !== "beim_server");
   const ueberdeckt = new Set(eigene.map((h) => h.eintrag?.id).filter((id) => id !== undefined));
-  return [...eigene.map(vomBrowser), ...eintraege.filter((e) => !ueberdeckt.has(e.id)).map(vomServer)];
+  const uebrige = eintraege.filter((e) => !ueberdeckt.has(e.id) && !inVorschau(e, offen));
+  return [...vorschauen.map((v) => vorschauzeile(v)), ...eigene.map(vomBrowser), ...uebrige.map(vomServer)];
 }

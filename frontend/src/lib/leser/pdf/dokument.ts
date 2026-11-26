@@ -1,6 +1,5 @@
 // PDF laden: pdf.js erst bei Bedarf, dazu Maß der ersten Seite, Verzeichnis und gedruckte Seitenzahlen
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { dateiUrl } from "../../api/books";
 import { getToken } from "../../api/client";
 import type { Kapitel } from "../typen";
 import type { Mass } from "./zoom";
@@ -16,11 +15,12 @@ export interface PdfBuch {
   beschriftung: string[] | null;
 }
 
-export async function ladePdf(id: number): Promise<PdfBuch> {
+/** Die Datei unter dieser Adresse: das Buch, ein weiteres Format oder Begleitmaterial (lib/leser/lesefassung) */
+export async function ladePdf(adresse: string): Promise<PdfBuch> {
   const lib = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as unknown as PdfJs;
   lib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).href;
   // Rechenfunktionen im PDF ohne eval: die Content-Security-Policy (BF-5) lässt keinen Code aus Zeichenketten zu
-  const doc = await lib.getDocument({ url: dateiUrl(id), httpHeaders: { Authorization: `Bearer ${getToken()}` }, isEvalSupported: false }).promise;
+  const doc = await lib.getDocument({ url: adresse, httpHeaders: { Authorization: `Bearer ${getToken()}` }, isEvalSupported: false }).promise;
   const blick = (await doc.getPage(1)).getViewport({ scale: 1 });
   const beschriftung = await doc.getPageLabels().catch(() => null);
   return { lib, doc, seiten: doc.numPages, mass: { breite: blick.width, hoehe: blick.height }, beschriftung };

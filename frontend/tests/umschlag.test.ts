@@ -11,7 +11,7 @@ import { MUSTER } from "../src/lib/umschlag/muster";
 import { blockhoehe, gekuerzt, laenge, maskiere, passe, setze } from "../src/lib/umschlag/satz";
 
 const GATTUNGEN = ["krimi", "thriller", "historisch", "fantasy", "liebesroman", "roman", "klassiker", "sachbuch", "ratgeber", "informatik", "mathematik", "fachbuch", "wirtschaft"];
-const ARTEN = ["dokument", "heft", "katalog", "broschuere"];
+const ARTEN = ["dokument", "heft", "katalog", "broschuere", "anleitung"];
 
 /** Jede Gestalt, die es gibt: alle Arten, alle Gattungen, ohne Gattung */
 const alleGestalten = (b: Omit<Blattangaben, "typ" | "gattung">): Blattangaben[] => [
@@ -61,6 +61,7 @@ describe("Zuordnung", () => {
     expect(gestaltung({ id: 1, title: "", typ: "heft" }).muster).toBe("heft");
     expect(gestaltung({ id: 1, title: "", typ: "katalog" }).muster).toBe("katalog");
     expect(gestaltung({ id: 1, title: "", typ: "broschuere" }).muster).toBe("broschuere");
+    expect(gestaltung({ id: 1, title: "", typ: "anleitung" }).muster).toBe("anleitung");
   });
 
   it("Bücher nach Gattung, ohne oder mit unbekannter Gattung nur Schrift", () => {

@@ -124,7 +124,7 @@
   {:else}
     <div class="leseleiste oben glas klar" bind:this={leisteOben}>
       <Knopf text="Zurück" symbol="arrow-left" nur frei klein onclick={onzurueck} />
-      <b title={sitzung.buch.title}>{sitzung.buch.title}</b>
+      <b title={sitzung.fassung.titel ?? sitzung.buch.title}>{sitzung.fassung.titel ?? sitzung.buch.title}</b>
       <Knopf text="Inhaltsverzeichnis" symbol="list" nur frei klein gesperrt={!sitzung.kapitel.length} titel={sitzung.kapitel.length ? "Inhaltsverzeichnis" : "Dieses Buch hat kein Inhaltsverzeichnis"} gedrueckt={sitzung.feld === "inhalt"} onclick={() => sitzung.schalteFeld("inhalt")} />
       <!-- Notizen und Markierungen hängen am Original; in einer Übersetzung gibt es sie noch nicht (BF-71) -->
       {#if sitzung.mitStellen}<Knopf text="Notizen und Markierungen" symbol="highlighter" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "stellen"} onclick={() => sitzung.schalteFeld("stellen")} />{/if}

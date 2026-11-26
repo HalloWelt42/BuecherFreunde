@@ -4,6 +4,8 @@ export interface Frage {
   titel: string;
   text?: string;
   folgen?: string[];
+  /** Jede betroffene Datei mit Ort, unter einem gemeinsamen Ordner (Folgenvorschau beim Verwerfen, BF-80) */
+  liste?: { titel: string; eintraege: string[] };
   ja: string;
   /** Wie die Taste heißt, die nichts tut; Vorgabe "Abbrechen" */
   nein?: string;

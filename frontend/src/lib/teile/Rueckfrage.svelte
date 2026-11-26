@@ -6,9 +6,15 @@
 
 {#if rueckfrage.offen}
   {@const f = rueckfrage.offen}
-  <Fenster titel={f.titel} breite="28rem" onschliessen={() => rueckfrage.antworte(false)}>
+  <Fenster titel={f.titel} breite={f.liste ? "32rem" : "28rem"} onschliessen={() => rueckfrage.antworte(false)}>
     {#if f.text}<p>{f.text}</p>{/if}
     {#if f.folgen?.length}<ul class="folgen">{#each f.folgen as folge (folge)}<li>{folge}</li>{/each}</ul>{/if}
+    {#if f.liste?.eintraege.length}
+      <div class="feld">
+        {#if f.liste.titel}<span class="pfad">{f.liste.titel}</span>{/if}
+        <ul class="mulde dateiliste">{#each f.liste.eintraege as eintrag, n (n)}<li class="pfad">{eintrag}</li>{/each}</ul>
+      </div>
+    {/if}
     {#snippet fuss()}
       <span class="schiebt reihe">
         <Knopf text={f.nein ?? "Abbrechen"} onclick={() => rueckfrage.antworte(false)} />

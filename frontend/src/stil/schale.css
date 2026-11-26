@@ -60,3 +60,9 @@
 .leiste-flaeche { display: flex; flex-direction: column; }
 .leiste-oben { flex: none; }
 .leiste-unten { flex: 1 1 0; min-height: calc(4 * var(--leistenzeile) + 1.875rem); overflow: auto; scrollbar-width: thin; scrollbar-color: rgb(var(--kante) / .5) transparent; }
+/* Knopf der Aufträge (BF-80): nennt, was läuft und was wartet; in schmalen Fenstern und am Telefon nur Zeichen und Zahl */
+.auftragsknopf .kurz { display: none; }
+@container app (max-width: 60rem) {
+  .kopf .auftragsknopf .lang { display: none; }
+  .kopf .auftragsknopf .kurz { display: inline; }
+}

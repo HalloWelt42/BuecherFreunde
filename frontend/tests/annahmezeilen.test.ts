@@ -6,7 +6,7 @@ function eintrag(ueber: Partial<AnnahmeEintrag>): AnnahmeEintrag {
 }
 
 function hochladung(ueber: Partial<Hochladung>): Hochladung {
-  return { schluessel: "datei-1", name: "Buch.pdf", groesse: 1000, lage: "laedt", anteil: 0.4, gesendet: 400, text: "Wird abgelegt", eintrag: null, ...ueber };
+  return { schluessel: "datei-1", name: "Buch.pdf", groesse: 1000, lage: "laedt", anteil: 0.4, gesendet: 400, text: "Wird abgelegt", eintrag: null, ziel: { art: "vorschau", vorschau: null, anreichern: false }, ...ueber };
 }
 
 const eine = (e: Partial<AnnahmeEintrag>) => fuegeZusammen([eintrag(e)], [])[0];

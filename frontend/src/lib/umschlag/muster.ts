@@ -93,6 +93,21 @@ const ordnerRuecken: Muster = (b, [farbe, schild, tinte]) => {
   return `<rect width="200" height="${H}" fill="${farbe}"/><path d="${fasern}" stroke="#000" stroke-opacity=".06"/>${kante}<rect x="28" y="34" width="144" height="156" rx="3" fill="${schild}" stroke="#000" stroke-opacity=".18"/><rect x="33" y="39" width="134" height="146" rx="2" fill="none" stroke="${tinte}" stroke-opacity=".25"/>${block(b.titel, 100, 50, tinte, { breit: 118, hoehe: 96, max: 20 }).svg}<path d="M48 160H152" stroke="${tinte}" stroke-opacity=".3"/>${klein([b.autor, b.jahr].filter(Boolean).join(", "), 100, 176, tinte, "middle", 118)}<circle cx="100" cy="${H - 66}" r="21" fill="#000" fill-opacity=".55"/><circle cx="100" cy="${H - 66}" r="21" fill="none" stroke="#d5d9de" stroke-width="4"/><circle cx="100" cy="${H - 66}" r="17" fill="none" stroke="#000" stroke-opacity=".35" stroke-width="2"/>`;
 };
 
-export const MUSTER = { typo, leinen, wellen, raster, teilung, kreis, sterne, globus, berge, blatt, schaltung, heft, katalog, broschuere, ordnerRuecken } satisfies Record<string, Muster>;
+/** Anleitung (BF-80): Blatt mit Raster wie ein Plan, Kopfband mit dem Titel, Zeichnung eines Geräts in Teilen mit Maßpfeil,
+ * darunter drei nummerierte Schritte; unten wer sie herausgibt und das Jahr */
+const anleitung: Muster = (b, [grund, akzent, tinte]) => {
+  const t = block(b.titel, 16, 0, grund, { breit: 168, hoehe: 58, max: 22, f: 0.6, schrift: GROTESK, w: 700, anker: "start" });
+  const band = Math.max(78, t.hoehe + 28);
+  const rasterlinien = Array.from({ length: 14 }, (_, i) => `M${i * 16} 0V${H}`).join("") + Array.from({ length: 20 }, (_, i) => `M0 ${i * 16}H200`).join("");
+  const oben = band + 18;
+  const zeichnung = `<g fill="none" stroke="${tinte}" stroke-width="1.6" stroke-linejoin="round"><path d="M62 ${oben + 34}l38 -18l38 18l-38 18Z" fill="${akzent}" fill-opacity=".18"/><path d="M62 ${oben + 34}v34l38 18v-34M138 ${oben + 34}v34l-38 18"/><path d="M100 ${oben - 2}v-10M94 ${oben - 12}h12" stroke="${akzent}" stroke-width="2.2"/><path d="M100 ${oben + 4}v10" stroke-dasharray="2 3"/></g><path d="M48 ${oben + 92}l-6 4l6 4M152 ${oben + 92}l6 4l-6 4M42 ${oben + 96}H158" fill="none" stroke="${akzent}" stroke-width="1.4"/>`;
+  const schritte = [0, 1, 2].map((i) => {
+    const y = oben + 122 + i * 20;
+    return `<circle cx="26" cy="${y}" r="7" fill="${akzent}"/><text x="26" y="${y + 3.6}" text-anchor="middle" font-family="${GROTESK}" font-weight="700" font-size="10" fill="${grund}">${i + 1}</text><rect x="40" y="${y - 2}" width="${[118, 96, 108][i]}" height="4" rx="2" fill="${tinte}" fill-opacity=".28"/>`;
+  }).join("");
+  return `<rect width="200" height="${H}" fill="${grund}"/><path d="${rasterlinien}" stroke="${akzent}" stroke-opacity=".12"/><rect width="200" height="${band}" fill="${tinte}"/><rect y="${band}" width="200" height="4" fill="${akzent}"/><g transform="translate(0 ${((band - t.hoehe) / 2).toFixed(1)})">${t.svg}</g>${zeichnung}${schritte}${jahrzahl(b.jahr, 184, H - 14, 20, tinte)}${autorzeile(b.autor, 16, H - 14, tinte, "start", b.jahr ? 110 : 168)}`;
+};
+
+export const MUSTER = { typo, leinen, wellen, raster, teilung, kreis, sterne, globus, berge, blatt, schaltung, heft, katalog, broschuere, anleitung, ordnerRuecken } satisfies Record<string, Muster>;
 
 export type Mustername = keyof typeof MUSTER;

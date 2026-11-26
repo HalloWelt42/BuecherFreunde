@@ -1,10 +1,11 @@
 <script lang="ts">
-  // Einstieg des Lesers: Buch und Fassung laden (das Original, oder unter /read/de die Übersetzung, BF-71), Leser des Formats
-  // holen (pdf.js und die übrigen erst hier)
+  // Einstieg des Lesers: Buch und Fassung laden (das Original, unter /read/de die Übersetzung, BF-71, unter /read/format/epub ein
+  // weiteres Format, BF-80, unter /material/<kennung> Begleitmaterial, BF-81), Leser des Formats holen (pdf.js und die übrigen
+  // erst hier)
   import type { Component } from "svelte";
   import { holeBuch } from "../../lib/api/books";
   import { formatName } from "../../lib/format";
-  import { ladeLesefassung, type Lesefassung } from "../../lib/leser/lesefassung";
+  import { ladeLesefassung, type Lesefassung, type Lesewahl } from "../../lib/leser/lesefassung";
   import { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { leseziel, type Leseziel } from "../../lib/leser/ziel";
   import { navigate, route } from "../../lib/router.svelte";
@@ -21,27 +22,27 @@
 
   const epub = () => import("./EpubLeser.svelte");
   const text = () => import("./TextLeser.svelte");
-  const leser: Record<string, () => Promise<{ default: Formatleser }>> = { pdf: () => import("./PdfLeser.svelte"), epub, mobi: epub, txt: text, md: text };
+  const leser: Record<string, () => Promise<{ default: Formatleser }>> = { pdf: () => import("./PdfLeser.svelte"), epub, mobi: epub, txt: text, md: text, bild: () => import("./Bildleser.svelte") };
 
   let id = $derived(Number(params.id));
   let buch = $state<BuchEinzeln | null>(null);
   let fassung = $state<Lesefassung | null>(null);
   let fehler = $state("");
   let sitzung = $derived(buch && fassung ? new Lesesitzung(buch, fassung) : null);
-  async function lade(nummer: number, sprache: string | undefined) {
+  async function lade(nummer: number, sprache: string | undefined, wahl: Lesewahl) {
     fehler = "";
     buch = null;
     fassung = null;
     try {
       const b = await holeBuch(nummer);
-      fassung = await ladeLesefassung(b, sprache);
+      fassung = await ladeLesefassung(b, sprache, wahl);
       buch = b;
     } catch (e) {
       fehler = e instanceof Error ? e.message : String(e);
     }
   }
 
-  $effect(() => void lade(id, params.sprache));
+  $effect(() => void lade(id, params.sprache, { format: params.format, material: params.mid }));
 
   $effect(() => {
     void sitzung?.laden();
@@ -62,7 +63,7 @@
 
 {#if fehler}
   <div class="inhalt rollen">
-    <Zustand art="fehler" text={fehler} onerneut={() => void lade(id, params.sprache)}><Knopf text="Zur Buchseite" symbol="arrow-left" klein href="/book/{id}" /></Zustand>
+    <Zustand art="fehler" text={fehler} onerneut={() => void lade(id, params.sprache, { format: params.format, material: params.mid })}><Knopf text="Zur Buchseite" symbol="arrow-left" klein href="/book/{id}" /></Zustand>
   </div>
 {:else if buch && sitzung}
   {@const hole = leser[sitzung.fassung.format]}
@@ -78,7 +79,7 @@
     {/key}
   {:else}
     <div class="inhalt rollen">
-      <Zustand text="{formatName(buch.file_format)} lässt sich hier nicht lesen."><Knopf text="Zur Buchseite" symbol="arrow-left" klein href="/book/{id}" /></Zustand>
+      <Zustand text="{formatName(sitzung.fassung.format)} lässt sich hier nicht lesen."><Knopf text="Zur Buchseite" symbol="arrow-left" klein href="/book/{id}" /></Zustand>
     </div>
   {/if}
 {:else}

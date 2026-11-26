@@ -38,7 +38,8 @@ export class Pdfquelle implements Buchquelle {
   #texte = new Map<number, Promise<string>>();
   #jetzt: { ort: Satzort; bereich: Range | null } | null = null;
 
-  constructor(private buch: number, private pdf: PdfBuch, private kapitelliste: () => Kapitel[], private kapitelJetzt: () => number, private ansicht: () => Pdfansicht | null) {}
+  /** buch: null, wo der Server den Text nicht kennt (weiteres Format, Begleitmaterial): dann aus der Textebene der Datei */
+  constructor(private buch: number | null, private pdf: PdfBuch, private kapitelliste: () => Kapitel[], private kapitelJetzt: () => number, private ansicht: () => Pdfansicht | null) {}
 
   get anzahl(): number {
     return this.pdf.seiten;
@@ -51,8 +52,8 @@ export class Pdfquelle implements Buchquelle {
   text(e: number): Promise<string> {
     let t = this.#texte.get(e);
     if (!t) {
-      t = textSeiten(this.buch, e + 1, 1)
-        .then((a) => seitentextAus(a?.seiten?.[0]?.bausteine ?? []))
+      const vomServer = this.buch === null ? Promise.resolve("") : textSeiten(this.buch, e + 1, 1).then((a) => seitentextAus(a?.seiten?.[0]?.bausteine ?? []));
+      t = vomServer
         .catch(() => "")
         .then(async (text) => text || (await seitentext(this.pdf.doc, e + 1).catch(() => "")));
       this.#texte.set(e, t);

@@ -1,6 +1,6 @@
 // Hochladen in Teilen, fortsetzbar: höchstens zwei Dateien zugleich, nach einem Abriss weiter am Stand des Servers.
 // Ohne Oberfläche; Dienst, Prüfsumme und Wartezeiten kommen von außen und lassen sich im Test ersetzen.
-import { AndererStand, OhneVerbindung, type AnnahmeDienst, type AnnahmeEintrag, type Hochladung, type Lage } from "./typen";
+import { AndererStand, OhneVerbindung, type AnnahmeDienst, type AnnahmeEintrag, type Annahmeziel, type Hochladung, type Lage } from "./typen";
 
 type Pruefsumme = (datei: Blob, fortschritt: (anteil: number) => void, abbruch: AbortSignal) => Promise<string>;
 
@@ -11,10 +11,12 @@ export interface HochladerOptionen {
   warte?: (ms: number) => Promise<void>;
 }
 
+/** Ohne Angabe: jede Datei in ihre eigene Vorschau */
+const EIGENE_VORSCHAU: Annahmeziel = { art: "vorschau", vorschau: null, anreichern: false };
+
 interface Arbeit {
   ansicht: Hochladung;
   datei: File;
-  anreichern: boolean;
   abbruch: AbortController | null;
   wecke: (() => void) | null;
   versuche: number;
@@ -57,7 +59,7 @@ export class Hochlader {
     return () => this.#zuhoerer.delete(tun);
   }
 
-  fuegeHinzu(dateien: Iterable<File>, anreichern = false): void {
+  fuegeHinzu(dateien: Iterable<File>, ziel: Annahmeziel = EIGENE_VORSCHAU): void {
     for (const datei of dateien) {
       const schon = [...this.#arbeiten.values()].find((a) => a.datei.name === datei.name && a.datei.size === datei.size && a.ansicht.lage !== "beim_server");
       if (schon) {
@@ -65,8 +67,8 @@ export class Hochlader {
         continue;
       }
       const schluessel = `datei-${this.#naechste++}`;
-      const ansicht: Hochladung = { schluessel, name: datei.name, groesse: datei.size, lage: "ansteht", anteil: 0, gesendet: 0, text: "Wartet, bis ein Platz frei ist", eintrag: null };
-      this.#arbeiten.set(schluessel, { ansicht, datei, anreichern, abbruch: null, wecke: null, versuche: 0 });
+      const ansicht: Hochladung = { schluessel, name: datei.name, groesse: datei.size, lage: "ansteht", anteil: 0, gesendet: 0, text: "Wartet, bis ein Platz frei ist", eintrag: null, ziel };
+      this.#arbeiten.set(schluessel, { ansicht, datei, abbruch: null, wecke: null, versuche: 0 });
       this.#reihe.push(schluessel);
     }
     this.#melde();
@@ -77,7 +79,7 @@ export class Hochlader {
     const a = this.#arbeiten.get(schluessel);
     if (!a || !["ansteht", "prueft", "laedt", "ohne_verbindung"].includes(a.ansicht.lage)) return;
     this.#reihe = this.#reihe.filter((s) => s !== schluessel);
-    this.#setze(a, "angehalten", "Angehalten, geht an dieser Stelle weiter");
+    this.#setze(a, "angehalten", "Pause, geht an dieser Stelle weiter");
     a.abbruch?.abort();
     a.wecke?.();
   }
@@ -157,7 +159,7 @@ export class Hochlader {
       this.#melde();
     }, abbruch);
     abbruch.throwIfAborted();
-    const eintrag = await this.#dienst.anlegen({ name: a.datei.name, groesse: a.datei.size, sha256, anreichern: a.anreichern });
+    const eintrag = await this.#dienst.anlegen({ name: a.datei.name, groesse: a.datei.size, sha256, ziel: a.ansicht.ziel });
     a.ansicht.eintrag = eintrag;
     return eintrag;
   }

@@ -1,10 +1,12 @@
 // Die Annahme in der Oberfläche: Einträge des Servers (Ereignisstrom) zusammen mit dem, was dieser Browser hochlädt. Eine
 // Liste für alle Quellen; einzeln gezeigt wird, was jemand hochlädt oder ablegt, Ordner und gemeinfreie Bücher als ein Auftrag.
-import { annahmeDienst, annahmeEreignisse, annahmeErneut, blendeAnnahmenAus, entferneAnnahme, ladeAnnahmen, raeumeAnnahmeAuf } from "../api/annahme";
+// Was vor dem Regal auf die Bestätigung wartet, steht je Vorschau als eine Zeile (BF-80).
+import { annahmeDienst, annahmeEreignisse, annahmeErneut, blendeAnnahmenAus, entferneAnnahme, ladeAnnahmen, legeVorschauAn, raeumeAnnahmeAuf } from "../api/annahme";
 import { hochladenZaehlen } from "../api/client";
 import { Hochlader } from "../annahme/hochlader";
 import { pruefsumme } from "../annahme/pruefsumme";
-import type { AnnahmeEintrag, AnnahmeListe, Annahmequelle, AnnahmeZaehler, Hochladung, Quellenzahlen } from "../annahme/typen";
+import type { AnnahmeEintrag, AnnahmeListe, Annahmequelle, AnnahmeZaehler, Hochladung, Quellenzahlen, Vorschaukurz } from "../annahme/typen";
+import { anzahl } from "../format";
 import { EINLESEN, EINZELN, GEMEINFREI, gehoertZu, sammle } from "../annahme/sammlung";
 import { fuegeZusammen, laeuftVonSelbst, type Annahmezeile } from "../annahme/zeilen";
 import { darfAbrufen } from "./abrufe";
@@ -19,12 +21,14 @@ class Annahme {
   zaehler = $state<AnnahmeZaehler>(LEER);
   /** Zahlen je Quelle über alle Einträge, vom Server */
   quellen = $state<Partial<Record<Annahmequelle, Quellenzahlen>>>({});
+  /** Offene Vorschauen, die neueste zuerst ("Zum Bestätigen") */
+  vorschauen = $state<Vorschaukurz[]>([]);
   hochladungen = $state<Hochladung[]>([]);
   /** Antwortet der Server auf die Annahme? Vor der ersten Antwort unbekannt */
   grund = $state("");
   geladen = $state(false);
 
-  zeilen = $derived<Annahmezeile[]>(fuegeZusammen(this.eintraege.filter((e) => gehoertZu(e, EINZELN)), this.hochladungen));
+  zeilen = $derived<Annahmezeile[]>(fuegeZusammen(this.eintraege.filter((e) => gehoertZu(e, EINZELN)), this.hochladungen, this.vorschauen));
   /** Einlesen aus dem Einlese-Ordner und der externen Sammlung */
   einlesen = $derived(sammle(this.eintraege, EINLESEN, this.quellen));
   /** Gemeinfreie Bücher holen */
@@ -77,14 +81,28 @@ class Annahme {
     this.eintraege = liste.eintraege;
     this.zaehler = liste.zaehler ?? LEER;
     if (liste.quellen) this.quellen = liste.quellen;
+    if (liste.vorschauen) this.vorschauen = liste.vorschauen;
     if (!neuImRegal) return;
     clearTimeout(this.#uhr);
     this.#uhr = setTimeout(() => bestand.geaendert(), AUFFRISCHEN_MS);
   }
 
-  nimmAn(dateien: Iterable<File>, anreichern: boolean): void {
+  /**
+   * Hochladen im Browser läuft immer über eine Vorschau (BF-80): erst die leere Vorschau, dann die Dateien in sie. Liefert
+   * ihre Kennung, damit die Ansicht gleich dorthin geht, während Prüfsummen und Teile noch laufen.
+   */
+  async nimmAn(dateien: readonly File[], anreichern: boolean): Promise<string> {
     void this.starte();
-    this.#hochlader.fuegeHinzu(dateien, anreichern);
+    const v = await legeVorschauAn(dateien.length === 1 ? dateien[0].name : anzahl(dateien.length, "Datei", "Dateien"));
+    this.vorschauen = [v, ...this.vorschauen.filter((x) => x.id !== v.id)];
+    this.#hochlader.fuegeHinzu(dateien, { art: "vorschau", vorschau: v.id, anreichern });
+    return v.id;
+  }
+
+  /** Begleitmaterial zu einem Buch (BF-81): jede Datei für sich, der Fortschritt steht bei den Aufträgen */
+  materialHinzu(buch: number, dateien: readonly File[], entpacken: boolean): void {
+    void this.starte();
+    this.#hochlader.fuegeHinzu(dateien, { art: "material", buch, entpacken });
   }
 
   anhalten(schluessel: string): void {

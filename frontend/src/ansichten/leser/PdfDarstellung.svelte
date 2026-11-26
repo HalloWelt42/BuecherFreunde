@@ -20,8 +20,11 @@
     onzoom: (richtung: 1 | -1) => void;
     onoriginalgroesse: () => void;
     onpapier: (p: Papier) => void;
+    /** Die Ansicht als Text gibt es nur, wo der Server den Text der Datei kennt (beim Original) */
+    mitText?: boolean;
   }
-  let { ansicht, nurText, mass, papier, stufen, onansicht, onzoom, onoriginalgroesse, onpapier }: Eigenschaften = $props();
+  let { ansicht, nurText, mass, papier, stufen, onansicht, onzoom, onoriginalgroesse, onpapier, mitText = true }: Eigenschaften = $props();
+  let ansichten = $derived(mitText ? ANSICHTEN : ANSICHTEN.filter(([w]) => w !== "text"));
   let thema = $derived(textansicht.thema(vorgabeThema(darstellung.dunkel)));
 </script>
 
@@ -44,7 +47,7 @@
 {/if}
 <div class="feld">
   Ansicht
-  <div class="tastenraster">{#each ANSICHTEN as [w, t] (w)}<Chip text={t} gedrueckt={nurText ? w === "text" : w === ansicht} onclick={() => onansicht(w)} />{/each}</div>
+  <div class="tastenraster">{#each ansichten as [w, t] (w)}<Chip text={t} gedrueckt={nurText ? w === "text" : w === ansicht} onclick={() => onansicht(w)} />{/each}</div>
 </div>
 
 <style>
