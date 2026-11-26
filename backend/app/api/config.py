@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from backend.app.core.auth import verify_token, verify_token_inhalt
 from backend.app.core.config import settings
 from backend.app.core.database import db
+from backend.app.services import schnellfilter
 
 logger = logging.getLogger("buecherfreunde")
 
@@ -96,9 +97,7 @@ async def get_stats(_token: str = Depends(verify_token)) -> dict:
            AND last_read_at IS NOT NULL"""
     )
     autoren = await db.fetch_one("SELECT COUNT(*) as n FROM authors")
-    mit_labels = await db.fetch_one(
-        "SELECT COUNT(DISTINCT book_id) as n FROM book_highlights WHERE label_name != ''"
-    )
+    mit_labels = await db.fetch_one(f"SELECT COUNT(*) as n FROM ({schnellfilter.MIT_ETIKETTEN})")
     mit_highlights = await db.fetch_one(
         "SELECT COUNT(DISTINCT book_id) as n FROM book_highlights"
     )

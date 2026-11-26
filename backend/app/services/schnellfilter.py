@@ -5,6 +5,9 @@ je Buchstabe ("*[üÜ]ber*"); Zeichen, die in GLOB etwas bedeuten, stehen einzel
 
 import re
 
+# Bücher mit Etiketten: die Etiketten des Lesers und, aus früheren Fassungen, Namen an Markierungen (BF-45)
+MIT_ETIKETTEN = "SELECT book_id FROM book_labels UNION SELECT book_id FROM book_highlights WHERE label_name != ''"
+
 HOECHSTENS_WOERTER = 8
 HOECHSTENS_ZEICHEN = 100
 # Ab vier Ziffern ein Stück ISBN; "3" in "Band 3" träfe sonst fast jede deutsche ISBN

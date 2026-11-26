@@ -233,7 +233,7 @@ async def list_books(
         )
 
     if hat_labels is not None:
-        conditions.append("b.id IN (SELECT DISTINCT book_id FROM book_highlights WHERE label_name != '')")
+        conditions.append(f"b.id {'' if hat_labels else 'NOT '}IN ({schnellfilter.MIT_ETIKETTEN})")
 
     if hat_highlights is not None:
         conditions.append("b.id IN (SELECT DISTINCT book_id FROM book_highlights)")

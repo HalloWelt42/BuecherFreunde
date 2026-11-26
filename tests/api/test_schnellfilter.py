@@ -114,3 +114,15 @@ async def test_gilt_auch_in_einer_sammlung(client: AsyncClient, test_db):
     gefunden, daten = await _gefunden(client, sammlung=sammlung, suche="ringe")
     assert gefunden == {ids["ringe"]}
     assert daten["gesamt_ohne_suche"] == 2
+
+
+@pytest.mark.asyncio
+async def test_filter_mit_etiketten_kennt_beide_arten_und_ohne(client: AsyncClient, test_db):
+    # BF-45: Etiketten des Lesers (book_labels) zählen wie Namen an Markierungen; hat_labels=false heißt "ohne"
+    ids = await _bestand(test_db)
+    mit, _ = await _gefunden(client, hat_labels="true")
+    assert mit == {ids["ringe"], ids["freiheit"]}
+    ohne, _ = await _gefunden(client, hat_labels="false")
+    assert ohne == {ids["hobbit"], ids["plus"]}
+    zahlen = await client.get("/api/config/stats")
+    assert zahlen.status_code == 200 and zahlen.json()["mit_labels"] == 2
