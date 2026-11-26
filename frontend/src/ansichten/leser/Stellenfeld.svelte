@@ -14,7 +14,6 @@
   let { sitzung }: { sitzung: Lesesitzung } = $props();
 
   let neu = $state("");
-  let istText = $derived(["md", "txt"].includes(sitzung.buch.file_format));
   let benannt = $derived(sitzung.markierungen.filter((m) => m.label_name).length);
 
   async function lege(e: Event) {
@@ -48,7 +47,7 @@
   {#each sitzung.notizen as n (n.id)}<Notizkarte {sitzung} {n} />{/each}
 </section>
 
-{#if istText || sitzung.etiketten.length}
+{#if sitzung.mitEtiketten}
   <section>
     <h3>Etiketten <span class="leise zahl">{sitzung.etiketten.length}</span></h3>
     <Etikettfeld {sitzung} />

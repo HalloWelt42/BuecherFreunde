@@ -16,6 +16,8 @@
   import Assistentenfenster from "./Assistentenfenster.svelte";
   import Nachschlagefenster from "./Nachschlagefenster.svelte";
   import Schnellnotiz from "./Schnellnotiz.svelte";
+  import Kontextmenue from "../teile/Kontextmenue.svelte";
+  import { kontextmenue } from "../stand/kontextmenue.svelte";
   import Schwebefeld from "./Schwebefeld.svelte";
   import Tafel from "./Tafel.svelte";
   import Vorschau from "./Vorschau.svelte";
@@ -61,6 +63,7 @@
   <Schwebefeld titel={anschluesse.jetzt.anmeldung === "kellerwolke" ? "Angemeldet mit der Kellerwolke" : "Konto"} breite="18rem"><Konto /></Schwebefeld>
 {/if}
 {#if schale.notizOffen}<Schnellnotiz />{/if}
+{#if kontextmenue.offen}{#key kontextmenue.offen}<Kontextmenue />{/key}{/if}
 {#if nachschlag.offen}<Nachschlagefenster />{/if}
 {#if gespraech.offen}<Assistentenfenster />{/if}
 

@@ -1,9 +1,19 @@
 <script lang="ts">
-  // Schwebendes Feld an einem Knopf. Hängt an der App statt an der Bühne, damit nichts es abschneidet.
+  // Schwebendes Feld an einem Knopf oder an einem Punkt (Kontextmenü). Hängt an der App statt an der Bühne, damit nichts
+  // es abschneidet.
   import type { Snippet } from "svelte";
   import { offenesFeld } from "../flucht";
 
-  let { anker, name, breite = "20rem", onschliessen, children }: { anker: HTMLElement | null; name: string; breite?: string; onschliessen: () => void; children: Snippet } = $props();
+  interface Eigenschaften {
+    anker: HTMLElement | null;
+    /** Statt eines Knopfs ein Punkt im Fenster, etwa wo die Maus rechts klickte */
+    punkt?: { x: number; y: number } | null;
+    name: string;
+    breite?: string;
+    onschliessen: () => void;
+    children: Snippet;
+  }
+  let { anker, punkt = null, name, breite = "20rem", onschliessen, children }: Eigenschaften = $props();
   let feld: HTMLElement | undefined = $state();
 
   function anDieApp(knoten: HTMLElement) {
@@ -16,7 +26,7 @@
 
   function setze(knoten: HTMLElement) {
     const rahmen = knoten.parentElement?.getBoundingClientRect();
-    const a = anker?.getBoundingClientRect();
+    const a = punkt ? { left: punkt.x, top: punkt.y, bottom: punkt.y } : anker?.getBoundingClientRect();
     if (!rahmen || !a) return;
     const b = knoten.offsetWidth;
     const h = knoten.offsetHeight;

@@ -10,6 +10,8 @@
   import type { Buch } from "../../lib/typen";
   import Grossbild from "./Grossbild.svelte";
   import { beimKlick } from "./oeffnen";
+  import { kontext } from "../../lib/stand/kontextmenue.svelte";
+  import { buchmenue } from "./buchmenue";
   import { ziehauswahl } from "./ziehauswahl";
 
   let { liste, sortierbar = true }: { liste: Buch[]; sortierbar?: boolean } = $props();
@@ -37,9 +39,9 @@
   </div>
   {#each liste as buch (buch.id)}
     {#if auswahl.bearbeiten}
-      <button type="button" class="zeile" data-buch={buch.id} aria-pressed={auswahl.hat(buch.id)} onclick={() => auswahl.schalte(buch.id)}>{@render inhalt(buch)}</button>
+      <button type="button" class="zeile" data-buch={buch.id} use:kontext={buchmenue(buch)} aria-pressed={auswahl.hat(buch.id)} onclick={() => auswahl.schalte(buch.id)}>{@render inhalt(buch)}</button>
     {:else}
-      <a class="zeile" data-buch={buch.id} href="/book/{buch.id}" aria-current={wahl.buch?.id === buch.id ? "true" : undefined} draggable="false" onclick={(e) => beimKlick(e, buch)}>{@render inhalt(buch)}</a>
+      <a class="zeile" data-buch={buch.id} use:kontext={buchmenue(buch)} href="/book/{buch.id}" aria-current={wahl.buch?.id === buch.id ? "true" : undefined} draggable="false" onclick={(e) => beimKlick(e, buch)}>{@render inhalt(buch)}</a>
     {/if}
   {/each}
 </div>

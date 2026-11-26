@@ -1,6 +1,7 @@
 <script lang="ts">
   // Schwebt an der Auswahl: markieren, kopieren, vorlesen, in Schnellnotiz oder Buchnotiz
   import { offenesFeld } from "../../lib/flucht";
+  import { kopiere } from "../../lib/kopieren";
   import { bezugAus } from "../../lib/leser/bezug";
   import { alsZitat, type Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
@@ -55,7 +56,7 @@
   {#if schritt === "tun"}
     {#if a.cfi}<Farbreihe name="Markieren" wert={sitzung.stift ? sitzung.stiftfarbe : ""} onwahl={(f) => void tun(() => sitzung.markiere(a, f))} />{/if}
     <div class="reihe knoepfe">
-      <Knopf text="Kopieren" symbol="copy" klein frei onclick={() => void tun(() => navigator.clipboard.writeText(a.text), "Kopiert")} />
+      <Knopf text="Kopieren" symbol="copy" klein frei onclick={() => void tun(() => kopiere(a.text))} />
       <Knopf text="Vorlesen" symbol="volume-low" klein frei onclick={lies} />
       <Knopf text="Schnellnotiz" symbol="note-sticky" klein frei titel="An die Schnellnotiz anhängen" onclick={() => void tun(() => sitzung.anSchnellnotiz(alsZitat(a)))} />
       <Knopf text="Schnellnotiz ersetzen" symbol="right-left" nur klein frei onclick={() => void tun(() => sitzung.ersetzeSchnellnotiz(alsZitat(a)))} />

@@ -1,9 +1,8 @@
 <script lang="ts">
   // Vorlesen im Leser: was gelesen wird (Seite, Kapitel, ab hier, ganzes Buch, weiter an der gemerkten Stelle), der Spieler,
   // Stimme, Tempo, Schlafuhr
-  import { coverUrl } from "../../lib/api/books";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
-  import { melde } from "../../lib/stand/meldungen.svelte";
+  import { liesAus, strecke, type Umfang } from "../../lib/leser/vorlesestart";
   import { TEMPI, vorlesen } from "../../lib/stand/vorlesen.svelte";
   import Auswahl from "../../lib/teile/Auswahl.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
@@ -13,7 +12,6 @@
   import Spieler from "./Spieler.svelte";
   let { sitzung }: { sitzung: Lesesitzung } = $props();
 
-  type Umfang = "seite" | "kapitel" | "hier" | "buch";
   const UMFAENGE: [Umfang, string, string][] = [["seite", "Diese Seite", "file-lines"], ["kapitel", "Dieses Kapitel", "bookmark"], ["hier", "Ab hier", "play"], ["buch", "Ganzes Buch", "book-open"]];
 
   let laedt = $state<Umfang | "weiter" | "">("");
@@ -31,22 +29,12 @@
   $effect(() => void vorlesen.ladeStelle(sitzung.buch.id));
   let gemerkt = $derived(vorlesen.gemerkt?.buch === sitzung.buch.id ? vorlesen.gemerkt.stelle : null);
 
-  async function strecke(u: Umfang): Promise<Strecke | null> {
-    if (!quelle) return null;
-    if (u === "buch") return { von: { einheit: 0, zeichen: 0 }, bis: null };
-    if (u === "hier") return { von: await quelle.hier(), bis: null };
-    return u === "seite" ? quelle.seite() : quelle.kapitel();
-  }
-
   async function starte(u: Umfang | "weiter", name: string) {
     // Im Tippen selbst, sonst bleibt das Telefon stumm
     vorlesen.entsperre();
     laedt = u;
     try {
-      const s = u === "weiter" ? weiterAb() : await strecke(u);
-      if (!s || !quelle) return void melde.info("Hier gibt es nichts zum Vorlesen");
-      const b = sitzung.buch;
-      vorlesen.liesBuch(quelle, s, name, { titel: b.title, autor: b.authors.map((a) => a.name).join(", "), bild: coverUrl(b.id) }, b.id);
+      liesAus(sitzung, u === "weiter" ? weiterAb() : quelle ? await strecke(quelle, u) : null, name);
     } finally {
       laedt = "";
     }

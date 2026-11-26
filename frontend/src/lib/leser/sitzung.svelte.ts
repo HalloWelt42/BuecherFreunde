@@ -62,6 +62,8 @@ export class Lesesitzung {
   notizen = $state<Notiz[]>([]);
   etiketten = $state<Etikett[]>([]);
   feld = $state<Feldname>("");
+  /** Ein neues Etikett soll entstehen (Kontextmenü "Etikett hier"): das Feld Notizen öffnet seine Eingabe */
+  etikettWunsch = $state(false);
   kapitel = $state<Kapitel[]>([]);
   kapitelJetzt = $state(-1);
   auswahl = $state<Textauswahl | null>(null);
@@ -96,6 +98,17 @@ export class Lesesitzung {
     if (n.status === "fulfilled") this.notizen = n.value;
     if (e.status === "fulfilled") this.etiketten = e.value;
     this.griffe?.zeichne();
+  }
+
+  /** Etiketten gibt es in Text und Markdown; wo schon welche hängen, auch dort */
+  get mitEtiketten(): boolean {
+    return ["md", "txt"].includes(this.buch.file_format) || this.etiketten.length > 0;
+  }
+
+  /** Etikett an der Stelle, an der man liest: das Feld Notizen mit offener Eingabe */
+  etikettHier(): void {
+    this.feld = "stellen";
+    this.etikettWunsch = true;
   }
 
   schalteFeld(feld: Feldname): void {

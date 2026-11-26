@@ -11,6 +11,13 @@
   let notiz = $state("");
   let farbe = $state(VORGABE_ETIKETT);
 
+  // "Etikett hier" aus dem Kontextmenü öffnet die Eingabe gleich
+  $effect(() => {
+    if (!sitzung.etikettWunsch) return;
+    offen = true;
+    sitzung.etikettWunsch = false;
+  });
+
   async function lege(e: SubmitEvent) {
     e.preventDefault();
     if (!(await sitzung.neuesEtikett(name, notiz, farbe))) return;

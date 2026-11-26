@@ -22,6 +22,8 @@
   import Blattfeinheiten from "./Blattfeinheiten.svelte";
   import Breitenregler from "./Breitenregler.svelte";
   import { blattbreite, teileAuf } from "../../lib/leser/leseraum.svelte";
+  import { liesAbHier } from "../../lib/leser/vorlesestart";
+  import { kontext, type Angebot } from "../../lib/stand/kontextmenue.svelte";
   import Fokusfeld from "./Fokusfeld.svelte";
   import Hilfensteuerung from "./Hilfensteuerung.svelte";
   import Tastenfeld from "./Tastenfeld.svelte";
@@ -70,6 +72,17 @@
     e.stopPropagation();
   }
 
+  // Kontextmenü im Buch (BF-42): mit Auswahl das Auswahlmenü, ohne Vorlesen ab hier und Etikett hier. Langes Drücken am
+  // Telefon gehört der Auswahl des Browsers.
+  function imBuch(e: MouseEvent, finger: boolean): Angebot {
+    if (finger || !bereit) return null;
+    if (sitzung.auswahl || (e.view ?? window).getSelection()?.toString().trim()) return "eigen";
+    return [
+      { text: "Vorlesen ab hier", symbol: "play", gesperrt: !sitzung.quelle, tun: () => liesAbHier(sitzung) },
+      ...(sitzung.mitEtiketten ? [{ text: "Etikett hier", symbol: "tag", tun: () => sitzung.etikettHier() }] : []),
+    ];
+  }
+
   let hilfen = $derived(Object.entries(hilfenCss(lesehilfen.wirksam)).map(([k, v]) => `${k}: ${v}`).join("; "));
   // Das Feld Fokus zeigt beim Öffnen gleich, was es tut; danach schaltet nur noch, wer schaltet (BF-40)
   function fokusfeld() {
@@ -98,7 +111,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="leser" onpointermove={(e) => sitzung.regt(e)} onclickcapture={tippeRand} class:mit-treffer={!!treffer && !schale.vollbild} class:randlos={schale.vollbild} class:ruhig={sitzung.ruhig} class:feld-daneben={raum.feldDaneben} style={hilfen} data-papier={papier} style:--randgrund={grund} style:--randtinte={tinte} style:--blattrand="{blattrand.wert}px" style:--blattrand-oben="{blattrand.oben(schale.vollbild)}px" style:--raum-rechts="{raum.rechts}px" style:--lesebreite="{blattbreite.wert}px" bind:this={rahmen} bind:clientWidth={raumbreite}>
+<div class="leser" onpointermove={(e) => sitzung.regt(e)} onclickcapture={tippeRand} class:mit-treffer={!!treffer && !schale.vollbild} class:randlos={schale.vollbild} class:ruhig={sitzung.ruhig} class:feld-daneben={raum.feldDaneben} style={hilfen} data-papier={papier} style:--randgrund={grund} style:--randtinte={tinte} style:--blattrand="{blattrand.wert}px" style:--blattrand-oben="{blattrand.oben(schale.vollbild)}px" style:--raum-rechts="{raum.rechts}px" style:--lesebreite="{blattbreite.wert}px" bind:this={rahmen} bind:clientWidth={raumbreite} use:kontext={imBuch}>
   {@render children()}
   {#if bereit && rahmen && randmarken.an}<Randmarken {sitzung} {rahmen} {raum} feld={raum.feldDaneben ? feldflaeche : undefined} />{/if}
   {#if bereit && rahmen}<Hilfensteuerung {sitzung} {rahmen} offen={vorlesenOffen} />{/if}

@@ -3,6 +3,7 @@ import type { FoliateKapitel, FoliateStand, View } from "foliate-js/view.js";
 import { dateiUrl } from "../../api/books";
 import { anfrage } from "../../api/client";
 import { beobachteDokument } from "../../flucht";
+import { beobachteKontext } from "../../stand/kontextmenue.svelte";
 import type { Markierung } from "../../typen";
 import { blaettergesten, type Blaettergriffe } from "../blaettergesten";
 import { VORGABE_STIFT } from "../farben";
@@ -122,6 +123,8 @@ export class EpubAnzeige {
     requestAnimationFrame(() => void this.zeichne(this.#markierungen));
     // Ein Druck in den Text schließt offene Felder wie überall (BF-39)
     beobachteDokument(doc);
+    // Rechtsklick im Text: das eigene Menü des Lesers, wie außerhalb des Rahmens (BF-42)
+    beobachteKontext(doc, () => this.flaeche);
     const auswerten = () => this.#auswahl(doc, index);
     doc.addEventListener("pointerup", () => setTimeout(auswerten));
     doc.addEventListener("selectionchange", () => {

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { route } from "../../lib/router.svelte";
   import { aehnlicheBuecher, dateiUrl, holeBuch } from "../../lib/api/books";
   import { rollstand } from "../../lib/rollstand";
   import { filter } from "../../lib/stand/filter.svelte";
@@ -20,7 +21,8 @@
   let buch = $state<BuchEinzeln | null>(null);
   let verwandt = $state<{ vom_autor: Buch[]; in_kategorie: Buch[] } | null>(null);
   let fehler = $state("");
-  let bearbeitet = $state(false);
+  // Aus dem Kontextmenü eines Buchs kommt man mit ?bearbeiten gleich zum Bearbeiten (BF-42)
+  let bearbeitet = $state("bearbeiten" in route.params);
 
   async function laden() {
     fehler = "";

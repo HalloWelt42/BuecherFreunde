@@ -11,6 +11,8 @@
   import Umschlag from "../../lib/teile/Umschlag.svelte";
   import type { Buch } from "../../lib/typen";
   import { beimKlick } from "./oeffnen";
+  import { kontext } from "../../lib/stand/kontextmenue.svelte";
+  import { buchmenue } from "./buchmenue";
 
   let { buch, gross = false, ongross = undefined }: { buch: Buch; gross?: boolean; ongross?: (buch: Buch | null, an?: HTMLElement) => void } = $props();
 
@@ -39,7 +41,7 @@
   </span>
 {/snippet}
 
-<div class="band" class:gewaehlt data-buch={buch.id} role="presentation" onpointerenter={(e) => e.pointerType === "mouse" && ongross?.(buch, e.currentTarget)} onpointerleave={() => ongross?.(null)}>
+<div class="band" class:gewaehlt data-buch={buch.id} role="presentation" use:kontext={buchmenue(buch)} onpointerenter={(e) => e.pointerType === "mouse" && ongross?.(buch, e.currentTarget)} onpointerleave={() => ongross?.(null)}>
   {#if auswahl.bearbeiten}
     <button type="button" class="flaeche" aria-pressed={gewaehlt} aria-label={buch.title} onclick={() => auswahl.schalte(buch.id)}>
       <span class="haken"><Symbol name="check" /></span>{@render inhalt()}

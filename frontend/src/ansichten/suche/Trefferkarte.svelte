@@ -6,6 +6,8 @@
   import { wahl } from "../../lib/stand/wahl.svelte";
   import Symbol from "../../lib/teile/Symbol.svelte";
   import Umschlag from "../../lib/teile/Umschlag.svelte";
+  import { kontext } from "../../lib/stand/kontextmenue.svelte";
+  import { buchmenue } from "../bibliothek/buchmenue";
 
   let { buch, titel, autor, ort, symbol, ton, wort, children, knopf }: { buch: number; titel: string; autor: string; ort: string; symbol: string; ton: "gut" | "info"; wort: string; children: Snippet; knopf: Snippet } = $props();
 
@@ -20,7 +22,7 @@
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-<article class="treffer platte" class:gewaehlt={schale.mitVorschau && wahl.buch?.id === buch} onclick={zeige}>
+<article class="treffer platte" class:gewaehlt={schale.mitVorschau && wahl.buch?.id === buch} onclick={zeige} use:kontext={buchmenue(buch)}>
   <a href="/book/{buch}" aria-label={titel} tabindex="-1"><Umschlag buch={{ id: buch, title: titel, author: autor }} /></a>
   <div class="mitte">
     <h3><a href="/book/{buch}">{titel}</a></h3>
