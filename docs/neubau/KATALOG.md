@@ -67,7 +67,9 @@ Eine Datei, gültig für jede Bibliothek, ohne Bezug auf einen bestimmten Bestan
 ```
 
 Zehn Bereiche wie im Entwurf: Romane, Kinder und Jugend, Wissen, Technik, Wirtschaft und Recht, Kunst und Kultur, Leben,
-Lernen, Comics, Dokumente; zusammen etwa 55 Kategorien. Sachgruppen sind die Nummern der Bibliotheken (Dezimal und die
+Lernen, Comics, Dokumente; zusammen etwa 60 Kategorien. Der Bereich Dokumente ordnet nach der Art des Schriftstücks:
+Gebrauchsanleitungen, Datenblätter, Handbücher und Referenzen, Projektdokumentationen, Skripte und Abschlussarbeiten,
+Folien und Vorträge, Kataloge und Prospekte, Belege und Rechnungen, Verträge, Zeugnisse und Urkunden, Formulare. Sachgruppen sind die Nummern der Bibliotheken (Dezimal und die
 Buchstabengruppen der Nationalbibliografie wie B für Belletristik, K für Kinder- und Jugendliteratur), Schlagworte und
 Titelwörter jeweils auf Deutsch und Englisch. Zeichen sind Namen aus Font Awesome Free (solid).
 
