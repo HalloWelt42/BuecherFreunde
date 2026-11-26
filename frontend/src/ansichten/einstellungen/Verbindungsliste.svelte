@@ -11,10 +11,13 @@
     name: string;
     stand: Guete | "aus";
     text: string;
+    oeffnen: string;                  // Adresse der Anwendung des Dienstes: statt "Prüfen" ein Knopf "Öffnen"
   }
+  // Assistent und Nachschlag sind eigene Anwendungen; ihre Zeile öffnet sie, geprüft werden sie mit allen anderen
+  let adressen = $derived<Record<string, string>>({ assistent: verbindungen.assistent, nachschlag: anschluesse.jetzt.nachschlag });
   let zeilen = $derived<Zeile[]>([
-    { name: "BücherFreunde", ...verbindungen.app },
-    ...verbindungen.liste.map((v) => ({ name: v.name, stand: v.stand, text: v.text })),
+    { name: "BücherFreunde", ...verbindungen.app, oeffnen: "" },
+    ...verbindungen.liste.map((v) => ({ name: v.name, stand: v.stand, text: v.text, oeffnen: adressen[v.kennung] ?? "" })),
   ]);
 
   async function pruefe(name: string) {
@@ -32,25 +35,11 @@
   <div class="stelle zeile-stand">
     <span class="led {z.stand}"></span>
     <span><b>{z.name}</b><br /><span class="leise">{z.text}</span></span>
-    <Knopf text="Prüfen" symbol="stethoscope" klein laeuft={prueft === z.name} onclick={() => void pruefe(z.name)} />
+    {#if z.oeffnen}
+      <Knopf text="Öffnen" symbol="arrow-up-right-from-square" klein extern href={z.oeffnen} />
+    {:else}
+      <Knopf text="Prüfen" symbol="stethoscope" klein laeuft={prueft === z.name} onclick={() => void pruefe(z.name)} />
+    {/if}
   </div>
 {/each}
-{#if verbindungen.assistent}
-  <div class="stelle zeile-stand">
-    <span class="led aus"></span>
-    <span><b>Assistent</b><br /><span class="leise">Eingerichtet, antwortet auf Fragen zu den Büchern</span></span>
-    <Knopf text="Öffnen" symbol="arrow-up-right-from-square" klein extern href={verbindungen.assistent} />
-  </div>
-{/if}
-{#if anschluesse.jetzt.nachschlag}
-  <div class="stelle zeile-stand">
-    <span class="led aus"></span>
-    {#if anschluesse.jetzt.nachschlag_art === "netz"}
-      <span><b>Lexikon im Netz</b><br /><span class="leise">Schlägt Wörter beim Lesen im öffentlichen Lexikon nach, ohne Nachschlag</span></span>
-    {:else}
-      <span><b>Nachschlag</b><br /><span class="leise">Eingerichtet, schlägt Wörter beim Lesen nach</span></span>
-    {/if}
-    <Knopf text="Öffnen" symbol="arrow-up-right-from-square" klein extern href={anschluesse.jetzt.nachschlag} />
-  </div>
-{/if}
 {#if !verbindungen.liste.length}<p class="leise">Nichts weiter angeschlossen.</p>{/if}

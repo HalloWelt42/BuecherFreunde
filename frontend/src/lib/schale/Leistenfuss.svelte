@@ -15,6 +15,7 @@
 
 <style>
   .leise {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
+    padding-top: 0;
   }
 </style>

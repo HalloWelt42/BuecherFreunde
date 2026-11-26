@@ -11,6 +11,8 @@ from typing import Literal, Protocol
 from bs4 import BeautifulSoup, NavigableString, Tag
 from pydantic import BaseModel
 
+from backend.app.services.hausdienst import Guete
+
 Art = Literal["nachschlag", "netz"]
 ERLAUBT = {"p", "h2", "h3", "h4", "ul", "ol", "li", "b", "strong", "i", "em", "sub", "sup", "code", "pre", "blockquote", "dl", "dt", "dd", "br"}
 WEG = ["script", "style", "table", "figure", "img", "svg", "math", "video", "audio", "iframe", "form", "button", "input", "nav"]
@@ -60,6 +62,9 @@ class Lexikon(Protocol):
         """Inhalt und Art eines Bildes; nur Rasterbilder."""
 
     async def vorwaermen(self) -> None: ...
+
+    async def stand(self) -> tuple[Guete | Literal["aus"], str]:
+        """Ob es antwortet, mit einem Satz dazu, für die Verbindungen; fragt höchstens kurz ("aus": noch nichts bekannt)."""
 
     async def schliessen(self) -> None: ...
 

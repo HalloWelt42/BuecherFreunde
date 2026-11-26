@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any, Literal
 
 import httpx
 
 from backend.app.ablage.wolke import _pruefung, app_kopf
+
+
+Guete = Literal["gut", "warn", "schlecht"]
+PROBE = httpx.Timeout(5.0, connect=4.0)        # eine Prüfung wartet nie lange, auch wenn der Dienst sonst Zeit braucht
 
 
 class DienstFehler(Exception):
@@ -54,6 +59,14 @@ class Hausdienst:
         if r.status_code >= 400:
             raise DienstFehler(self._grund(r), 404 if r.status_code == 404 else 502, r.status_code)
         return r
+
+    async def probe(self, weg: str) -> Any:
+        """Eine kleine Abfrage zur Prüfung, ohne Auftrag eines Menschen und mit kurzer Zeitgrenze; die Antwort als JSON.
+        Wirft DienstFehler mit dem Grund in Worten."""
+        try:
+            return (await self.hole("GET", weg, timeout=PROBE)).json()
+        except ValueError as f:
+            raise DienstFehler(f"{self.name} antwortet, aber nicht wie erwartet") from f
 
     def _grund(self, r: httpx.Response) -> str:
         try:

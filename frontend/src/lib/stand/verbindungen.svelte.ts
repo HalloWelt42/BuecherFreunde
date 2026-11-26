@@ -14,7 +14,7 @@ export interface Dienststand {
 
 const PRUEFT: Dienststand = { stand: "aus", text: "wird geprüft" };
 // Reihenfolge nach Bedeutung (BF-64): erst was die App zum Laufen braucht, dann die Zusätze; Unbekanntes hinten, wie geliefert
-const RANG = ["kellerwolke", "leitstelle", "rechner", "fundus", "codeschmiede"];
+const RANG = ["kellerwolke", "leitstelle", "fundus", "codeschmiede", "assistent", "nachschlag"];
 
 export function nachRang(liste: Verbindung[]): Verbindung[] {
   const platz = (v: Verbindung) => (RANG.includes(v.kennung) ? RANG.indexOf(v.kennung) : RANG.length);

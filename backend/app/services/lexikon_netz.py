@@ -5,16 +5,17 @@ mit der Einstellung des Lexikons (`WIKIPEDIA_ENABLED`); was einmal geholt ist, k
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import quote, unquote
 
 from bs4 import BeautifulSoup, Tag
 
 from backend.app.quellen import regeln
+from backend.app.quellen import stand as quellenstand
 from backend.app.quellen.abruf import Frage, abruf, hole
 from backend.app.quellen.fehler import AnfrageFalsch, QuelleFehler
 from backend.app.quellen.wiki import _pruefe as pruefe_wiki
-from backend.app.services.hausdienst import DienstFehler
+from backend.app.services.hausdienst import DienstFehler, Guete
 from backend.app.services.lexikon import Abschnitt, Nachschlagartikel, Nachschlagtreffer, klartext, ordnen, zum_lesen
 
 SPRACHE = "de"
@@ -119,6 +120,12 @@ class Netzlexikon:
 
     async def vorwaermen(self) -> None:
         return None
+
+    async def stand(self) -> tuple[Guete | Literal["aus"], str]:
+        """Der gemerkte Stand der Quelle Lexikon, wie beim Nachschlagen erlebt. Gefragt wird sie dafür nie: wie bei allen
+        Quellen fragt erst "Neu prüfen" in den Einstellungen (die Verbindungen werden alle paar Minuten geprüft)."""
+        s = await quellenstand.einer(regeln.WIKIPEDIA.kennung)
+        return s.stand, f"Öffentliches Lexikon im Netz: {s.wort}"
 
     async def schliessen(self) -> None:
         return None

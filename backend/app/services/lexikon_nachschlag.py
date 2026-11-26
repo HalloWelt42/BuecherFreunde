@@ -8,7 +8,7 @@ import re
 from urllib.parse import quote, unquote, urlencode
 
 from backend.app.core.config import settings
-from backend.app.services.hausdienst import DienstFehler, Hausdienst
+from backend.app.services.hausdienst import DienstFehler, Guete, Hausdienst
 from backend.app.services.lexikon import Abschnitt, Nachschlagartikel, Nachschlagtreffer, ist_bild, klartext, ordnen, zum_lesen
 
 dienst = Hausdienst("Nachschlag", lambda: settings.nachschlag_url)
@@ -48,6 +48,13 @@ class Nachschlag:
     @property
     def adresse(self) -> str:
         return dienst.adresse
+
+    async def stand(self) -> tuple[Guete, str]:
+        try:
+            buecher = (await dienst.probe("/api/v1/buecher")).get("buecher") or []
+        except DienstFehler as f:
+            return "schlecht", f.meldung
+        return "gut", f"{len(buecher)} {'Lexikon' if len(buecher) == 1 else 'Lexika und Handbücher'} zum Nachschlagen beim Lesen"
 
     async def vorwaermen(self) -> None:
         """Die Namen der Bücher schon beim Start holen; das dauert dort beim ersten Mal lange."""

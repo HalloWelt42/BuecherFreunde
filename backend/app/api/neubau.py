@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -14,9 +15,10 @@ from backend.app.familie import sichtbar
 from backend.app.familie.sichtbar import Sicht
 from backend.app.core.config import settings
 from backend.app.core.database import db
-from backend.app.services import bedeutung
+from backend.app.services import bedeutung, gespraech, nachschlagen
 from backend.app.services.ausfuehren import NICHT_ZUGELASSEN, sandbox
 from backend.app.services.ki import ki
+from backend.app.services.lexikon import Lexikon
 from backend.app.services.storage import get_sidecar_path
 from backend.app.models.grenzen import Nr
 
@@ -61,21 +63,43 @@ async def _leitstelle() -> dict:
     return eintrag | {"stand": "schlecht", "text": s.grund}
 
 
+async def _assistent() -> dict:
+    farbe, text = await gespraech.stand()
+    return {"kennung": "assistent", "name": "Assistent", "stand": farbe, "text": text}
+
+
+async def _nachschlag(lexikon: Lexikon) -> dict:
+    farbe, text = await lexikon.stand()
+    return {"kennung": "nachschlag", "name": "Nachschlag" if lexikon.art == "nachschlag" else "Lexikon im Netz", "stand": farbe, "text": text}
+
+
+FRIST_S = 8.0                     # so lange darf eine Prüfung dauern; die Liste wartet nie auf einen hängenden Dienst
+
+
+async def _mit_frist(kennung: str, name: str, pruefung: Awaitable[dict]) -> dict:
+    try:
+        return await asyncio.wait_for(pruefung, FRIST_S)
+    except TimeoutError:
+        return {"kennung": kennung, "name": name, "stand": "schlecht", "text": f"antwortet nicht binnen {FRIST_S:.0f} Sekunden"}
+
+
 @router.get("/verbindungen", dependencies=[Depends(braucht("ki"))])
 async def verbindungen(_=Depends(verify_token)):
-    """Nur, was angeschlossen ist."""
-    a, aus = anschluesse(), []
+    """Nur, was angeschlossen ist; alle zugleich geprüft, jede mit Frist."""
+    a, pruefungen = anschluesse(), []
     if settings.kellerwolke_url:
-        aus.append(await _kellerwolke())
+        pruefungen.append(("kellerwolke", "Kellerwolke", _kellerwolke()))
     if a.bedeutung:
-        aus.append(await bedeutung.stand())
-        probe = await bedeutung.suchen("Buch", 1)
-        aus.append({"kennung": "rechner", "name": "MacBook", "stand": "gut" if probe["verfuegbar"] else "warn", "text": "rechnet die Bedeutung" if probe["verfuegbar"] else probe["grund"] or "schläft"})
+        pruefungen.append(("fundus", "Fundus", bedeutung.stand()))
     if a.ausfuehren:
-        aus.append(await _codeschmiede())
+        pruefungen.append(("codeschmiede", "Codeschmiede", _codeschmiede()))
     if settings.leitstelle_adresse.strip():
-        aus.append(await _leitstelle())
-    return aus
+        pruefungen.append(("leitstelle", "Leitstelle", _leitstelle()))
+    if settings.assistent_url:
+        pruefungen.append(("assistent", "Assistent", _assistent()))
+    if lexikon := nachschlagen.lexikon():
+        pruefungen.append(("nachschlag", "Nachschlag", _nachschlag(lexikon)))
+    return list(await asyncio.gather(*(_mit_frist(*p) for p in pruefungen)))
 
 
 @router.get("/orte", dependencies=[Depends(braucht("einstellungen"))])

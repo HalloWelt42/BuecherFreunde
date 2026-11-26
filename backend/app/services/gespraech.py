@@ -13,11 +13,22 @@ from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
 from backend.app.core.database import db
-from backend.app.services.hausdienst import DienstFehler, Hausdienst
+from backend.app.services.hausdienst import DienstFehler, Guete, Hausdienst
 
 dienst = Hausdienst("Der Assistent", lambda: settings.assistent_url, zeit_s=60.0)
 KENNUNG = r"^[A-Za-z0-9-]{1,64}$"
 TITEL_HOECHSTENS = 100
+
+
+async def stand() -> tuple[Guete, str]:
+    """Ob der Assistent antwortet und den App-Zugang kennt (`GET /api/v1/ich`), für die Verbindungen."""
+    try:
+        ich = await dienst.probe("/api/v1/ich")
+    except DienstFehler as f:
+        return "schlecht", f.meldung
+    if not ich.get("app"):
+        return "warn", "Der Assistent antwortet, erkennt BücherFreunde aber nicht als App"
+    return "gut", "Chat für alle Fragen, auch zu Stellen im Buch"
 
 
 class Stelle(BaseModel):

@@ -506,7 +506,7 @@ export type Guete = "gut" | "warn" | "schlecht";
 export interface Verbindung {
   kennung: string;
   name: string;
-  stand: Guete;
+  stand: Guete | "aus";              // aus: noch nichts bekannt (etwa ein Lexikon im Netz, das noch nie gefragt wurde)
   text: string;
 }
 

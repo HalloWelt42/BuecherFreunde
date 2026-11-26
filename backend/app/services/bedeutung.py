@@ -107,10 +107,16 @@ async def buch_stand(buch: int) -> dict | None:
 
 
 async def stand() -> dict:
+    """Eine Lampe für den Fundus: ob er antwortet und ob er gerade nach Bedeutung suchen kann. Wo dafür gerechnet wird,
+    entscheiden Fundus und Leitstelle; die App nennt keinen Rechner (BF-92: die frühere Lampe "MacBook" war kein Dienst)."""
+    eintrag = {"kennung": "fundus", "name": "Fundus"}
     if not settings.fundus_url:
-        return {"kennung": "fundus", "name": "Fundus", "stand": "warn", "text": "nicht eingerichtet"}
+        return eintrag | {"stand": "warn", "text": "nicht eingerichtet"}
     try:
         await _kennung()
-        return {"kennung": "fundus", "name": "Fundus", "stand": "gut", "text": "Bücher nach Bedeutung durchsuchbar"}
     except (httpx.HTTPError, LookupError) as f:
-        return {"kennung": "fundus", "name": "Fundus", "stand": "schlecht", "text": str(f) if isinstance(f, LookupError) else "antwortet nicht"}
+        return eintrag | {"stand": "schlecht", "text": str(f) if isinstance(f, LookupError) else "antwortet nicht"}
+    probe = await suchen("Buch", 1)
+    if not probe["verfuegbar"]:
+        return eintrag | {"stand": "warn", "text": probe["grund"] or "kann gerade nicht nach Bedeutung suchen"}
+    return eintrag | {"stand": "gut", "text": "Bücher nach Bedeutung durchsuchbar"}

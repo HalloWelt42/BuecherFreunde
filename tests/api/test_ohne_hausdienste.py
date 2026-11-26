@@ -84,4 +84,5 @@ async def test_anschluesse_und_verbindungen_nennen_nur_was_da_ist(client, auth_h
     o = (await client.get("/api/config/oberflaeche", headers=auth_headers)).json()
     assert o["anschluesse"] == {"ablage": "geraet", "anmeldung": "eigen", "bedeutung": False, "assistent": "", "nachschlag": "https://de.wikipedia.org",
                                     "nachschlag_art": "netz", "ki": False, "vorlesen": False, "ausfuehren": False}
-    assert (await client.get("/api/verbindungen", headers=auth_headers)).json() == []
+    v = (await client.get("/api/verbindungen", headers=auth_headers)).json()
+    assert [(x["kennung"], x["name"]) for x in v] == [("nachschlag", "Lexikon im Netz")]        # die Rückfallschicht des Nachschlags
