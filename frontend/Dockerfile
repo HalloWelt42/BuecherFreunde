@@ -14,6 +14,7 @@ FROM nginx:alpine
 
 COPY --from=builder /build/dist /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/sicherheit.conf /etc/nginx/snippets/sicherheit.conf
 
 EXPOSE 80
 

@@ -40,11 +40,19 @@ function dienstFassung() {
   };
 }
 
+// Sicherheitsköpfe samt Content-Security-Policy wie im Betrieb, aus derselben Datei wie nginx (BF-5): ein Verstoß zeigt sich
+// schon beim Entwickeln
+const SICHERHEIT = Object.fromEntries(
+  [...readFileSync(resolve(__dirname, "../docker/sicherheit.conf"), "utf-8").matchAll(/^add_header\s+(\S+)\s+"([^"]*)"\s+always;/gm)].map((m) => [m[1], m[2]]),
+);
+
 export default defineConfig({
   plugins: [svelte(), symbolEinbetten(), dienstFassung()],
   define: { __FASSUNG__: JSON.stringify(FASSUNG) },
+  preview: { headers: SICHERHEIT },
   server: {
     port: 5173,
+    headers: SICHERHEIT,
     fs: {
       allow: [resolve(__dirname, "..")],
     },
