@@ -251,6 +251,65 @@ describe("Marken am Rand", () => {
     expect(g.reduce((s, x) => s + x.eintraege.length, 0)).toBe(40);
   });
 
+  // Reicht der Platz nicht, fassen Marken sich zusammen; nie liegt eine über einer anderen (BF-48)
+  const MASS = { oben: 134, unten: 834, breit: 46, schmal: 26, abstand: 4 };
+  const kollisionen = (r: { hier: { y: number }[]; fern: { y: number }[] }) => {
+    const alle = [...r.hier.map((g) => [g.y, g.y + MASS.breit]), ...r.fern.map((g) => [g.y, g.y + MASS.schmal])].sort((a, b) => a[0] - b[0]);
+    return alle.filter((a, i) => i > 0 && a[0] < alle[i - 1][1] + MASS.abstand).length;
+  };
+  const zufall = (saat: number) => () => ((saat = (saat * 1103515245 + 12345) % 2 ** 31) / 2 ** 31);
+
+  it("fasst zu viele breite Marken je Platz zusammen, statt sie oben zu stapeln", async () => {
+    const { legeAnStelle } = await import("../src/lib/leser/randmarken");
+    // 122 Einträge über dem Bereich und 30 darin, wie im Markdown-Buch der Grenzprobe
+    const eintraege = [...Array.from({ length: 122 }, (_, n) => ({ y: -n, eintrag: n })), ...Array.from({ length: 30 }, (_, n) => ({ y: 140 + n * 23, eintrag: 200 + n }))];
+    const g = legeAnStelle(eintraege, MASS.oben, MASS.unten, MASS.breit, MASS.abstand);
+    expect(g.length).toBeLessThanOrEqual(14);
+    expect(kollisionen({ hier: g, fern: [] })).toBe(0);
+    expect(g.every((x) => x.y >= MASS.oben && x.y + MASS.breit <= MASS.unten)).toBe(true);
+    expect(g.flatMap((x) => x.eintraege).sort((a, b) => a - b)).toEqual(eintraege.map((e) => e.eintrag).sort((a, b) => a - b));
+    expect(g[0].eintraege.length).toBeGreaterThan(100);
+  });
+
+  it("legt schmale Marken nie auf gesperrte Plätze, auch wenn keiner frei ist", async () => {
+    const { legeFest } = await import("../src/lib/leser/randmarken");
+    expect(legeFest([{ anteil: 0.3, eintrag: 1 }], 300, 26, 4, [[0, 300]])).toEqual([]);
+  });
+
+  it("lässt breiten Marken, die alles füllen, einen Platz für die schmalen frei, auf der Seite, wo diese meist liegen", async () => {
+    const { legeRand } = await import("../src/lib/leser/randmarken");
+    const hier = Array.from({ length: 40 }, (_, n) => ({ y: 134 + n * 18, eintrag: `h${n}` }));
+    for (const [anteile, unten] of [[[0.9, 0.95, 0.99], true], [[0.01, 0.2, 0.7], false]] as const) {
+      const fern = anteile.map((anteil, n) => ({ anteil, eintrag: `f${n}` }));
+      const r = legeRand(hier, fern, MASS);
+      expect(kollisionen(r)).toBe(0);
+      expect(r.fern.length).toBeGreaterThan(0);
+      expect(r.fern.flatMap((g) => g.eintraege).sort()).toEqual(fern.map((f) => f.eintrag).sort());
+      expect(r.hier.flatMap((g) => g.eintraege).length).toBe(40);
+      const [breit, schmal] = [r.hier.map((g) => g.y), r.fern.map((g) => g.y)];
+      expect(unten ? Math.min(...schmal) > Math.max(...breit) : Math.max(...schmal) < Math.min(...breit)).toBe(true);
+    }
+  });
+
+  it("legt bei wenigen Marken alles wie zuvor und bei beliebig vielen nie übereinander", async () => {
+    const { legeAnStelle, legeFest, legeRand } = await import("../src/lib/leser/randmarken");
+    const hier = [{ y: 300, eintrag: 1 }, { y: 310, eintrag: 2 }];
+    const fern = [{ anteil: 0.1, eintrag: 3 }, { anteil: 0.6, eintrag: 4 }];
+    const nah = legeAnStelle(hier, MASS.oben, MASS.unten, MASS.breit, MASS.abstand);
+    const gesperrt = nah.map((g): [number, number] => [g.y - MASS.oben, g.y - MASS.oben + MASS.breit]);
+    const fest = legeFest(fern, MASS.unten - MASS.oben - MASS.schmal, MASS.schmal, MASS.abstand, gesperrt).map((g) => ({ ...g, y: g.y + MASS.oben }));
+    expect(legeRand(hier, fern, MASS)).toEqual({ hier: nah, fern: fest });
+    const z = zufall(47);
+    for (let lauf = 0; lauf < 200; lauf++) {
+      const h = Array.from({ length: Math.floor(z() * 300) }, (_, n) => ({ y: z() * 1200 - 200, eintrag: n }));
+      const f = Array.from({ length: Math.floor(z() * 3000) }, (_, n) => ({ anteil: z(), eintrag: -n - 1 }));
+      const r = legeRand(h, f, MASS);
+      expect(kollisionen(r)).toBe(0);
+      expect(r.hier.reduce((s, g) => s + g.eintraege.length, 0)).toBe(h.length);
+      expect(r.fern.reduce((s, g) => s + g.eintraege.length, 0)).toBe(f.length);
+    }
+  });
+
   it("stellt breite Marken an ihre Stelle, im sichtbaren Bereich und untereinander", async () => {
     const { legeAnStelle } = await import("../src/lib/leser/randmarken");
     const g = legeAnStelle([{ y: 100, eintrag: "a" }, { y: 110, eintrag: "b" }, { y: -50, eintrag: "c" }, { y: 990, eintrag: "d" }], 0, 500, 46, 4);

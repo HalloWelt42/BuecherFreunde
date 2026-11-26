@@ -1,7 +1,7 @@
 <script lang="ts">
   // Bunte Marken am Rand des Blatts (Entwurf scratchpad/marken.png): breit für die offene Seite auf Höhe ihrer Stelle, schmal für
   // alle anderen an festem Platz. Am Telefon nur schmale Streifen, die kein Wischen und keine Auswahl blockieren.
-  import { legeAnStelle, legeFest, randeintraege, schriftAuf, type Gelegt, type Randeintrag } from "../../lib/leser/randmarken";
+  import { legeRand, randeintraege, schriftAuf, type Gelegt, type Randeintrag } from "../../lib/leser/randmarken";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import type { Aufteilung } from "../../lib/leser/leseraum.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
@@ -51,10 +51,7 @@
     const rechtsBis = r.width - (raum.rechts - raum.markenrand);
     const links = telefon ? r.width - mass.hier[0] : kante === null ? rechtsBis - breite - 2 : Math.min(kante - r.left, rechtsBis - breite - 2);
     const grenze = feld ? feld.getBoundingClientRect().left - r.left - 8 : r.width;
-    const nah = legeAnStelle(hier, oben, unten, mass.hier[1], ABSTAND);
-    const gesperrt = nah.map((g): [number, number] => [g.y - oben, g.y - oben + mass.hier[1]]);
-    const fest = legeFest(fern, unten - oben - mass.fern[1], mass.fern[1], ABSTAND, gesperrt).map((g) => ({ ...g, y: g.y + oben }));
-    lage = { links, grenze, hier: nah, fern: fest };
+    lage = { links, grenze, ...legeRand(hier, fern, { oben, unten, breit: mass.hier[1], schmal: mass.fern[1], abstand: ABSTAND }) };
   }
 
   // Bei jeder Bewegung der Ansicht, neuen Einträgen und anderer Größe neu legen, einmal je Bild
@@ -120,7 +117,7 @@
 <div class="randmarken" class:telefon aria-label="Marken am Rand" role="group" style:--links="{lage.links}px">
   {#each lage.fern as g (g.eintraege[0].schluessel)}
     {@const e = g.eintraege[0]}
-    <button type="button" class="randmarke fern" style:top="{g.y}px" style:--f={e.farbe} style:--auf={schriftAuf(e.farbe)} title={titel(g)} aria-label="{titel(g)}, hinspringen" tabindex={telefon ? -1 : 0} onclick={() => tippe(g, false)}>{#if g.eintraege.length > 1 && !telefon}<span>{g.eintraege.length}</span>{/if}</button>
+    <button type="button" class="randmarke fern" style:top="{g.y}px" style:--f={e.farbe} style:--auf={schriftAuf(e.farbe)} title={titel(g)} aria-label="{titel(g)}, hinspringen" tabindex={telefon ? -1 : 0} onclick={() => tippe(g, false)}>{#if g.eintraege.length > 1 && !telefon}<span class:laengs={g.eintraege.length >= 100} class:eng={g.eintraege.length >= 10000}>{g.eintraege.length}</span>{/if}</button>
   {/each}
   {#each lage.hier as g, n (g.eintraege[0].schluessel)}
     {@const e = g.eintraege[0]}
@@ -160,9 +157,17 @@
     height: 26px;
     opacity: 0.95;
   }
+  /* Die Marke wächst nicht mit der Schrift, ihre Zahl darum auch nicht: sie passt immer hinein. Ab drei Stellen steht sie
+     längs, ab fünf kleiner */
   .fern span {
-    font-size: 0.6875rem;
+    font-size: min(0.6875rem, 11px);
     line-height: 1;
+  }
+  .fern span.laengs {
+    writing-mode: vertical-rl;
+  }
+  .fern span.eng {
+    font-size: 8px;
   }
   .hier {
     width: 34px;

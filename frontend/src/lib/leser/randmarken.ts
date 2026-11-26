@@ -57,15 +57,26 @@ export interface Gelegt<T> {
   eintraege: T[];
 }
 
+/** Plätze für schmale Marken: y = Platz * (marke + abstand), so viele, wie in hoehe passen */
+const platzzahl = (hoehe: number, marke: number, abstand: number) => Math.max(1, Math.floor((hoehe + abstand) / (marke + abstand)));
+
+/** Die Plätze, an denen eine schmale Marke keine breite (gesperrt) berührt */
+export function freiePlaetze(hoehe: number, marke: number, abstand: number, gesperrt: [number, number][] = []): number[] {
+  const schritt = marke + abstand;
+  return Array.from({ length: platzzahl(hoehe, marke, abstand) }, (_, p) => p).filter((p) => !gesperrt.some(([von, bis]) => p * schritt < bis + abstand && p * schritt + marke > von - abstand));
+}
+
 /**
  * Schmale Marken an festem Platz: y nach dem Anteil im Buch. Wer dort keinen Platz hat, rückt nach unten (oder nach oben, wenn
- * unten keiner ist); sind es mehr als Plätze, fassen nahe Marken sich zu einer zusammen. gesperrt: wo schon breite Marken stehen.
+ * unten keiner ist); sind es mehr als Plätze, fassen nahe Marken sich zu einer zusammen. gesperrt: wo schon breite Marken stehen;
+ * dort liegt nie eine. Ist gar kein Platz frei, bleibt der Rand leer (legeRand sorgt dafür, dass einer frei ist).
  */
 export function legeFest<T>(eintraege: { anteil: number; eintrag: T }[], hoehe: number, marke: number, abstand: number, gesperrt: [number, number][] = []): Gelegt<T>[] {
-  const plaetze = Math.max(1, Math.floor((hoehe + abstand) / (marke + abstand)));
+  const plaetze = platzzahl(hoehe, marke, abstand);
   const schritt = marke + abstand;
+  const offen = new Set(freiePlaetze(hoehe, marke, abstand, gesperrt));
   const belegt = new Map<number, T[]>();
-  const frei = (p: number) => !belegt.has(p) && !gesperrt.some(([von, bis]) => p * schritt < bis + abstand && p * schritt + marke > von - abstand);
+  const frei = (p: number) => offen.has(p) && !belegt.has(p);
   const sortiert = eintraege.toSorted((a, b) => a.anteil - b.anteil);
   for (const { anteil, eintrag } of sortiert) {
     const wunsch = Math.min(plaetze - 1, Math.max(0, Math.round(anteil * (plaetze - 1))));
@@ -75,24 +86,62 @@ export function legeFest<T>(eintraege: { anteil: number; eintrag: T }[], hoehe: 
       else if (wunsch - d >= 0 && frei(wunsch - d)) platz = wunsch - d;
     }
     // Kein freier Platz mehr: zur nächsten schmalen Marke dazu
-    if (platz < 0) platz = [...belegt.keys()].sort((a, b) => Math.abs(a - wunsch) - Math.abs(b - wunsch))[0] ?? wunsch;
-    belegt.set(platz, [...(belegt.get(platz) ?? []), eintrag]);
+    if (platz < 0) platz = [...belegt.keys()].sort((a, b) => Math.abs(a - wunsch) - Math.abs(b - wunsch))[0] ?? -1;
+    if (platz >= 0) belegt.set(platz, [...(belegt.get(platz) ?? []), eintrag]);
   }
   return [...belegt].sort((a, b) => a[0] - b[0]).map(([p, liste]) => ({ y: p * schritt, eintraege: liste }));
 }
 
-/** Breite Marken auf Höhe ihrer Stelle, innerhalb des sichtbaren Bereichs, untereinander statt übereinander */
+/**
+ * Breite Marken auf Höhe ihrer Stelle, innerhalb des sichtbaren Bereichs, untereinander statt übereinander. Passen nicht alle,
+ * fassen sich die zusammen, die auf denselben Platz wollen (Plätze im Abstand einer Marke von oben), bis jede Marke Platz hat.
+ */
 export function legeAnStelle<T>(eintraege: { y: number; eintrag: T }[], oben: number, unten: number, marke: number, abstand: number): Gelegt<T>[] {
-  const sortiert = eintraege.toSorted((a, b) => a.y - b.y);
-  const ys = sortiert.map((e) => Math.min(unten - marke, Math.max(oben, e.y)));
-  for (let i = 1; i < ys.length; i++) ys[i] = Math.max(ys[i], ys[i - 1] + marke + abstand);
-  // Unten zu wenig Platz: von unten her wieder hochschieben
+  const schritt = marke + abstand;
+  const plaetze = platzzahl(unten - oben, marke, abstand);
+  let gruppen: Gelegt<T>[] = eintraege.toSorted((a, b) => a.y - b.y).map((e) => ({ y: Math.min(unten - marke, Math.max(oben, e.y)), eintraege: [e.eintrag] }));
+  if (gruppen.length > plaetze) {
+    const je = new Map<number, Gelegt<T>>();
+    for (const g of gruppen) {
+      const p = Math.min(plaetze - 1, Math.max(0, Math.round((g.y - oben) / schritt)));
+      const da = je.get(p);
+      if (da) da.eintraege.push(...g.eintraege);
+      else je.set(p, g);
+    }
+    gruppen = [...je.values()];
+  }
+  const ys = gruppen.map((g) => g.y);
+  for (let i = 1; i < ys.length; i++) ys[i] = Math.max(ys[i], ys[i - 1] + schritt);
+  // Unten zu wenig Platz: von unten her wieder hochschieben; es sind nie mehr Marken als Plätze, oben bleibt also Raum
   for (let i = ys.length - 1; i >= 0; i--) ys[i] = Math.min(ys[i], (i === ys.length - 1 ? unten : ys[i + 1] - abstand) - marke);
-  // Reicht der Platz gar nicht, fassen die letzten sich zusammen
-  const aus: Gelegt<T>[] = [];
-  sortiert.forEach((e, i) => {
-    if (aus.length && ys[i] < oben) aus[aus.length - 1].eintraege.push(e.eintrag);
-    else aus.push({ y: Math.max(oben, ys[i]), eintraege: [e.eintrag] });
-  });
-  return aus;
+  return gruppen.map((g, i) => ({ y: Math.max(oben, ys[i]), eintraege: g.eintraege }));
+}
+
+export interface Randmass {
+  /** Freier Bereich zwischen den Leisten */
+  oben: number;
+  unten: number;
+  /** Höhe einer breiten und einer schmalen Marke */
+  breit: number;
+  schmal: number;
+  abstand: number;
+}
+
+/**
+ * Alle Marken am Rand: die breiten an ihrer Stelle, die schmalen an festem Platz in dem, was frei bleibt. Lassen die breiten
+ * keinen Platz für eine schmale, rücken sie zusammen und lassen einen frei, unten oder oben, je nachdem, wo im Buch die
+ * schmalen meist liegen. Nie übereinander (BF-28, BF-48).
+ */
+export function legeRand<T>(hier: { y: number; eintrag: T }[], fern: { anteil: number; eintrag: T }[], m: Randmass): { hier: Gelegt<T>[]; fern: Gelegt<T>[] } {
+  // Die Bahn der schmalen: eine Marke kürzer als der Bereich, wie seit BF-28
+  const bahn = m.unten - m.oben - m.schmal;
+  const sperre = (liste: Gelegt<T>[]) => liste.map((g): [number, number] => [g.y - m.oben, g.y - m.oben + m.breit]);
+  let nah = legeAnStelle(hier, m.oben, m.unten, m.breit, m.abstand);
+  if (fern.length && !freiePlaetze(bahn, m.schmal, m.abstand, sperre(nah)).length) {
+    const mitte = fern.map((f) => f.anteil).sort((a, b) => a - b)[Math.floor(fern.length / 2)];
+    const letzter = (platzzahl(bahn, m.schmal, m.abstand) - 1) * (m.schmal + m.abstand);
+    nah = mitte >= 0.5 ? legeAnStelle(hier, m.oben, m.oben + letzter - m.abstand, m.breit, m.abstand) : legeAnStelle(hier, m.oben + m.schmal + m.abstand, m.unten, m.breit, m.abstand);
+  }
+  const fest = legeFest(fern, bahn, m.schmal, m.abstand, sperre(nah)).map((g) => ({ ...g, y: g.y + m.oben }));
+  return { hier: nah, fern: fest };
 }
