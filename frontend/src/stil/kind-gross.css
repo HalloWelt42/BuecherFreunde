@@ -1,0 +1,138 @@
+/* Kinderbereich, Gestaltung Groß (BF-88, Entwurf Runde 7): ruhig im Stil der App. Dieselben Flächen und Farben (Kopf und Bühne
+   aus Glas über der Regalwand, Platten, Knöpfe, Segment, Regal mit Glasböden, Blatt), hell und dunkel, alles in rem wie in der
+   App, so wächst es mit der Schriftstufe. Klein (kind.css) bleibt, wie es ist; was beide brauchen (Lesetext, Silben, Lesezeile,
+   Katze, Dialog der Eltern), kommt von dort. */
+
+.kind.gross {
+  --k-schrift: var(--schrift);
+  grid-template-rows: var(--kopf) minmax(0, 1fr);
+  gap: var(--fuge);
+  padding: calc(var(--fuge) + env(safe-area-inset-top, 0px)) calc(var(--fuge) + env(safe-area-inset-right, 0px)) calc(var(--fuge) + env(safe-area-inset-bottom, 0px)) calc(var(--fuge) + env(safe-area-inset-left, 0px));
+  background: transparent;
+  color: var(--tinte);
+  font-family: var(--schrift);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+:root[data-theme="dark"] .kind.gross { --papier: #181b1a; --papier-tinte: #d7d8d0; }
+.kind.gross :focus-visible { outline: 2px solid var(--messing); outline-offset: 2px; }
+/* Die Tasten der App behalten ihre Schrift und Farbe (kind.css gibt jeder Taste des Kinderbereichs font und color des Umfelds) */
+.kind.gross .knopf { font-weight: 500; font-size: .9375rem; }
+.kind.gross .knopf.haupt { color: var(--auf-messing); }
+.kind.gross .segment button { font-weight: 500; color: var(--tinte-2); }
+.kind.gross .segment button[aria-pressed="true"] { color: var(--tinte); }
+/* Tippflächen für Kinder: die Tasten der App, nur mindestens 44 Bildpunkte hoch */
+.kind.gross .knopf { height: 2.75rem; }
+.kind.gross .knopf.nur { width: 2.75rem; }
+.kind.gross > .kopf { gap: .75rem; padding: 0 .5rem 0 .75rem; min-width: 0; }
+.kind.gross > .buehne { grid-area: 2 / 1; }
+
+/* Kopf: wer liest oder welches Buch, rechts die Uhr, die Katze und Schloss oder Haus */
+.g-wer { display: flex; align-items: center; gap: .625rem; min-width: 0; font-weight: 600; font-size: 1.0625rem; }
+.g-wer > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-wer .k-bild { width: 2.25rem; height: 2.25rem; font-size: 1rem; }
+.g-buch { display: flex; align-items: center; gap: .625rem; min-width: 0; flex: 1 1 auto; }
+.g-buch > i { color: var(--tinte-3); flex: none; }
+.g-buch > span { display: grid; min-width: 0; line-height: 1.25; }
+.g-buch b { font: 600 1.0625rem/1.4 var(--buchschrift); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-buch small { color: var(--tinte-3); font-size: .8125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-rechts { margin-left: auto; display: flex; align-items: center; gap: .75rem; flex: none; }
+
+/* Die Uhr im Kopf: klein mit Zeigern oder als Zahl, daneben der Rest */
+.g-uhr { display: inline-flex; align-items: center; gap: .5rem; flex: none; color: var(--tinte-2); white-space: nowrap; }
+button.g-uhr { background: none; border: 0; padding: 0 .25rem; border-radius: var(--r2); cursor: pointer; min-height: 2.75rem; }
+.g-uhr svg { width: 2.25rem; height: 2.25rem; flex: none; display: block; }
+.g-uhr .g-zeit { font-weight: 600; font-size: 1.0625rem; color: var(--tinte); }
+.g-uhr .g-rest { font-size: .9375rem; }
+.g-uhr .g-rest.bald { color: var(--tinte); box-shadow: inset 0 -.35em 0 var(--messing-hauch); }
+.g-uhr .u-blatt { fill: rgb(var(--glas) / .92); stroke: var(--linie); stroke-width: 3; }
+.g-uhr .u-stueck { fill: color-mix(in srgb, var(--messing) 34%, transparent); }
+.g-uhr .u-strich { stroke: var(--tinte-2); stroke-width: 3.2; stroke-linecap: round; }
+.g-uhr .u-punkt { fill: var(--messing-flaeche); }
+.g-uhr .u-zeiger { stroke-linecap: round; transform-origin: 50px 50px; transition: transform .6s ease-in-out; }
+.g-uhr .u-std { stroke: var(--tinte); stroke-width: 7; }
+.g-uhr .u-min { stroke: var(--messing); stroke-width: 4.5; }
+.g-uhr .u-achse { fill: var(--tinte); }
+
+/* Die Katze klein am Rand, ihre Nennung darunter */
+.kind.gross .k-katze { gap: 2px; }
+.kind.gross .k-nennung { font: 400 .75rem/1.2 var(--schrift); color: var(--tinte-3); letter-spacing: 0; }
+
+/* Regal: oben Weiterlesen und die Regale, beides steht; nur das Regal rollt */
+.g-oben { flex: none; display: grid; gap: .625rem; padding: .75rem var(--rand-seite); border-bottom: 1px solid var(--linie); }
+.g-weiter { display: grid; grid-template-columns: 3.5rem minmax(0, 1fr) auto; gap: .875rem; align-items: center; padding: .5rem .75rem .5rem .5rem; }
+.g-weiter .g-text-weiter { display: grid; gap: .0625rem; min-width: 0; }
+.g-weiter b { font: 600 1.125rem/1.4 var(--buchschrift); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-weiter .leise { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-weiter .balken { width: min(18rem, 100%); margin: .3125rem 0 .1875rem; }
+.g-werkzeug { display: grid; grid-template-columns: minmax(0, 30rem) minmax(12rem, 1fr); gap: .5rem; align-items: center; }
+.g-werkzeug.ohne-suche { grid-template-columns: minmax(0, 30rem); }
+.g-regalwahl { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); }
+.kind.gross .g-regalwahl button { height: auto; min-height: 2.75rem; display: flex; flex-wrap: wrap; align-items: center; align-content: center; justify-content: center; gap: .125rem .5rem; min-width: 0; padding-block: .25rem; font-size: .9375rem; line-height: 1.2; }
+.g-regalwahl button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Werden die gleich breiten Felder schmal (große Schrift, hochkant), steht in allen das Wort unter dem Zeichen */
+.g-regalwahl button { container-type: inline-size; }
+@container (max-width: 8rem) { .g-regalwahl button > span { flex-basis: 100%; text-align: center; } }
+.g-suche { display: flex; align-items: center; gap: .5rem; height: calc(2.75rem + 4px); min-width: 0; padding: 0 .25rem 0 .75rem; border-radius: var(--r2); background: var(--vertieft); box-shadow: inset 0 1px 2px rgb(var(--schatten) / .16), inset 0 0 0 1px var(--linie); color: var(--tinte-3); }
+.g-suche:focus-within { outline: 2px solid var(--messing); outline-offset: 1px; }
+.g-suche input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; outline: 0; font: inherit; font-size: 1rem; color: var(--tinte); }
+.g-suche input::placeholder { color: var(--tinte-3); }
+.g-suche input::-webkit-search-cancel-button { display: none; }
+.g-regalflaeche { flex: 1; padding: .5rem var(--rand-seite) 1rem; }
+.g-regalflaeche > .zustand { margin-top: .5rem; }
+.g-regal .band > .flaeche { padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+.g-regal .schild { height: 4.25rem; }
+.g-regal .schild b { line-height: 1.35; }
+.g-regal .schild small { display: block; color: var(--tinte-3); font-size: .8125rem; }
+
+/* Ruhezeit: kein Nachtschirm, ein Hinweis in der gewohnten Fläche */
+.g-ruhe { flex: 1; display: grid; place-items: center; padding: 2rem; min-height: 0; overflow: auto; }
+.g-ruhekarte { display: grid; justify-items: center; gap: .5rem; padding: 1.5rem 2.5rem; text-align: center; }
+.g-ruhekarte > i { font-size: 2rem; color: var(--messing); }
+.g-ruhekarte b { font-size: 1.375rem; font-weight: 600; }
+
+/* Lesen: ein Blatt, unten gleich breite, schmale Tasten; die Notizen stehen rechts daneben */
+.g-lesen { flex: 1; min-height: 0; display: grid; grid-template: minmax(0, 1fr) auto / minmax(0, 1fr); }
+.g-lesen.mit-notizen { grid-template-columns: minmax(0, 1fr) 19rem; }
+.g-blattflaeche { min-height: 0; min-width: 0; display: grid; justify-items: center; padding: .875rem var(--rand-seite) .75rem; }
+.blatt.g-blatt { position: relative; width: 100%; max-width: 46rem; height: 100%; min-height: 0; overflow: hidden; padding: 2rem 2.5rem; hyphens: manual; display: grid; }
+/* Der Text beginnt oben links wie im Leser der App, nicht mittig wie in Klein */
+.g-blatt > .k-blatt { padding: 0; align-items: start; justify-items: start; }
+.g-blatt .k-lesetext { align-self: start; justify-self: start; }
+.g-blatt > .k-leer { color: var(--tinte-3); }
+.g-blatt .k-zeile.titel { letter-spacing: 0; }
+.kind.gross .k-lesetext.mit-zeile .k-zeile.hier { box-shadow: 0 0 0 .3em var(--k-zeile-hell); }
+.kind.gross .k-w.anfang { box-shadow: inset 0 -.18em 0 var(--messing); }
+.kind.gross .k-w.jetzt { background: color-mix(in srgb, var(--messing) 30%, transparent); box-shadow: 0 .12em 0 var(--messing); }
+.g-leiste { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: .375rem; padding: .625rem var(--rand-seite); border-top: 1px solid var(--linie); }
+/* Passt das Wort nicht neben das Zeichen (große Schrift, hochkant), steht es darunter; die Tasten einer Reihe bleiben gleich hoch */
+.g-leiste .knopf { min-width: 0; height: auto; min-height: 2.75rem; padding: .25rem .375rem; flex-wrap: wrap; align-content: center; row-gap: .125rem; line-height: 1.2; }
+.g-leiste .knopf > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.g-leiste .knopf { container-type: inline-size; }
+@container (max-width: 6rem) { .g-leiste .knopf > span { flex-basis: 100%; text-align: center; } }
+.g-hinweis { position: absolute; left: 50%; top: .75rem; transform: translateX(-50%); z-index: 2; display: inline-flex; align-items: center; gap: .5rem; padding: .5rem 1rem; white-space: nowrap; font-weight: 600; color: var(--tinte); background: var(--gewaehlt); }
+.g-hinweis i { color: var(--messing); }
+.g-schluss { display: grid; justify-items: center; align-content: center; gap: .75rem; height: 100%; text-align: center; font-family: var(--schrift); }
+.g-schluss > i { font-size: 2.5rem; color: var(--gut); }
+.g-schluss > b { font-size: 1.375rem; font-weight: 600; }
+.g-schluss .g-schlussbuch { width: min(8rem, 30cqw); }
+.g-schluss .g-schlussbuch .umschlag { box-shadow: 0 10px 20px -10px rgb(var(--schatten) / .6); }
+.g-schluss > span:not(.g-schlussbuch) { font: 600 1.0625rem/1.35 var(--buchschrift); max-width: 24rem; }
+
+/* Notizen neben dem Blatt: nichts liegt darüber, nur die Liste rollt */
+.g-notizen { min-height: 0; margin: .875rem var(--rand-seite) .75rem 0; padding: .625rem; display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; gap: .5rem; }
+.g-notizen.fragt { grid-template-rows: auto auto auto 1fr; align-content: start; }
+.g-notizkopf { display: flex; align-items: center; gap: .5rem; min-width: 0; font-weight: 600; }
+.g-notizkopf > i { color: var(--messing); }
+.g-notizkopf > b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-notizliste { display: grid; gap: .375rem; align-content: start; }
+.g-notiz { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .25rem; align-items: start; margin: 0; padding: .375rem .25rem .375rem .625rem; border-radius: var(--r2); background: var(--platte); box-shadow: 0 0 0 1px var(--linie); font-size: .9375rem; }
+.g-notiz > span:first-child { padding-top: .5rem; overflow-wrap: anywhere; white-space: pre-wrap; }
+.g-notiz > span:last-child { display: flex; }
+.g-notizen textarea.eingabe { min-height: 0; height: 5.5rem; padding: .5rem .625rem; resize: none; font: inherit; }
+.g-notizen .g-zwei { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .375rem; }
+.g-notizen .schlecht { color: var(--schlecht); font-size: .875rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .g-uhr .u-zeiger { transition: none; }
+}

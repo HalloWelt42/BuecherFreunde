@@ -1,7 +1,8 @@
 <script lang="ts">
   // Stimme der Ansagen eines Kindes (BF-78, Entwurf kinder-6 Abschnitt 5): links, wie weit die festen Ansagen sind, rechts
   // "Probe" und die Stimme als Chip. Ohne eigene Wahl gilt die Stimme der Familie ("wie die Familie"); gibt es keine, schweigen
-  // die Ansagen und der Chip bittet um eine Wahl.
+  // die Ansagen und der Chip bittet um eine Wahl. Solange weder Hinweise noch Tasten angesagt werden (in der Gestaltung groß
+  // anfangs), bewirkt die Stimme nichts und ist gesperrt (Entwurf kinder-7).
   import { ansagenStand, GERAETESTIMME, type Ansagenstand, type Profil } from "../../../lib/api/familie";
   import { einstellungenVon } from "../../../lib/familie";
   import { familie } from "../../../lib/stand/familie.svelte";
@@ -14,7 +15,10 @@
   /** So oft sieht die Zeile nach, solange die Ansagen entstehen */
   const NACHSEHEN_MS = 3000;
 
-  let eigene = $derived(einstellungenVon(profil, familie.stufen.stufen).lesehilfen.stimme ?? "");
+  let hilfen = $derived(einstellungenVon(profil, familie.stufen.stufen).lesehilfen);
+  let eigene = $derived(hilfen.stimme ?? "");
+  /** Die Stimme spricht nur, wenn Hinweise oder Tasten angesagt werden */
+  let wirkt = $derived(hilfen.hinweise_sprechen || hilfen.tasten_ansagen);
   let familienstimme = $derived(familie.stimme);
   /** Was wirklich spricht */
   let stimme = $derived(eigene || familienstimme);
@@ -22,6 +26,7 @@
   let entsteht = $derived(!!stand && (stand.stand === "wartet" || stand.stand === "laeuft"));
 
   let zeile = $derived.by(() => {
+    if (!wirkt) return "wirkt, sobald Hinweise oder Tasten an sind";
     if (!stimme) return "Noch keine Stimme gewählt, die Ansagen schweigen";
     if (stimme === GERAETESTIMME) return "Das Gerät spricht die Ansagen selbst";
     if (!stand) return "";
@@ -55,7 +60,7 @@
   });
 </script>
 
-<div class="elternzeile">
-  <span>Stimme der Ansagen{#if zeile}<small>{zeile}{#if entsteht || stand?.stand === "fehler"}{" "}<button type="button" class="unterwahl" onclick={() => schale.umschalten("auftraege")}>Auftrag</button>{/if}</small>{/if}</span>
-  <Stimmwahl stimme={eigene} familie={familienstimme} name="Stimme der Ansagen" gesperrt={!aendert} onwahl={(s) => setze(profil, "lesehilfen", { stimme: s })} />
+<div class="elternzeile" class:ohne-wirkung={!wirkt}>
+  <span>Stimme der Ansagen{#if zeile}<small>{zeile}{#if wirkt && (entsteht || stand?.stand === "fehler")}{" "}<button type="button" class="unterwahl" onclick={() => schale.umschalten("auftraege")}>Auftrag</button>{/if}</small>{/if}</span>
+  <Stimmwahl stimme={eigene} familie={familienstimme} name="Stimme der Ansagen" gesperrt={!aendert} stumm={!wirkt} onwahl={(s) => setze(profil, "lesehilfen", { stimme: s })} />
 </div>

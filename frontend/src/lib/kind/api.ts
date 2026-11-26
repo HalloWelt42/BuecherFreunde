@@ -1,10 +1,11 @@
 // Wege, die nur der Kinderbereich braucht (docs/neubau/FAMILIE.md, Schnittstelle). Profil, Katze und Verlassen gehen über
 // lib/api/familie.ts und den Stand lib/stand/ich.svelte.ts; welche Bücher ein Kind sieht, entscheidet der Server.
-import { anfrage } from "../api/client";
+import { anfrage, patch } from "../api/client";
 import { listeBooks } from "../api/books";
+import type { Ich as Rohich } from "../api/familie";
 import { lesezeitAus } from "./ich";
 import type { Buch } from "../typen";
-import type { Lesezeitstand } from "./typen";
+import type { Leseschrift, Lesezeitstand } from "./typen";
 
 /** Gelesene Sekunden seit der letzten Meldung; vorlesen: es wurde vorgelesen. beimGehen: geht auch noch hinaus, wenn die Seite
  *  gerade zugeht. Die Antwort ist der neue Stand. */
@@ -28,3 +29,7 @@ export async function holeRegal(art: Regalart): Promise<Buch[]> {
     if (seite >= liste.seiten_gesamt || !liste.buecher.length) return aus;
   }
 }
+
+/** In der Gestaltung groß schaltet das Kind beim Lesen zwischen normal und Kinderschrift; die Antwort ist das neue Ich, wie
+ *  GET /api/familie/ich es schickt (für den Stand lib/stand/ich.svelte.ts) */
+export const waehleLeseschrift = (schrift_wahl: Leseschrift): Promise<Rohich> => patch("/api/familie/ich/schrift", { schrift_wahl });

@@ -1,14 +1,16 @@
 <script lang="ts">
   // Lesezeit eines Kindes: am Tag (mit der Vorgabe nach Alter), Ruhezeit und ob Vorlesen mitzählt. Die Werte stehen als
-  // Chips; ein Tipp öffnet, womit sie sich ändern, oder schaltet die Grenze ganz aus.
+  // Chips; ein Tipp öffnet, womit sie sich ändern, oder schaltet die Grenze ganz aus. Dazu, wie die Uhr im Kopf der Gestaltung
+  // groß die Lesezeit zeigt (BF-88): mit Zeigern oder als Zahl; in Klein bewirkt das nichts und ist gesperrt.
   import type { Profil } from "../../../lib/api/familie";
-  import { einstellungenVon, lesezeitVorgabe, minutenText, ruhezeitText, tageszeitText, vorgabeText } from "../../../lib/familie";
+  import { einstellungenVon, KOPFUHREN, lesezeitVorgabe, minutenText, ruhezeitText, tageszeitText, vorgabeText } from "../../../lib/familie";
   import { familie } from "../../../lib/stand/familie.svelte";
   import Knopf from "../../../lib/teile/Knopf.svelte";
   import Regler from "../../../lib/teile/Regler.svelte";
   import Schalter from "../../../lib/teile/Schalter.svelte";
   import Symbol from "../../../lib/teile/Symbol.svelte";
-  import { setze } from "./aendern";
+  import { setze, waehle } from "./aendern";
+  import Wahlfeld from "./Wahlfeld.svelte";
   import Wertchip from "./Wertchip.svelte";
 
   let { profil, aendert }: { profil: Profil; aendert: boolean } = $props();
@@ -19,7 +21,8 @@
   /** Der Regler speichert erst, wenn er kurz stillsteht */
   const WARTE_MS = 400;
 
-  let regel = $derived(einstellungenVon(profil, familie.stufen.stufen).lesezeit);
+  let einstellungen = $derived(einstellungenVon(profil, familie.stufen.stufen));
+  let regel = $derived(einstellungen.lesezeit);
   let vorgabe = $derived(lesezeitVorgabe(profil.geburtsjahr, familie.stufen.lesezeit));
   let entwurf = $state<number | null>(null);
   /** Ohne eigenen Wert die Vorgabe nach Alter, sonst die kleinste der Leitlinie */
@@ -63,6 +66,12 @@
     <span>Vorlesen zählt mit</span>
     <Schalter an={regel.vorlesen_zaehlt} name="Vorlesen zählt mit" gesperrt={!aendert} onwahl={(an) => void setze(profil, "lesezeit", { vorlesen_zaehlt: an })} />
   </div>
+  {#if einstellungen.gestaltung}
+    <div class="elternzeile" class:ohne-wirkung={einstellungen.gestaltung !== "gross"}>
+      <span>Uhr im Kopf<small>nur in Groß</small></span>
+      <Wahlfeld name="Uhr im Kopf" werte={KOPFUHREN} wert={einstellungen.uhr} gesperrt={!aendert || einstellungen.gestaltung !== "gross"} onwahl={(uhr) => void waehle(profil, "uhr", uhr)} />
+    </div>
+  {/if}
 </section>
 
 <style>

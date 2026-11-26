@@ -1,7 +1,9 @@
 // Aus der Antwort von GET /api/familie/ich ein vollständiges Ich: was fehlt, kommt aus den Vorgaben der Stufe (vorgaben.json),
 // Unbekanntes fällt weg. Nur hier wird die Rohform gelesen; alle Ansichten rechnen mit dem fertigen Ich.
 import vorgaben from "./vorgaben.json";
-import { STUFEN, type Faehigkeit, type Ich, type Katzenstand, type Kinderdarstellung, type Kinderprofil, type Lesezeitstand, type Stufe } from "./typen";
+import {
+  STUFEN, type Faehigkeit, type Gestaltung, type Ich, type Katzenstand, type Kinderdarstellung, type Kinderprofil, type Kopfuhr, type Lesezeitstand, type Stufe,
+} from "./typen";
 
 type Roh = Record<string, unknown>;
 
@@ -9,9 +11,12 @@ interface Stufenvorgabe {
   faehigkeiten: string[];
   darstellung: Kinderdarstellung;
   name_eingabe: Katzenstand["name_eingabe"];
+  katze_an: boolean;
+  gestaltung: Gestaltung | null;
+  uhr: Kopfuhr;
 }
 
-const VORGABEN = vorgaben.stufen as Record<Stufe, Stufenvorgabe>;
+const VORGABEN = vorgaben.stufen as unknown as Record<Stufe, Stufenvorgabe>;
 const BEKANNT: Faehigkeit[] = ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "gelesen", "markierungen", "notizen"];
 
 export const KATZENNAMEN: readonly string[] = vorgaben.katzennamen;
@@ -61,6 +66,7 @@ export function darstellungAus(roh: unknown, stufe: Stufe, lesehilfen: unknown =
   const zeichen = grenze(r.zeichen_je_zeile, v.zeichen_je_zeile);
   return {
     schrift: familie(text(r.schrift, ""), v.schrift),
+    schrift_wahl: h.schrift_wahl === "normal" || h.schrift_wahl === "kinderschrift" ? h.schrift_wahl : v.schrift_wahl,
     groesse: Math.round(zahl(r.groesse, zahl(r.groesse_px, v.groesse))),
     fett: schalter(r.fett, v.fett),
     zeilenabstand: zahl(r.zeilenabstand, v.zeilenabstand),
@@ -99,8 +105,16 @@ export function lesezeitAus(roh: unknown, regel: unknown = {}): Lesezeitstand {
 export function katzeAus(roh: unknown, stufe: Stufe = "vorlesen"): Katzenstand {
   const r = objekt(roh);
   const eingabe = r.name_eingabe === "vorschlaege" || r.name_eingabe === "tippen" ? r.name_eingabe : VORGABEN[stufe].name_eingabe;
-  return { an: r.an !== false, name: text(r.name, "").trim(), schnurren: r.schnurren === true, name_eingabe: eingabe };
+  return { an: schalter(r.an, VORGABEN[stufe].katze_an), name: text(r.name, "").trim(), schnurren: r.schnurren === true, name_eingabe: eingabe };
 }
+
+/** Klein oder groß, wie der Server es sagt; fehlt die Angabe, gilt die Stufe. null: kein Kinderbereich (Jugend) */
+export function gestaltungAus(roh: unknown, stufe: Stufe): Gestaltung | null {
+  if (roh === "klein" || roh === "gross" || roh === null) return roh;
+  return VORGABEN[stufe].gestaltung;
+}
+
+const kopfuhrAus = (roh: unknown, stufe: Stufe): Kopfuhr => (roh === "zeiger" || roh === "zahl" ? roh : VORGABEN[stufe].uhr);
 
 function profilAus(roh: unknown): Kinderprofil {
   const r = objekt(roh);
@@ -122,10 +136,13 @@ export function ichAus(roh: unknown): Ich {
     lesezeit: lesezeitAus(r.lesezeit, einstellungen.lesezeit),
     katze: katzeAus(r.katze, stufe),
     einblick: Array.isArray(r.einblick) ? r.einblick.filter((e): e is string => typeof e === "string") : [],
+    gestaltung: profil.rolle === "kind" ? gestaltungAus(r.gestaltung, stufe) : null,
+    uhr: kopfuhrAus(r.uhr, stufe),
   };
 }
 
-/** Den Kinderbereich nutzen Kinder bis zur Stufe Schule; in der Stufe Jugend lesen sie im normalen Leser */
-export function nutztKinderbereich(ich: Pick<Ich, "profil">): boolean {
-  return ich.profil.rolle === "kind" && ich.profil.stufe !== "jugend";
+/** Den Kinderbereich nutzen Kinder, deren Stufe eine Gestaltung hat (bis Schule); in der Stufe Jugend lesen sie im normalen
+ *  Leser. ich: wie GET /api/familie/ich es schickt oder wie ichAus es macht */
+export function nutztKinderbereich(ich: { profil: { rolle: string; stufe: string | null }; gestaltung?: string | null }): boolean {
+  return ich.profil.rolle === "kind" && gestaltungAus(ich.gestaltung, stufeAus(ich.profil.stufe) ?? "vorlesen") !== null;
 }

@@ -3,11 +3,14 @@
   // aktive Profil ein Kind ist (lib/kind/ich.ts, nutztKinderbereich). Keine Seitenleiste, kein Kopf der Erwachsenen, keine
   // Werkzeugzeilen: Regal, Lesen, Ruhe und die Katze. Was das Kind darf, sagt der Server über GET /api/familie/ich; die Wahrheit
   // darüber hält der Stand lib/stand/ich.svelte.ts, hier wird sie nur kindgerecht gelesen.
+  // Zwei Gestaltungen (BF-88), wie der Server sie nennt (ich.gestaltung): Klein verspielt mit großen Tasten (kind.css), Groß ruhig im
+  // Stil der App über der Regalwand (kind-gross.css). Jede Ansicht zeigt sich in der Gestaltung des Kindes; was sie tut, bleibt gleich.
   //
   // ich: die Antwort von GET /api/familie/ich (der Stand ich.jetzt); ohne Angabe gilt der Stand selbst.
   // onverlassen: das Kind hat das Profil verlassen (Schloss mit Eltern-PIN); ohne Angabe lädt die Seite neu.
   import "@fortawesome/fontawesome-free/css/regular.css";
   import "../../stil/kind.css";
+  import "../../stil/kind-gross.css";
   import { untrack } from "svelte";
   import { matchRoute, navigate, route } from "../../lib/router.svelte";
   import { ansage } from "../../lib/kind/ansage.svelte";
@@ -60,6 +63,7 @@
     return { art: "regal" as const, buch: 0 };
   });
   let ruht = $derived(uhr.faellig && ort.art !== "lesen");
+  let gross = $derived(ich?.gestaltung === "gross");
 
   async function frage(): Promise<void> {
     try {
@@ -116,7 +120,7 @@
 
 <!-- Erst wenn feststeht, was angeschlossen ist (Sprechdienst oder Stimmen des Geräts), kommt der Bereich auf den Schirm -->
 {#if ich && anschluesse.geladen}
-  <div class="kind" class:nacht={ruht} style:--k-taste="{ich.darstellung.tippflaeche_mm}mm" data-stufe={ich.profil.stufe}>
+  <div class="kind" class:gross class:nacht={ruht && !gross} style:--k-taste="{ich.darstellung.tippflaeche_mm}mm" data-stufe={ich.profil.stufe}>
     {#if ruht}
       <Ruhe {ich} lesezeit={uhr.stand} onschloss={() => (eltern = true)} />
     {:else if ort.art === "lesen"}

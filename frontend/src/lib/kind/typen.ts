@@ -5,6 +5,15 @@ export type Stufe = "vorlesen" | "erstes_lesen" | "lesen_lernen" | "schule" | "j
 
 export const STUFEN: Stufe[] = ["vorlesen", "erstes_lesen", "lesen_lernen", "schule", "jugend"];
 
+/** Gestaltung des Kinderbereichs (BF-88): klein verspielt mit großen Tasten, groß ruhig im Stil der App */
+export type Gestaltung = "klein" | "gross";
+
+/** Die Uhr im Kopf der Gestaltung groß: Zeigeruhr oder Uhrzeit als Zahl */
+export type Kopfuhr = "zeiger" | "zahl";
+
+/** Leseschrift: normal (serifenlos mit normalen Abständen) oder die Kinderschrift der Stufe */
+export type Leseschrift = "normal" | "kinderschrift";
+
 /** Was ein Kind darf; die Stufe (stufen.json des Servers) bestimmt es, die Oberfläche zeigt nur das */
 export type Faehigkeit = "lesen" | "vorlesen" | "lesezeichen" | "suche" | "favoriten" | "gelesen" | "markierungen" | "notizen";
 
@@ -22,6 +31,8 @@ export interface Kinderprofil {
 export interface Kinderdarstellung {
   /** CSS-Schriftfamilie des Lesetexts */
   schrift: string;
+  /** Welche Leseschrift das ist; in der Gestaltung groß schaltet das Kind selbst um */
+  schrift_wahl: Leseschrift;
   /** Lesetext in Pixeln bei normaler Schriftstufe der App */
   groesse: number;
   fett: boolean;
@@ -90,6 +101,10 @@ export interface Ich {
   katze: Katzenstand;
   /** Was die Eltern sehen (titel, lesezeit, fortschritt, grober_fortschritt, geteiltes); das Kind sieht es auch */
   einblick: string[];
+  /** Klein oder groß; null: kein Kinderbereich, das Kind liest in der Oberfläche der App (Jugend, Erwachsene) */
+  gestaltung: Gestaltung | null;
+  /** Die Uhr im Kopf der Gestaltung groß */
+  uhr: Kopfuhr;
 }
 
 /** Ein Wort im Text einer Einheit, mit seiner Lage darin (Zeichen von bis, ausschließlich) */

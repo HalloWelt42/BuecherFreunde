@@ -1,15 +1,18 @@
 // Die Tasten des Kinderlesers an einer Stelle: welche es gibt, wie sie heißen, welches Symbol sie tragen und was sie nach dem
-// Druck ansagen. Welche erscheinen, entscheiden allein die Fähigkeiten vom Server und die Lesehilfen, die die Eltern erlauben.
+// Druck ansagen. Welche erscheinen, entscheiden allein die Fähigkeiten vom Server, die Lesehilfen, die die Eltern erlauben, und
+// die Gestaltung: in Groß schaltet das Kind die Schrift selbst (BF-88).
 import { TASTE } from "./ansagen";
 import type { Faehigkeit, Kinderdarstellung } from "./typen";
 
-export type Lesetaste = "zurueck" | "merken" | "vorlesen" | "silben" | "zeile" | "stift" | "notiz" | "weiter";
+export type Lesetaste = "zurueck" | "merken" | "vorlesen" | "silben" | "zeile" | "schrift" | "stift" | "notiz" | "weiter";
 
 /** Wie es gerade steht: Vorlesen läuft oder ruht, die Schalter sind an oder aus */
 export interface Tastenstand {
   vorlesen: "aus" | "laeuft" | "ruht";
   silben: boolean;
   zeile: boolean;
+  /** Die Kinderschrift statt der normalen */
+  kinderschrift: boolean;
   stift: boolean;
   gemerkt: boolean;
 }
@@ -22,13 +25,14 @@ export interface Tastenbild {
   an: boolean;
 }
 
-/** Die Tasten in ihrer Reihenfolge, nur die erlaubten */
-export function lesetasten(f: ReadonlySet<Faehigkeit>, d: Pick<Kinderdarstellung, "silben" | "lesezeile">, kannVorlesen: boolean): Lesetaste[] {
+/** Die Tasten in ihrer Reihenfolge, nur die erlaubten; schriftwahl: das Kind schaltet die Schrift selbst (Gestaltung groß) */
+export function lesetasten(f: ReadonlySet<Faehigkeit>, d: Pick<Kinderdarstellung, "silben" | "lesezeile">, kannVorlesen: boolean, schriftwahl = false): Lesetaste[] {
   const aus: Lesetaste[] = ["zurueck"];
   if (f.has("lesezeichen")) aus.push("merken");
   if (kannVorlesen && f.has("vorlesen")) aus.push("vorlesen");
   if (d.silben) aus.push("silben");
   if (d.lesezeile) aus.push("zeile");
+  if (schriftwahl) aus.push("schrift");
   if (f.has("markierungen")) aus.push("stift");
   if (f.has("notizen")) aus.push("notiz");
   aus.push("weiter");
@@ -52,6 +56,8 @@ export function tastenbild(t: Lesetaste, s: Tastenstand): Tastenbild {
       return { name: "Silben", symbol: "palette", voll: true, an: s.silben };
     case "zeile":
       return { name: "Zeile", symbol: "grip-lines", voll: true, an: s.zeile };
+    case "schrift":
+      return { name: "Schrift", symbol: "font", voll: true, an: s.kinderschrift };
     case "stift":
       return { name: "Stift", symbol: "highlighter", voll: true, an: s.stift };
     case "notiz":
@@ -72,6 +78,8 @@ export function tastenansage(t: Lesetaste, s: Tastenstand, vorlesenVorher: Taste
       return s.silben ? TASTE.silbenAn : TASTE.silbenAus;
     case "zeile":
       return s.zeile ? TASTE.zeileAn : TASTE.zeileAus;
+    case "schrift":
+      return s.kinderschrift ? TASTE.kinderschriftAn : TASTE.kinderschriftAus;
     case "stift":
       return s.stift ? TASTE.stiftAn : TASTE.stiftAus;
     case "merken":

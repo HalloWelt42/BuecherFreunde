@@ -1,9 +1,10 @@
 <script lang="ts">
   // Lesehilfen je Kind (Entwurf kinder-5 Abschnitt 5): Vorlesen mit Mitlesen samt Tempo, farbige Silben, Lesezeile, Hinweise
-  // vorsprechen, Tasten ansagen und ihre Stimme, Größe der Kinderschrift. Silben und Lesezeile schaltet das Kind danach selbst an und aus;
-  // hier steht, ob es sie hat. Ohne Wahl der Eltern gilt die Vorgabe der Stufe.
+  // vorsprechen, Tasten ansagen und ihre Stimme, die Schrift. Silben und Lesezeile schaltet das Kind danach selbst an und aus;
+  // hier steht, ob es sie hat. Ohne Wahl der Eltern gilt die Vorgabe der Stufe. Die Schrift (Entwurf kinder-7, BF-88): ihre
+  // Größe und ob normal oder Kinderschrift; in der Gestaltung groß schaltet das Kind beim Lesen selbst um.
   import type { Profil } from "../../../lib/api/familie";
-  import { SCHRIFTEN, TEMPI, einstellungenVon, schriftText, tempoText } from "../../../lib/familie";
+  import { LESESCHRIFTEN, SCHRIFTEN, TEMPI, einstellungenVon, gestaltungText, leseschriftText, schriftText, tempoText } from "../../../lib/familie";
   import { familie } from "../../../lib/stand/familie.svelte";
   import Menue from "../../../lib/teile/Menue.svelte";
   import Schalter from "../../../lib/teile/Schalter.svelte";
@@ -11,11 +12,16 @@
   import Symbol from "../../../lib/teile/Symbol.svelte";
   import { setze } from "./aendern";
   import Ansagestimme from "./Ansagestimme.svelte";
+  import Wahlfeld from "./Wahlfeld.svelte";
   import Wertchip from "./Wertchip.svelte";
 
   let { profil, aendert }: { profil: Profil; aendert: boolean } = $props();
 
-  let hilfen = $derived(einstellungenVon(profil, familie.stufen.stufen).lesehilfen);
+  let einstellungen = $derived(einstellungenVon(profil, familie.stufen.stufen));
+  let hilfen = $derived(einstellungen.lesehilfen);
+  /** Was die Stufe vorgibt: ihre Gestaltung mit ihrer Schrift, etwa Groß mit Normal */
+  let stufe = $derived(familie.stufen.stufen.find((s) => s.schluessel === profil.stufe)?.vorgaben);
+  let schriftvorgabe = $derived(stufe?.gestaltung && stufe.lesehilfen?.schrift_wahl ? `Vorgabe in ${gestaltungText(stufe.gestaltung)}: ${leseschriftText(stufe.lesehilfen.schrift_wahl)}` : "");
   let tempoOffen = $state(false);
   let tempoKnopf = $state<HTMLElement | null>(null);
   /** Das Tempo als Wort des Segments, je Wert der nächstgelegene */
@@ -46,12 +52,15 @@
     <Schalter an={hilfen.tasten_ansagen} name="Tasten ansagen" gesperrt={!aendert} onwahl={(tasten_ansagen) => void setze(profil, "lesehilfen", { tasten_ansagen })} />
   </div>
   <Ansagestimme {profil} {aendert} />
-  <div class="elternzeile">
-    <span>Schrift<small>Kinderschrift, {schriftText(hilfen.schrift)}</small></span>
-    <Wertchip text="Aa {schriftText(hilfen.schrift)}" name="Größe der Kinderschrift" gesperrt={!aendert}>
-      <Segment name="Größe der Kinderschrift" werte={SCHRIFTEN} wert={hilfen.schrift} onwahl={(schrift) => void setze(profil, "lesehilfen", { schrift })} />
+  <div class="elternzeile trenn">
+    <span>Schrift{#if schriftvorgabe}<small>{schriftvorgabe}</small>{/if}</span>
+    <Wertchip text="Aa {schriftText(hilfen.schrift)}" name="Größe der Schrift" gesperrt={!aendert}>
+      <Segment name="Größe der Schrift" werte={SCHRIFTEN} wert={hilfen.schrift} onwahl={(schrift) => void setze(profil, "lesehilfen", { schrift })} />
     </Wertchip>
   </div>
+  {#if einstellungen.gestaltung}
+    <Wahlfeld name="Schrift" werte={LESESCHRIFTEN} wert={hilfen.schrift_wahl} breit gesperrt={!aendert} onwahl={(schrift_wahl) => void setze(profil, "lesehilfen", { schrift_wahl })} />
+  {/if}
 </section>
 
 {#if tempoOffen}

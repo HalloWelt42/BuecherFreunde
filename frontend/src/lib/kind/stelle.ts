@@ -1,8 +1,21 @@
 // Der Lesestand eines Buchs im Kinderleser, in denselben Formen wie beim normalen Leser (pdf:, epub:, txt:), damit Einblick der
 // Eltern, Weiterlesen und ein späterer Wechsel in den normalen Leser ihn verstehen. Dazu im Feld "kind" die genaue Stelle und das
 // eine Lesezeichen. Ob ein Buch fertig gelesen ist, entscheidet der Server nach seiner Regel (fertig_am am Buch).
-import { lesewerte, type Lesewerte } from "../lesestand";
+import { lesestand, lesewerte, type Lesewerte } from "../lesestand";
+import type { Buch } from "../typen";
 import type { Kinderstelle } from "./typen";
+
+/** Ab diesem Anteil steht der Lesestand am Ende (wie lesestand.fertig_ab in stufen.json); dann beginnt das Buch neu */
+export const FERTIG_AB = 0.99;
+
+/** Zum Weiterlesen: das Buch, in dem zuletzt gelesen wurde und dessen Lesestand noch nicht am Ende steht; sonst keins */
+export function weiterzulesen(buecher: readonly Buch[]): Buch | null {
+  const offen = buecher.filter((b) => {
+    const s = lesestand(b);
+    return s.angefangen && s.anteil < FERTIG_AB;
+  });
+  return offen.toSorted((a, b) => (b.last_read_at ?? "").localeCompare(a.last_read_at ?? ""))[0] ?? null;
+}
 
 export interface Kindangaben {
   einheit: number;

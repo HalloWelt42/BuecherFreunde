@@ -25,6 +25,10 @@
 .elternzeile small { display: block; color: var(--tinte-3); font-size: .8125rem; }
 .elternzeile .unterwahl { display: inline-flex; align-items: center; gap: .25rem; color: var(--tinte-3); font-size: .8125rem; text-decoration: underline; text-decoration-color: var(--linie); text-underline-offset: 3px; }
 .elternzeile .unterwahl:hover { color: var(--tinte); }
+/* Eine neue Gruppe im Feld (BF-88): Gestaltung unter der Stufe, Schrift unter den Ansagen */
+.elternzeile.trenn { padding-top: .5rem; border-top: 1px solid var(--linie); }
+/* Was gerade nichts bewirkt, steht gedämpft und gesperrt da, etwa die Stimme, solange keine Ansage an ist */
+.elternzeile.ohne-wirkung > span:first-child { opacity: .6; }
 .freigabechips { display: flex; flex-wrap: wrap; gap: .375rem; }
 .freigabechips .heraus { display: inline-grid; place-items: center; color: var(--tinte-3); min-width: 1.25rem; align-self: stretch; }
 .freigabechips .heraus:hover { color: var(--tinte); }

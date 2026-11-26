@@ -4,11 +4,15 @@
   // nur die, die die Stufe erlaubt. Text in der Kinderdarstellung (Schrift, Größe, kurze Zeilen, Abstände aus ich.darstellung),
   // farbige Silben und Lesezeile, wenn die Eltern sie erlauben; das Kind schaltet sie selbst an und aus. Vorgelesen wird mit dem
   // Vorlesen der App, das gelesene Wort leuchtet mit. Ist die Lesezeit um, endet erst die Seite, dann kommt die Ruhe.
+  // Gestaltung groß (BF-88): wie im Leser der App ein Blatt in der Bühne aus Glas, oben Titel, Seite und die kleine Uhr, unten
+  // gleich breite, schmale Tasten; das Kind schaltet selbst zwischen normal und Kinderschrift. Die Notizen stehen rechts neben dem
+  // Blatt, das Blatt rückt zur Seite. Was nicht aufs Blatt passt, kommt auf die nächste Seite, gerollt wird nie.
   import { tick, untrack } from "svelte";
   import { holeBuch, coverUrl } from "../../lib/api/books";
   import { toggleFavorit } from "../../lib/api/user-data";
   import { ansage } from "../../lib/kind/ansage.svelte";
   import { HINWEIS, noch, TASTE } from "../../lib/kind/ansagen";
+  import { waehleLeseschrift } from "../../lib/kind/api";
   import type { Kinderquelle } from "../../lib/kind/inhalt";
   import { Kinderlesestand } from "../../lib/kind/leser.svelte";
   import type { Lesezeituhr } from "../../lib/kind/lesezeit.svelte";
@@ -18,15 +22,19 @@
   import { oeffneKinderquelle, formatVon } from "../../lib/kind/quellen";
   import type { Seitenmass } from "../../lib/kind/seiten";
   import { ladeSilbentrenner, silbentrennerBereit } from "../../lib/kind/silben";
-  import { kindangabenAus, kinderlesewerte } from "../../lib/kind/stelle";
+  import { FERTIG_AB, kindangabenAus, kinderlesewerte } from "../../lib/kind/stelle";
   import { lesetasten, steuertVorlesen, tastenansage, tastenbild, type Lesetaste, type Tastenstand } from "../../lib/kind/tasten";
   import type { Ich, Kinderstelle, Wort } from "../../lib/kind/typen";
   import { lesestand, lesewerte } from "../../lib/lesestand";
   import { buchort, Positionsspeicher } from "../../lib/leser/position";
   import { wischen } from "../../lib/leser/wischen";
   import { liesJson, merkeJson } from "../../lib/speicher";
+  import { ich as ichstand } from "../../lib/stand/ich.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
+  import { frage } from "../../lib/stand/rueckfrage.svelte";
   import { vorlesen } from "../../lib/stand/vorlesen.svelte";
+  import Umschlag from "../../lib/teile/Umschlag.svelte";
+  import Zustand from "../../lib/teile/Zustand.svelte";
   import type { BuchEinzeln } from "../../lib/typen";
   import Buchkachel from "./Buchkachel.svelte";
   import Lesetext from "./Lesetext.svelte";
@@ -36,13 +44,12 @@
 
   /** Ist die Ruhe fällig und blättert das Kind nicht weiter, kommt sie nach dieser Frist trotzdem */
   const NACHFRIST_MS = 120_000;
-  /** Ab diesem Anteil steht der Lesestand am Ende (wie lesestand.fertig_ab in stufen.json) */
-  const FERTIG_AB = 0.99;
   /** Der Hinweis kurz vor dem Ende steht so lange groß da */
   const HINWEIS_MS = 8000;
 
   const d = $derived(ich.darstellung);
   const f = $derived(ich.faehigkeiten);
+  const gross = $derived(ich.gestaltung === "gross");
 
   let buch = $state.raw<BuchEinzeln | null>(null);
   let stand = $state.raw<Kinderlesestand | null>(null);
@@ -67,9 +74,19 @@
   let eigene = $state(liesJson<{ silben?: boolean; zeile?: boolean }>(SCHLUESSEL, {}));
   let silbenAn = $derived(d.silben && eigene.silben !== false);
   let zeileAn = $derived(d.lesezeile && eigene.zeile !== false);
+  let kinderschrift = $derived(d.schrift_wahl === "kinderschrift");
   function schalte(was: "silben" | "zeile") {
     eigene = { ...eigene, [was]: !(was === "silben" ? silbenAn : zeileAn) };
     merkeJson(SCHLUESSEL, eigene);
+  }
+
+  /** In Groß wählt das Kind die Schrift selbst; der Server merkt sie (die Eltern sehen sie), das neue Ich bricht neu um */
+  async function schriftUmschalten() {
+    try {
+      ichstand.setze(await waehleLeseschrift(kinderschrift ? "normal" : "kinderschrift"));
+    } catch (e) {
+      melde.schlecht(e, "Die Schrift bleibt, wie sie war");
+    }
   }
 
   // Vorlesen: läuft es aus diesem Buch?
@@ -165,6 +182,14 @@
     return () => document.fonts.removeEventListener?.("loadingdone", neu);
   });
 
+  /** Was vom gemessenen Feld nicht für Text da ist: in Klein der Rand der Seite (1,5rem je Seite), in Groß der Rand des Blatts */
+  function innenrand(rem: number): { quer: number; hoch: number } {
+    if (!gross || !flaeche) return { quer: 1.5 * rem * 2, hoch: 0 };
+    const stil = getComputedStyle(flaeche);
+    const px = (w: string) => parseFloat(w) || 0;
+    return { quer: px(stil.paddingLeft) + px(stil.paddingRight), hoch: px(stil.paddingTop) + px(stil.paddingBottom) };
+  }
+
   /** Das Maß der Fläche für den Umbruch: Breiten aus der Schrift (Leinwand), Höhen aus Zeilenabstand und Absätzen */
   function messe(b: number, h: number): (Seitenmass & { quer: boolean; bildhoehe: number }) | null {
     if (b < 50 || h < 50) return null;
@@ -187,10 +212,10 @@
     const probe = "Die kleine Katze schläft gern im warmen Korb.";
     const zeichenbreite = text.breite(probe) / probe.length;
     // Rand der Seite, Abstand von Bild und Text, und ein wenig Luft für Rundungen und die helle Lesezeile
-    const rand = 1.5 * rem * 2;
+    const rand = innenrand(rem);
     const luft = Math.ceil(0.5 * groesse);
-    const innen = b - rand;
-    const hoch = h - luft * 2;
+    const innen = b - rand.quer;
+    const hoch = h - rand.hoch - luft * 2;
     const hoechstens = d.zeichen_je_zeile ? Math.max(8 * zeichenbreite, d.zeichen_je_zeile * zeichenbreite) : Infinity;
     const quer = innen > hoch * 1.15;
     const abstand = 1.5 * rem;
@@ -244,7 +269,8 @@
   });
 
   function taste(e: KeyboardEvent) {
-    if (notizen || entfernen || (e.target as Element).closest?.("input, textarea")) return;
+    // Die Notizen neben dem Blatt (Groß) halten das Blättern nicht auf, der Dialog in Klein schon
+    if ((notizen && !gross) || entfernen || (e.target as Element).closest?.("input, textarea")) return;
     if (e.key === "ArrowRight" || e.key === "PageDown") void blaettere(1);
     else if (e.key === "ArrowLeft" || e.key === "PageUp") void blaettere(-1);
     else if (zeileAn && e.key === "ArrowDown") stand?.setzeZeile(stand.zeile + 1);
@@ -326,10 +352,10 @@
     return liestVor ? (vorlesen.pausiert ? "ruht" : "laeuft") : "aus";
   }
   function stand_(): Tastenstand {
-    return { vorlesen: vorlesestand(), silben: silbenAn, zeile: zeileAn, stift, gemerkt: !!stand?.aufLesezeichen };
+    return { vorlesen: vorlesestand(), silben: silbenAn, zeile: zeileAn, kinderschrift, stift, gemerkt: !!stand?.aufLesezeichen };
   }
-  let tastenstand = $derived<Tastenstand>({ vorlesen: liestVor ? (vorlesen.pausiert ? "ruht" : "laeuft") : "aus", silben: silbenAn, zeile: zeileAn, stift, gemerkt: !!stand?.aufLesezeichen });
-  let tasten = $derived(lesetasten(f, d, kannVorlesen));
+  let tastenstand = $derived<Tastenstand>({ vorlesen: liestVor ? (vorlesen.pausiert ? "ruht" : "laeuft") : "aus", silben: silbenAn, zeile: zeileAn, kinderschrift, stift, gemerkt: !!stand?.aufLesezeichen });
+  let tasten = $derived(lesetasten(f, d, kannVorlesen, gross));
 
   /** Eine Taste unten: erst die Wirkung, dann die Ansage */
   async function drueck(t: Lesetaste) {
@@ -338,6 +364,7 @@
     if (t === "vorlesen") return vorleseTaste();
     if (t === "silben") schalte("silben");
     else if (t === "zeile") schalte("zeile");
+    else if (t === "schrift") await schriftUmschalten();
     else if (t === "merken") stand?.lesezeichenUmschalten();
     else if (t === "stift") {
       stift = !stift;
@@ -367,7 +394,7 @@
     if (!s) return;
     if (stift && wort && markierungen) {
       const da = markierungen.bei(s.einheit, wort);
-      if (da && !markierungen.anfang) entfernen = da;
+      if (da && !markierungen.anfang) void willEntfernen(da);
       else void s.quelle.einheit(s.einheit).then((e) => markierungen!.tippe(e, wort)).catch((e) => melde.schlecht(e));
       return;
     }
@@ -379,10 +406,21 @@
     await markierungen?.entferne(m).catch((e) => melde.schlecht(e));
   }
 
+  /** Eine Markierung wegnehmen erst nach der Rückfrage mit ihrem Wortlaut: in Klein im eigenen Dialog, in Groß wie in der App */
+  async function willEntfernen(m: Kindermarkierung) {
+    entfernen = m;
+    if (!gross) return;
+    const ja = await frage({ titel: "Markierung wegnehmen?", folgen: [m.text], ja: "Wegnehmen", nein: "Behalten", symbol: "eraser", gefahr: false });
+    if (ja) await entferneMarkierung(m);
+    else entfernen = null;
+  }
+
   let seite = $derived(stand?.jetzt ?? null);
   let mitBild = $derived(!!seite?.bild && !!mass);
   let textbreite = $derived(mass ? (mitBild ? mass.textMitBild.breite : mass.text.breite) : 0);
   let seitenname = $derived(stand && formatVon(buch ?? { file_format: "" }) === "pdf" ? stand.quelle.name(stand.einheit) : "");
+  /** Im Kopf von Groß: wo im Buch, "Seite 12 von 40" */
+  let seitenzeile = $derived(stand && stand.quelle.anzahl > 1 ? `${stand.quelle.name(stand.einheit)} von ${stand.quelle.anzahl}` : "");
   let markiertBei = $derived.by(() => {
     const m = markierungen;
     const e = stand?.einheit ?? -1;
@@ -393,38 +431,47 @@
 
 <svelte:window onkeydown={taste} />
 
-<header class="k-kopf">
-  <span class="k-buchname"><i class="fa-solid fa-book-open" aria-hidden="true"></i><span>{buch?.title ?? ""}{seitenname ? `, ${seitenname}` : ""}</span></span>
-  <div class="k-rechts">
-    <Kinderuhr {uhr} ruheAb={ich.lesezeit.ruhe_ab} klein mitText={ich.profil.stufe !== "vorlesen"} onsage={(folge) => void ansage.hinweis(folge)} />
-    {#if ich.katze.an}<Katze name={ich.katze.name} zustand="schlaeft" groesse="clamp(3rem, 6.5vw, 4.25rem)" />{/if}
-    <button class="k-taste rund" type="button" aria-label="Zum Regal" onclick={zumRegal}><i class="fa-solid fa-house" aria-hidden="true"></i></button>
-  </div>
-</header>
-
-<div class="k-lesemitte" bind:this={flaeche} bind:clientWidth={breite} bind:clientHeight={hoehe}>
-  {#if grosserHinweis}
-    <div class="k-hinweis" role="status"><i class="fa-regular fa-clock" aria-hidden="true"></i>Gleich ist die Lesezeit um</div>
-  {/if}
+<!-- Die Seite selbst, in beiden Gestaltungen dieselbe: Bild und Text, das Ende oder warum nichts kommt -->
+{#snippet seiteninhalt()}
   {#if fehler}
-    <div class="k-leer">
-      <i class="fa-solid fa-book-skull" aria-hidden="true"></i><span>{fehler}</span>
-      <button class="k-taste quer" type="button" onclick={() => void oeffne()}><i class="fa-solid fa-rotate-right" aria-hidden="true"></i>Noch einmal</button>
-    </div>
+    {#if gross}
+      <Zustand art="fehler" text={fehler} onerneut={() => void oeffne()} />
+    {:else}
+      <div class="k-leer">
+        <i class="fa-solid fa-book-skull" aria-hidden="true"></i><span>{fehler}</span>
+        <button class="k-taste quer" type="button" onclick={() => void oeffne()}><i class="fa-solid fa-rotate-right" aria-hidden="true"></i>Noch einmal</button>
+      </div>
+    {/if}
   {:else if stand?.fehler}
-    <div class="k-leer">
-      <i class="fa-solid fa-plug-circle-xmark" aria-hidden="true"></i><span>{stand.fehler}</span>
-      <button class="k-taste quer" type="button" onclick={() => void stand?.zeige(stand.stelle)}><i class="fa-solid fa-rotate-right" aria-hidden="true"></i>Noch einmal</button>
-    </div>
+    {#if gross}
+      <Zustand art="fehler" text={stand.fehler} onerneut={() => void stand?.zeige(stand.stelle)} />
+    {:else}
+      <div class="k-leer">
+        <i class="fa-solid fa-plug-circle-xmark" aria-hidden="true"></i><span>{stand.fehler}</span>
+        <button class="k-taste quer" type="button" onclick={() => void stand?.zeige(stand.stelle)}><i class="fa-solid fa-rotate-right" aria-hidden="true"></i>Noch einmal</button>
+      </div>
+    {/if}
   {:else if stand?.amEnde && buch}
-    <div class="k-schluss">
-      <i class="fa-solid fa-circle-check k-schlusszeichen" aria-hidden="true"></i>
-      <b>Fertig!</b>
-      <Buchkachel {buch} onwahl={zumRegal} />
-      {#if f.has("favoriten")}
-        <button class="k-taste quer" class:an={lieblingsbuch} type="button" aria-pressed={lieblingsbuch} onclick={() => void lieblingUmschalten()}><i class="fa-{lieblingsbuch ? 'solid' : 'regular'} fa-heart" aria-hidden="true"></i>Lieblingsbuch</button>
-      {/if}
-    </div>
+    {#if gross}
+      <div class="g-schluss">
+        <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+        <b>Fertig!</b>
+        <span class="g-schlussbuch"><Umschlag {buch} /></span>
+        <span>{buch.title}</span>
+        {#if f.has("favoriten")}
+          <button class="knopf" type="button" aria-pressed={lieblingsbuch} onclick={() => void lieblingUmschalten()}><i class="fa-{lieblingsbuch ? 'solid' : 'regular'} fa-heart" aria-hidden="true"></i><span>Lieblingsbuch</span></button>
+        {/if}
+      </div>
+    {:else}
+      <div class="k-schluss">
+        <i class="fa-solid fa-circle-check k-schlusszeichen" aria-hidden="true"></i>
+        <b>Fertig!</b>
+        <Buchkachel {buch} onwahl={zumRegal} />
+        {#if f.has("favoriten")}
+          <button class="k-taste quer" class:an={lieblingsbuch} type="button" aria-pressed={lieblingsbuch} onclick={() => void lieblingUmschalten()}><i class="fa-{lieblingsbuch ? 'solid' : 'regular'} fa-heart" aria-hidden="true"></i>Lieblingsbuch</button>
+        {/if}
+      </div>
+    {/if}
   {:else if seite && mass}
     <div class="k-blatt" class:mit-bild={mitBild && seite.zeilen.length > 0} class:nur-bild={mitBild && !seite.zeilen.length} class:quer={mass.quer} class:hochkant={!mass.quer} style:--bildhoehe="{mass.bildhoehe}px"
       style:--k-leseschrift={d.schrift} style:--k-groesse="{(d.groesse / 16) * 1}rem" style:--k-gewicht={d.fett ? 700 : 400}
@@ -440,42 +487,101 @@
   {:else if !fehler}
     <div class="k-leer"><i class="fa-solid fa-book-open fa-beat-fade" aria-hidden="true"></i></div>
   {/if}
-</div>
+{/snippet}
 
-<footer class="k-fuss">
-  <div class="k-tasten">
-    {#if stand?.amEnde}
+<!-- Die Tasten unten: am Ende nur Zurück und Zum Regal, sonst die erlaubten in ihrer Reihenfolge -->
+{#snippet lesetastenleiste()}
+  {#if stand?.amEnde}
+    {#if gross}
+      <button class="knopf" type="button" onclick={() => void drueck("zurueck")}><i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span>Zurück</span></button>
+      <button class="knopf haupt" type="button" onclick={zumRegal}><i class="fa-solid fa-house" aria-hidden="true"></i><span>Zum Regal</span></button>
+    {:else}
       <button class="k-taste" type="button" onclick={() => void drueck("zurueck")}><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>Zurück</button>
       <button class="k-taste haupt" type="button" onclick={zumRegal}><i class="fa-solid fa-house" aria-hidden="true"></i>Zum Regal</button>
-    {:else}
-      {#each tasten as t (t)}
-        {@const b = tastenbild(t, tastenstand)}
+    {/if}
+  {:else}
+    {#each tasten as t (t)}
+      {@const b = tastenbild(t, tastenstand)}
+      {@const gesperrt = !stand?.jetzt || (t === "zurueck" && stand.istErste) || (t === "stift" && !markierungen)}
+      {@const gedrueckt = ["silben", "zeile", "schrift", "stift", "merken"].includes(t) ? b.an : undefined}
+      {#if gross}
+        <button class="knopf" type="button" aria-pressed={gedrueckt} aria-expanded={t === "notiz" ? notizen : undefined} aria-label={t === "schrift" ? "Kinderschrift" : undefined}
+          disabled={gesperrt} onclick={() => void drueck(t)}><i class="fa-{b.voll ? 'solid' : 'regular'} fa-{b.symbol}" aria-hidden="true"></i><span>{b.name}</span></button>
+      {:else}
         <button
           class="k-taste"
           class:an={b.an && t !== "vorlesen"}
           class:haupt={t === "vorlesen" && d.vorlesen_von_selbst}
           type="button"
-          aria-pressed={["silben", "zeile", "stift", "merken"].includes(t) ? b.an : undefined}
-          disabled={!stand?.jetzt || (t === "zurueck" && stand.istErste) || (t === "stift" && !markierungen)}
+          aria-pressed={gedrueckt}
+          disabled={gesperrt}
           onclick={() => void drueck(t)}
         ><i class="fa-{b.voll ? 'solid' : 'regular'} fa-{b.symbol}" aria-hidden="true"></i>{b.name}</button>
-      {/each}
-    {/if}
-  </div>
-</footer>
+      {/if}
+    {/each}
+  {/if}
+{/snippet}
 
-{#if notizen && stand && buch}
-  <Notizen buch={buch.id} ort={stand.quelle.ort(stand.stelle)} onschliessen={() => (notizen = false)} />
-{/if}
-{#if entfernen}
-  <div class="k-dialog" role="dialog" aria-modal="true" aria-label="Markierung entfernen">
-    <div>
-      <div class="k-dialogkopf"><i class="fa-solid fa-highlighter" aria-hidden="true"></i><span>Markierung wegnehmen?</span></div>
-      <blockquote class="k-notiz">{entfernen.text}</blockquote>
-      <div class="k-wahl">
-        <button class="k-taste quer" type="button" onclick={() => (entfernen = null)}><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>Behalten</button>
-        <button class="k-taste quer" type="button" onclick={() => void entferneMarkierung(entfernen!)}><i class="fa-solid fa-eraser" aria-hidden="true"></i>Wegnehmen</button>
+{#if gross}
+  <header class="kopf glas milch">
+    <span class="g-buch"><i class="fa-solid fa-book-open" aria-hidden="true"></i><span><b>{buch?.title ?? ""}</b>{#if seitenzeile}<small>{seitenzeile}</small>{/if}</span></span>
+    <div class="g-rechts">
+      <Kinderuhr {uhr} kopf={ich.uhr} ruheAb={ich.lesezeit.ruhe_ab} onsage={(folge) => void ansage.hinweis(folge)} />
+      {#if ich.katze.an}<Katze name={ich.katze.name} zustand="schlaeft" groesse="2.25rem" />{/if}
+      <button class="knopf nur" type="button" aria-label="Zum Regal" title="Zum Regal" onclick={zumRegal}><i class="fa-solid fa-house" aria-hidden="true"></i></button>
+    </div>
+  </header>
+
+  <div class="buehne glas klar">
+    <div class="g-lesen" class:mit-notizen={notizen && !!stand && !!buch}>
+      <div class="g-blattflaeche">
+        <div class="blatt g-blatt" bind:this={flaeche} bind:clientWidth={breite} bind:clientHeight={hoehe}>
+          {#if grosserHinweis}
+            <div class="g-hinweis platte" role="status"><i class="fa-regular fa-clock" aria-hidden="true"></i>Gleich ist die Lesezeit um</div>
+          {/if}
+          {@render seiteninhalt()}
+        </div>
       </div>
+      {#if notizen && stand && buch}
+        <Notizen buch={buch.id} ort={stand.quelle.ort(stand.stelle)} seitlich onschliessen={() => (notizen = false)} />
+      {/if}
+      <div class="g-leiste" style:--n={stand?.amEnde ? 2 : tasten.length}>{@render lesetastenleiste()}</div>
     </div>
   </div>
+{:else}
+  <header class="k-kopf">
+    <span class="k-buchname"><i class="fa-solid fa-book-open" aria-hidden="true"></i><span>{buch?.title ?? ""}{seitenname ? `, ${seitenname}` : ""}</span></span>
+    <div class="k-rechts">
+      <Kinderuhr {uhr} ruheAb={ich.lesezeit.ruhe_ab} klein mitText={ich.profil.stufe !== "vorlesen"} onsage={(folge) => void ansage.hinweis(folge)} />
+      {#if ich.katze.an}<Katze name={ich.katze.name} zustand="schlaeft" groesse="clamp(3rem, 6.5vw, 4.25rem)" />{/if}
+      <button class="k-taste rund" type="button" aria-label="Zum Regal" onclick={zumRegal}><i class="fa-solid fa-house" aria-hidden="true"></i></button>
+    </div>
+  </header>
+
+  <div class="k-lesemitte" bind:this={flaeche} bind:clientWidth={breite} bind:clientHeight={hoehe}>
+    {#if grosserHinweis}
+      <div class="k-hinweis" role="status"><i class="fa-regular fa-clock" aria-hidden="true"></i>Gleich ist die Lesezeit um</div>
+    {/if}
+    {@render seiteninhalt()}
+  </div>
+
+  <footer class="k-fuss">
+    <div class="k-tasten">{@render lesetastenleiste()}</div>
+  </footer>
+
+  {#if notizen && stand && buch}
+    <Notizen buch={buch.id} ort={stand.quelle.ort(stand.stelle)} onschliessen={() => (notizen = false)} />
+  {/if}
+  {#if entfernen}
+    <div class="k-dialog" role="dialog" aria-modal="true" aria-label="Markierung entfernen">
+      <div>
+        <div class="k-dialogkopf"><i class="fa-solid fa-highlighter" aria-hidden="true"></i><span>Markierung wegnehmen?</span></div>
+        <blockquote class="k-notiz">{entfernen.text}</blockquote>
+        <div class="k-wahl">
+          <button class="k-taste quer" type="button" onclick={() => (entfernen = null)}><i class="fa-solid fa-arrow-left" aria-hidden="true"></i>Behalten</button>
+          <button class="k-taste quer" type="button" onclick={() => void entferneMarkierung(entfernen!)}><i class="fa-solid fa-eraser" aria-hidden="true"></i>Wegnehmen</button>
+        </div>
+      </div>
+    </div>
+  {/if}
 {/if}

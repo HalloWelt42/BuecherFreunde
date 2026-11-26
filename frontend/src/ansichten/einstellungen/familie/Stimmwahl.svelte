@@ -31,11 +31,13 @@
     familie?: string;
     name: string;
     gesperrt?: boolean;
+    /** Die Ansagen sind aus, die Stimme bewirkt gerade nichts: Probe und Wahl ruhen (BF-88) */
+    stumm?: boolean;
     /** Probe nur als Zeichen (Liste der Profile) */
     nurSymbol?: boolean;
     onwahl: (stimme: string) => Promise<void>;
   }
-  let { stimme, familie = undefined, name, gesperrt = false, nurSymbol = false, onwahl }: Eigenschaften = $props();
+  let { stimme, familie = undefined, name, gesperrt = false, stumm = false, nurSymbol = false, onwahl }: Eigenschaften = $props();
 
   const GRUPPE = { eigene: "Eigene Stimmen", weitere: "Weitere Stimmen", eingebaut: "Eingebaute Stimmen" } as const;
   /** Steht für "wie die Familie" in der Auswahl; gespeichert wird leer */
@@ -108,8 +110,8 @@
 </script>
 
 <span class="reihe stimmtasten">
-  <Knopf text="Probe" symbol="play" klein nur={nurSymbol} laeuft={spielt} gesperrt={!wirkt} titel={wirkt ? `Probe mit ${nameVon(wirkt)}` : undefined} onclick={() => void probe(wirkt)} />
-  <Wertchip text={chip} {name} {gesperrt} breite="19rem">
+  <Knopf text="Probe" symbol="play" klein nur={nurSymbol} laeuft={spielt} gesperrt={!wirkt || stumm} titel={wirkt && !stumm ? `Probe mit ${nameVon(wirkt)}` : undefined} onclick={() => void probe(wirkt)} />
+  <Wertchip text={chip} {name} gesperrt={gesperrt || stumm} breite="19rem">
     {#snippet children(zu)}
       {@const wert = auswahlWert()}
       {@const hoeren = wert === WIE_FAMILIE ? (familie ?? "") : wert}

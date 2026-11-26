@@ -65,7 +65,7 @@ async function ansage(schluessel: string[], teil: Partial<Ansagekatalog> = {}, k
   return { a, ton };
 }
 
-const stand = (teil: Partial<Tastenstand> = {}): Tastenstand => ({ vorlesen: "aus", silben: false, zeile: false, stift: false, gemerkt: false, ...teil });
+const stand = (teil: Partial<Tastenstand> = {}): Tastenstand => ({ vorlesen: "aus", silben: false, zeile: false, kinderschrift: false, stift: false, gemerkt: false, ...teil });
 
 describe("Tasten", () => {
   it("sagen nach dem Druck ihren Namen und bei Schaltern, wie sie nun stehen", () => {
@@ -97,8 +97,8 @@ describe("Tasten", () => {
     expect(lesetasten(faehigkeitenAus(["lesen", "vorlesen"], "schule"), darstellungAus({ silben: false, lesezeile: false }, "schule"), false)).toEqual(["zurueck", "weiter"]);
   });
 
-  it("sprechen bis Lesen und Lernen von selbst, ab Schule nicht", () => {
-    expect(darstellungAus({}, "lesen_lernen").tasten_ansagen).toBe(true);
+  it("sprechen in Klein von selbst, in Groß (ab Lesen und Lernen) anfangs nicht", () => {
+    expect(darstellungAus({}, "lesen_lernen").tasten_ansagen).toBe(false);
     expect(darstellungAus({}, "erstes_lesen").hinweise_sprechen).toBe(true);
     expect(darstellungAus({}, "schule").tasten_ansagen).toBe(false);
     expect(darstellungAus({}, "schule", { hinweise_sprechen: true }).hinweise_sprechen).toBe(true);

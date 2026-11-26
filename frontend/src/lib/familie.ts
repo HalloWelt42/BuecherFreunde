@@ -3,7 +3,8 @@
 import { tagWort } from "./format";
 import type { Buch } from "./typen";
 import type {
-  Einblickart, Einblickeintrag, Lesezeitregel, Lesezeitvorgabe, Profil, Profileinstellungen, Rolle, Schriftgroesse, Stufe, Stufenangabe, Zugang,
+  Einblickart, Einblickeintrag, Gestaltung, Kopfuhr, Leseschrift, Lesezeitregel, Lesezeitvorgabe, Profil, Profileinstellungen, Rolle, Schriftgroesse, Stufe,
+  Stufenangabe, Zugang,
 } from "./api/familie";
 
 /**
@@ -192,10 +193,15 @@ export const ganzGelesen = (e: Einblickeintrag): boolean => (e.fortschritt ?? 0)
 
 /** Leer, solange weder das Profil noch seine Stufe etwas vorgeben */
 const OHNE: Profileinstellungen = {
-  lesehilfen: { mitlesen: false, tempo: 1, silben: false, lesezeile: false, schrift: "mittel", hinweise_sprechen: false, tasten_ansagen: false },
+  lesehilfen: { mitlesen: false, tempo: 1, silben: false, lesezeile: false, schrift: "mittel", schrift_wahl: "kinderschrift", hinweise_sprechen: false, tasten_ansagen: false },
   lesezeit: { an: false, minuten: 0, ruhe_an: false, ruhe_von: "", ruhe_bis: "", vorlesen_zaehlt: false },
   katze: { an: false, name: "", schnurren: false },
+  gestaltung: "klein",
+  uhr: "zeiger",
 };
+
+/** Der erste Wert, der angegeben ist; null zählt als Angabe */
+const ersterGenannter = <T>(...werte: (T | undefined)[]): T => werte.find((w) => w !== undefined) as T;
 
 /** Die Einstellungen eines Kindes: eigene vor den Vorgaben der Stufe */
 export function einstellungenVon(p: Pick<Profil, "stufe" | "einstellungen">, stufen: readonly Stufenangabe[]): Profileinstellungen {
@@ -205,5 +211,26 @@ export function einstellungenVon(p: Pick<Profil, "stufe" | "einstellungen">, stu
     lesehilfen: { ...OHNE.lesehilfen, ...vorgabe.lesehilfen, ...eigen.lesehilfen },
     lesezeit: { ...OHNE.lesezeit, ...vorgabe.lesezeit, ...eigen.lesezeit },
     katze: { ...OHNE.katze, ...vorgabe.katze, ...eigen.katze },
+    gestaltung: ersterGenannter(eigen.gestaltung, vorgabe.gestaltung, OHNE.gestaltung),
+    uhr: ersterGenannter(eigen.uhr, vorgabe.uhr, OHNE.uhr),
   };
 }
+
+export const GESTALTUNGEN: [Gestaltung, string][] = [
+  ["klein", "Klein"],
+  ["gross", "Groß"],
+];
+
+export const gestaltungText = (g: Gestaltung | null): string => GESTALTUNGEN.find(([w]) => w === g)?.[1] ?? "";
+
+export const KOPFUHREN: [Kopfuhr, string][] = [
+  ["zeiger", "Zeiger"],
+  ["zahl", "Zahl"],
+];
+
+export const LESESCHRIFTEN: [Leseschrift, string][] = [
+  ["normal", "Normal"],
+  ["kinderschrift", "Kinderschrift"],
+];
+
+export const leseschriftText = (s: Leseschrift): string => LESESCHRIFTEN.find(([w]) => w === s)?.[1] ?? s;

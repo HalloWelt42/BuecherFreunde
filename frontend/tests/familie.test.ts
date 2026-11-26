@@ -22,7 +22,7 @@ const STUFEN: Stufenangabe[] = [
   { schluessel: "vorlesen", name: "Vorlesen", alter_von: 0, alter_bis: 6, faehigkeiten: ["lesen"], einblick: ["titel", "lesezeit", "fortschritt"] },
   { schluessel: "erstes_lesen", name: "Erstes Lesen", alter_von: 7, alter_bis: 7, faehigkeiten: ["lesen"], einblick: ["titel", "lesezeit", "fortschritt"] },
   { schluessel: "lesen_lernen", name: "Lesen und Lernen", alter_von: 8, alter_bis: 9, faehigkeiten: ["lesen"], einblick: ["titel", "lesezeit", "fortschritt"],
-    vorgaben: { lesehilfen: { mitlesen: true, tempo: 1, silben: true, lesezeile: true, schrift: "gross", hinweise_sprechen: true, tasten_ansagen: true } } },
+    vorgaben: { lesehilfen: { mitlesen: true, tempo: 1, silben: true, lesezeile: true, schrift: "gross", schrift_wahl: "normal", hinweise_sprechen: true, tasten_ansagen: true }, gestaltung: "gross", uhr: "zeiger" } },
   { schluessel: "schule", name: "Schule", alter_von: 10, alter_bis: 13, faehigkeiten: ["lesen"], einblick: ["titel", "grober_fortschritt"] },
   { schluessel: "jugend", name: "Jugend", alter_von: 14, alter_bis: null, faehigkeiten: ["lesen"], einblick: ["titel", "grober_fortschritt", "geteiltes"] },
 ];
@@ -34,7 +34,7 @@ const KIND = profil({ id: "k-1", name: "Joris", rolle: "kind", stufe: "lesen_ler
 function ichAls(p: Profil, faehigkeiten: Ich["faehigkeiten"]): Ich {
   return {
     profil: p, faehigkeiten, darstellung: {}, lesehilfen: null, einblick: [], katze: { an: false, name: "", schnurren: false },
-    lesezeit: { an: false, heute_s: 0, grenze_s: null, rest_s: null, ruht: false, ruhe_bis: null, hinweis_ab_s: null },
+    lesezeit: { an: false, heute_s: 0, grenze_s: null, rest_s: null, ruht: false, ruhe_bis: null, hinweis_ab_s: null }, gestaltung: null, uhr: null,
   };
 }
 
@@ -300,8 +300,12 @@ describe("Texte des Elternbereichs", () => {
 
   it("füllt Einstellungen aus den Vorgaben der Stufe, eigene gehen vor", () => {
     const e = einstellungenVon({ stufe: "lesen_lernen", einstellungen: { lesehilfen: { silben: false } as never } }, STUFEN);
-    expect(e.lesehilfen).toEqual({ mitlesen: true, tempo: 1, silben: false, lesezeile: true, schrift: "gross", hinweise_sprechen: true, tasten_ansagen: true });
+    expect(e.lesehilfen).toEqual({ mitlesen: true, tempo: 1, silben: false, lesezeile: true, schrift: "gross", schrift_wahl: "normal", hinweise_sprechen: true, tasten_ansagen: true });
     expect(e.katze.an).toBe(false);
+    // Gestaltung und Uhr im Kopf aus der Stufe (BF-88); null heißt ohne Kinderbereich und gilt als Angabe
+    expect([e.gestaltung, e.uhr]).toEqual(["gross", "zeiger"]);
+    expect(einstellungenVon({ stufe: "lesen_lernen", einstellungen: { gestaltung: "klein", uhr: "zahl" } }, STUFEN).gestaltung).toBe("klein");
+    expect(einstellungenVon({ stufe: "jugend", einstellungen: { gestaltung: null } }, STUFEN).gestaltung).toBeNull();
     expect(tempoText(0.85)).toBe("langsam");
     expect(pinGueltig("1234", ZUGANG)).toBe(true);
     expect(pinGueltig("12a4", ZUGANG)).toBe(false);
@@ -335,7 +339,7 @@ describe("Bild-PIN", () => {
 
 describe("Stimme der Ansagen", () => {
   const KATALOG = { da: true, stimmen: [{ id: "katalog:serena", name: "serena", gruppe: "eingebaut" }], hinweis: "" };
-  const mitStimme = (stimme: string): Profil => ({ ...KIND, einstellungen: { lesehilfen: { mitlesen: true, tempo: 1, silben: false, lesezeile: true, schrift: "mittel", hinweise_sprechen: true, tasten_ansagen: true, stimme } } });
+  const mitStimme = (stimme: string): Profil => ({ ...KIND, einstellungen: { lesehilfen: { mitlesen: true, tempo: 1, silben: false, lesezeile: true, schrift: "mittel", schrift_wahl: "normal", hinweise_sprechen: true, tasten_ansagen: true, stimme } } });
   const auftrag = (stand: "wartet" | "laeuft" | "fertig" | "fehler", fertig: number, grund = "") =>
     [{ was: "Ansagen erstellen", stimme: "katalog:serena", stand, gesamt: 186, fertig, grund, begonnen: null, geaendert: null, fertig_am: null }];
   const mitFamilienstimme = async (stimme: string) => {

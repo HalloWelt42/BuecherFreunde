@@ -1,5 +1,6 @@
 <script lang="ts">
-  // Die Katze im Kinderbereich: an oder aus, ihr Name (gibt sonst das Kind selbst), Schnurren nur auf Wunsch
+  // Die Katze im Kinderbereich: an oder aus (in der Gestaltung groß anfangs aus, dann klein am Rand), ihr Name (gibt sonst das
+  // Kind selbst), Schnurren nur auf Wunsch
   import type { Profil } from "../../../lib/api/familie";
   import { einstellungenVon } from "../../../lib/familie";
   import { familie } from "../../../lib/stand/familie.svelte";
@@ -12,7 +13,8 @@
   let { profil, aendert }: { profil: Profil; aendert: boolean } = $props();
 
   const NAME_HOECHSTENS = 24;
-  let katze = $derived(einstellungenVon(profil, familie.stufen.stufen).katze);
+  let einstellungen = $derived(einstellungenVon(profil, familie.stufen.stufen));
+  let katze = $derived(einstellungen.katze);
   let name = $state("");
 
   function benenne(e: SubmitEvent, zu: () => void) {
@@ -26,7 +28,7 @@
 <section class="elternfeld platte">
   <h3><Symbol name="cat" />Katze</h3>
   <div class="elternzeile">
-    <span>Katze im Bereich</span>
+    <span>Katze im Bereich{#if einstellungen.gestaltung === "gross"}<small>in Groß klein am Rand</small>{/if}</span>
     <Schalter an={katze.an} name="Katze im Bereich" gesperrt={!aendert} onwahl={(an) => void setze(profil, "katze", { an })} />
   </div>
   <div class="elternzeile">

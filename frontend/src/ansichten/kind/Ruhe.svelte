@@ -1,5 +1,6 @@
-<!-- Der Ruheschirm: die Lesezeit ist um oder es ist Ruhezeit. Die Bücher ruhen, die Katze schläft mit (streicheln geht), und es
-     steht da, wann es weitergeht. Hinaus nur über das Schloss für die Eltern. -->
+<!-- Der Ruheschirm: die Lesezeit ist um oder es ist Ruhezeit. Die Bücher ruhen, und es steht da, wann es weitergeht. Hinaus nur
+     über das Schloss für die Eltern. Klein: Nachtschirm, die Katze schläft groß mit (streicheln geht). Groß (BF-88): ruhiger, kein
+     Nachtschirm, nur ein Hinweis in der gewohnten Fläche; ist die Katze an, schläft sie klein im Kopf. -->
 <script lang="ts">
   import { untrack } from "svelte";
   import { ansage } from "../../lib/kind/ansage.svelte";
@@ -10,6 +11,7 @@
 
   let { ich, lesezeit, onschloss }: { ich: Ich; lesezeit: Lesezeitstand; onschloss: () => void } = $props();
 
+  let gross = $derived(ich.gestaltung === "gross");
   let wann = $derived(weiterAb(lesezeit.ruhe_bis, new Date()));
   let wer = $derived(ich.katze.an ? `${ich.katze.name || "Die Katze"} schläft schon.` : "");
   // Einmal, wenn die Ruhe beginnt
@@ -22,19 +24,39 @@
   }
 </script>
 
-<header class="k-kopf">
-  <div class="k-rechts">
-    <button class="k-schloss" type="button" aria-label="Für Eltern" onclick={schloss}><i class="fa-solid fa-lock" aria-hidden="true"></i></button>
+{#if gross}
+  <header class="kopf glas milch">
+    <span class="g-wer"><span class="k-bild" style:background={ich.profil.farbe} aria-hidden="true"><i class="fa-solid fa-{ich.profil.zeichen}"></i></span><span>{ich.profil.name}</span></span>
+    <div class="g-rechts">
+      {#if ich.katze.an}<Katze name={ich.katze.name} zustand="ruht" schnurren={ich.katze.schnurren} groesse="2.25rem" />{/if}
+      <button class="knopf nur" type="button" aria-label="Für Eltern" title="Für Eltern" onclick={schloss}><i class="fa-solid fa-lock" aria-hidden="true"></i></button>
+    </div>
+  </header>
+
+  <div class="buehne glas klar">
+    <div class="g-ruhe" role="status">
+      <div class="platte g-ruhekarte">
+        <i class="fa-solid fa-moon" aria-hidden="true"></i>
+        <b>{lesezeit.ruht ? "Ruhezeit" : "Lesezeit um"}</b>
+        <span class="leise">{wann} geht es weiter.</span>
+      </div>
+    </div>
   </div>
-</header>
+{:else}
+  <header class="k-kopf">
+    <div class="k-rechts">
+      <button class="k-schloss" type="button" aria-label="Für Eltern" onclick={schloss}><i class="fa-solid fa-lock" aria-hidden="true"></i></button>
+    </div>
+  </header>
 
-<div class="k-ruhe" role="status">
-  <i class="fa-solid fa-moon mond" aria-hidden="true"></i>
-  <b>Jetzt ruhen die Bücher.</b>
-  <p>{wer} {wann} geht es weiter.</p>
-  {#if ich.katze.an}
-    <Katze name={ich.katze.name} zustand="ruht" schnurren={ich.katze.schnurren} nacht groesse="clamp(8rem, 17vw, 12rem)" />
-  {/if}
-</div>
+  <div class="k-ruhe" role="status">
+    <i class="fa-solid fa-moon mond" aria-hidden="true"></i>
+    <b>Jetzt ruhen die Bücher.</b>
+    <p>{wer} {wann} geht es weiter.</p>
+    {#if ich.katze.an}
+      <Katze name={ich.katze.name} zustand="ruht" schnurren={ich.katze.schnurren} nacht groesse="clamp(8rem, 17vw, 12rem)" />
+    {/if}
+  </div>
 
-<div class="k-fuss"></div>
+  <div class="k-fuss"></div>
+{/if}

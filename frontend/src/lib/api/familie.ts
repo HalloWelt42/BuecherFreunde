@@ -16,6 +16,13 @@ export type Faehigkeit =
 /** Schrift des Kindes, ausgehend von der Größe seiner Stufe */
 export type Schriftgroesse = "klein" | "mittel" | "gross";
 
+/** Gestaltung des Kinderbereichs (BF-88): klein verspielt mit großen Tasten, groß ruhig im Stil der App */
+export type Gestaltung = "klein" | "gross";
+/** Die Uhr im Kopf der Gestaltung groß */
+export type Kopfuhr = "zeiger" | "zahl";
+/** Leseschrift: normal (serifenlos mit normalen Abständen) oder die Kinderschrift der Stufe */
+export type Leseschrift = "normal" | "kinderschrift";
+
 export interface Lesehilfen {
   /** Vorlesen mit Mitlesen: das gelesene Wort leuchtet */
   mitlesen: boolean;
@@ -25,6 +32,8 @@ export interface Lesehilfen {
   silben: boolean;
   lesezeile: boolean;
   schrift: Schriftgroesse;
+  /** Vorgabe der Eltern; in der Gestaltung groß schaltet das Kind beim Lesen selbst um */
+  schrift_wahl: Leseschrift;
   /** Hinweise werden gesprochen: Lesezeit, Ruhezeit, Bild-PIN und alles, was sonst nur dasteht */
   hinweise_sprechen: boolean;
   /** Eine gedrückte Taste sagt, was sie tut */
@@ -57,6 +66,9 @@ export interface Profileinstellungen {
   lesehilfen: Lesehilfen;
   lesezeit: Lesezeitregel;
   katze: Katze;
+  /** null: kein Kinderbereich, die Oberfläche der App (Jugend) */
+  gestaltung: Gestaltung | null;
+  uhr: Kopfuhr;
 }
 
 /** Ein Profil, ohne Geheimnisse */
@@ -133,6 +145,10 @@ export interface Ich {
   katze: Katze;
   /** Was die Eltern sehen, für das Kind sichtbar; leer bei Erwachsenen */
   einblick: Einblickart[];
+  /** Kinderbereich klein oder groß; null: die Oberfläche der App (Jugend, Erwachsene) */
+  gestaltung: Gestaltung | null;
+  /** Uhr im Kopf der Gestaltung groß; null bei Erwachsenen */
+  uhr: Kopfuhr | null;
 }
 
 /** Was die Eltern im Einblick sehen */

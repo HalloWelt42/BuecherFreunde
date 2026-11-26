@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Vorgaben je Stufe nach backend/app/familie/stufen.json (Fassung 1), nur für Felder, die der Server in GET /api/familie/ich nicht mitschickt. Die Wahrheit ist der Server. vorlesen_von_selbst gibt es nur hier: im Vorlesealter liest ein Buch beim Öffnen von selbst vor.",
+  "_hinweis": "Vorgaben je Stufe nach backend/app/familie/stufen.json (Fassung 1), nur für Felder, die der Server in GET /api/familie/ich nicht mitschickt. Die Wahrheit ist der Server. vorlesen_von_selbst gibt es nur hier: im Vorlesealter liest ein Buch beim Öffnen von selbst vor. Die Darstellung ist die mit der Leseschrift der Stufe (schrift_wahl): normal heißt serifenlos mit normalen Abständen (gestaltung.normalschrift).",
   "stufen": {
     "vorlesen": {
       "faehigkeiten": [
@@ -8,6 +8,7 @@
       ],
       "darstellung": {
         "schrift": "\"Andika\", system-ui, sans-serif",
+        "schrift_wahl": "kinderschrift",
         "groesse": 32,
         "fett": true,
         "zeilenabstand": 1.5,
@@ -25,7 +26,10 @@
         "hinweise_sprechen": true,
         "tasten_ansagen": true
       },
-      "name_eingabe": "vorschlaege"
+      "name_eingabe": "vorschlaege",
+      "katze_an": true,
+      "gestaltung": "klein",
+      "uhr": "zeiger"
     },
     "erstes_lesen": {
       "faehigkeiten": [
@@ -34,6 +38,7 @@
       ],
       "darstellung": {
         "schrift": "\"Andika\", system-ui, sans-serif",
+        "schrift_wahl": "kinderschrift",
         "groesse": 28,
         "fett": true,
         "zeilenabstand": 1.5,
@@ -51,7 +56,10 @@
         "hinweise_sprechen": true,
         "tasten_ansagen": true
       },
-      "name_eingabe": "tippen"
+      "name_eingabe": "tippen",
+      "katze_an": true,
+      "gestaltung": "klein",
+      "uhr": "zeiger"
     },
     "lesen_lernen": {
       "faehigkeiten": [
@@ -61,25 +69,29 @@
         "gelesen"
       ],
       "darstellung": {
-        "schrift": "\"Andika\", system-ui, sans-serif",
+        "schrift": "\"Atkinson Hyperlegible\", system-ui, sans-serif",
+        "schrift_wahl": "normal",
         "groesse": 24,
         "fett": false,
         "zeilenabstand": 1.5,
         "woerter_je_zeile": 0,
         "zeichen_je_zeile": 60,
-        "abstand_absatz": 2,
-        "abstand_buchstabe": 0.12,
-        "abstand_wort": 0.16,
+        "abstand_absatz": 1,
+        "abstand_buchstabe": 0,
+        "abstand_wort": 0,
         "tippflaeche_mm": 14.8,
         "silben": false,
         "lesezeile": true,
         "mitlesen": true,
         "tempo": 1,
         "vorlesen_von_selbst": false,
-        "hinweise_sprechen": true,
-        "tasten_ansagen": true
+        "hinweise_sprechen": false,
+        "tasten_ansagen": false
       },
-      "name_eingabe": "tippen"
+      "name_eingabe": "tippen",
+      "katze_an": false,
+      "gestaltung": "gross",
+      "uhr": "zeiger"
     },
     "schule": {
       "faehigkeiten": [
@@ -94,14 +106,15 @@
       ],
       "darstellung": {
         "schrift": "\"Atkinson Hyperlegible\", system-ui, sans-serif",
+        "schrift_wahl": "normal",
         "groesse": 20,
         "fett": false,
         "zeilenabstand": 1.5,
         "woerter_je_zeile": 0,
         "zeichen_je_zeile": 80,
-        "abstand_absatz": 2,
-        "abstand_buchstabe": 0.12,
-        "abstand_wort": 0.16,
+        "abstand_absatz": 1,
+        "abstand_buchstabe": 0,
+        "abstand_wort": 0,
         "tippflaeche_mm": 11.6,
         "silben": false,
         "lesezeile": false,
@@ -111,7 +124,10 @@
         "hinweise_sprechen": false,
         "tasten_ansagen": false
       },
-      "name_eingabe": "tippen"
+      "name_eingabe": "tippen",
+      "katze_an": false,
+      "gestaltung": "gross",
+      "uhr": "zahl"
     },
     "jugend": {
       "faehigkeiten": [
@@ -126,14 +142,15 @@
       ],
       "darstellung": {
         "schrift": "\"Atkinson Hyperlegible\", system-ui, sans-serif",
+        "schrift_wahl": "normal",
         "groesse": 18,
         "fett": false,
         "zeilenabstand": 1.5,
         "woerter_je_zeile": 0,
         "zeichen_je_zeile": 80,
-        "abstand_absatz": 2,
-        "abstand_buchstabe": 0.12,
-        "abstand_wort": 0.16,
+        "abstand_absatz": 1,
+        "abstand_buchstabe": 0,
+        "abstand_wort": 0,
         "tippflaeche_mm": 11.6,
         "silben": false,
         "lesezeile": false,
@@ -143,7 +160,10 @@
         "hinweise_sprechen": false,
         "tasten_ansagen": false
       },
-      "name_eingabe": "tippen"
+      "name_eingabe": "tippen",
+      "katze_an": false,
+      "gestaltung": null,
+      "uhr": "zahl"
     }
   },
   "katzennamen": [

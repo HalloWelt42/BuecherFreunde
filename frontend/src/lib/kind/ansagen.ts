@@ -32,6 +32,8 @@ export const TASTE = {
   lieblingsbuch: taste("lieblingsbuch"),
   keinLieblingsbuch: taste("kein_lieblingsbuch"),
   fertig: taste("fertig"),
+  kinderschriftAn: taste("kinderschrift_an"),
+  kinderschriftAus: taste("kinderschrift_aus"),
 } as const;
 
 export const HINWEIS = {
