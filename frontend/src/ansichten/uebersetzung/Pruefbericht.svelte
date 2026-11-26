@@ -1,6 +1,6 @@
 <script lang="ts">
-  // Prüfbericht einer Übersetzung (BF-71, Entwurf Abschnitt 4): die Zahlen, darunter jede offene Stelle zum Entscheiden.
-  // Die Zahlen bleiben stehen, nur die Stellen rollen.
+  // Prüfbericht einer Übersetzung (BF-71, Entwurf Abschnitt 4): die Zahlen, darunter jede offene Stelle zum Entscheiden,
+  // danach jede Stelle mit berichtigten Marken (nichts geschieht still). Die Zahlen bleiben stehen, nur die Stellen rollen.
   import { untrack } from "svelte";
   import { holeBericht } from "../../lib/api/uebersetzung";
   import { uebersetzungen } from "../../lib/stand/uebersetzungen.svelte";
@@ -12,6 +12,7 @@
   import type { Bericht } from "../../lib/uebersetzung/typen";
   import { Buchuebersetzung } from "./fassung.svelte";
   import Offenestelle from "./Offenestelle.svelte";
+  import Repariertestelle from "./Repariertestelle.svelte";
 
   let { params }: { params: Record<string, string> } = $props();
 
@@ -66,6 +67,9 @@
           <Offenestelle {stelle} {fassung} onerledigt={() => erledigt(stelle.kennung)} />
         {:else}
           <p class="leise">Keine offenen Stellen.</p>
+        {/each}
+        {#each bericht.repariert ?? [] as stelle (stelle.kennung)}
+          <Repariertestelle {stelle} />
         {/each}
       </div>
     </div>

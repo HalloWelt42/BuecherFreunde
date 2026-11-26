@@ -80,8 +80,11 @@ export interface Zahlen {
   bestanden: number;
   nachgearbeitet: number;
   offen: number;
-  /** Einwände des KI-Prüfers anderer Art (Begriffe, Schreibung), die nicht gelten; fehlt bei älteren Antworten */
+  /** Einwände des KI-Prüfers, die nicht gelten: anderer Art (Begriffe, Schreibung) oder von der zweiten Prüfung nicht
+   *  bestätigt; fehlt bei älteren Antworten */
   verworfen?: number;
+  /** deutsch in der Fassung, mit berichtigten Marken; fehlt bei älteren Antworten */
+  repariert?: number;
 }
 
 export interface Laufstand {
@@ -121,9 +124,20 @@ export interface Befund {
   text: string;
   /** das beanstandete Stück im deutschen Text */
   stelle: string;
+  /** Einwand des KI-Prüfers: was die zweite Prüfung dazu sagt; leer oder fehlt: nicht bestätigt */
+  bestaetigung?: string;
 }
 
-export interface OffeneStelle {
+/** Was an einer Antwort der KI verlustfrei berichtigt wurde: eine Marke weg, der Text blieb */
+export interface Reparatur {
+  art: "marken";
+  text: string;
+  /** der Text, der die Marke verlor */
+  stelle: string;
+}
+
+/** Ein Block im Prüfbericht */
+export interface Stelle {
   kennung: string;
   kapitel: number;
   /** für Menschen, etwa "Getting Started, Absatz 4" */
@@ -136,12 +150,19 @@ export interface OffeneStelle {
   original: string;
   /** die letzte Übersetzung mit Marken; leer, wenn keine kam */
   deutsch: string;
+  /** fehlt bei älteren Antworten */
+  reparaturen?: Reparatur[];
+}
+
+export interface OffeneStelle extends Stelle {
   befunde: Befund[];
 }
 
 export interface Bericht {
   zahlen: Zahlen;
   offen: OffeneStelle[];
+  /** deutsch in der Fassung, mit berichtigten Marken; fehlt bei älteren Antworten */
+  repariert?: Stelle[];
   /** Einträge der Begriffsliste, die die Regeln nicht bestehen; sie gelten nicht, bis du entscheidest */
   begriffe_fragwuerdig?: Begriff[];
 }

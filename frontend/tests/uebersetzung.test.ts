@@ -7,6 +7,7 @@ import Uebersetzungsfrage from "../src/ansichten/buch/Uebersetzungsfrage.svelte"
 import { Buchfassungen, fassungsAdresse, uebersetzbar } from "../src/ansichten/buch/fassungen.svelte";
 import Begriffsliste from "../src/ansichten/uebersetzung/Begriffsliste.svelte";
 import Offenestelle from "../src/ansichten/uebersetzung/Offenestelle.svelte";
+import Repariertestelle from "../src/ansichten/uebersetzung/Repariertestelle.svelte";
 import { ladeLesefassung, originalfassung, uebersetzungsfassung } from "../src/lib/leser/lesefassung";
 import { Positionsspeicher } from "../src/lib/leser/position";
 import { Lesesitzung } from "../src/lib/leser/sitzung.svelte";
@@ -18,7 +19,7 @@ import { uebersetzungen } from "../src/lib/stand/uebersetzungen.svelte";
 import type { BuchEinzeln } from "../src/lib/typen";
 import { klartext, stuecke } from "../src/lib/uebersetzung/marken";
 import {
-  auftragstext, befundname, berichtsmarken, ergebnistext, kapiteldauer, kapitelzeilen, labeltext, laufanteil, laufort, stationstext,
+  auftragstext, befundname, berichtsmarken, ergebnistext, reparaturtext, kapiteldauer, kapitelzeilen, labeltext, laufanteil, laufort, stationstext,
 } from "../src/lib/uebersetzung/texte";
 import type { Begriff, Fassungseintrag, Kapitelstand, Laufeintrag, Laufstand, OffeneStelle } from "../src/lib/uebersetzung/typen";
 import { dauer, etwa, gegen, ungefaehr, zeitKurz } from "../src/lib/uebersetzung/zeiten";
@@ -136,7 +137,13 @@ describe("Wie eine Übersetzung heißt", () => {
 
   it("benennt Befunde, Auftrag und Ergebnis", () => {
     expect(befundname({ art: "sinn", quelle: "ki", text: "", stelle: "" })).toBe("Sinn (KI-Prüfer)");
+    expect(befundname({ art: "englisch", quelle: "ki", text: "", stelle: "", bestaetigung: "Das Deutsche sagt Fehlerbehandlung" })).toBe("Englisch (KI-Prüfer, bestätigt)");
     expect(befundname({ art: "begriffe", quelle: "pruefung", text: "", stelle: "" })).toBe("Begriff");
+    expect(reparaturtext({ art: "marken", text: "Die Marke 1 gibt es im Original nicht: entfernt, der Text bleibt", stelle: "Blattmodus" }))
+      .toBe('Marken: Die Marke 1 gibt es im Original nicht: entfernt, der Text bleibt ("Blattmodus")');
+    const z = { bloecke: 9, uebersetzt: 9, bestanden: 8, nachgearbeitet: 1, offen: 0 };
+    expect(berichtsmarken({ ...z, verworfen: 2, repariert: 1 }).map((m) => m.text)).toEqual(["8 geprüft", "1 nachgearbeitet", "0 offen", "2 verworfen", "1 repariert"]);
+    expect(berichtsmarken(z).map((m) => m.text)).toEqual(["8 geprüft", "1 nachgearbeitet", "0 offen"]);
     const l: Laufeintrag = { id: 3, buch_id: 7, titel: "Building Tiny Robots at Home", sprache: "de", stand: "pause", anteil: 0.5, kapitel_fertig: 4, kapitel_gesamt: 9, fertig_gegen: null, grund: "" };
     expect(auftragstext(l)).toBe("Pause, 4 von 9 Kapiteln");
     expect(auftragstext({ ...l, stand: "fehler", grund: "Die Leitstelle antwortet nicht" })).toBe("Fehler: Die Leitstelle antwortet nicht");
@@ -282,6 +289,20 @@ describe("Offene Stelle im Prüfbericht", () => {
     await fireEvent.click(screen.getByRole("button", { name: /Speichern/ }));
     await vi.waitFor(() => expect(erledigt).toHaveBeenCalled());
     expect(anfragen.at(-1)).toEqual({ weg: "/api/fassungen/3/bloecke/5.4", methode: "POST", koerper: { aktion: "setzen", text: "Zu kurz." } });
+  });
+});
+
+describe("Reparierte Stelle im Prüfbericht", () => {
+  it("zeigt beide Sprachen und jede Reparatur, ohne etwas zu entscheiden", () => {
+    render(Repariertestelle, { props: { stelle: {
+      kennung: "3.3", kapitel: 3, ort: "Leaf Mode, Absatz 3", seite_original: 12, seite_gedruckt: "10",
+      original: "<t1>Leaf mode</t1> is new. Then leaf mode starts.", deutsch: "<t1>Leaf mode</t1> ist neu. Dann startet Leaf mode.",
+      reparaturen: [{ art: "marken", text: "Die Marke 1 stand doppelt da: sie bleibt nur an der Stelle, die zum Original passt; hier fiel sie weg, der Text bleibt", stelle: "Leaf mode" }],
+    } } });
+    expect(screen.getByText("Leaf Mode, Absatz 3")).toBeTruthy();
+    expect(screen.getByText("Seite 10 im Original")).toBeTruthy();
+    expect(screen.getByText(/Marken: Die Marke 1 stand doppelt da.*\("Leaf mode"\)/)).toBeTruthy();
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });
 

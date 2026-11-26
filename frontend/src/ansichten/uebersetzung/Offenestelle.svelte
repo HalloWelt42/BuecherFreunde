@@ -6,7 +6,7 @@
   import { melde } from "../../lib/stand/meldungen.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Symbol from "../../lib/teile/Symbol.svelte";
-  import { befundname, befundzeichen } from "../../lib/uebersetzung/texte";
+  import { befundname, befundzeichen, reparaturtext } from "../../lib/uebersetzung/texte";
   import type { Befund, Blockaktion, Blockantwort, OffeneStelle } from "../../lib/uebersetzung/typen";
   import Markentext from "./Markentext.svelte";
 
@@ -63,6 +63,9 @@
   {:else}
     {@render befundliste(stelle.befunde)}
   {/if}
+  {#each stelle.reparaturen ?? [] as r, n (n)}
+    <div class="befundzeile"><Symbol name="screwdriver-wrench" /><span>{reparaturtext(r)}</span></div>
+  {/each}
   <div class="reihe gleichtasten">
     {#if bearbeitet}
       <Knopf text="Speichern" symbol="check" klein haupt laeuft={arbeitet === "setzen"} gesperrt={!!arbeitet || !text.trim()} onclick={() => void tue({ aktion: "setzen", text }, "Gespeichert")} />

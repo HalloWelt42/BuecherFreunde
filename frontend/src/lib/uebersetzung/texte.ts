@@ -1,7 +1,7 @@
 // Wie eine Übersetzung in der Oberfläche heißt (BF-71, Entwurf "Bücher übersetzen"): Flaggenlabels, Stationen, Kapitel,
 // Befunde, der Auftrag. Eine Stelle für alle Ansichten.
 import { anzahl, sprache, zahl } from "../format";
-import type { Befund, Fassungseintrag, Kapitelstand, Laufeintrag, Laufstand, Station, Stationsname, Zahlen } from "./typen";
+import type { Befund, Fassungseintrag, Kapitelstand, Laufeintrag, Laufstand, Reparatur, Station, Stationsname, Zahlen } from "./typen";
 import { dauer, gegen, ungefaehr } from "./zeiten";
 
 /** Formate, die schon übersetzt werden (wie FORMATE in backend/app/services/fassungsstand.py) */
@@ -76,13 +76,19 @@ export function kapitelzeilen(kapitel: Kapitelstand[]): { einzeln: Kapitelstand[
 const BEFUNDART: Record<string, string> = {
   marken: "Marken", zahlen: "Zahlen", einheiten: "Einheiten", bezeichner: "Bezeichner", begriffe: "Begriff", sprache: "Sprache",
   laenge: "Länge", vollstaendigkeit: "Vollständigkeit", zeichen: "Zeichen", antwort: "Antwort", sinn: "Sinn", ausgelassen: "Ausgelassen",
-  hinzugefuegt: "Hinzugefügt", begriff: "Begriff", grammatik: "Grammatik", pruefer: "Prüfer",
+  hinzugefuegt: "Hinzugefügt", englisch: "Englisch", begriff: "Begriff", grammatik: "Grammatik", pruefer: "Prüfer",
 };
 
-/** "Begriff", "Sinn (KI-Prüfer)" */
+/** "Begriff", "Sinn (KI-Prüfer)", "Sinn (KI-Prüfer, bestätigt)": ein Einwand gilt erst, wenn die zweite Prüfung ihn bestätigt */
 export function befundname(b: Befund): string {
   const art = BEFUNDART[b.art] ?? b.art;
-  return b.quelle === "ki" ? `${art} (KI-Prüfer)` : art;
+  if (b.quelle !== "ki") return art;
+  return b.bestaetigung ? `${art} (KI-Prüfer, bestätigt)` : `${art} (KI-Prüfer)`;
+}
+
+/** 'Marken: Die Marke 1 stand doppelt da ... ("Blattmodus")', mit dem Text, der die Marke verlor */
+export function reparaturtext(r: Reparatur): string {
+  return `${BEFUNDART[r.art] ?? r.art}: ${r.text}${r.stelle ? ` ("${r.stelle}")` : ""}`;
 }
 
 export function befundzeichen(b: Befund): string {
@@ -90,14 +96,17 @@ export function befundzeichen(b: Befund): string {
   return b.art === "begriffe" ? "spell-check" : "list-check";
 }
 
-/** Die Zahlen des Prüfberichts als Marken: geprüft, nachgearbeitet, offen, dazu verworfene Einwände des Prüfers */
+/** Die Zahlen des Prüfberichts als Marken: geprüft, nachgearbeitet, offen, dazu verworfene Einwände des Prüfers und
+ *  Stellen mit berichtigten Marken */
 export function berichtsmarken(z: Zahlen): { text: string; ton: "gut" | "info" | "warn"; symbol: string; titel?: string }[] {
   return [
     { text: `${zahl(z.bestanden)} geprüft`, ton: "gut", symbol: "circle-check" },
     { text: `${zahl(z.nachgearbeitet)} nachgearbeitet`, ton: "info", symbol: "rotate" },
     { text: `${zahl(z.offen)} offen`, ton: "warn", symbol: "circle-exclamation" },
     ...(z.verworfen ? [{ text: `${zahl(z.verworfen)} verworfen`, ton: "info" as const, symbol: "robot",
-                         titel: "Einwände des KI-Prüfers zu Begriffen, Schreibung oder Anrede: das prüfen die festen Prüfungen" }] : []),
+                         titel: "Einwände des KI-Prüfers, die nicht gelten: zu Begriffen, Schreibung oder Anrede (das prüfen die festen Prüfungen) oder von der zweiten Prüfung nicht bestätigt" }] : []),
+    ...(z.repariert ? [{ text: `${zahl(z.repariert)} repariert`, ton: "info" as const, symbol: "screwdriver-wrench",
+                         titel: "Marken, die doppelt standen oder im Original fehlen, sind weg; der Text blieb" }] : []),
   ];
 }
 
