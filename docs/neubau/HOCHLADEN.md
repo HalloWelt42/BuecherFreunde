@@ -23,6 +23,19 @@ Vorschau zeigt, was beim Bestätigen passiert. Erst die Bestätigung übernimmt.
    nach einem Neustart. Verwerfen zeigt vorher, welche Dateien aus der Kellerwolke entfernt werden, und löscht erst nach
    einem ausdrücklichen Ja.
 
+## Abnahme des Entwurfs (26.11.2026)
+
+Entwurf Runde 1 abgenommen ("Passt, bauen"), mit diesen Antworten:
+- Die Vorschau ist eine eigene Ansicht: Auswahl und Fuß stehen fest, nur die Liste rollt. Am Telefon zeigt sie Karten.
+- Nach "Übernehmen" bleiben die ZIP selbst, weggelassene Doppel und nicht übernommene Dateien im Eingang liegen. Ein
+  Hinweis nennt sie ("3 Dateien blieben im Eingang"). Nichts wird von selbst weggeräumt.
+- "Anleitung" wird eine eigene Art unter Besonderes, neben Dokument, Heft, Katalog und Broschüre. Regeln und KI erkennen
+  sie, die Kategorie ordnet sie nach Bereich ein.
+- Die Einstellungen stehen in einem neuen Reiter "Hinzufügen": "erst bestätigen" je Weg und die Suchadresse für fehlende
+  Bände (BF-75).
+- Verwerfen ohne Kellerwolke löscht endgültig. Vorher kommt eine Rückfrage, die jede Datei nennt und sagt, dass es
+  endgültig ist.
+
 ## Was die Vorschau je Datei zeigt
 
 Erkannte Art (Buch oder Besonderes mit Unterart, BF-77), Kategorie aus dem Katalog (BF-69), Sammlung und Band, auch in
