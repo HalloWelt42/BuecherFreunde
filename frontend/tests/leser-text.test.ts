@@ -1,6 +1,7 @@
 import { entschaerfe, hinweiskasten, mitDiagramm, sichereAdresse } from "../src/lib/leser/text/markdown";
-import { prozentVon, textkapitel, zeichneMarkierungen, zeichneTreffer } from "../src/lib/leser/text/markierung";
-import { findeStuecke } from "../src/lib/leser/textsuche";
+import { prozentVon, textkapitel, textknoten, zeichneMarkierungen, zeichneTreffer } from "../src/lib/leser/text/markierung";
+import { findeStuecke, Zeichenindex } from "../src/lib/leser/textsuche";
+import { textVon } from "../src/lib/leser/festbereich";
 import { hexZuTon, tonZuHex } from "../src/lib/farbton";
 import { gleicheSchrift, istDunkel, klemme, papierOder, themaIndex, ZEILEN } from "../src/lib/leser/darstellung";
 import type { Markierung } from "../src/lib/typen";
@@ -45,15 +46,15 @@ describe("Markierungen im Text", () => {
     const b = blatt("<p>Ein Deich am Meer.</p><p>Noch ein <b>Deich</b> im Land.</p>");
     const vorher = b.innerHTML;
     const r = zeichneMarkierungen(b, [marke(3, "Deich", 70)]);
-    expect([r.get(3)?.toString(), r.get(3)?.startContainer.parentElement?.tagName]).toEqual(["Deich", "B"]);
-    expect(zeichneMarkierungen(b, [marke(4, "ein Deich im", 60)]).get(4)?.toString()).toBe("ein Deich im");
+    expect([textVon(r.get(3)!), r.get(3)?.startContainer.parentElement?.tagName]).toEqual(["Deich", "B"]);
+    expect(textVon(zeichneMarkierungen(b, [marke(4, "ein Deich im", 60)]).get(4)!)).toBe("ein Deich im");
     expect(zeichneMarkierungen(b, []).size).toBe(0);
     expect(b.innerHTML).toBe(vorher);
   });
 
   it("zeichnet Treffer in Lesefolge", () => {
     const b = blatt("<p>Salz und Pfeffer, Salz und Essig</p><p>salzig</p>");
-    expect(zeichneTreffer(b, "salz").map((t) => t.toString())).toEqual(["Salz", "Salz", "salz"]);
+    expect(zeichneTreffer(b, "salz").map(textVon)).toEqual(["Salz", "Salz", "salz"]);
     expect(zeichneTreffer(b, "")).toEqual([]);
     expect(b.querySelector("mark")).toBeNull();
   });
@@ -63,6 +64,31 @@ describe("Markierungen im Text", () => {
     expect(prozentVon("epubcfi(/6)")).toBeNull();
     expect(textkapitel(["Kapitel 1", "", "Text", "", "Kapitel 2 Der Deich", "", "Text"]).map((k) => k.titel)).toEqual(["Kapitel 1", "Kapitel 2 Der Deich"]);
     expect(textkapitel(["nur Text", "noch mehr"])).toEqual([]);
+  });
+
+  it("baut den Zeichenindex einmal und findet darin die nächste Fundstelle, bei gleichem Abstand die frühere", () => {
+    const b = blatt("<p>Ab cd ab</p><p>c<i>d</i> xy ab cd</p>");
+    const index = new Zeichenindex(textknoten(b));
+    // ohne Leerraum: "abcdabcdxyabcd"; "abcd" steht bei 0, 4 und 10
+    const bei = (wortlaut: string, anteil: number | null) => {
+      const ort = index.finde(wortlaut, anteil);
+      return ort && [ort.von.knoten.data, ort.von.versatz, ort.bis.knoten.data, ort.bis.versatz];
+    };
+    expect(bei("ab cd", null)).toEqual(["Ab cd ab", 0, "Ab cd ab", 5]);
+    expect(bei("abcd", 0.5)).toEqual(["Ab cd ab", 6, "d", 1]);
+    expect(bei("abcd", 7 / 14)).toEqual(["Ab cd ab", 6, "d", 1]);
+    expect(bei("ABCD", 1)).toEqual([" xy ab cd", 4, " xy ab cd", 9]);
+    expect([bei("zz", 0.5), bei("a", 0)]).toEqual([null, null]);
+  });
+
+  it("hält Markierungen und Treffer in festen Bereichen, die keine Änderung am Dokument mitmachen", () => {
+    const b = blatt("<p>Ein Deich am Meer.</p>");
+    document.body.append(b);
+    const r = zeichneMarkierungen(b, [marke(5, "Deich", 0)]).get(5)!;
+    expect([r instanceof StaticRange, zeichneTreffer(b, "meer")[0] instanceof StaticRange]).toEqual([true, true]);
+    b.prepend(document.createElement("hr"));
+    expect([r.startOffset, textVon(r)]).toEqual([4, "Deich"]);
+    b.remove();
   });
 
   it("findet Stücke auch mit kürzerem Anfang", () => {

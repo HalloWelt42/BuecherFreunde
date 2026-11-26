@@ -12,6 +12,7 @@
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { kannHervorheben, Rechteckschicht } from "../../lib/leser/hervorhebung";
   import { imBlick, Mitlauf, sichtVon } from "../../lib/leser/mitlauf";
+  import { rechteckeVon } from "../../lib/leser/festbereich";
   import { zeichneMarkierungen, zeichneWortlaut } from "../../lib/leser/text/markierung";
   import type { Randeintrag } from "../../lib/leser/randmarken";
   import { absatzBei, vorgelesenIn } from "../../lib/leser/fokus";
@@ -55,7 +56,7 @@
   let lupe = $state<{ quelle: string; beschreibung: string } | null>(null);
   let fluss: Textfluss | null = null;
   let ersatzschicht: Rechteckschicht | undefined;
-  let markiert = new Map<number, Range>();
+  let markiert = new Map<number, StaticRange>();
   let mitlauf: Mitlauf | null = null;
   let gemeldet = 0;
   let gesucht = untrack(() => fundstelle);
@@ -201,7 +202,7 @@
     if (!a || !flaeche) return null;
     const s = sicht();
     const r = e.art === "Markierung" ? markiert.get((e.quelle as { id: number }).id) : null;
-    if (r?.startContainer.isConnected && imBlick(r, s)) return r.getClientRects()[0]?.top ?? null;
+    if (r?.startContainer.isConnected && imBlick(r, s)) return rechteckeVon(r)[0]?.top ?? null;
     // Sonst der Anfang der Seite, wenn er auf dem Schirm steht
     for (const q of a.getClientRects()) if (q.right > s.links && q.left < s.rechts && q.bottom > s.oben && q.top < s.unten) return Math.max(q.top, s.oben);
     return null;

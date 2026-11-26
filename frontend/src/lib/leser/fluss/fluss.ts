@@ -4,7 +4,7 @@ import type { Anker } from "./textmass";
 export type Leseart = "blaettern" | "scrollen";
 
 /** Wohin gesprungen wird */
-export type Ziel = Element | Range | Anker;
+export type Ziel = Element | AbstractRange | Anker;
 
 export interface Lesefluss {
   readonly art: Leseart;

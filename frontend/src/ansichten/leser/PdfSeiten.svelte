@@ -17,6 +17,7 @@
   import { schreibweise } from "../../lib/leser/typen";
   import { wischen } from "../../lib/leser/wischen";
   import { imBlick, Mitlauf, sichtVon } from "../../lib/leser/mitlauf";
+  import { umrissVon } from "../../lib/leser/festbereich";
   import type { Randeintrag } from "../../lib/leser/randmarken";
   import { vorgelesenIn } from "../../lib/leser/fokus";
   import type { Hilfeort } from "../../lib/leser/sitzung.svelte";
@@ -227,7 +228,8 @@
     if (!flaeche || !r || !seiteImBlick(nr)) return null;
     const s = sichtVon(flaeche);
     if (e.art === "Markierung") {
-      const q = markierungen.bereich((e.quelle as { id: number }).id)?.getBoundingClientRect();
+      const b = markierungen.bereich((e.quelle as { id: number }).id);
+      const q = b && umrissVon(b);
       if (q && q.bottom > s.oben && q.top < s.unten) return q.top;
     }
     return Math.max(r.getBoundingClientRect().top + 16, s.oben);

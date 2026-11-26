@@ -22,6 +22,7 @@
   import { absatzBei, vorgelesenIn } from "../../lib/leser/fokus";
   import { lesehilfen } from "../../lib/leser/lesehilfen.svelte";
   import { imBlick, sichtVon, zeichenRechteck } from "../../lib/leser/mitlauf";
+  import { rechteckeVon } from "../../lib/leser/festbereich";
   import type { Randeintrag } from "../../lib/leser/randmarken";
   import { prozentVon, textkapitel, zeichneMarkierungen, zeichneTreffer } from "../../lib/leser/text/markierung";
   import { schreibweise, type Kapitel } from "../../lib/leser/typen";
@@ -82,8 +83,8 @@
   let satz: HTMLElement | undefined = $state();
   let fluss: Textfluss | null = null;
   let stand = $state({ anteil: 0, amAnfang: true, amEnde: false });
-  let trefferliste = $state.raw<Range[]>([]);
-  let markiert = new Map<number, Range>();
+  let trefferliste = $state.raw<StaticRange[]>([]);
+  let markiert = new Map<number, StaticRange>();
   let ersatz: Rechteckschicht | undefined;
   let quelle: Blattquelle | null = null;
   let trefferNr = $state(-1);
@@ -173,7 +174,7 @@
     const b = blatt.getBoundingClientRect();
     const sicht = art === "blaettern" ? { oben: b.top, unten: b.bottom, links: b.left, rechts: b.right } : sichtVon(flaeche);
     const r = e.art === "Markierung" ? markiert.get((e.quelle as { id: number }).id) : null;
-    if (r?.startContainer.isConnected) return imBlick(r, sicht) ? (r.getClientRects()[0]?.top ?? null) : null;
+    if (r?.startContainer.isConnected) return imBlick(r, sicht) ? (rechteckeVon(r)[0]?.top ?? null) : null;
     const a = e.prozent !== null ? fluss.ankerBei(e.prozent / 100) : null;
     const q = a?.knoten.nodeType === Node.TEXT_NODE ? zeichenRechteck(a.knoten as Text, a.versatz) : null;
     return q && q.bottom > sicht.oben && q.top < sicht.unten && q.right > sicht.links && q.left < sicht.rechts ? q.top : null;

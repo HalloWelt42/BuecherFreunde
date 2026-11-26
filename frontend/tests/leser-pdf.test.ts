@@ -1,5 +1,6 @@
 import { ansichtOder, einpassen, geblaettert, naechsteStufe, sichtbareSeiten } from "../src/lib/leser/pdf/zoom";
 import { Pdfmarkierungen } from "../src/lib/leser/pdf/markierung";
+import { textVon } from "../src/lib/leser/festbereich";
 import type { Markierung } from "../src/lib/typen";
 
 describe("Zoom", () => {
@@ -73,7 +74,7 @@ describe("Markierungen auf der Textebene", () => {
     return d;
   };
   const marke = (text: string, seite = 3, id = 7, color = "#FFEE58"): Markierung => ({ id, book_id: 1, cfi_range: `page:${seite}`, color, text_snippet: text, label_name: "", label_note: "", created_at: "" });
-  const gemalt = () => [...register].flatMap(([name, h]) => [...h].map((r) => `${name}: ${r.toString()}`));
+  const gemalt = () => [...register].flatMap(([name, h]) => [...h].map((r) => `${name}: ${textVon(r)}`));
 
   it("malt genau die gewählten Zeichen, nicht das ganze Stück der Zeile", () => {
     const m = new Pdfmarkierungen();
@@ -97,7 +98,7 @@ describe("Markierungen auf der Textebene", () => {
     m.beschrifte(3, drei, [marke("Kabel"), marke("Zwei", 4, 8)]);
     m.beschrifte(4, ebene(), [marke("Kabel"), marke("Zwei", 4, 8)]);
     expect(gemalt().sort()).toEqual(["bf-stift-FFEE58: Kabel", "bf-stift-FFEE58: Zwei"]);
-    expect(m.bereich(7)?.toString()).toBe("Kabel");
+    expect(textVon(m.bereich(7)!)).toBe("Kabel");
     drei.parentElement!.remove();
     m.beschrifte(4, ebene(), [marke("Zwei", 4, 8)]);
     expect(gemalt()).toEqual(["bf-stift-FFEE58: Zwei"]);
@@ -109,7 +110,7 @@ describe("Markierungen auf der Textebene", () => {
   it("findet die Fundstelle zeichengenau trotz anderem Leerraum", () => {
     const m = new Pdfmarkierungen();
     const fund = m.beschrifte(3, ebene(), [], "einem  Kabel\nverstehen");
-    expect(fund?.toString()).toBe("einem Kabelverstehen");
+    expect(textVon(fund!)).toBe("einem Kabelverstehen");
     expect(gemalt()).toEqual(["bf-treffer: einem Kabelverstehen"]);
     expect(new Pdfmarkierungen().beschrifte(3, ebene(), [], "gibt es nicht")).toBeNull();
     m.leere();

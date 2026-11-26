@@ -8,14 +8,15 @@
 // Rechtecken, die mit der Seite gezeichnet wird.
 import type { Markierung } from "../../typen";
 import { VORGABE_STIFT } from "../farben";
+import { festerBereich } from "../festbereich";
 import { hebeHervor, kannHervorheben, Rechteckschicht, type Hervorhebungsart } from "../hervorhebung";
-import { bereichAus, stiftart, textknoten, TREFFER } from "../text/markierung";
-import { findeZeichen } from "../textsuche";
+import { stiftart, textknoten, TREFFER } from "../text/markierung";
+import { Zeichenindex } from "../textsuche";
 
 interface Seitenstand {
   ebene: HTMLElement;
-  markiert: Map<number, { bereich: Range; art: Hervorhebungsart }>;
-  fund: Range | null;
+  markiert: Map<number, { bereich: StaticRange; art: Hervorhebungsart }>;
+  fund: StaticRange | null;
   schicht?: Rechteckschicht;
 }
 
@@ -27,11 +28,11 @@ export class Pdfmarkierungen {
   constructor(private dok: Document = document) {}
 
   /** Eine Seite ist samt Textebene gezeichnet: ihre Markierungen und, nur hier, die Fundstelle suchen. Liefert die Fundstelle. */
-  beschrifte(nr: number, ebene: HTMLElement, markierungen: readonly Markierung[], fundstelle = ""): Range | null {
-    const knoten = textknoten(ebene);
+  beschrifte(nr: number, ebene: HTMLElement, markierungen: readonly Markierung[], fundstelle = ""): StaticRange | null {
+    const index = new Zeichenindex(textknoten(ebene));
     const finde = (wortlaut: string) => {
-      const ort = findeZeichen(knoten, wortlaut, null);
-      return ort && bereichAus(ort.von, ort.bis);
+      const ort = index.finde(wortlaut, null);
+      return ort && festerBereich(ort.von, ort.bis);
     };
     const markiert: Seitenstand["markiert"] = new Map();
     for (const m of markierungen) {
@@ -49,7 +50,7 @@ export class Pdfmarkierungen {
   }
 
   /** Bereich einer Markierung auf einer gezeichneten Seite (Marken am Rand) */
-  bereich(id: number): Range | null {
+  bereich(id: number): StaticRange | null {
     for (const s of this.#seiten.values()) {
       const m = s.markiert.get(id);
       if (m && s.ebene.isConnected) return m.bereich;
@@ -75,8 +76,8 @@ export class Pdfmarkierungen {
   }
 
   #maleAlle(): void {
-    const je = new Map<string, { art: Hervorhebungsart; bereiche: Range[] }>();
-    const dazu = (art: Hervorhebungsart, bereich: Range) => {
+    const je = new Map<string, { art: Hervorhebungsart; bereiche: StaticRange[] }>();
+    const dazu = (art: Hervorhebungsart, bereich: StaticRange) => {
       const g = je.get(art.name) ?? { art, bereiche: [] };
       g.bereiche.push(bereich);
       je.set(art.name, g);
@@ -94,7 +95,7 @@ export class Pdfmarkierungen {
     const traeger = s.ebene.parentElement;
     if (!traeger) return;
     s.schicht = new Rechteckschicht(traeger);
-    const je = new Map<string, { art: Hervorhebungsart; bereiche: Range[] }>();
+    const je = new Map<string, { art: Hervorhebungsart; bereiche: StaticRange[] }>();
     for (const { bereich, art } of s.markiert.values()) je.set(art.name, { art, bereiche: [...(je.get(art.name)?.bereiche ?? []), bereich] });
     if (s.fund) je.set(TREFFER.name, { art: TREFFER, bereiche: [s.fund] });
     for (const { art, bereiche } of je.values()) s.schicht.setze(art, bereiche);

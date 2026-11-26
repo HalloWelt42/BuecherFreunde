@@ -1,23 +1,17 @@
 // Markierungen und Treffer im Text eines Blatts (MD, TXT, PDF als Text): über ihren Wortlaut gefunden, in der Nähe der
-// gemerkten Stelle. Gemalt wird mit Hervorhebungen, der Text selbst bleibt unberührt.
+// gemerkten Stelle. Gemalt wird mit Hervorhebungen, der Text selbst bleibt unberührt. Die Bereiche sind fest
+// (lib/leser/festbereich.ts): sie bleiben, bis neu gezeichnet wird, ohne jede Änderung am Dokument mitzumachen.
 import type { Markierung } from "../../typen";
 import { durchsichtig, VORGABE_STIFT } from "../farben";
+import { festerBereich } from "../festbereich";
 import { hebeHervor, type Hervorhebungsart, type Rechteckschicht } from "../hervorhebung";
-import { findeZeichen } from "../textsuche";
+import { Zeichenindex } from "../textsuche";
 
 export function textknoten(flaeche: Node): Text[] {
   const geher = document.createTreeWalker(flaeche, NodeFilter.SHOW_TEXT, { acceptNode: (k) => (k.parentElement?.closest(".hervorhebungen, button, [hidden]") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
   const aus: Text[] = [];
   while (geher.nextNode()) aus.push(geher.currentNode as Text);
   return aus;
-}
-
-/** Bereich zwischen zwei Zeichenstellen */
-export function bereichAus(von: { knoten: Text; versatz: number }, bis: { knoten: Text; versatz: number }): Range {
-  const r = document.createRange();
-  r.setStart(von.knoten, von.versatz);
-  r.setEnd(bis.knoten, bis.versatz);
-  return r;
 }
 
 export const TREFFER: Hervorhebungsart = { name: "bf-treffer", farbe: "rgba(255, 152, 0, 0.45)", rang: 2 };
@@ -32,18 +26,18 @@ export function prozentVon(cfi: string | undefined): number | null {
 }
 
 /** Malt die Markierungen; liefert ihre Bereiche je Kennung, zum Hinspringen. wurzel: wo eine Markierung zu suchen ist (etwa ihre Seite) */
-export function zeichneMarkierungen(flaeche: HTMLElement, markierungen: Markierung[], ersatz?: Rechteckschicht, wurzel: (m: Markierung) => HTMLElement | null = () => flaeche): Map<number, Range> {
-  const knotenVon = new Map<HTMLElement, Text[]>();
-  const aus = new Map<number, Range>();
-  const je = new Map<string, { art: Hervorhebungsart; bereiche: Range[] }>();
+export function zeichneMarkierungen(flaeche: HTMLElement, markierungen: Markierung[], ersatz?: Rechteckschicht, wurzel: (m: Markierung) => HTMLElement | null = () => flaeche): Map<number, StaticRange> {
+  const indexVon = new Map<HTMLElement, Zeichenindex>();
+  const aus = new Map<number, StaticRange>();
+  const je = new Map<string, { art: Hervorhebungsart; bereiche: StaticRange[] }>();
   for (const m of markierungen) {
     const w = wurzel(m);
     if (!w) continue;
-    if (!knotenVon.has(w)) knotenVon.set(w, textknoten(w));
+    if (!indexVon.has(w)) indexVon.set(w, new Zeichenindex(textknoten(w)));
     const p = prozentVon(m.cfi_range);
-    const ort = findeZeichen(knotenVon.get(w)!, m.text_snippet ?? "", p === null ? null : p / 100);
+    const ort = indexVon.get(w)!.finde(m.text_snippet ?? "", p === null ? null : p / 100);
     if (!ort) continue;
-    const r = bereichAus(ort.von, ort.bis);
+    const r = festerBereich(ort.von, ort.bis);
     aus.set(m.id, r);
     const art = stiftart(m.color || VORGABE_STIFT);
     const gruppe = je.get(art.name) ?? { art, bereiche: [] };
@@ -58,21 +52,21 @@ export function zeichneMarkierungen(flaeche: HTMLElement, markierungen: Markieru
 }
 
 /** Ein Wortlaut, auch über mehrere Textknoten */
-export function zeichneWortlaut(flaeche: HTMLElement, wortlaut: string, ersatz?: Rechteckschicht): Range | null {
-  const ort = findeZeichen(textknoten(flaeche), wortlaut.replace(/^"|"$/g, ""), null);
-  const r = ort && bereichAus(ort.von, ort.bis);
+export function zeichneWortlaut(flaeche: HTMLElement, wortlaut: string, ersatz?: Rechteckschicht): StaticRange | null {
+  const ort = new Zeichenindex(textknoten(flaeche)).finde(wortlaut.replace(/^"|"$/g, ""), null);
+  const r = ort && festerBereich(ort.von, ort.bis);
   hebeHervor(flaeche.ownerDocument, TREFFER, r ? [r] : [], ersatz);
   return r;
 }
 
 /** Alle Stellen eines Suchworts (höchstens so viele), in Lesefolge */
-export function zeichneTreffer(flaeche: HTMLElement, wort: string, hoechstens = 500, ersatz?: Rechteckschicht): Range[] {
+export function zeichneTreffer(flaeche: HTMLElement, wort: string, hoechstens = 500, ersatz?: Rechteckschicht): StaticRange[] {
   const gesucht = wort.trim().replace(/^"|"$/g, "").toLowerCase();
-  const aus: Range[] = [];
+  const aus: StaticRange[] = [];
   if (gesucht.length >= 2) {
     for (const k of textknoten(flaeche)) {
       const klein = k.data.toLowerCase();
-      for (let i = klein.indexOf(gesucht); i >= 0 && aus.length < hoechstens; i = klein.indexOf(gesucht, i + gesucht.length)) aus.push(bereichAus({ knoten: k, versatz: i }, { knoten: k, versatz: i + gesucht.length }));
+      for (let i = klein.indexOf(gesucht); i >= 0 && aus.length < hoechstens; i = klein.indexOf(gesucht, i + gesucht.length)) aus.push(festerBereich({ knoten: k, versatz: i }, { knoten: k, versatz: i + gesucht.length }));
     }
   }
   hebeHervor(flaeche.ownerDocument, TREFFER, aus, ersatz);

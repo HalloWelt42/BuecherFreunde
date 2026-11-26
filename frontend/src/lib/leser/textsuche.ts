@@ -9,6 +9,7 @@ const KURZ = [60, 30, 15];
 const HOECHSTENS = 160;
 
 const ohneLeer = (t: string) => t.replace(/\s+/g, "");
+const LEER = /\s/;
 
 /**
  * Die Stücke, die zum gesuchten Wortlaut gehören, als Bereich der Nummern [von, bis). Findet sich nicht alles, zählt ein
@@ -50,26 +51,62 @@ export interface Zeichenstelle {
   versatz: number;
 }
 
-/** Wortlaut als Anfang und Ende in Textknoten, zeichengenau; naechstes: die Fundstelle, die diesem Anteil am nächsten liegt */
+/**
+ * Der Text vieler Textknoten ohne Leerraum und klein geschrieben, einmal gebaut; jede Suche darin kostet danach nur das
+ * Suchen. Für tausend Markierungen auf einem Blatt wird er einmal gebaut statt tausendmal (BF-47).
+ */
+export class Zeichenindex {
+  readonly #knoten: Text[];
+  readonly #text: string;
+  /** Je Zeichen des Textes: welcher Knoten und welche Stelle darin */
+  readonly #nr: Uint32Array;
+  readonly #versatz: Uint32Array;
+
+  constructor(knoten: Text[]) {
+    this.#knoten = knoten;
+    const laenge = knoten.reduce((n, k) => n + k.data.length, 0);
+    const nr = new Uint32Array(laenge);
+    const versatz = new Uint32Array(laenge);
+    const zeichen: string[] = [];
+    knoten.forEach((k, i) => {
+      const d = k.data;
+      for (let j = 0; j < d.length; j++) {
+        if (LEER.test(d[j])) continue;
+        nr[zeichen.length] = i;
+        versatz[zeichen.length] = j;
+        zeichen.push(d[j].toLowerCase()[0]);
+      }
+    });
+    this.#text = zeichen.join("");
+    this.#nr = nr.subarray(0, zeichen.length);
+    this.#versatz = versatz.subarray(0, zeichen.length);
+  }
+
+  /** Wortlaut als Anfang und Ende, zeichengenau; anteil: die Fundstelle, die diesem Anteil am nächsten liegt (sonst die erste) */
+  finde(wortlaut: string, anteil: number | null): { von: Zeichenstelle; bis: Zeichenstelle } | null {
+    const gesucht = ohneLeer(wortlaut).toLowerCase();
+    if (gesucht.length < 2) return null;
+    const beste = this.#naechste(gesucht, anteil === null ? 0 : anteil * this.#text.length);
+    if (beste < 0) return null;
+    const letzte = this.#stelle(beste + gesucht.length - 1);
+    return { von: this.#stelle(beste), bis: { knoten: letzte.knoten, versatz: letzte.versatz + 1 } };
+  }
+
+  /** Die Fundstelle, die ziel am nächsten liegt; bei gleichem Abstand die frühere */
+  #naechste(gesucht: string, ziel: number): number {
+    const davor = this.#text.lastIndexOf(gesucht, Math.floor(ziel));
+    const danach = this.#text.indexOf(gesucht, davor + 1);
+    if (davor < 0 || danach < 0) return Math.max(davor, danach);
+    return Math.abs(davor - ziel) <= Math.abs(danach - ziel) ? davor : danach;
+  }
+
+  #stelle(i: number): Zeichenstelle {
+    return { knoten: this.#knoten[this.#nr[i]], versatz: this.#versatz[i] };
+  }
+}
+
+
+/** Ein einzelner Wortlaut; wer viele sucht, baut den Zeichenindex einmal */
 export function findeZeichen(knoten: Text[], wortlaut: string, anteil: number | null): { von: Zeichenstelle; bis: Zeichenstelle } | null {
-  const gesucht = ohneLeer(wortlaut).toLowerCase();
-  if (gesucht.length < 2) return null;
-  const stellen: Zeichenstelle[] = [];
-  let alles = "";
-  for (const k of knoten) {
-    for (let i = 0; i < k.data.length; i++) {
-      if (/\s/.test(k.data[i])) continue;
-      stellen.push({ knoten: k, versatz: i });
-      alles += k.data[i].toLowerCase()[0];
-    }
-  }
-  const ziel = anteil === null ? 0 : anteil * alles.length;
-  let beste = -1;
-  for (let i = alles.indexOf(gesucht); i >= 0; i = alles.indexOf(gesucht, i + 1)) {
-    if (beste < 0 || Math.abs(i - ziel) < Math.abs(beste - ziel)) beste = i;
-    else break;
-  }
-  if (beste < 0) return null;
-  const letzte = stellen[beste + gesucht.length - 1];
-  return { von: stellen[beste], bis: { knoten: letzte.knoten, versatz: letzte.versatz + 1 } };
+  return new Zeichenindex(knoten).finde(wortlaut, anteil);
 }

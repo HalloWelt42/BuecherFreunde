@@ -1,6 +1,7 @@
 // Beim Vorlesen läuft eine gescrollte Ansicht ruhig mit: die gelesene Zeile bleibt zwischen dem oberen Fünftel und der Mitte.
 // Nachgeführt wird um das, was sie weitergerückt ist, also Zeile um Zeile; nur von weit her geht es ohne Übergang. Wer selbst
 // scrollt, hat ein paar Sekunden Vorrang.
+import { festerBereich, rechteckeVon } from "./festbereich";
 
 export interface Rollbahn {
   stand: number;
@@ -96,20 +97,17 @@ export function sichtVon(e: HTMLElement): { oben: number; unten: number; links: 
 }
 
 /** Liegt der Bereich wenigstens zum Teil in der Sicht? */
-export function imBlick(bereich: Range, sicht: { oben: number; unten: number; links: number; rechts: number }, versatz = { x: 0, y: 0 }): boolean {
-  for (const r of bereich.getClientRects()) {
+export function imBlick(bereich: AbstractRange, sicht: { oben: number; unten: number; links: number; rechts: number }, versatz = { x: 0, y: 0 }): boolean {
+  for (const r of rechteckeVon(bereich)) {
     const [o, u, l, re] = [r.top + versatz.y, r.bottom + versatz.y, r.left + versatz.x, r.right + versatz.x];
     if (r.width && u > sicht.oben && o < sicht.unten && re > sicht.links && l < sicht.rechts) return true;
   }
   return false;
 }
 
-/** Lage eines Zeichens (Zeilenhöhe) im Fenster */
+/** Lage eines Zeichens (Zeilenhöhe) im Fenster; gemessen ohne neuen mitlaufenden Bereich, auch tausendmal je Bild */
 export function zeichenRechteck(knoten: Text, versatz: number): DOMRect | null {
-  const r = knoten.ownerDocument.createRange();
   const v = Math.max(0, Math.min(versatz, knoten.length - 1));
-  r.setStart(knoten, v);
-  r.setEnd(knoten, Math.min(knoten.length, v + 1));
-  for (const q of r.getClientRects()) if (q.height) return q;
+  for (const q of rechteckeVon(festerBereich({ knoten, versatz: v }, { knoten, versatz: Math.min(knoten.length, v + 1) }))) if (q.height) return q;
   return null;
 }

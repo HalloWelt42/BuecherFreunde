@@ -1,5 +1,7 @@
 // Stellen im Text, unabhängig davon, wie er gerade umbrochen ist: ein Zeichen in einem Textknoten oder eine Abbildung.
 // Anteile zählen Zeichen, nicht Bildpunkte; so bleibt eine Stelle beim Drehen und bei anderer Schrift dieselbe.
+import { festerBereich, rechteckeVon } from "../festbereich";
+
 export interface Anker {
   knoten: Node;
   versatz: number;
@@ -166,10 +168,8 @@ export function messeImFenster(a: Anker): DOMRect | null {
   }
   const text = a.knoten as Text;
   if (!text.length || !text.isConnected) return null;
-  const bereich = document.createRange();
+  // Ohne neuen mitlaufenden Bereich: gemessen wird bei jeder Bewegung (lib/leser/festbereich.ts)
   const v = Math.max(0, Math.min(a.versatz, text.length - 1));
-  bereich.setStart(text, v);
-  bereich.setEnd(text, v + 1);
-  for (const r of bereich.getClientRects()) if (r.width > 0 && r.height > 0) return r;
+  for (const r of rechteckeVon(festerBereich({ knoten: text, versatz: v }, { knoten: text, versatz: v + 1 }))) if (r.width > 0 && r.height > 0) return r;
   return null;
 }

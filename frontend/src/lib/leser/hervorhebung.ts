@@ -1,5 +1,7 @@
 // Hervorheben, ohne den Satz anzurühren: kein Element im Text, keine Breite, kein Abstand. Gemalt wird mit der
 // Hervorhebungs-Schnittstelle des Browsers (CSS Custom Highlight API); wo es sie nicht gibt, mit Rechtecken hinter dem Text.
+// Bereiche dürfen fest oder mitlaufend sein (lib/leser/festbereich.ts).
+import { rechteckeVon } from "./festbereich";
 
 export interface Hervorhebungsart {
   /** Eindeutig je Dokument, nur Buchstaben, Ziffern und Bindestrich */
@@ -34,7 +36,7 @@ export const kannHervorheben = (dok: Document = document): boolean => {
 };
 
 /** Hebt Bereiche einer Art hervor; leer nimmt sie weg. Liefert die gesetzte Hervorhebung (nur mit der Schnittstelle). */
-export function hebeHervor(dok: Document, art: Hervorhebungsart, bereiche: Range[], ersatz?: Rechteckschicht): Highlight | null {
+export function hebeHervor(dok: Document, art: Hervorhebungsart, bereiche: AbstractRange[], ersatz?: Rechteckschicht): Highlight | null {
   if (!kannHervorheben(dok)) {
     ersatz?.setze(art, bereiche);
     return null;
@@ -54,7 +56,7 @@ export function hebeHervor(dok: Document, art: Hervorhebungsart, bereiche: Range
 /** Ersatz: Rechtecke in einer eigenen Schicht hinter dem Text; nach jeder Bewegung des Satzes neu zu zeichnen */
 export class Rechteckschicht {
   #schicht: HTMLElement;
-  #arten = new Map<string, { art: Hervorhebungsart; bereiche: Range[] }>();
+  #arten = new Map<string, { art: Hervorhebungsart; bereiche: AbstractRange[] }>();
 
   constructor(private traeger: HTMLElement) {
     this.#schicht = traeger.ownerDocument.createElement("div");
@@ -63,7 +65,7 @@ export class Rechteckschicht {
     traeger.prepend(this.#schicht);
   }
 
-  setze(art: Hervorhebungsart, bereiche: Range[]): void {
+  setze(art: Hervorhebungsart, bereiche: AbstractRange[]): void {
     if (bereiche.length) this.#arten.set(art.name, { art, bereiche });
     else this.#arten.delete(art.name);
     this.zeichne();
@@ -74,7 +76,7 @@ export class Rechteckschicht {
     const stuecke: HTMLElement[] = [];
     for (const { art, bereiche } of [...this.#arten.values()].sort((a, b) => a.art.rang - b.art.rang)) {
       for (const b of bereiche) {
-        for (const r of b.getClientRects()) {
+        for (const r of rechteckeVon(b)) {
           if (!r.width || r.right < t.left || r.left > t.right) continue;
           const s = this.traeger.ownerDocument.createElement("i");
           Object.assign(s.style, { left: `${r.left - t.left}px`, top: `${r.top - t.top}px`, width: `${r.width}px`, height: `${r.height}px`, background: art.farbe });
