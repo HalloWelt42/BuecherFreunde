@@ -12,6 +12,7 @@ from backend.app.ablage.wolke import wolke
 from backend.app.annahme import eingangsordner
 from backend.app.annahme.dienst import annahme
 from backend.app.api.ai import router as ai_router
+from backend.app.api.ausfuehren import router as ausfuehren_router
 from backend.app.api.annahme import router as annahme_router
 from backend.app.api.auth import router as auth_router
 from backend.app.api.authors import router as authors_router
@@ -36,7 +37,11 @@ from backend.app.api.wartung import router as wartung_router
 from backend.app.core.anmeldung import eigener_zugang, schliessen as anmeldung_schliessen
 from backend.app.core.config import settings
 from backend.app.core.database import db
+from backend.app.codestellen.dienst import codestellen
+from backend.app.codestellen.vorpruefung import vorpruefer
 from backend.app.services import bedeutung, gespraech, nachschlagen, pflege, vorlesen
+from backend.app.services.ausfuehren import sandbox
+from backend.app.services.ki import ki
 
 logger = logging.getLogger("buecherfreunde")
 
@@ -93,6 +98,9 @@ async def lifespan(app: FastAPI):
     _ensure_directories()
     await db.connect()
     annahme.starten()
+    codestellen.erkannt.append(vorpruefer.nach_erkennung)
+    codestellen.starten()
+    vorpruefer.starten()
     im_hintergrund = [asyncio.create_task(pflege.laufen()), asyncio.create_task(eingangsordner.laufen()), asyncio.create_task(nachschlagen.vorwaermen())]
     # Verwaiste Tasks aufräumen (vom letzten Lauf übrig geblieben)
     await _cleanup_stale_tasks()
@@ -100,6 +108,10 @@ async def lifespan(app: FastAPI):
     for lauf in im_hintergrund:
         lauf.cancel()
     await annahme.stoppen()
+    await vorpruefer.stoppen()
+    await codestellen.stoppen()
+    await sandbox.schliessen()
+    await ki.schliessen()
     await bedeutung.schliessen()
     await vorlesen.schliessen()
     await nachschlagen.schliessen()
@@ -121,6 +133,7 @@ app = FastAPI(
 app.include_router(neubau_router)
 app.include_router(annahme_router)
 app.include_router(ai_router)
+app.include_router(ausfuehren_router)
 app.include_router(auth_router)
 app.include_router(authors_router)
 app.include_router(backup_router)

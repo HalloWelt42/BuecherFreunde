@@ -10,9 +10,10 @@ sicherung:
   - "die Datenbank als ZIP nach `{{wurzel}}/daten/bestand/backups`, nach der Sicherungsregel der Altfassung; der Dateipool der Kellerwolke wird nicht gesichert (Stand 25.11.2026)"
 schluessel_orte:
   - "pi5b: `{{wurzel}}/zugang/kellerwolke.schluessel`, Modus 0600 (App-Zugang der Kellerwolke) und `zugang/hausstelle.pem`"
+  - "pi5b: `{{wurzel}}/zugang/leitstelle.schluessel`, Modus 0600 (Schlüssel der Anwendung in der Leitstelle), wenn `LEITSTELLE_ADRESSE` gesetzt ist"
   - "pi5b: `{{wurzel}}/.env` (Orte, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
 einrichten: einrichten.sh
-stand: ec63052
+stand: be936a0
 ---
 
 # BücherFreunde (Neubau)
@@ -37,6 +38,10 @@ nach `Bücher` um. Doppel, fremde Formate und Unlesbares bleiben liegen und steh
 - Ohne sie läuft sie weiter, ihr fehlt nur die Fähigkeit: [[Fundus]] für die Suche nach Bedeutung, [[Vertonung]] zum Vorlesen
   (`VORLESEN_URL`), Nachschlag zum Nachschlagen im Leser (`NACHSCHLAG_URL`; ohne ihn schlägt der Leser im öffentlichen Lexikon
   im Netz nach, solange `WIKIPEDIA_ENABLED` an ist), Assistent für das Gespräch über eine Stelle (`ASSISTENT_URL`). Ohne [[Kellerwolke]] gelten eigene Konten und die Ablage auf dem Gerät; hier ist sie angeschlossen.
+- Codestellen in Lehrbüchern erkennt die App selbst (im Hintergrund, je Buch einmal, Begleiter `codestellen.json` neben
+  dem Volltext). Ausgeführt werden sie in der Sandbox der Codeschmiede (`CODESCHMIEDE_URL`; die Codeschmiede muss
+  `bücherfreunde` in "Sandbox für Apps" führen), eingeschätzt von der lokalen KI über die Leitstelle (`LEITSTELLE_ADRESSE`,
+  Schlüssel `zugang/leitstelle.schluessel`). Ohne Codeschmiede keine Taste, ohne Leitstelle prüft nur der Lauf vor.
 
 ## Neu einrichten
 
@@ -70,3 +75,6 @@ und Volltexten neu. Fehlen Volltext oder Umschlag, kommen sie aus dem Begleiter 
 
 - Ein Buch öffnet nicht: die Kellerwolke ist nicht erreichbar oder die Datei fehlt dort; `/api/verbindungen` sagt es.
 - Das Backend startet nicht und nennt einen Ort: die Platte ist nicht eingehängt.
+- Keine Taste an Codestellen: `/api/ausfuehren` nennt den Grund (Codeschmiede nicht erreichbar oder BücherFreunde nicht in
+  "Sandbox für Apps"); `/api/ausfuehren/vorpruefung` sagt, ob und warum die Vorprüfung angehalten ist, `.../fortsetzen`
+  nimmt sie wieder auf.

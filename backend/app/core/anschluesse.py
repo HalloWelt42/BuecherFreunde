@@ -19,9 +19,11 @@ class Anschluesse(BaseModel):
     nachschlag_art: str               # "nachschlag" (Hausdienst), "netz" (öffentliches Lexikon) oder leer
     ki: bool                          # Sprachmodell für Einordnung und Vorschläge
     vorlesen: bool                    # Sprechdienst; die Stimmen des Geräts gehen immer
+    ausfuehren: bool                  # Sandbox der Codeschmiede für Codestellen (Taste und Fenster); die Erkennung läuft immer
 
 
 def anschluesse() -> Anschluesse:
     lexikon = nachschlagen.lexikon()
     return Anschluesse(ablage="kellerwolke" if wolke.bereit else "geraet", anmeldung="kellerwolke" if settings.kellerwolke_url else "eigen",
-                       bedeutung=bool(settings.fundus_url), assistent=settings.assistent_url, nachschlag=lexikon.adresse if lexikon else "", nachschlag_art=lexikon.art if lexikon else "", ki=settings.lm_studio_enabled, vorlesen=bool(settings.vorlesen_url))
+                       bedeutung=bool(settings.fundus_url), assistent=settings.assistent_url, nachschlag=lexikon.adresse if lexikon else "", nachschlag_art=lexikon.art if lexikon else "", ki=settings.lm_studio_enabled, vorlesen=bool(settings.vorlesen_url),
+                       ausfuehren=bool(settings.codeschmiede_url.strip()))

@@ -16,6 +16,7 @@ from backend.app.ablage.namen import sauber
 from backend.app.ablage.wolke import WolkeFehler, wolke
 from backend.app.annahme import angaben, auswertung
 from backend.app.annahme.eintragen import ablegen, eintragen
+from backend.app.codestellen.dienst import codestellen
 from backend.app.core.anschluesse import anschluesse
 from backend.app.core.config import settings
 from backend.app.core.database import db
@@ -298,6 +299,7 @@ class Annahme:
             ziel = get_storage_path(summe) / name
             ziel.parent.mkdir(parents=True, exist_ok=True)
             await asyncio.to_thread(shutil.move, pfad, ziel)      # auch über Datenträger hinweg
+        codestellen.vormerken(buch)                               # Codestellen im Hintergrund, sobald das Original liegt
         stand, schritt, text = self._am_ziel(e.fulltext)
         await self._setze(nr, buch_id=buch, schritt=schritt, anteil=1, stand=stand, text=text)
 

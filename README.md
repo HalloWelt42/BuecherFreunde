@@ -119,6 +119,8 @@ Alles hier ist freiwillig. Fehlt ein Anschluss, fehlt nur seine Fähigkeit, und 
 | Assistent | `ASSISTENT_URL` | kein Gespräch über Stellen |
 | Nachschlag (Lexika, Handbücher) | `NACHSCHLAG_URL` | Nachschlagen im öffentlichen Lexikon im Netz (`WIKIPEDIA_ENABLED`), abgeschaltet keins |
 | Sprechdienst | `VORLESEN_URL` | vorgelesen wird mit den Stimmen des Geräts |
+| Codeschmiede (Sandbox) | `CODESCHMIEDE_URL`, dazu `CODESTELLEN_JE_RUNDE`, `VORPRUEFUNG_ABSTAND_S` | Codestellen werden erkannt, aber nicht ausgeführt (docs/neubau/AUSFUEHREN.md) |
+| Leitstelle (KI) | `LEITSTELLE_ADRESSE`, `LEITSTELLE_SCHLUESSEL_DATEI`, `KI_MODELL` | Vorprüfung der Codestellen nur per Lauf (docs/LEITSTELLE.md) |
 | KI | `LM_STUDIO_ENABLED`, `LM_STUDIO_URL`, `LM_STUDIO_MODEL`, auf Wunsch `KI_SCHLUESSEL_DATEI` | Einordnen von Hand |
 | Verzeichnisse, Lexikon, Normdatei | `DNB_ENABLED`, `K10PLUS_ENABLED`, `OPENLIBRARY_ENABLED`, `CROSSREF_ENABLED`, `WIKIPEDIA_ENABLED`, `GND_ENABLED`, `GOOGLE_BOOKS_API_KEY` | Angaben aus den Dateien |
 

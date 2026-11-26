@@ -10,11 +10,13 @@ from backend.app.ablage.wolke import _pruefung, app_kopf
 
 
 class DienstFehler(Exception):
-    """Der Dienst ist nicht angeschlossen, nicht erreichbar oder lehnt ab; `meldung` für Menschen."""
+    """Der Dienst ist nicht angeschlossen, nicht erreichbar oder lehnt ab; `meldung` für Menschen, `status` für die eigene
+    Antwort, `antwort` der Status, den der Dienst selbst nannte (None: keine Antwort), damit etwa 403 und 429 einen eigenen
+    Grund bekommen."""
 
-    def __init__(self, meldung: str, status: int = 503) -> None:
+    def __init__(self, meldung: str, status: int = 503, antwort: int | None = None) -> None:
         super().__init__(meldung)
-        self.meldung, self.status = meldung, status
+        self.meldung, self.status, self.antwort = meldung, status, antwort
 
 
 class Hausdienst:
@@ -50,7 +52,7 @@ class Hausdienst:
         except httpx.HTTPError as f:
             raise DienstFehler(f"{self.name} antwortet nicht") from f
         if r.status_code >= 400:
-            raise DienstFehler(self._grund(r), 404 if r.status_code == 404 else 502)
+            raise DienstFehler(self._grund(r), 404 if r.status_code == 404 else 502, r.status_code)
         return r
 
     def _grund(self, r: httpx.Response) -> str:

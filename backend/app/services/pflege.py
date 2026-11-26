@@ -1,5 +1,6 @@
-"""Pflege im Hintergrund: Wissensstand neuer Bücher, Sicherung nach der Regel (auch in die Kellerwolke), Begleiter, deren
-Angaben sich geändert haben (Notizen, Markierungen, Lesestand, Titel), und abgelaufene Antworten der Quellen."""
+"""Pflege im Hintergrund: Wissensstand neuer Bücher, Codestellen der Bücher, die noch keine haben (je Runde nur wenige),
+Sicherung nach der Regel (auch in die Kellerwolke), Begleiter, deren Angaben sich geändert haben (Notizen, Markierungen,
+Lesestand, Titel), und abgelaufene Antworten der Quellen."""
 
 from __future__ import annotations
 
@@ -10,6 +11,8 @@ from datetime import datetime
 from backend.app.ablage.wolke import WolkeFehler, wolke
 from backend.app.annahme.dienst import annahme
 from backend.app.annahme.eintragen import auszug
+from backend.app.codestellen.dienst import codestellen
+from backend.app.codestellen.vorpruefung import vorpruefer
 from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.quellen.abruf import abruf
@@ -52,6 +55,8 @@ async def laufen() -> None:
     while True:
         try:
             await annahme.wissen_pruefen()
+            await codestellen.nachlauf(settings.codestellen_je_runde)
+            vorpruefer.anstossen()
             jetzt = datetime.now()
             if jetzt.hour in NACHTS and letzte_nacht != jetzt.date():
                 letzte_nacht = jetzt.date()

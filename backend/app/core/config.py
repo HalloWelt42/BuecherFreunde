@@ -45,6 +45,14 @@ class Settings(BaseSettings):
     assistent_url: str = ""
     nachschlag_url: str = ""           # Nachschlagen in Lexika und Handbüchern; leer: die Fähigkeit fehlt
     vorlesen_url: str = ""             # Sprechdienst (Vertonung); leer: vorgelesen wird mit den Stimmen des Geräts
+    # Codestellen ausführen (BF-29): Sandbox der Codeschmiede; leer: die Fähigkeit fehlt, die Erkennung läuft trotzdem
+    codeschmiede_url: str = ""
+    codestellen_je_runde: int = Field(default=3, ge=0)        # so viele Bücher erkennt die Pflege je Runde nach (alle 10 Minuten)
+    vorpruefung_abstand_s: float = Field(default=5.0, ge=0)   # Pause zwischen zwei Vorprüfungen, damit die Sandbox frei bleibt
+    # Leitstelle: der eine Weg zur KI (Vorprüfung, Einordnen); leer: ohne KI
+    leitstelle_adresse: str = ""
+    leitstelle_schluessel_datei: str = ""                     # Schlüssel der Anwendung (Datei, Modus 0600)
+    ki_modell: str = "qwen/qwen3-next-80b"                    # Modellwahl der App; die Leitstelle wählt nie eins
 
     # Quellen für Angaben zu Büchern und Autoren (backend/app/quellen), jede freiwillig und ohne Schlüssel.
     # Google Books antwortet seit 2026 nur noch mit eigenem Schlüssel

@@ -195,10 +195,10 @@ def get_original_file(file_hash: str, storage_dir: Path | None = None) -> Path |
     """Die Originaldatei: im Hash-Verzeichnis auf dem Gerät, sonst aus der Kellerwolke (ablage/originale.py). Kann laden,
     darum nie direkt in der Ereignisschleife rufen."""
     dir_path = get_storage_path(file_hash, storage_dir)
-    sidecar_names = {"metadata.json", "fulltext.txt", "cover.jpg", "seiten.json"}
+    sidecar_names = {"metadata.json", "fulltext.txt", "cover.jpg", "seiten.json", "codestellen.json"}
     if dir_path.exists():
         for f in dir_path.iterdir():
-            if f.name not in sidecar_names and f.is_file():
+            if f.name not in sidecar_names and not f.name.startswith(".") and f.is_file():
                 return f
     if storage_dir is not None:
         return None

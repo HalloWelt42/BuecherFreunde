@@ -13,6 +13,8 @@ from backend.app.core.auth import verify_token
 from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.services import bedeutung
+from backend.app.services.ausfuehren import NICHT_ZUGELASSEN, sandbox
+from backend.app.services.ki import ki
 from backend.app.services.storage import get_sidecar_path
 
 router = APIRouter(prefix="/api", tags=["Neubau"])
@@ -36,6 +38,22 @@ async def _kellerwolke() -> dict:
     return eintrag | {"stand": "gut", "text": f"{(s.get('frei') or 0) / 1e12:.1f} TB frei".replace(".", ",")}
 
 
+async def _codeschmiede() -> dict:
+    eintrag = {"kennung": "codeschmiede", "name": "Codeschmiede"}
+    s = await sandbox.stand()
+    if s.bereit:
+        return eintrag | {"stand": "gut", "text": "Sandbox für " + ", ".join(a.sprache for a in s.sprachen)}
+    return eintrag | {"stand": "schlecht" if s.grund == NICHT_ZUGELASSEN else "warn", "text": s.grund}
+
+
+async def _leitstelle() -> dict:
+    eintrag = {"kennung": "leitstelle", "name": "Leitstelle"}
+    s = await ki.stand()
+    if s.erreichbar and not s.grund:
+        return eintrag | {"stand": "gut", "text": f"KI mit {s.modell}"}
+    return eintrag | {"stand": "warn" if s.erreichbar else "schlecht", "text": s.grund}
+
+
 @router.get("/verbindungen")
 async def verbindungen(_=Depends(verify_token)):
     """Nur, was angeschlossen ist."""
@@ -46,6 +64,10 @@ async def verbindungen(_=Depends(verify_token)):
         aus.append(await bedeutung.stand())
         probe = await bedeutung.suchen("Buch", 1)
         aus.append({"kennung": "rechner", "name": "MacBook", "stand": "gut" if probe["verfuegbar"] else "warn", "text": "rechnet die Bedeutung" if probe["verfuegbar"] else probe["grund"] or "schläft"})
+    if a.ausfuehren:
+        aus.append(await _codeschmiede())
+    if settings.leitstelle_adresse.strip():
+        aus.append(await _leitstelle())
     return aus
 
 

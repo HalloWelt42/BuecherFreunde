@@ -315,6 +315,26 @@ CREATE TABLE IF NOT EXISTS autor_verweis (         -- Kennungen eines Autors in 
     PRIMARY KEY (author_id, art)
 );
 CREATE INDEX IF NOT EXISTS idx_autor_verweis_kennung ON autor_verweis(art, kennung);
+CREATE TABLE IF NOT EXISTS codestellen (            -- Erkennung je Buch (codestellen/dienst.py); die Stellen stehen im Begleiter
+    buch_id INTEGER PRIMARY KEY REFERENCES books(id) ON DELETE CASCADE,
+    fassung INTEGER NOT NULL,
+    anzahl INTEGER NOT NULL DEFAULT 0,
+    grund TEXT NOT NULL DEFAULT '',
+    erkannt_am TEXT NOT NULL,
+    vorgeprueft TEXT NOT NULL DEFAULT ''           -- Sprachen der Sandbox, für die die Vorprüfung durch ist (kommagetrennt)
+);
+CREATE TABLE IF NOT EXISTS code_vorpruefung (       -- je Code (codestellen/vorpruefung.py); gilt, solange der Code gleich bleibt
+    sprache TEXT NOT NULL,
+    pruefsumme TEXT NOT NULL,
+    stand TEXT NOT NULL,                           -- laeuft, auszug
+    quelle TEXT NOT NULL DEFAULT '',               -- lauf, ki
+    ausgabe TEXT NOT NULL DEFAULT '',
+    fehler TEXT NOT NULL DEFAULT '',
+    grund TEXT NOT NULL DEFAULT '',
+    fehlt TEXT NOT NULL DEFAULT '[]',
+    geprueft_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    PRIMARY KEY (sprache, pruefsumme)
+);
 CREATE INDEX IF NOT EXISTS idx_aufnahme_stand ON aufnahme(stand);
 CREATE INDEX IF NOT EXISTS idx_aufnahme_sha ON aufnahme(sha256);
 """
