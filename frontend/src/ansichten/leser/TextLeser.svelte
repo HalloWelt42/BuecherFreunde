@@ -41,7 +41,7 @@
   import TextDarstellung, { type Textdarstellung } from "./TextDarstellung.svelte";
   import Trefferleiste from "./Trefferleiste.svelte";
   import { Codestellenstand, listingAus } from "../../lib/leser/codestellen.svelte";
-  import { codebloecke, codezeilen } from "../../lib/leser/text/codeorte";
+  import { codebloecke, codezeilen, type Zeilenorte } from "../../lib/leser/text/codeorte";
   import { anschluesse } from "../../lib/stand/anschluesse.svelte";
   import { ausfuehren } from "../../lib/stand/ausfuehren.svelte";
 
@@ -66,14 +66,14 @@
 
   // Codestellen mit Taste, nur mit der Sandbox (BF-29): in Markdown die Codeblöcke, im Text die erste Zeile der Stelle
   const codestellen = untrack(() => anschluesse.jetzt.ausfuehren) ? new Codestellenstand(untrack(() => buch.id), false) : null;
-  const zeilenbereiche = new Map<string, Range | null>();
+  const zeilenorte = new Map<string, Zeilenorte>();
   $effect(() => {
     if (!codestellen || inhalt === null) return;
     codestellen.lade();
     const stellen = codestellen.alle;
     const zeilen = inhalt ? inhalt.split("\n").length : 1;
     sitzung.code = !stellen.length ? null : {
-      orte: () => (!satz ? [] : istMarkdown ? codebloecke(satz, stellen) : codezeilen(satz, stellen, zeilenbereiche)),
+      orte: () => (!satz ? [] : istMarkdown ? codebloecke(satz, stellen) : codezeilen(satz, stellen, zeilenorte)),
       oeffne: (s) => ausfuehren.oeffne(listingAus(s, buch, `/book/${buch.id}/read?percent=${Math.round((((s.teile[0]?.zeile ?? 1) - 1) / zeilen) * 1000) / 10}`)),
     };
   });

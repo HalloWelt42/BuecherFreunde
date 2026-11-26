@@ -3,7 +3,8 @@ import type { Codestelle } from "../src/lib/api/ausfuehren";
 import { bestandFuer, passendeFassung } from "../src/lib/ausfuehren/fassungen";
 import { inZeilen } from "../src/lib/ausfuehren/zeilen";
 import { listingAus } from "../src/lib/leser/codestellen.svelte";
-import { codebloecke, zeilenbereich } from "../src/lib/leser/text/codeorte";
+import { codebloecke, luftUeber, zeilenbereich, zeilenorte } from "../src/lib/leser/text/codeorte";
+import { textVon } from "../src/lib/leser/festbereich";
 
 function stelle(teil: Partial<Codestelle>): Codestelle {
   return {
@@ -49,6 +50,25 @@ describe("Codestellen im Text", () => {
     expect(zeilenbereich(bloecke, 2)?.toString()).toBe("zwei");
     expect(zeilenbereich(bloecke, 4)?.toString()).toBe("```python");
     expect(zeilenbereich(bloecke, 9)).toBeNull();
+  });
+});
+
+describe("Platz für die Taste über dem Block (BF-55)", () => {
+  const zeile = (top: number, left = 0, right = 300) => ({ top, bottom: top + 20, left, right, width: right - left });
+  it("misst bis zur untersten Zeile darüber, die den Block in der Waagerechten berührt", () => {
+    const block = { top: 100, left: 20, right: 320 };
+    expect(luftUeber(block, [zeile(10), zeile(60)])).toBe(20);
+    // daneben (andere Spalte) oder darunter zählt nicht
+    expect(luftUeber(block, [zeile(60, 400, 600), zeile(120)])).toBe(Number.POSITIVE_INFINITY);
+    expect(luftUeber(block, [zeile(80), zeile(85)])).toBe(0);
+    expect(luftUeber(block, [])).toBe(Number.POSITIVE_INFINITY);
+  });
+  it("findet im schlichten Text die nächsten Zeilen mit Text vor der Stelle, über leere Zeilen hinweg", () => {
+    document.body.innerHTML = `<p class="schlichttext">Absatz eins\nAbsatz zwei\n\nListing 1: Laufende Summe\n\n\`\`\`python\nprint(1)</p>`;
+    const bloecke = [...document.querySelectorAll(".schlichttext")];
+    const o = zeilenorte(bloecke, 6);
+    expect([textVon(o.erste!), ...o.davor.map(textVon)]).toEqual(["```python", "Listing 1: Laufende Summe", "Absatz zwei", "Absatz eins"]);
+    expect(zeilenorte(bloecke, 1).davor).toEqual([]);
   });
 });
 

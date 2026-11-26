@@ -12,6 +12,7 @@ import { vorlesen } from "../stand/vorlesen.svelte";
 import type { BuchEinzeln, Etikett, Markierung, Notiz } from "../typen";
 import type { Buchquelle } from "../vorlesen/typen";
 import type { Codestelle } from "../api/ausfuehren";
+import type { Codelage } from "./text/codeorte";
 import type { Randeintrag } from "./randmarken";
 import type { Kasten } from "./fokus";
 import type { Leseart } from "./fluss/fluss";
@@ -33,8 +34,8 @@ export interface Randort {
 
 /** Wo die Codestellen eines Texts stehen (Markdown, Text, EPUB; BF-29): der Leser des Formats weiß es */
 export interface Codeort {
-  /** Die Codeblöcke auf dem Schirm, je mit der Stelle, dem wievielten Teil und der Lage im Fenster */
-  orte(): { stelle: Codestelle; teil: number; lage: DOMRect }[];
+  /** Die Codeblöcke auf dem Schirm, je mit der Stelle, dem wievielten Teil, der Lage im Fenster und den Zeilen knapp darüber */
+  orte(): Codelage[];
   /** Ein Listing ins Fenster Ausführen */
   oeffne(stelle: Codestelle): void;
 }
