@@ -1,11 +1,13 @@
 <script lang="ts">
-  // Markiert und notiert: Stift, Markierungen, Buchnotizen, Etiketten
+  // Markiert und notiert: Stift, Markierungen, Buchnotizen, Etiketten. Lange Listen stehen nur nahe dem Blick im Dokument
+  // (lib/teile/Sichtliste.svelte), die Zahlen im Kopf zählen immer alle (BF-47).
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { bezugAus } from "../../lib/leser/bezug";
   import { anschluesse } from "../../lib/stand/anschluesse.svelte";
   import { gespraech } from "../../lib/stand/gespraech.svelte";
   import Haekchen from "../../lib/teile/Haekchen.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
+  import Sichtliste from "../../lib/teile/Sichtliste.svelte";
   import Etikettfeld from "./Etikettfeld.svelte";
   import Etikettkarte from "./Etikettkarte.svelte";
   import Farbreihe from "./Farbreihe.svelte";
@@ -30,7 +32,9 @@
 
 <section>
   <h3>Markierungen <span class="leise zahl">{sitzung.markierungen.length}{benannt ? `, ${benannt} benannt` : ""}</span></h3>
-  {#each sitzung.markierungen as m (m.id)}<Markierungskarte {sitzung} {m} />{:else}<p class="leise">Text auswählen, dann eine Farbe antippen.</p>{/each}
+  {#if sitzung.markierungen.length}
+    <Sichtliste eintraege={sitzung.markierungen} schluessel={(m) => m.id} schaetzung={95}>{#snippet karte(m)}<Markierungskarte {sitzung} {m} />{/snippet}</Sichtliste>
+  {:else}<p class="leise">Text auswählen, dann eine Farbe antippen.</p>{/if}
 </section>
 
 <section>
@@ -44,14 +48,14 @@
       <Knopf text="Leeren" symbol="eraser" nur klein frei gesperrt={!neu} onclick={() => (neu = "")} />
     </div>
   </form>
-  {#each sitzung.notizen as n (n.id)}<Notizkarte {sitzung} {n} />{/each}
+  <Sichtliste eintraege={sitzung.notizen} schluessel={(n) => n.id} schaetzung={110}>{#snippet karte(n)}<Notizkarte {sitzung} {n} />{/snippet}</Sichtliste>
 </section>
 
 {#if sitzung.mitEtiketten}
   <section>
     <h3>Etiketten <span class="leise zahl">{sitzung.etiketten.length}</span></h3>
     <Etikettfeld {sitzung} />
-    {#each sitzung.etiketten as e (e.id)}<Etikettkarte {sitzung} {e} />{/each}
+    <Sichtliste eintraege={sitzung.etiketten} schluessel={(e) => e.id} schaetzung={150}>{#snippet karte(e)}<Etikettkarte {sitzung} {e} />{/snippet}</Sichtliste>
   </section>
 {/if}
 
