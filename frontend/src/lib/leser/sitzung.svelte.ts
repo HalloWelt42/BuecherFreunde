@@ -3,6 +3,8 @@
 import { aktualisiereHighlight, erstelleHighlight, highlightsFuerBuch, loescheHighlight } from "../api/highlights";
 import { aktualisiereLabel, erstelleLabel, labelsFuerBuch, loescheLabel } from "../api/labels";
 import { aktualisiereNotiz, erstelleNotiz, loescheNotiz, notizenFuerBuch } from "../api/notes";
+import { randeintraege } from "./randmarken";
+import { ordne } from "./stellensprung";
 import { bestand } from "../stand/bestand.svelte";
 import { melde } from "../stand/meldungen.svelte";
 import { notizblock } from "../stand/notizblock.svelte";
@@ -30,6 +32,8 @@ export interface Randort {
   lage(e: Randeintrag): number | null;
   /** Rechte Kante des Blatts im Fenster */
   kante(): number | null;
+  /** Anteil der offenen Stelle, in derselben Rechnung wie `anteil` (für vorige und nächste Stelle, BF-63) */
+  stand(): number;
 }
 
 /** Wo die Codestellen eines Texts stehen (Markdown, Text, EPUB; BF-29): der Leser des Formats weiß es */
@@ -71,6 +75,11 @@ export class Lesesitzung {
   markierungen = $state<Markierung[]>([]);
   notizen = $state<Notiz[]>([]);
   etiketten = $state<Etikett[]>([]);
+  /** Alle Stellen mit Notiz, Markierung oder Etikett, deren Anteil der Leser kennt, nach dem Anteil (BF-63) */
+  stellen = $derived.by(() => {
+    const rand = this.rand;
+    return rand ? ordne(randeintraege(this.markierungen, this.notizen, this.etiketten), (e) => rand.anteil(e)) : [];
+  });
   feld = $state<Feldname>("");
   /** Ein neues Etikett soll entstehen (Kontextmenü "Etikett hier"): das Feld Notizen öffnet seine Eingabe */
   etikettWunsch = $state(false);
@@ -87,6 +96,10 @@ export class Lesesitzung {
   /** Woraus vorgelesen wird; der Leser des Formats setzt sie, sobald das Buch steht */
   quelle = $state.raw<Buchquelle | null>(null);
   rand = $state.raw<Randort | null>(null);
+  /** Schlüssel des Eintrags, dessen Karte am Rand aufgeklappt ist (Randmarken, nach einem Sprung von unten, BF-63) */
+  randOffen = $state("");
+  /** Zuletzt angesprungene Stelle: von ihr geht es weiter, solange man dort steht */
+  gesprungen = $state("");
   /** Codestellen mit Taste in Texten; null ohne Sandbox oder im PDF (dort hängen sie an der Seite) */
   code = $state.raw<Codeort | null>(null);
   hilfe = $state.raw<Hilfeort | null>(null);

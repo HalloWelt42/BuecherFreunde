@@ -130,14 +130,17 @@
   .farbreihe button { width: 2.25rem; height: 2.25rem; }
   .tastenraster > :is(.knopf, .chip) { min-height: 2.75rem; }
   .tastenraster > .kachel { min-height: 3.5rem; }
-  .leseleiste.treffer { bottom: 4.75rem; }
+  .leseleiste.treffer { bottom: 5.5rem; }                 /* über der Linie des Sprungbalkens */
   .leser.mit-treffer .seiten.schirmweise { padding-bottom: 8.5rem; }
   .leseleiste.unten .sprung { flex: 1 1 0; min-width: 0; }
+  /* Telefon (BF-63, Vorschlag A): der Sprungbalken als Linie oben an der Leiste über die ganze Breite, der Griff bleibt zu sehen */
+  .leseleiste.unten:has(.sprung.oben) { padding-top: .5rem; }
+  .leseleiste.unten .sprung.oben { position: absolute; left: .625rem; right: .625rem; top: -1.25rem; height: 2.5rem; flex: none; }
+  .leseleiste.unten .sprung.oben::-webkit-slider-thumb { opacity: 1; }
+  .leseleiste.unten .sprung.oben::-moz-range-thumb { opacity: 1; }
+  .leseleiste.unten:has(.sprung.oben) .stand { margin-inline: auto; }
   .seitenfeld { top: 4.5rem; max-height: calc(100% - 9.25rem); }
 }
-/* Schalter des Formats: wo das Wort keinen Platz hat, trägt das Zeichen allein; der Name bleibt für Vorleseprogramme */
-@container app (max-width: 374px) { .leseleiste:has(.nebenbei) .umschalter span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); } .leseleiste:has(.nebenbei) .knopf.umschalter { width: 2.75rem; padding: 0; } }
-@container app (max-width: 22rem) { .leseleiste .umschalter span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); } .leseleiste .knopf.umschalter { width: 2.75rem; padding: 0; } }
 /* Telefon quer: die Höhe gehört dem Buch */
 @media (max-height: 30rem) {
   .schale.ohne-leiste.ohne-vorschau:has(.leser) { grid-template: minmax(0, 1fr) / minmax(0, 1fr); gap: 0; padding: 0; }

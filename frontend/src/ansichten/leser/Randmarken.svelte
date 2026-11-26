@@ -5,6 +5,7 @@
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import type { Aufteilung } from "../../lib/leser/leseraum.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
+  import { springe as springeZu } from "../../lib/leser/stellensprung";
   import { kontext, type Eintrag } from "../../lib/stand/kontextmenue.svelte";
   import type { Etikett, Markierung, Notiz } from "../../lib/typen";
 
@@ -21,7 +22,6 @@
   let lage = $state<{ links: number; grenze: number; hier: Gelegt<Randeintrag>[]; fern: Gelegt<Randeintrag>[] }>({ links: 0, grenze: 0, hier: [], fern: [] });
   /** Rechts neben der Marke ist kein Platz für die Karte (Kante der Bühne oder das Feld daneben): sie klappt nach links */
   let nachLinks = $derived(lage.links + 240 > lage.grenze);
-  let offen = $state("");
   let bild = 0;
 
   // Der freie Bereich zwischen den Leisten, im Rahmen gemessen
@@ -73,21 +73,23 @@
     };
   });
 
+  // Offen ist die Karte, die die Sitzung nennt: so klappt auch ein Sprung von der Leiste unten sie auf (BF-63)
+  const istOffen = (g: Gelegt<Randeintrag>) => g.eintraege.some((x) => x.schluessel === sitzung.randOffen);
+
   function springe(e: Randeintrag) {
-    offen = "";
-    const g = sitzung.griffe;
-    if (e.art === "Markierung") g?.zurMarkierung(e.quelle as Markierung);
-    else g?.zurStelle(e.seite ? `S.${e.seite}` : e.ort, e.cfi, e.prozent ?? 0);
+    sitzung.randOffen = "";
+    springeZu(sitzung, e);
+    sitzung.gesprungen = e.schluessel;
   }
 
   function zumFeld() {
-    offen = "";
+    sitzung.randOffen = "";
     sitzung.feld = "stellen";
   }
 
   /** Löschen fragt immer erst nach (Lesesitzung); entfernt wird genau der gezeigte Eintrag (BF-61) */
   function loesche(e: Randeintrag) {
-    offen = "";
+    sitzung.randOffen = "";
     if (e.art === "Markierung") void sitzung.loescheMarkierung(e.quelle as Markierung);
     else if (e.art === "Notiz") void sitzung.loescheNotiz(e.quelle as Notiz);
     else void sitzung.loescheEtikett(e.quelle as Etikett);
@@ -105,9 +107,11 @@
   function tippe(g: Gelegt<Randeintrag>, nah: boolean) {
     const e = g.eintraege[0];
     if (!nah) return springe(e);
-    if (offen !== e.schluessel) offen = e.schluessel;
-    else {
-      offen = "";
+    if (!istOffen(g)) {
+      sitzung.randOffen = e.schluessel;
+      sitzung.gesprungen = e.schluessel;
+    } else {
+      sitzung.randOffen = "";
       sitzung.feld = "stellen";
     }
   }
@@ -127,7 +131,7 @@
       const fern = !nah && treffer(lage.fern, mass.fern[1]);
       if (nah) tippe(nah, true);
       else if (fern) tippe(fern, false);
-      else if (offen) offen = "";
+      else if (sitzung.randOffen) sitzung.randOffen = "";
       else return false;
       return true;
     };
@@ -144,13 +148,13 @@
   {/each}
   {#each lage.hier as g, n (g.eintraege[0].schluessel)}
     {@const e = g.eintraege[0]}
-    <button type="button" class="randmarke hier" class:auf={offen === e.schluessel} style:top="{g.y}px" style:--f={e.farbe} style:--auf={schriftAuf(e.farbe)} aria-label={titel(g)} aria-expanded={offen === e.schluessel} tabindex={telefon ? -1 : 0} onclick={() => tippe(g, true)} use:kontext={menue(g)}>
+    <button type="button" class="randmarke hier" class:auf={istOffen(g)} style:top="{g.y}px" style:--f={e.farbe} style:--auf={schriftAuf(e.farbe)} aria-label={titel(g)} aria-expanded={istOffen(g)} tabindex={telefon ? -1 : 0} onclick={() => tippe(g, true)} use:kontext={menue(g)}>
       {#if !telefon}<span class="nummer">{g.eintraege.length > 1 ? `${n + 1}+` : n + 1}</span>{/if}
     </button>
-    <div class="randkarte" class:nach-links={nachLinks} class:auf={offen === e.schluessel} style:top="{g.y}px" style:--f={e.farbe} style:--auf={schriftAuf(e.farbe)} role="note">
+    <div class="randkarte" class:nach-links={nachLinks} class:auf={istOffen(g)} style:top="{g.y}px" style:--f={e.farbe} style:--auf={schriftAuf(e.farbe)} role="note">
       <span class="text">{e.text}</span>
       <small>{e.art}, {e.ort}{g.eintraege.length > 1 ? `, und ${g.eintraege.length - 1} weitere` : ""}</small>
-      {#if offen === e.schluessel}
+      {#if istOffen(g)}
         <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
         <span class="tun" onclick={(ev) => ev.stopPropagation()}>
           {#if g.eintraege.length > 1}

@@ -130,7 +130,7 @@
         art: () => art,
       };
       sitzung.farbwahl = { jetzt: () => ({ fg: d.fg, bg: d.bg }), setze: (fg, bg) => setze({ fg, bg }) };
-      sitzung.rand = { anteil: (e) => (e.prozent !== null ? e.prozent / 100 : e.cfi ? a.anteilVon(e.cfi) : null), lage: (e) => (e.cfi ? a.lageVon(e.cfi) : null), kante: () => flaeche?.getBoundingClientRect().right ?? null };
+      sitzung.rand = { anteil: (e) => (e.prozent !== null ? e.prozent / 100 : e.cfi ? a.anteilVon(e.cfi) : null), lage: (e) => (e.cfi ? a.lageVon(e.cfi) : null), kante: () => flaeche?.getBoundingClientRect().right ?? null, stand: () => stand.anteil };
       bereit = true;
       if (mitte > 0) await anzeige.zuAnteil(mitte);
       void anzeige.zeichne(sitzung.markierungen);
@@ -264,7 +264,7 @@
   {#snippet darstellung()}<EpubDarstellung {d} {art} onwahl={setze} />{/snippet}
 
   {#snippet fuss()}
-    <Fussleiste anteil={stand.anteil} onzurueck={zurueck} onvor={vor} onanteil={(a) => void anzeige?.zuAnteil(a)}>
+    <Fussleiste {sitzung} anteil={stand.anteil} onzurueck={zurueck} onvor={vor} onanteil={(a) => void anzeige?.zuAnteil(a)}>
       {#if stand.kapitel}<span class="klein kapitel" title={stand.kapitel}>{stand.kapitel}</span>{/if}
       <span class="stand zahl klein">{prozent} %{stand.gedruckt ? `, gedruckt ${stand.gedruckt}` : ""}</span>
     </Fussleiste>

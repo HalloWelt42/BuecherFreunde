@@ -131,7 +131,7 @@
       art: () => art,
     };
     sitzung.farbwahl = { jetzt: () => ({ fg: d.fg, bg: d.bg }), setze: (fg, bg) => setze({ fg, bg }) };
-    sitzung.rand = { anteil: (e) => (e.prozent !== null ? e.prozent / 100 : null), lage: lageAmRand, kante: () => blatt?.getBoundingClientRect().right ?? null };
+    sitzung.rand = { anteil: (e) => (e.prozent !== null ? e.prozent / 100 : null), lage: lageAmRand, kante: () => blatt?.getBoundingClientRect().right ?? null, stand: () => stand.anteil };
     if (start.wort || start.stelle) zeigeTreffer(start.wort || start.stelle, ab);
   }
 
@@ -305,7 +305,7 @@
   {#snippet darstellung()}<TextDarstellung {d} onwahl={setze} />{/snippet}
 
   {#snippet fuss()}
-    <Fussleiste anteil={stand.anteil} anAnfang={stand.amAnfang} amEnde={stand.amEnde} onzurueck={zurueck} onvor={vor} onanteil={(a) => fluss?.zuAnteil(a)}>
+    <Fussleiste {sitzung} anteil={stand.anteil} anAnfang={stand.amAnfang} amEnde={stand.amEnde} onzurueck={zurueck} onvor={vor} onanteil={(a) => fluss?.zuAnteil(a)}>
       <Seitenstand {seite} {gesamt} onseite={(nr) => fluss?.zuAnteil((nr - 1) / gesamt)} />
       <span class="stand zahl klein nur-breit">{Math.round(stand.anteil * 100)} %, {formatName(buch.file_format)}</span>
     </Fussleiste>

@@ -27,6 +27,7 @@
   import { lesewerte, type Lesewerte } from "../../lib/lesestand";
   import { darstellung } from "../../lib/stand/darstellung.svelte";
   import { geraet } from "../../lib/stand/geraet.svelte";
+  import { schale } from "../../lib/stand/schale.svelte";
   import type { BuchEinzeln } from "../../lib/typen";
   import Fussleiste from "./Fussleiste.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
@@ -92,6 +93,7 @@
           return s ? ((nurText ? text : seiten)?.lage(s, e) ?? null) : null;
         },
         kante: () => (nurText ? text : seiten)?.kante() ?? null,
+        stand: () => (seite - 1) / Math.max(1, gesamt - 1),
       };
       const ansicht = () => (nurText ? text?.hilfeort : seiten?.hilfeort);
       sitzung.hilfe = {
@@ -287,12 +289,13 @@
   {/snippet}
 
   {#snippet fuss()}
-    <Fussleiste {anteil} anAnfang={nurText ? textstand.amAnfang : seite <= 1 && !rest.oben} amEnde={nurText ? textstand.amEnde : seite >= gesamt && !rest.unten} onzurueck={zurueck} onvor={vor} onanteil={(a) => geheZu(Math.round(1 + a * (gesamt - 1)))} schalter={geraet.telefon ? umschalter : undefined}>
+    <Fussleiste {sitzung} {anteil} anAnfang={nurText ? textstand.amAnfang : seite <= 1 && !rest.oben} amEnde={nurText ? textstand.amEnde : seite >= gesamt && !rest.unten} onzurueck={zurueck} onvor={vor} onanteil={(a) => geheZu(Math.round(1 + a * (gesamt - 1)))} schalter={geraet.telefon ? umschalter : undefined}>
       <Seitenstand {seite} {gesamt} gedruckt={gedruckt.zahl} onseite={geheZu} />
     </Fussleiste>
   {/snippet}
 </Leserahmen>
 
 {#snippet umschalter()}
-  <Knopf klasse="umschalter" text={nurText ? "Original" : "Text"} symbol={nurText ? "file-pdf" : "align-left"} titel={nurText ? "Seiten des Originals" : "Als Text lesen"} klein onclick={schalteText} />
+  <!-- Am Telefon nur das Zeichen (BF-63), der Name bleibt Beschriftung und Hinweis -->
+  <Knopf klasse="umschalter" text={schale.telefon ? (nurText ? "Seiten des Originals" : "Als Text lesen") : nurText ? "Original" : "Text"} symbol={nurText ? "file-pdf" : "align-left"} titel={nurText ? "Seiten des Originals" : "Als Text lesen"} nur={schale.telefon} klein onclick={schalteText} />
 {/snippet}
