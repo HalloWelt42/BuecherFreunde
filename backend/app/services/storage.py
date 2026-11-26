@@ -191,14 +191,22 @@ def save_cover(file_hash: str, image_data: bytes, storage_dir: Path | None = Non
     return path
 
 
+# Alles, was die App neben dem Original eines Buchs ablegt; das Original ist jede andere Datei im Ordner. Wer einen neuen
+# Begleiter schreibt, trägt ihn hier ein (BF-46: sonst gilt er als Original).
+BEGLEITER = frozenset({"metadata.json", "fulltext.txt", "cover.jpg", "seiten.json", "codestellen.json"})
+
+
+def ist_original(f: Path) -> bool:
+    return f.is_file() and f.name not in BEGLEITER and not f.name.startswith(".")
+
+
 def get_original_file(file_hash: str, storage_dir: Path | None = None) -> Path | None:
     """Die Originaldatei: im Hash-Verzeichnis auf dem Gerät, sonst aus der Kellerwolke (ablage/originale.py). Kann laden,
     darum nie direkt in der Ereignisschleife rufen."""
     dir_path = get_storage_path(file_hash, storage_dir)
-    sidecar_names = {"metadata.json", "fulltext.txt", "cover.jpg", "seiten.json", "codestellen.json"}
     if dir_path.exists():
         for f in dir_path.iterdir():
-            if f.name not in sidecar_names and not f.name.startswith(".") and f.is_file():
+            if ist_original(f):
                 return f
     if storage_dir is not None:
         return None
