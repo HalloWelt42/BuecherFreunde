@@ -236,3 +236,53 @@ unbekannt 404. `wege` sind kurze Sätze wie `"Reihe und Band im Titel bei 3 Büc
 Tabellen: `sammlung_vorschlag` (`schluessel` je Zeile ein Regelfund `reihe|autor` normiert, `name`, `autor`, `wege` als JSON,
 `ki`, `ki_geprueft`, `stand` offen/angelegt/verworfen, `sammlung_id`, `gefunden_am`, `geaendert_am`) und
 `sammlung_vorschlag_buch` (`vorschlag_id`, `buch_id`, `band`).
+
+## Katalog (BF-69)
+
+Plan, Begriffe und alle Wege unter `/api/katalog` stehen in [KATALOG.md](KATALOG.md); gebaut im Paket `backend/app/katalog`
+(Weg: `api/katalog.py`). Hier, was dort nicht steht oder genauer gilt:
+
+- **Arten der Bereiche**: ein Bereich trägt `arten` (Werte von `books.typ`, `""` für Buch; Spalte `categories.arten` als JSON,
+  Vorgabe `[""]`), in der Datei, in `GET /api/katalog` und in `POST`/`PATCH /api/katalog/bereiche`. Regeln und KI schlagen einem
+  Werk nur Kategorien aus Bereichen seiner Art vor; die KI sieht je Anfrage nur Werke einer Art und deren Kategorien. Im
+  Standard gilt `besonderes` für `dokument`, `heft`, `katalog`, `broschuere`, alle anderen Bereiche für Bücher.
+- **Zeichen** heißen wie in Font Awesome ohne `fa-`; Eingaben mit `fa-` (Symbolwahl) werden ohne gespeichert.
+- **Farbe einer Kategorie**: Antworten zeigen die Farbe, die gilt (die eigene oder die des Bereichs). Beim Schreiben (Entwurf,
+  `POST`/`PATCH /api/katalog/kategorien`, die beide `farbe` nehmen) heißt leer oder die Farbe des Bereichs "erbt"; gespeichert
+  wird dann leer, und die Kategorie folgt jeder neuen Farbe ihres Bereichs.
+- **Datei**: das Format des Standards, dazu frei `verborgen`, `herkunft`, `arten` und `farbe` (Kategorie). `GET /api/katalog/datei`
+  kommt als Anhang `katalog.json` ohne `anzahl`. Fehlt beim Laden die Herkunft, gilt: Schlüssel des Standards `standard`, einer
+  seiner Teile `geteilt`, sonst `eigen`. Geprüft wird wie jede Eingabe (422 mit Feld und Grund), dazu Schlüssel im ganzen Katalog
+  und Namen je Bereich eindeutig.
+- **Entwurf**: `POST /api/katalog/entwurf` antwortet immer wie `GET` mit `{entwurf, lauf}`; bei `"bestand"` ist `entwurf` leer,
+  bis der Lauf fertig ist. `lauf` steht da, solange er läuft oder scheiterte, und solange sein Entwurf steht (dann mit `grund`,
+  etwa ohne KI); jeder andere Weg (standard, leer, Datei, `PUT`, `DELETE`) ersetzt ihn. Zerfällt eine Kategorie in ihre Teile,
+  zählt der Bereich nur noch die Bücher in den Teilen.
+- **Laufstand** dazu `stand` (`""` noch keiner, `laeuft`, `pause`, `fertig`, `fehler`); `schritt` nur, solange er läuft.
+  Beim Einordnen zählen `regeln` die Vorschläge mit Regel (auch `beide`), `ki` die mit KI (auch `beide`); beim Entwurf aus dem
+  Bestand `regeln` die Werke mit einem Treffer, `ki` die neuen Kategorien.
+- **Einordnen**: `POST /api/katalog/einordnen` mit `{stapel?}` oder ohne Körper; läuft oder pausiert schon einer, bleibt es bei
+  ihm; ohne sichtbare Kategorie 409 `"Es gibt noch keinen Katalog mit sichtbaren Kategorien"`. Dran sind Werke in keiner
+  Kategorie und ohne offenen Vorschlag. Vor dem ersten Stapel fragt der Lauf die KI nach den alten Regalen ohne passende Regel.
+  Kann die KI nicht (weg, abgelehnt), pausiert der Lauf mit Grund; eine unbrauchbare Antwort lässt nur die Regeln gelten.
+  Pausieren hält sofort an, auch mitten in einer Anfrage; der angefangene Stapel wird beim Fortsetzen neu gesucht.
+- **Vorschläge**: `auch` trägt je Eintrag die `id` des Vorschlags dort. Unbekannte `kategorie`: 404. Annehmen braucht genau eins
+  von `ids` und `kategorie` (422 sonst); `beide` wird `katalog-regel`. Nicht offene oder unbekannte Nummern zählen nicht mit.
+- **Löschfolgen**: `{name, buecher, vorschlaege, kategorien, titel}` (die ersten zehn Bücher), `DELETE` antwortet
+  `{geloescht: true, id}`. Alte Regale: `GET /api/katalog/alt/{id}/loeschfolgen` `{id, name, buecher, ohne_kategorie, titel}`
+  (`ohne_kategorie`: davon in keiner Kategorie), `DELETE` `{entfernt: true, id, buecher}`; nur Regale aus Importen (404 sonst).
+  Übernehmen als Schlagwort vergibt ein Etikett mit dem Namen des Regals (nicht doppelt).
+- **Treffer**: immer alle vier Arten in fester Folge; gezählt unter den Werken der Arten des Bereichs; `ki_vorschlaege` die offenen
+  mit KI.
+- **Einstellungen**: `GET`/`PUT /api/katalog/einstellungen` `{stapel, ki_je_anfrage, sicher_ab, teilen_ab}` (`app_settings`
+  `katalog_*`, Vorgaben `KATALOG_STAPEL` 500, `KATALOG_KI_JE_ANFRAGE` 40, `KATALOG_SICHER_AB` 80, `KATALOG_TEILEN_AB` 300). Nur in
+  der Einrichtung: `KATALOG_ABSTAND_S` (5, Pause zwischen zwei Anfragen an die KI), `KATALOG_NEU_AB` (3, ab so vielen Büchern ist
+  ein Schlagwort ohne Kategorie häufig).
+- **Bücher und Regale**: `GET /api/books?ohne_kategorie=true` nur Werke in keiner Kategorie des Katalogs (`false`: nur die in
+  einer). Die Kategorien in `GET /api/books/{id}` tragen `{id, name, slug, art, zeichen, farbe, bereich}`, Kategorien zuerst;
+  bei Regalen ist `bereich` leer. `GET /api/categories` liefert nur noch Regale, `PATCH`/`DELETE /api/categories/{id}` gehen nur
+  für Regale (404 für Bereiche und Kategorien); ein Regal darf wie eine Kategorie heißen. Ein Buch in eine Kategorie und heraus
+  geht wie bei Regalen (`POST`/`DELETE /api/categories/{id}/books/{buch}`, Quelle `manuell`).
+- **Tabellen**: `katalog_lauf` dazu `nach_buch` (das letzte Buch des letzten fertigen Stapels; dahinter geht es nach einem
+  Neustart weiter), `katalog_alt_vorschlag` (`regal_id`, `kategorie_id` leer für Schlagwort, `grund`, `geprueft_am`): was die
+  KI je altem Regal vorschlägt.
