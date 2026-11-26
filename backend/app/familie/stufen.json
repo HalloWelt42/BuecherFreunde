@@ -17,6 +17,7 @@
     "katalog": "den Katalog mit Bereichen und Kategorien ansehen",
     "hinzufuegen": "Bücher hinzufügen",
     "bearbeiten": "Angaben, Altersangaben, Regale und Sammlungen der Bücher ändern",
+    "luecken": "fehlende Bände in Sammlungen sehen und besorgen (Platzhalter, Angaben, Suchadresse)",
     "freigeben": "Bücher und Kategorien für Kinder freigeben, Einblick der Eltern",
     "ki": "KI: Assistent, Suche nach Bedeutung, Vorschläge, Einordnen, Übersetzen",
     "loeschen": "Bücher, Autoren, Sammlungen und Profile löschen",
@@ -27,13 +28,13 @@
     "verwaltung": {
       "name": "Verwaltung",
       "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "gelesen", "sammeln", "markierungen", "notizen", "etiketten",
-                       "privat", "ausfuehren", "nachschlagen", "katalog", "hinzufuegen", "bearbeiten", "freigeben", "ki", "loeschen",
-                       "einstellungen", "profile"]
+                       "privat", "ausfuehren", "nachschlagen", "katalog", "hinzufuegen", "bearbeiten", "luecken", "freigeben", "ki",
+                       "loeschen", "einstellungen", "profile"]
     },
     "erwachsen": {
       "name": "Erwachsen",
       "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "gelesen", "sammeln", "markierungen", "notizen", "etiketten",
-                       "privat", "ausfuehren", "nachschlagen", "katalog", "hinzufuegen", "bearbeiten", "freigeben", "ki"]
+                       "privat", "ausfuehren", "nachschlagen", "katalog", "hinzufuegen", "bearbeiten", "luecken", "freigeben", "ki"]
     },
     "kind": {
       "name": "Kind",

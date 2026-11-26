@@ -197,7 +197,8 @@ async def test_gleiche_datei_weglassen_weiteres_format_und_eigenes_buch(annahme_
     eigen = await bis_bestaetigen(annahme_dienst, auth_headers, "Lied, andere Ausgabe.pdf", anders)
     v = await vorschau_von(annahme_dienst, auth_headers, eigen["id"])
     assert zeile(v, "Lied, andere Ausgabe.pdf")["felder"]["doppel"]["art"] == "neu"                  # ein PDF hat das Buch schon
-    assert "schon als PDF" in zeile(v, "Lied, andere Ausgabe.pdf")["felder"]["hinweise"][0]
+    hinweis = zeile(v, "Lied, andere Ausgabe.pdf")["felder"]["hinweise"][0]
+    assert "schon als PDF" in hinweis["text"] and hinweis["herkunft"] == "bestand"
     await annahme_dienst.post(f"/api/annahme/vorschau/{v['id']}/uebernehmen", headers=auth_headers, json={})
     assert (await warten(annahme_dienst, auth_headers, eigen["id"]))["buch_id"] != vorhanden
 

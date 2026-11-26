@@ -42,6 +42,9 @@ FELDER = {
     "verborgen": "Verborgen", "herkunft": "Herkunft", "teile": "Teile", "arten": "Arten", "bereich_id": "Bereich", "weg": "Weg",
     "ids": "Auswahl", "ziel": "Ziel", "kategorie_id": "Kategorie", "stapel": "Stapel", "fassung": "Fassung", "kategorie": "Kategorie",
     "ki_je_anfrage": "Bücher je Anfrage", "sicher_ab": "Vorab angehakt ab", "teilen_ab": "Teilen ab",
+    # Lücken in Sammlungen (BF-75)
+    "suchadresse": "Suchadresse", "gesamt": "Bände je Sprache", "wahl": "Wahl", "zahl": "Zahl", "nummer": "Band", "an": "Platzhalter",
+    "grund": "Grund", "sprache": "Sprache",
 }
 
 

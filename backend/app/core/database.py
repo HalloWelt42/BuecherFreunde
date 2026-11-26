@@ -487,6 +487,38 @@ CREATE TABLE IF NOT EXISTS material_fund (           -- Dateien neben dem Origin
     stand TEXT NOT NULL DEFAULT 'offen',             -- offen, angenommen, abgelehnt; abgelehnte kommen nie wieder
     gefunden_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
+CREATE TABLE IF NOT EXISTS reihe_sprache (           -- Lücken (BF-75, luecken/): je Sammlung und Sprache die Zahl der Bände und das Nachschlagen
+    sammlung_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+    sprache TEXT NOT NULL,                           -- Kürzel wie de; leer: kein Buch der Sammlung nennt eine Sprache
+    wahl TEXT NOT NULL DEFAULT 'quelle',             -- welche Zahl gilt: quelle, eigene, keine (nur Lücken zwischen vorhandenen Bänden)
+    eigene INTEGER DEFAULT NULL,                     -- die Zahl des Nutzers, gilt bei wahl eigene
+    quelle_gesamt INTEGER DEFAULT NULL,              -- der höchste Band, den die Quelle kennt
+    quelle TEXT NOT NULL DEFAULT '',                 -- Kennung der gefragten Quelle (dnb, k10plus)
+    gefragt TEXT NOT NULL DEFAULT '',                -- nach welchem Namen der Reihe gefragt wurde
+    stand TEXT NOT NULL DEFAULT 'offen',             -- offen (noch nie gefragt), fertig, fehler; nur offen wird gefragt, einmal
+    grund TEXT NOT NULL DEFAULT '',
+    nachgeschlagen_am TEXT DEFAULT NULL,
+    PRIMARY KEY (sammlung_id, sprache)
+);
+CREATE TABLE IF NOT EXISTS reihe_band (              -- was die Quelle je Band einer Sammlung und Sprache kennt (BF-75)
+    sammlung_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+    sprache TEXT NOT NULL,
+    nummer INTEGER NOT NULL,
+    titel TEXT NOT NULL DEFAULT '',
+    autor TEXT NOT NULL DEFAULT '',
+    isbn TEXT NOT NULL DEFAULT '',
+    jahr INTEGER DEFAULT NULL,
+    quelle TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (sammlung_id, sprache, nummer)
+);
+CREATE TABLE IF NOT EXISTS luecke_ausgeblendet (     -- Platzhalter, die jemand weggenommen hat (BF-75); Zurückholen löscht die Zeile
+    sammlung_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+    sprache TEXT NOT NULL,
+    nummer INTEGER NOT NULL,
+    grund TEXT NOT NULL,                             -- gibt_es_nicht, brauche_ich_nicht
+    am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    PRIMARY KEY (sammlung_id, sprache, nummer)
+);
 """
 
 # Indizes über Spalten aus NEUBAU_SPALTEN: erst, wenn es die Spalten gibt
@@ -541,6 +573,8 @@ NEUBAU_SPALTEN: tuple[tuple[str, str, str], ...] = (
     ("aufnahme", "zip_pfad", "TEXT DEFAULT NULL"),                 # ihr Ort in der ZIP, nur als Hinweis, nie als Pfad benutzt
     ("aufnahme", "material_fuer", "INTEGER DEFAULT NULL"),         # Begleitmaterial zu diesem Buch, von der Buchseite
     ("aufnahme", "entpacken", "INTEGER NOT NULL DEFAULT 0"),       # 1: eine ZIP als Material Teil für Teil auspacken
+    # Lücken in Sammlungen (BF-75, luecken/)
+    ("collections", "luecken", "INTEGER NOT NULL DEFAULT 1"),      # 1: fehlende Bände stehen als Platzhalter im Regal
 )
 
 

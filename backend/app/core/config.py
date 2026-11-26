@@ -100,6 +100,9 @@ class Settings(BaseSettings):
     zip_verhaeltnis_hoechstens: int = Field(default=200, ge=1)   # so stark darf ein Eintrag gepackt sein (ausgepackt durch gepackt)
     # Begleitmaterial (BF-81)
     material_abgleich_takt_s: float = Field(default=86400, gt=0)  # so oft sucht der Abgleich neben den Originalen nach Material
+    # Lücken in Sammlungen (BF-75): je Sammlung und Sprache höchstens eine Abfrage der Quellen, im Hintergrund
+    luecken_takt_s: float = Field(default=600, gt=0)             # so oft sieht das Nachschlagen nach, was noch nie gefragt wurde
+    luecken_abstand_s: float = Field(default=10, ge=0)           # Pause zwischen zwei Abfragen (Sammlung und Sprache)
 
     # Quellen für Angaben zu Büchern und Autoren (backend/app/quellen), jede freiwillig und ohne Schlüssel.
     # Google Books antwortet seit 2026 nur noch mit eigenem Schlüssel

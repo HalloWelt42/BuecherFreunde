@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import Any
 
 from backend.app.quellen import isbn as nummern
@@ -21,9 +22,10 @@ class Katalog:
     def __init__(self, regel: Regel, format_: str) -> None:
         self.regel, self._format = regel, format_
 
-    def frage(self, anfrage: str, hoechstens: int) -> Frage:
+    def frage(self, anfrage: str, hoechstens: int, lies: Callable[[bytes], list[dict[str, Any]]] | None = None) -> Frage:
+        """`lies` statt der Angaben je Buch, etwa die Bände einer Reihe (quellen/reihen.py)."""
         felder = (("version", "1.1"), ("operation", "searchRetrieve"), ("query", anfrage), ("recordSchema", self._format), ("maximumRecords", str(hoechstens)))
-        return Frage(self.regel.adresse, felder, kopf=(("Accept", "application/xml, text/xml"),), lies=self._lies, ist_leer=lambda w: not w)
+        return Frage(self.regel.adresse, felder, kopf=(("Accept", "application/xml, text/xml"),), lies=lies or self._lies, ist_leer=lambda w: not w)
 
     def _lies(self, inhalt: bytes) -> list[dict[str, Any]]:
         return [marc.angaben(s, self.regel.kennung).model_dump(exclude_defaults=True) for s in marc.saetze(inhalt) if marc.ist_buch(s)]

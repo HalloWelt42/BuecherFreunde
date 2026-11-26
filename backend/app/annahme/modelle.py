@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Annotated, Generic, Literal, TypeVar
 
-from pydantic import AfterValidator, BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field, field_validator
 
 from backend.app.annahme.auswertung import Ergebnis
 from backend.app.models.book import BESONDERES
@@ -58,6 +58,14 @@ class Doppel(BaseModel):
     grund: str = ""                              # etwa "gleiche Datei im Bestand" oder "zu Sturmflut, EPUB"
 
 
+class Hinweis(BaseModel):
+    """Ein kurzer Satz zu einer Datei, etwa "Die Datei ist englisch, die Lücke deutsch", und woher er kommt (`luecke`: sie passt
+    nicht zu ihrer Lücke, BF-75; `bestand`: im Bestand gibt es etwas Ähnliches)."""
+
+    text: str
+    herkunft: Herkunft | None = None
+
+
 class Zuordnung(BaseModel):
     """Was beim Übernehmen mit der Datei geschieht, je Feld mit Herkunft. Gespeichert als JSON in `aufnahme.zuordnung`."""
 
@@ -71,9 +79,15 @@ class Zuordnung(BaseModel):
     doppel: Doppel = Field(default_factory=Doppel)
     ziel: Ziel | None = None
     nicht: str = ""                              # warum nicht übernommen (kein Buchformat und zu keinem Buch gehörig)
-    hinweise: list[str] = Field(default_factory=list)
+    hinweise: list[Hinweis] = Field(default_factory=list)
     bestaetigt: bool = False                     # übernommen: ab hier zählt die Zuordnung, wie sie ist
     von_profil: str | None = None                # wer übernommen hat (Etiketten sind persönlich, BF-78)
+
+    @field_validator("hinweise", mode="before")
+    @classmethod
+    def _saetze(cls, wert: object) -> object:
+        """Gemerkte Zuordnungen vor BF-75 trugen nur Sätze."""
+        return [{"text": h} if isinstance(h, str) else h for h in wert] if isinstance(wert, list) else wert
 
 
 class Gelesen(BaseModel):

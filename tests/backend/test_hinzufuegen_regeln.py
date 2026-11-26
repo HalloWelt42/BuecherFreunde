@@ -104,6 +104,6 @@ def test_zugehoerig_und_kurzname():
 
 def test_sprache_der_datei_gegen_die_luecke():
     wert, hinweise = _sprache(Gelesen(sprache="English"), Vorgabe(sprache="de"))
-    assert (wert.wert, wert.herkunft, hinweise) == ("en", "datei", ["Die Datei ist englisch, die Lücke deutsch"])
+    assert (wert.wert, wert.herkunft, [(h.text, h.herkunft) for h in hinweise]) == ("en", "datei", [("Die Datei ist englisch, die Lücke deutsch", "luecke")])
     wert, hinweise = _sprache(Gelesen(), Vorgabe(sprache="de"))
     assert (wert.wert, wert.herkunft, hinweise) == ("de", "luecke", [])

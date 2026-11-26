@@ -23,6 +23,12 @@ def kuerzel(wert: str | None) -> str:
     return _NACH_NAME.get(klein) or _NACH_NAME.get(klein.replace("_", "-").split("-")[0]) or w
 
 
+def marc_code(k: str) -> str:
+    """Das Kürzel der Bibliothekskataloge (MARC 21, drei Buchstaben): "de" -> "ger"; leer, wenn es keins gibt."""
+    erstes = next(iter(_KUERZEL.get(k, "").split()), "")
+    return erstes if len(erstes) == 3 else ""
+
+
 def name(k: str) -> str:
     """Der deutsche Name zu einem Kürzel, klein wie im Satz: "de" -> "deutsch"; Unbekanntes bleibt, wie es kam."""
     return next((n for n in _KUERZEL.get(k, "").split() if len(n) > 3), k)

@@ -37,5 +37,18 @@ gezielt in eine Lücke oder als Stapel in eine Sammlung auf.
 
 1. BF-80: Vorschau vor dem Übernehmen (Grundlage für das Hochladen in eine Lücke).
 2. BF-75: Lücken aus Bandnummer und Sprache, Gesamtzahl aus den Quellen mit eigener Angabe, Platzhalter, Besorgen,
-   Ausblenden, Hochladen über die Vorschau, Zeile in den Vorschlägen.
+   Ausblenden, Hochladen über die Vorschau, Zeile in den Vorschlägen. Server gebaut (`backend/app/luecken/`,
+   `backend/app/quellen/reihen.py`), Wege und Felder in [SCHNITTSTELLE.md](SCHNITTSTELLE.md) (Lücken).
 3. Entwurf zur Abnahme vor dem Bau der Oberfläche.
+
+## Was der Server festlegt
+
+- Bandnummern: "3.5" und "3a" sind Zwischenbände hinter Band 3, sie füllen keine Lücke und fehlen nie; "1-2" ist ein
+  Doppelband und belegt beide Plätze; Band 0 zählt nicht mit.
+- Ein Buch ohne Sprache zählt zur häufigsten Sprache seiner Sammlung.
+- Die Zahl der Bände kommt aus den Bibliothekskatalogen: Deutsch aus der Nationalbibliothek, andere Sprachen aus dem
+  Verbundkatalog K10plus, je Sammlung und Sprache eine Abfrage im Hintergrund, nie von selbst wiederholt. Gefragt wird nach dem
+  Reihennamen, den die Titel dieser Sprache nennen, sonst nach dem Namen der Sammlung. Neben "aus den Quellen" und der eigenen
+  Zahl gibt es "keine Zahl" (nur Lücken zwischen vorhandenen Bänden), auch wenn die Quelle eine kennt.
+- Ausblenden, Platzhalter und Zahlen gelten für die Sammlung, für alle Profile. Gerechnet wird mit dem, was das Profil sieht.
+- Lücken sehen Erwachsene (Fähigkeit `luecken`); keine Stufe eines Kindes hat sie.

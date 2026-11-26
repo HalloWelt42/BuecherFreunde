@@ -12,7 +12,9 @@ from backend.app.api.books import buecher_mit_nummern
 from backend.app.core.auth import braucht, profil
 from backend.app.core.database import db
 from backend.app.familie.modelle import Profil
+from backend.app.familie.rechte import darf
 from backend.app.familie.sichtbar import Sicht
+from backend.app.luecken.dienst import vorschlagszeilen
 from backend.app.models.book import GATTUNGEN, TYPEN, BookListItem
 from backend.app.models.grenzen import AUSWAHL_HOECHSTENS, AlsEintragAb, Band, Farbe, Nr, Sammlungsbeschreibung, Sammlungsname
 from backend.app.services import sammlungen, vorschlaege
@@ -68,6 +70,7 @@ class Vorschlag(BaseModel):
     ki: str                                     # Satz der KI, oder warum sie nicht geprüft hat
     ki_geprueft: bool
     ki_zweifel: bool                            # die KI hält es für keine Reihe; du entscheidest
+    luecken: str = ""                           # aus den eigenen Bandnummern, je Sprache: "vorhanden 1 bis 5 und 8, es fehlen 6 und 7" (BF-75)
     buecher: list[VorschlagBuch]
 
 
@@ -108,13 +111,12 @@ async def liste_vorschlaege(p: Profil = Depends(BEARBEITEN)) -> list[Vorschlag]:
     """Die offenen Vorschläge, die größten zuerst; je Buch die erkannte Bandnummer. Bücher, die das Profil nicht sieht, fehlen."""
     offen = await vorschlaege.offene()
     buecher = await buecher_mit_nummern([b.buch_id for v in offen for b in v.baende], p)
-    liste = []
-    for v in offen:
-        baende = [b for b in v.baende if b.buch_id in buecher]
-        if baende:
-            liste.append(Vorschlag(id=v.id, name=v.name, autor=v.autor, anzahl=len(baende), wege=v.wege, ki=v.ki, ki_geprueft=v.ki_geprueft,
-                                   ki_zweifel=v.ki_zweifel, buecher=[VorschlagBuch(**buecher[b.buch_id].model_dump(), band=b.band) for b in baende]))
-    return liste
+    sichtbar = {v.id: [b for b in v.baende if b.buch_id in buecher] for v in offen}
+    zeilen = await vorschlagszeilen({nr: [(b.buch_id, b.band) for b in baende] for nr, baende in sichtbar.items()}) if darf(p, "luecken") else {}
+    return [Vorschlag(id=v.id, name=v.name, autor=v.autor, anzahl=len(baende), wege=v.wege, ki=v.ki, ki_geprueft=v.ki_geprueft,
+                      ki_zweifel=v.ki_zweifel, luecken=zeilen.get(v.id, ""),
+                      buecher=[VorschlagBuch(**buecher[b.buch_id].model_dump(), band=b.band) for b in baende])
+            for v in offen if (baende := sichtbar[v.id])]
 
 
 @router.post("/vorschlaege/suchen", response_model=SuchStand, dependencies=[Depends(braucht("ki"))])

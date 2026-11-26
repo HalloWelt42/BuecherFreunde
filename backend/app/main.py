@@ -33,6 +33,7 @@ from backend.app.api.fundus import router as fundus_router
 from backend.app.api.helfer import router as helfer_router
 from backend.app.api.highlights import router as highlights_router
 from backend.app.api.labels import router as labels_router
+from backend.app.api.luecken import router as luecken_router
 from backend.app.api.material import router as material_router, stand_router as material_stand_router
 from backend.app.api.neubau import router as neubau_router
 from backend.app.api.notes import router as notes_router
@@ -52,6 +53,7 @@ from backend.app.services import bedeutung, gespraech, nachschlagen, pflege
 from backend.app.services.ausfuehren import sandbox
 from backend.app.katalog.bestandslauf import bestandslauf
 from backend.app.katalog.kategorien import anleitung_nachziehen
+from backend.app.luecken.nachschlagen import nachschlagen as luecken_nachschlagen
 from backend.app.material.erkennen import abgleich as material_abgleich
 from backend.app.material.textlauf import textlauf as material_textlauf
 from backend.app.katalog.einordnen import einordner as katalog_einordner
@@ -115,6 +117,7 @@ async def lifespan(app: FastAPI):
     await vorgaben_einspielen()
     uebersetzungslauf.starten()
     ansagelauf.starten()                              # Ansagen erstellen: was fehlt, auch nach einem Neustart (BF-78)
+    luecken_nachschlagen.starten()                    # Lücken nachschlagen: je Sammlung und Sprache einmal, mit dem Offenen weiter (BF-75)
     im_hintergrund = [asyncio.create_task(pflege.laufen()), asyncio.create_task(eingangsordner.laufen()), asyncio.create_task(nachschlagen.vorwaermen())]
     yield
     for lauf in im_hintergrund:
@@ -129,6 +132,7 @@ async def lifespan(app: FastAPI):
     await bestandslauf.stoppen()
     await uebersetzungslauf.stoppen()
     await ansagelauf.stoppen()
+    await luecken_nachschlagen.stoppen()
     await sammlungsfinder.stoppen()
     await umschlagpruefung.stoppen()
     await codestellen.stoppen()
@@ -173,6 +177,7 @@ app.include_router(helfer_router)
 app.include_router(imports_router)
 app.include_router(highlights_router)
 app.include_router(labels_router)
+app.include_router(luecken_router)
 app.include_router(material_router)
 app.include_router(material_stand_router)
 app.include_router(metadata_router)

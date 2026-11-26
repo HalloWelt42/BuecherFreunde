@@ -80,6 +80,8 @@ ZIP_TIEFE_BIS = 64
 ZIP_VERHAELTNIS_BIS = 10_000
 ETIKETTEN_JE_DATEI = 20                  # so viele Etiketten schlägt die Vorschau je Datei höchstens vor
 KATEGORIEN_JE_DATEI = 20
+# Lücken in Sammlungen (BF-75)
+REIHE_BAENDE_BIS = 9_999                 # so viele Bände kann eine Reihe je Sprache haben; größere Nummern zählen nicht
 
 
 def _bis_naechstes_jahr(jahr: int) -> int:
@@ -126,6 +128,7 @@ ZipDateien = Annotated[int, Ge(1), Le(ZIP_DATEIEN_BIS)]
 ZipMb = Annotated[int, Ge(1), Le(ZIP_MB_BIS)]
 ZipTiefe = Annotated[int, Ge(1), Le(ZIP_TIEFE_BIS)]
 ZipVerhaeltnis = Annotated[int, Ge(1), Le(ZIP_VERHAELTNIS_BIS)]
+Bandzahl = Annotated[int, Ge(1), Le(REIHE_BAENDE_BIS)]     # Nummer eines Bands oder Zahl der Bände einer Reihe
 
 # Formen
 Farbe = Annotated[str, AfterValidator(_farbe)]

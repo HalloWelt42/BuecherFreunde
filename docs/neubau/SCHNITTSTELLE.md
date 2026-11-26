@@ -122,7 +122,7 @@ noch kein Vorschlag.
 | `doppel` | `{art: neu, gleich oder format, wahl: neu, weglassen, format oder eigenes, herkunft, grund}`; `grund` etwa "zu Sturmflut, EPUB" |
 | `ziel` | `{buch_id, aufnahme, titel}` oder null: zu welchem Buch die Datei als weiteres Format oder Material gehört, eins im Bestand oder eine andere Aufnahme dieser Vorschau |
 | `nicht` | warum nicht übernommen; leer: wird übernommen |
-| `hinweise` | kurze Sätze, etwa "Die Datei ist englisch, die Lücke deutsch" oder "Im Bestand gibt es X schon als PDF, aus einer anderen Datei" |
+| `hinweise` | `[{text, herkunft}]`: kurze Sätze, etwa "Die Datei ist englisch, die Lücke deutsch" (`luecke`, siehe Lücken) oder "Im Bestand gibt es X schon als PDF, aus einer anderen Datei" (`bestand`) |
 | `bestaetigt`, `von_profil` | übernommen, von welchem Profil |
 
 Vorschläge der Regeln, sofort nach dem Lesen: Art nach den festen Regeln (`services/artregeln.py`, wie im Bestand, mit dem Befund
@@ -439,7 +439,7 @@ Ein Lauf im Hintergrund (`services/sammlungsfinder.py`), nur auf Anstoß:
 
 | Weg | Zweck |
 |---|---|
-| `GET /api/collections/vorschlaege` | offene Vorschläge, die größten zuerst: `[{id, name, autor, anzahl, wege: [str], ki, ki_geprueft, buecher: [<wie in buecher> + band]}]`; nur Bücher, die noch in keiner Sammlung sind, nach Band |
+| `GET /api/collections/vorschlaege` | offene Vorschläge, die größten zuerst: `[{id, name, autor, anzahl, wege: [str], ki, ki_geprueft, luecken, buecher: [<wie in buecher> + band]}]`; nur Bücher, die noch in keiner Sammlung sind, nach Band; `luecken` siehe Lücken (BF-75) |
 | `POST /api/collections/vorschlaege/suchen` | startet den Lauf (läuft schon einer, bleibt es bei ihm), Antwort wie `.../stand` |
 | `GET /api/collections/vorschlaege/stand` | `{laeuft, schritt, gefunden, grund}`: `schritt` was gerade geschieht, `gefunden` die offenen Vorschläge (im Lauf die bisher gefundenen), `grund` warum die KI nicht geprüft hat |
 | `POST /api/collections/vorschlaege/{id}/anlegen` `{name?, book_ids?}` | legt die Sammlung an (ohne Angaben: Name und alle Bücher des Vorschlags), setzt `sammlung_id` und die erkannte `band_nummer`, Vorschlag `angelegt`; Antwort wie `GET /api/collections/{id}`. Ein Buch außerhalb des Vorschlags oder keins: 400 |
@@ -453,6 +453,124 @@ unbekannt 404. `wege` sind kurze Sätze wie `"Reihe und Band im Titel bei 3 Büc
 Tabellen: `sammlung_vorschlag` (`schluessel` je Zeile ein Regelfund `reihe|autor` normiert, `name`, `autor`, `wege` als JSON,
 `ki`, `ki_geprueft`, `stand` offen/angelegt/verworfen, `sammlung_id`, `gefunden_am`, `geaendert_am`) und
 `sammlung_vorschlag_buch` (`vorschlag_id`, `buch_id`, `band`).
+
+## Lücken (BF-75)
+
+Plan und Entscheidungen in [LUECKEN.md](LUECKEN.md); gebaut in `backend/app/luecken/` (`bandnummer.py` liest Nummern, `rechnen.py`
+rechnet ohne Datenbank, `speicher.py` liest und schreibt die Tabellen, `dienst.py` baut die Ansicht, `suchadresse.py` füllt die
+Vorlage, `nachschlagen.py` ist der Auftrag, Formen in `modelle.py`), die Kataloge in `backend/app/quellen/reihen.py`, Wege in
+`backend/app/api/luecken.py`.
+
+**Rechte**: alle Wege brauchen die Fähigkeit `luecken` (in `familie/stufen.json` für Verwaltung und Erwachsen, keine Stufe eines
+Kindes; eine Stufe, die sie nennt, darf sehen, sonst 403). Ändern (Zahl, Platzhalter, Ausblenden, Zurückholen, Neu nachschlagen)
+braucht dazu `bearbeiten`, die Suchadresse setzen `einstellungen`. Gerechnet wird nur mit Büchern, die das Profil sieht
+(`familie/sichtbar.py`): ein Band, den ein anderes Profil privat hat oder der einem Kind nicht freigegeben ist, ist für dieses
+Profil eine Lücke und erscheint nie als vorhanden. Ein Kind bekommt eine Sammlung ohne freigegebenes Buch als 404. Ausgeblendetes,
+Zahlen und Platzhalter gelten für die Sammlung, also für alle Profile.
+
+**Bandnummern** (`books.band_nummer`, auch "Bd. 3" aus einem Katalog): eine ganze Zahl ("3", "03", "Band 3", "Bd. 3", "3.", "[3]",
+"3. Band", "3.0") belegt ihren Platz der Zählung; ein Doppelband ("1-2", "1/2", "1+2", höchstens 20 auseinander) belegt alle von
+bis; ein Zwischenband ("3.5", "3,5", "3a") steht hinter seinem Band, belegt keinen Platz, füllt also keine Lücke, und sein Fehlen
+ist keine; Band 0 steht vor 1 und belegt nichts (die Zählung beginnt bei 1); ohne Zahl ("Sonderband") hinter allen Nummern, ohne
+Band ganz am Ende. Nummern über 9999 zählen nicht (etwa die Nummer einer Verlagsreihe).
+
+**Sprachen**: jede Sprache hat ihre eigene Zählung. Die Sprache eines Buchs ist das Kürzel aus `books.language` ("ger",
+"Deutsch", "de-DE" sind `de`); ohne Angabe zählt es zur Hauptsprache der Sammlung (die häufigste ihrer Bücher, gleich wer sie
+sieht); leer bleibt sie nur, wenn kein Buch eine nennt. Die Reihen stehen mit der Hauptsprache zuerst, dann nach Namen.
+
+**Lücken**: gilt eine Zahl der Bände, fehlt jeder Platz von 1 bis zu ihr, den kein Band belegt; ohne Zahl nur Plätze zwischen dem
+ersten und dem letzten belegten. Ausgeblendete fehlen nie; eine Sprache ohne Band mit Nummer hat keine Lücken. Die Zahl: die
+eigene Angabe gewinnt immer (`wahl` `eigene`), `keine` heißt ausdrücklich ohne Zahl (auch wenn die Quelle eine kennt), sonst die
+der Quelle (`quelle`, Vorgabe).
+
+**Nachschlagen** (Auftrag "Lücken nachschlagen", `luecken/nachschlagen.py`): je Sammlung und Sprache höchstens eine Abfrage, im
+Hintergrund über den gemeinsamen Abruf (Vorrat, Takt, Pausen, Tagesgrenze für Hintergrundläufe, siehe Quellen), mit
+`LUECKEN_ABSTAND_S` (10) Sekunden zwischen zwei echten Abfragen. Gefragt werden nur Sammlungen mit Platzhaltern und nur Sprachen,
+in denen ein Band eine Nummer hat. Deutsch und ohne Sprache fragt die Nationalbibliothek (Verzeichnis 3, `TIT`, `PER`,
+`MAT=books`, `SPR=ger`), ist sie abgeschaltet, der Verbundkatalog; jede andere Sprache der Verbundkatalog K10plus (Verzeichnis 4,
+`pica.tit`, `pica.per`, die Sprache prüft der Abgleich), jeweils höchstens 100 Sätze. Gefragt wird nach dem Namen der Reihe, den
+die Titel der Bände dieser Sprache am häufigsten nennen (wie beim Finden von Sammlungen, etwa "Lighthouse Quay, Book 2"), sonst
+nach dem Namen der Sammlung, und nach ihrem häufigsten Autor; private Bücher gehen nie in eine Frage. Aus der Antwort zählen nur
+Sätze, deren Reihe (490, 800/810/811 `$t`, 830, sonst 245 `$a` mit `$n`) gleich heißt (ohne Artikel, Groß und Klein, Umlaute und
+Satzzeichen gleich) und deren Sprache nicht widerspricht. Die Zahl der Quelle ist der höchste Platz, den ein Band belegt; je Band
+gilt der Satz mit ISBN und Titel, der neueste zuerst (Doppel- und Zwischenbände geben keine Angaben für einen Platz).
+
+Nach der Antwort (auch ohne Fund) und nach einem Fehler wird diese Sammlung in dieser Sprache nie wieder von selbst gefragt.
+Macht die Quelle Pause oder ist die Tagesgrenze erreicht, bleibt das Offene offen und der Auftrag ruht mit Grund. Angestoßen beim
+Start, wenn jemand die Lücken einer Sammlung mit Offenem ansieht und im Takt `LUECKEN_TAKT_S` (600); nach einem Neustart geht er mit
+dem Offenen weiter. Nach einem Fehler oder einem neuen Namen fragt `POST .../nachschlagen` auf Wunsch neu; eine gleiche Frage
+beantwortet der Vorrat, ohne die Quelle zu fragen.
+
+**Suchadresse**: eine Vorlage in `app_settings` (`luecken_suchadresse`), anfangs leer (dann im Feld nur Kopieren). Platzhalter:
+`{titel}` (ohne bekannten Titel "Reihe Band n", etwa "Leuchtfeuerkai Band 9"), `{autor}` (der Quelle, sonst der häufigste der
+Bände dieser Sprache, sonst der Sammlung), `{isbn}` (nur Ziffern, unbekannt leer), `{band}`, `{reihe}` (Name der Reihe in dieser
+Sprache, `Reihe.reihe`), `{sprache}` (Kürzel); `{nummer}` und
+`{sammlung}` gelten als andere Namen für `{band}` und `{reihe}`. Erlaubt: http oder https mit Rechner, geschweifte Klammern nur um
+einen bekannten Platzhalter (sonst 422 mit Grund). Die Werte werden für eine Adresse kodiert (Leerzeichen `%20`, Umlaute in UTF-8,
+`&`, `/`, `#`, `+`, `%` als `%26`, `%2F`, `%23`, `%2B`, `%25`); in den festen Teilen der Vorlage nur, was in einer Adresse nicht
+stehen darf.
+
+| Weg | Zweck |
+|---|---|
+| `GET /api/collections/{id}/luecken` | die Lücken der Sammlung, wie das Profil sie sieht: `Sammlungsluecken`; stößt das Nachschlagen an, wenn etwas offen ist. Unbekannt 404 |
+| `PATCH /api/collections/{id}/luecken` `{an?, gesamt?: [{sprache, wahl, zahl?}]}` | Platzhalter an oder aus; je Sprache die Zahl: `wahl` `quelle`, `eigene` (mit `zahl` 1 bis 9999) oder `keine` (ohne `zahl`), sonst 422. Antwort wie `GET` |
+| `POST /api/collections/{id}/luecken/ausblenden` `{sprache, nummer, grund}` | `grund` `gibt_es_nicht` oder `brauche_ich_nicht`; der Platzhalter verschwindet (nochmal: neuer Grund). Antwort wie `GET` |
+| `POST /api/collections/{id}/luecken/zurueckholen` `{sprache, nummer}` | holt ihn zurück; war er nicht ausgeblendet: 404 `"Diese Lücke ist nicht ausgeblendet"`. Antwort wie `GET` |
+| `POST /api/collections/{id}/luecken/nachschlagen` | alle Sprachen der Sammlung wieder offen, der Auftrag fragt sie (einmal). Antwort wie `GET` |
+| `GET /api/luecken/einstellungen` | `{suchadresse, platzhalter: [{name, bedeutung}]}`; `platzhalter` in der Folge zum Anbieten, ohne die anderen Namen |
+| `PUT /api/luecken/einstellungen` `{suchadresse}` | setzen (leer: keine Suche), Fähigkeit `einstellungen`; 422 mit Grund, etwa `"Suchadresse: unbekannter Platzhalter {titl}, erlaubt sind ..."`. Antwort wie `GET` |
+| `POST /api/luecken/suchadresse/probe` `{suchadresse}` | `{adresse, sammlung, luecke}`: die fertige Adresse mit dieser Vorlage für einen fehlenden Band, den das Profil sieht (der erste mit bekanntem Titel, sonst der erste); merkt nichts. Ohne Lücke oder ohne Vorlage `adresse` null |
+| `GET /api/luecken/stand` | der Auftrag: `{was: "Lücken nachschlagen", stand, gesamt, fertig, offen, aktuell, grund, begonnen, geaendert, fertig_am}`; `stand` `wartet` (Offenes, noch nicht dran), `laeuft`, `ruht` (Offenes, aber Pause, Tagesgrenze oder keine Quelle eingeschaltet, Grund in `grund`), `fertig`; `gesamt` und `fertig` zählen Sammlung und Sprache des letzten Laufs, `offen` alles, was noch nie gefragt wurde; `aktuell` etwa `"Leuchtfeuerkai, Deutsch"` |
+
+```
+Sammlungsluecken: { sammlung_id, name, autor, an, reihen: [Reihe], ausgeblendet: [Ausgeblendet] }
+Reihe:        { sprache, name, reihe, gesamt, herkunft, quelle_gesamt, eigene, nachschlagen, buecher, belegt, fehlen: [int], zeile, eintraege: [Platz] }
+Nachschlagen: { stand, quelle, quelle_name, reihe, grund, am }
+Platz:        { art: "buch" | "luecke", band, nummer, zwischen, buch_id, buch: <wie in buecher> | null, luecke: Luecke | null }
+Luecke:       { sprache, nummer, titel, autor, isbn, jahr, quelle, kopieren, suchadresse }
+Ausgeblendet: { sprache, name, nummer, grund, grund_text, titel, am }
+```
+
+| Feld | Bedeutung |
+|---|---|
+| `autor` | der häufigste erste Autor der Bücher, die das Profil sieht ("Vorname Nachname"), leer ohne |
+| `an` | Platzhalter im Regal; aus: keine Lücken (`fehlen` leer, nur Bücher in `eintraege`), die Bücher stehen weiter je Sprache, die Zahlen bleiben fürs Formular. Auch als `luecken` (1 oder 0) in `GET /api/collections` und `GET /api/collections/{id}` |
+| `reihen` | je Sprache der Bücher, die das Profil sieht |
+| `sprache`, `name` | Kürzel (leer: kein Buch nennt eine) und Name zum Anzeigen ("Deutsch", "Englisch", "Sprache unbekannt") |
+| `reihe` | Name der Reihe in dieser Sprache: den die Titel der Bände, die das Profil sieht, am häufigsten nennen (ohne private), sonst der der Sammlung; so steht sie in `kopieren` und `{reihe}` |
+| `gesamt`, `herkunft` | die Zahl, die gilt, und woher: `quelle`, `eigene`, `keine` (ausdrücklich ohne), leer (es gibt keine) |
+| `quelle_gesamt`, `eigene` | was die Quelle sagt (auch wenn die eigene Angabe gilt) und die eigene Angabe |
+| `nachschlagen.stand` | `offen` (wird gefragt; `grund`, wenn keine Quelle eingeschaltet ist), `fertig` (gefragt; ohne Fund `grund` `"Die Quelle kennt die Reihe nicht"`), `fehler` (gefragt, keine Antwort, `grund` von der Quelle), `nicht` (wird nicht gefragt: Platzhalter aus oder kein Band dieser Sprache mit Nummer) |
+| `nachschlagen.quelle`, `quelle_name`, `reihe`, `am` | wer gefragt wird oder wurde (`dnb`, Verzeichnis 3), nach welchem Namen, wann |
+| `buecher`, `belegt` | Bücher dieser Sprache, die das Profil sieht, und die Plätze der Zählung, die sie belegen (für "8 von 12") |
+| `fehlen`, `zeile` | die fehlenden Nummern und der Satz dazu, etwa `"es fehlen 4, 9, 11 und 12"` (drei und mehr in Folge als "6 bis 9"); leer ohne Lücke |
+| `eintraege` | Bücher und Lücken in der Folge der Bände (Zwischenbände hinter ihrem Band, ohne Zahl dahinter, ohne Band zuletzt; gleiche Nummer nach Titel) |
+| `Platz.band`, `nummer`, `zwischen` | die Nummer, wie sie am Buch steht (bei einer Lücke die Zahl), der erste Platz (leer: ohne Zahl), ob es ein Zwischenband ist |
+| `Luecke.titel`, `autor`, `isbn`, `jahr`, `quelle` | Angaben der Quelle zum Band, so weit bekannt (`titel` leer: unbekannt; `autor` sonst der häufigste der Bände dieser Sprache, sonst der Sammlung; `isbn` mit Strichen, wenn gültig; `quelle` leer: nur aus den eigenen Nummern) |
+| `Luecke.kopieren` | eine Zeile zum Kopieren: `"Der stille Kai, Henrike Sandvoss, Leuchtfeuerkai Band 4, ISBN 978-3-99999-004-0"`, ohne Titel `"Leuchtfeuerkai Band 9, Henrike Sandvoss"` |
+| `Luecke.suchadresse` | die fertige Adresse nach der Vorlage, null ohne Vorlage |
+| `Ausgeblendet` | zum Zurückholen: `grund` und `grund_text` ("Gibt es nicht", "Brauche ich nicht"), `titel` aus der Quelle, wenn bekannt |
+
+**Sammlungsvorschläge**: `luecken` in `GET /api/collections/vorschlaege` ist eine kurze Zeile nur aus den erkannten Bandnummern der
+Bücher des Vorschlags, ohne Abfrage einer Quelle: `"vorhanden 1 bis 5 und 8, es fehlen 6 und 7"` (Lücken nur zwischen dem ersten
+und dem letzten Band). Je Sprache gezählt; bei mehreren Sprachen je Sprache mit Lücken ein Teil mit ihrem Namen, getrennt durch
+Semikolon (`"Deutsch: vorhanden 1 bis 3 und 5, es fehlt 4; Englisch: vorhanden 1 und 3, es fehlt 2"`). Leer ohne Lücke und für
+Profile ohne die Fähigkeit `luecken`.
+
+**Hochladen in eine Lücke**: über die Vorschau (BF-80) mit `POST /api/annahme/vorschau` `{name, vorgabe: {sammlung_id, band,
+sprache}}`; Sammlung, Band und Sprache stehen dann mit Herkunft `luecke` in den Feldern (die Sprache der Datei geht vor, Herkunft
+`datei`). Passt die Datei nicht zur Lücke, steht ein Hinweis mit Herkunft `luecke` in `felder.hinweise`: andere Sprache (`"Die
+Datei ist englisch, die Lücke deutsch"`), ein anderer Band im Titel oder Dateinamen (`"Die Datei nennt Band 5, die Lücke ist Band
+4"`), ein anderer Titel als der, den die Quelle für die Lücke kennt (`"Die Datei heißt X, die Lücke Y"`; verglichen wie bei den
+Quellen, auch ohne Reihe und Band vorn im Titel). Ändern lässt sich alles; erst die Bestätigung übernimmt. Ein Stapel in die
+Sammlung (`vorgabe` mit `sammlung_id`, ohne `band`): der Band kommt aus Reihe und Nummer im Titel oder Dateinamen (`regel`,
+`datei`), sonst aus dem Titel, wenn die Quelle einen Band dieser Sprache sicher so nennt (`luecke`, Grund `"Band 4 heißt in den
+Quellen so"`); sonst bleibt er leer und das Buch kommt beim Übernehmen hinten an.
+
+Tabellen: `collections.luecken` (1 an, Vorgabe), `reihe_sprache` (`sammlung_id`, `sprache`, `wahl`, `eigene`, `quelle_gesamt`,
+`quelle`, `gefragt`, `stand` offen/fertig/fehler, `grund`, `nachgeschlagen_am`), `reihe_band` (`sammlung_id`, `sprache`, `nummer`,
+`titel`, `autor`, `isbn`, `jahr`, `quelle`), `luecke_ausgeblendet` (`sammlung_id`, `sprache`, `nummer`, `grund`, `am`); alle gehen
+mit der Sammlung.
 
 ## Katalog (BF-69)
 
@@ -551,7 +669,8 @@ tut `backend/app/familie/`, die Wege stehen in `backend/app/api/familie.py`, Stu
   `markierungen`, `notizen`; Jugend dazu `sammeln`, `etiketten`, `privat`, `ausfuehren`. `GET /api/books?gelesen=` und
   `PATCH /api/books/{id}/gelesen` brauchen `gelesen`. Ohne Suche, Notizen, Markierungen und Lesezeichen merkt sich das Buch die Stelle von selbst: den
   Lesestand (`PATCH /api/books/{id}/leseposition`, auch in einer Fassung) braucht nur `lesen`, die Vorlesestelle `vorlesen`.
-  Der Schnellfilter der Liste (`suche=`) und die Suche im Buch brauchen `suche`.
+  Der Schnellfilter der Liste (`suche=`) und die Suche im Buch brauchen `suche`. Lücken in Sammlungen (BF-75) brauchen `luecken`,
+  das nur Verwaltung und Erwachsen haben; keine Stufe eines Kindes nennt es.
 - **Fertig gelesen** (eine Regel, `familie/lesestand.py`): ein Buch ist fertig, sobald sein Lesestand das Ende erreicht oder
   `lesestand.fertig_ab` aus `stufen.json` (0,99), oder wenn es mit `PATCH /api/books/{id}/gelesen` markiert ist; es bleibt
   fertig, auch wenn man zurückblättert, bis die Markierung zurückgenommen wird. Gelesen wird der Anteil wie in der Oberfläche

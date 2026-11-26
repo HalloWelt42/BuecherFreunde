@@ -9,9 +9,12 @@ was offen blieb (annahme/ki_vorschau.py). Je Feld mit Herkunft:
 - Kategorie: ein Ordner in der ZIP, der wie eine Kategorie heißt (`ordner`), sonst die beste Regel des Katalogs für die Art
   (`regel`).
 - Sammlung und Band: aus einer Lücke (`luecke`), aus einem Ordner, der wie eine Sammlung heißt (`ordner`), aus Reihe und Band
-  im Titel (`regel`) oder im Dateinamen (`datei`), wie beim Finden von Sammlungen (services/sammlungsfinder.py).
+  im Titel (`regel`) oder im Dateinamen (`datei`), wie beim Finden von Sammlungen (services/sammlungsfinder.py). Bei einem Stapel
+  in eine Sammlung ohne erkannten Band der Band, den die Quelle unter diesem Titel kennt (`luecke`, BF-75).
 - Etiketten: Ordner in der ZIP, die keine Kategorie und keine Sammlung sind (`ordner`).
-- Sprache: aus der Datei (`datei`), sonst aus der Lücke (`luecke`); widersprechen sie sich, steht ein Hinweis dabei."""
+- Sprache: aus der Datei (`datei`), sonst aus der Lücke (`luecke`); widersprechen sie sich, steht ein Hinweis dabei.
+- Hinweise einer Lücke (Herkunft `luecke`, BF-75): andere Sprache, ein anderer Band im Titel oder Dateinamen, ein anderer Titel als
+  der, den die Quelle für die Lücke kennt (luecken/dienst.py)."""
 
 from __future__ import annotations
 
@@ -20,13 +23,14 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from backend.app.annahme.modelle import BUCH, Doppel, Gelesen, Vorgabe, Wert, Ziel, Zuordnung
+from backend.app.annahme.modelle import BUCH, Doppel, Gelesen, Hinweis, Vorgabe, Wert, Ziel, Zuordnung
 from backend.app.core.database import db
 from backend.app.katalog import kategorien, merkmale
 from backend.app.katalog.einordnen import regelfunde, teile
 from backend.app.katalog.merkmale import Buchmerkmale
 from backend.app.katalog.regeln import Pruefer, klein
 from backend.app.katalog.vorschlaege import teil_vor_ganzem, zusammenfuehren
+from backend.app.luecken.dienst import abweichungen, band_nach_titel
 from backend.app.material import zugehoerig
 from backend.app.quellen.sprache import kuerzel, name as sprachname
 from backend.app.services import artregeln
@@ -167,25 +171,36 @@ async def _sammlung(lage: Lage, g: Gelesen, aus_ordner: int | None) -> tuple[Wer
     elif sammlung.wert is not None:
         band = next((Wert[str](wert=e.band, herkunft=h, grund=f"Band {e.band} im {'Titel' if h == 'regel' else 'Dateinamen'}")
                      for h, e in funde if e), band)
+    if not band.wert and lage.vorgabe.sammlung_id and (n := await band_nach_titel(lage.vorgabe.sammlung_id, g.sprache or lage.vorgabe.sprache, g.titel)):
+        band = Wert[str](wert=str(n), herkunft="luecke", grund=f"Band {n} heißt in den Quellen so")      # ein Stapel in die Sammlung
     return sammlung, band
 
 
-def _sprache(g: Gelesen, vorgabe: Vorgabe) -> tuple[Wert[str], list[str]]:
+def _sprache(g: Gelesen, vorgabe: Vorgabe) -> tuple[Wert[str], list[Hinweis]]:
     datei, luecke = kuerzel(g.sprache), kuerzel(vorgabe.sprache)
-    hinweise = [f"Die Datei ist {sprachname(datei)}, die Lücke {sprachname(luecke)}"] if datei and luecke and datei != luecke else []
+    hinweise = [Hinweis(text=f"Die Datei ist {sprachname(datei)}, die Lücke {sprachname(luecke)}", herkunft="luecke")] \
+        if datei and luecke and datei != luecke else []
     if datei:
         return Wert[str](wert=datei, herkunft="datei"), hinweise
     return (Wert[str](wert=luecke, herkunft="luecke") if luecke else Wert[str](wert="")), hinweise
 
 
+async def _zur_luecke(lage: Lage, g: Gelesen) -> list[Hinweis]:
+    """Passt die Datei nicht zu der Lücke, in die sie geladen wird (anderer Band, anderer Titel), steht es dabei."""
+    v = lage.vorgabe
+    if not (v.sammlung_id and v.band):
+        return []
+    return [Hinweis(text=t, herkunft="luecke") for t in await abweichungen(v.sammlung_id, v.band, v.sprache, g.titel, lage.name, g.autor)]
+
+
 async def vorschlagen(lage: Lage, g: Gelesen) -> Zuordnung:
     """Die Zuordnung nach den Regeln, sofort; was offen bleibt, hat keine Herkunft."""
     format_ = Path(lage.name).suffix.lower().lstrip(".")
-    hinweise: list[str] = []
+    hinweise: list[Hinweis] = []
     if b := await _bestandsbuch(g):
         if zo := await _aus_dem_bestand(b, format_):
             return zo
-        hinweise.append(f"Im Bestand gibt es {b['title']} schon als {format_.upper()}, aus einer anderen Datei")
+        hinweise.append(Hinweis(text=f"Im Bestand gibt es {b['title']} schon als {format_.upper()}, aus einer anderen Datei", herkunft="bestand"))
     kats_ordner, sammlung_ordner, etiketten = await _ordner_als(lage.ordner, lage.zip_name)
     art = _art(lage, g)
     kats = Wert[list[int]](wert=kats_ordner, herkunft="ordner") if kats_ordner else \
@@ -193,7 +208,7 @@ async def vorschlagen(lage: Lage, g: Gelesen) -> Zuordnung:
     sammlung, band = await _sammlung(lage, g, sammlung_ordner)
     sprache, sprachhinweise = _sprache(g, lage.vorgabe)
     zo = Zuordnung(art=art, kategorien=kats, etiketten=Wert[list[str]](wert=etiketten, herkunft="ordner" if etiketten else None),
-                   sammlung=sammlung, band=band, sprache=sprache, hinweise=hinweise + sprachhinweise)
+                   sammlung=sammlung, band=band, sprache=sprache, hinweise=hinweise + sprachhinweise + await _zur_luecke(lage, g))
     if doppelt := await _in_der_vorschau(lage, g):
         zo.doppel, zo.ziel = doppelt
     return zo
