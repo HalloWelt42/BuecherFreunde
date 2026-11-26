@@ -71,6 +71,15 @@ TEILE_HOECHSTENS = 50
 KATALOG_STAPEL_BIS = 20_000              # Titel je Stapel eines Laufs
 KI_JE_ANFRAGE_BIS = 200                  # Bücher je Anfrage an die KI
 KATALOG_TEILEN_BIS = 1_000_000
+# Hinzufügen mit Vorschau (BF-80) und Begleitmaterial (BF-81)
+DATEINAME = 400                          # ein Dateiname beim Hochladen
+MATERIALNAME = 200                       # der Name einer Datei Begleitmaterial in der App
+ZIP_DATEIEN_BIS = 100_000                # größte einstellbare Zahl von Einträgen einer ZIP
+ZIP_MB_BIS = 1_048_576                   # größte einstellbare Größe in MB (1 TB)
+ZIP_TIEFE_BIS = 64
+ZIP_VERHAELTNIS_BIS = 10_000
+ETIKETTEN_JE_DATEI = 20                  # so viele Etiketten schlägt die Vorschau je Datei höchstens vor
+KATEGORIEN_JE_DATEI = 20
 
 
 def _bis_naechstes_jahr(jahr: int) -> int:
@@ -113,6 +122,10 @@ KiJeAnfrage = Annotated[int, Ge(1), Le(KI_JE_ANFRAGE_BIS)]
 TeilenAb = Annotated[int, Ge(1), Le(KATALOG_TEILEN_BIS)]
 Sortierung = Annotated[int, Ge(-SORTIERUNG), Le(SORTIERUNG)]
 AlsEintragAb = Annotated[int, Ge(SAMMLUNG_ALS_EINTRAG_AB), Le(SAMMLUNG_ALS_EINTRAG_BIS)]
+ZipDateien = Annotated[int, Ge(1), Le(ZIP_DATEIEN_BIS)]
+ZipMb = Annotated[int, Ge(1), Le(ZIP_MB_BIS)]
+ZipTiefe = Annotated[int, Ge(1), Le(ZIP_TIEFE_BIS)]
+ZipVerhaeltnis = Annotated[int, Ge(1), Le(ZIP_VERHAELTNIS_BIS)]
 
 # Formen
 Farbe = Annotated[str, AfterValidator(_farbe)]

@@ -26,10 +26,16 @@ async def hochladen(client, kopf, name: str, inhalt: bytes, teil: int = 4000) ->
     return z
 
 
-async def warten(client, kopf, nr: int) -> dict:
+async def warten(client, kopf, nr: int, bestaetigen: bool = True) -> dict:
+    """Bis die Aufnahme nicht mehr läuft; wartet sie auf die Bestätigung (BF-80), wird ihre Vorschau übernommen, außer
+    `bestaetigen` ist aus."""
     for _ in range(300):
         z = (await client.get(f"/api/annahme/{nr}", headers=kopf)).json()
-        if z["stand"] not in ("wartet", "laedt", "liest", "angaben", "regal"):
+        if z["stand"] == "bestaetigen" and bestaetigen:
+            r = await client.post(f"/api/annahme/vorschau/{z['vorschau']}/uebernehmen", headers=kopf, json={"ids": [nr]})
+            assert r.status_code == 200, r.text
+            continue
+        if z["stand"] not in ("wartet", "laedt", "liest", "angaben", "regal", "entpacken"):
             return z
         await asyncio.sleep(.1)
     raise AssertionError(z)

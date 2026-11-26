@@ -21,3 +21,8 @@ def kuerzel(wert: str | None) -> str:
     if not w or klein in _OHNE:
         return ""
     return _NACH_NAME.get(klein) or _NACH_NAME.get(klein.replace("_", "-").split("-")[0]) or w
+
+
+def name(k: str) -> str:
+    """Der deutsche Name zu einem Kürzel, klein wie im Satz: "de" -> "deutsch"; Unbekanntes bleibt, wie es kam."""
+    return next((n for n in _KUERZEL.get(k, "").split() if len(n) > 3), k)

@@ -13,6 +13,7 @@ TYPEN = [
     {"id": "heft", "name": "Heft", "beschreibung": "Zeitschrift, Magazin oder Heft"},
     {"id": "katalog", "name": "Katalog", "beschreibung": "Produktkatalog oder Verzeichnis"},
     {"id": "broschuere", "name": "Broschüre", "beschreibung": "Informationsbroschüre oder Flyer"},
+    {"id": "anleitung", "name": "Anleitung", "beschreibung": "Bedienungs-, Gebrauchs-, Montage- oder Bauanleitung eines Geräts"},
 ]
 
 # Feste Gattungen eines Buchs (BF-59), in dieser Reihenfolge angeboten; leer: keine. Nach ihr zeichnet die Oberfläche das
@@ -128,6 +129,7 @@ class BookListItem(Umschlagangaben):
     alter_von: int | None = None                    # Lese- oder Interessenalter, nur Hilfe beim Freigeben (BF-78)
     alter_bis: int | None = None
     alter_quelle: str = ""                          # Kennung der Quelle; hand: von Hand
+    material: int = 0                               # so viele Dateien Begleitmaterial (BF-81); es folgt dem Buch
     created_at: str = ""
     updated_at: str = ""
 
@@ -135,6 +137,16 @@ class BookListItem(Umschlagangaben):
     @property
     def cover_stand(self) -> int:
         return umschlag_stand(self.hash)
+
+
+class Buchdatei(BaseModel):
+    """Eine Datei des Buchs (BF-80): das Original oder ein weiteres Format; gelesen wird mit `GET /api/books/{id}/file?format=`."""
+
+    id: str
+    format: str
+    name: str
+    groesse: int
+    haupt: bool                                     # das Original, aus dem Text und Umschlag stammen
 
 
 class BookResponse(Umschlagangaben):
@@ -172,6 +184,8 @@ class BookResponse(Umschlagangaben):
     alter_von: int | None = None                    # Lese- oder Interessenalter, nur Hilfe beim Freigeben (BF-78)
     alter_bis: int | None = None
     alter_quelle: str = ""                          # Kennung der Quelle; hand: von Hand
+    dateien: list[Buchdatei] = Field(default_factory=list)   # das Original zuerst, dann weitere Formate (BF-80)
+    material: int = 0                               # so viele Dateien Begleitmaterial (BF-81)
     created_at: str = ""
     updated_at: str = ""
 

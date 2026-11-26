@@ -217,4 +217,4 @@ async def umschlag(buch: Nr, _app: Konto = Depends(app_pruefen)):
 
 @router.get("/datei/{buch}")
 async def datei(buch: Nr, request: Request, _app: Konto = Depends(app_pruefen)):
-    return await get_file(buch, request, _token="")
+    return await get_file(buch, request, herunterladen=False, format=None, _token="")

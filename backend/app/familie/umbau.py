@@ -81,9 +81,10 @@ def noetig(v: sqlite3.Connection) -> bool:
     return any(not _gibt_es(v, f.tabelle) for f in PERSOENLICH) or bool(_umzubauen(v))
 
 
-def sicherung_neben(pfad: Path) -> Path:
-    """Geschlossene Kopie der Datenbank neben ihr; erst fertig bekommt sie ihren Namen."""
-    ziel = pfad.with_name(f"{pfad.stem}.vor-familie-{datetime.now():%Y%m%d_%H%M%S}{pfad.suffix}")
+def sicherung_neben(pfad: Path, anlass: str = "familie") -> Path:
+    """Geschlossene Kopie der Datenbank neben ihr (`<name>.vor-<anlass>-<Zeit>.db`); erst fertig bekommt sie ihren Namen.
+    Auch für andere Umbauten beim Start (ablage/formate_umbau.py)."""
+    ziel = pfad.with_name(f"{pfad.stem}.vor-{anlass}-{datetime.now():%Y%m%d_%H%M%S}{pfad.suffix}")
     teil = ziel.with_name(f".{ziel.name}.teil")
     try:
         with closing(sqlite3.connect(pfad)) as quelle, closing(sqlite3.connect(teil)) as kopie:

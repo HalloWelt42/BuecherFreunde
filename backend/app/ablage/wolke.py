@@ -172,6 +172,27 @@ class Wolke:
     async def begleiter(self, knoten: str) -> list[dict]:
         return await self.rufe("GET", f"/api/v1/ablage/knoten/{knoten}/begleiter")
 
+    async def begleiter_anhaengen(self, haupt: str, rolle: str, knoten: str, zusatz: str) -> dict:
+        """Eine Datei, die schon in der Kellerwolke liegt, wird Begleiter der Hauptdatei und kommt neben sie; den Namen
+        (Stamm der Hauptdatei und `zusatz`) vergibt die Kellerwolke."""
+        return await self.rufe("POST", f"/api/v1/ablage/knoten/{haupt}/begleiter/{rolle}", json={"knoten_id": knoten, "zusatz": zusatz})
+
+    async def begleiter_schreiben(self, haupt: str, rolle: str, zusatz: str, quelle: Path) -> dict:
+        """Eine Datei vom Gerät als neuer Begleiter der Hauptdatei (nur neu)."""
+        return await self.rufe("PUT", f"/api/v1/ablage/knoten/{haupt}/begleiter/{rolle}", params={"zusatz": zusatz},
+                               content=self._stuecke(quelle),
+                               headers={"If-None-Match": "*", "Content-Length": str(quelle.stat().st_size), "Content-Type": "application/octet-stream"})
+
+    async def papierkorb(self, knoten: str) -> bool:
+        """In den Papierkorb (dort zurückzuholen; eine Hauptdatei nimmt ihre Begleiter mit). False, wenn sie schon fort war."""
+        try:
+            await self.rufe("DELETE", f"/api/v1/ablage/knoten/{knoten}")
+        except WolkeFehler as f:
+            if f.status == 404:
+                return False
+            raise
+        return True
+
     async def auszug_schreiben(self, knoten: str, inhalt: bytes) -> str:
         """Der Begleiter "auszug" (Umschlag, Volltext, Angaben) neben dem Original; vorhandener bekommt eine neue Version."""
         alt = next((b for b in await self.begleiter(knoten) if b["rolle"] == "auszug"), None)

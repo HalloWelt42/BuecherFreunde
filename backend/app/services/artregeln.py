@@ -1,12 +1,15 @@
-"""Feste Regeln für die Art eines Werks (BF-77): ein Buch (books.typ leer) oder ein Dokument, je mit kurzer Begründung.
-Was keine Regel sicher sagt, bestimmt danach die lokale KI (services/einordnung.py).
+"""Feste Regeln für die Art eines Werks (BF-77): ein Buch (books.typ leer), eine Anleitung oder ein Dokument, je mit kurzer
+Begründung. Was keine Regel sicher sagt, bestimmt danach die lokale KI (services/einordnung.py).
 
 1. Buch: eine ISBN und mehr als `EINORDNEN_BUCH_AB_SEITEN` (40) Seiten. Nur, wenn der Umschlag sicher nicht schlicht ist:
    für ein gezeichnetes Deckblatt braucht ein Buch eine Gattung, die nur die KI bestimmt.
-2. Dokument, nur ohne ISBN: Titel oder Dateiname nennt das Programm, aus dem das Dokument stammt ("Microsoft Word - ...",
-   Endungen .docx, .pptx, .xlsx), oder ein Wort, das ein Schriftstück verrät (Rechnung, Beleg, Datenblatt, datasheet,
-   Bedienungsanleitung, Gebrauchsanweisung, user manual, Folien, slides, lecture), jeweils am Wortanfang, Groß und klein gleich.
-3. Dokument: höchstens `EINORDNEN_DOKUMENT_BIS_SEITEN` (4) Seiten und keine ISBN.
+2. Anleitung, nur ohne ISBN (BF-80): Titel oder Dateiname nennt eine Anleitung (Bedienungsanleitung, Gebrauchsanweisung,
+   Gebrauchsanleitung, Montageanleitung, Aufbauanleitung, Bauanleitung, Kurzanleitung, Benutzerhandbuch, user manual,
+   owner's manual, instruction manual, quick start guide, installation guide), am Wortanfang, Groß und klein gleich.
+3. Dokument, nur ohne ISBN: Titel oder Dateiname nennt das Programm, aus dem das Dokument stammt ("Microsoft Word - ...",
+   Endungen .docx, .pptx, .xlsx), oder ein Wort, das ein Schriftstück verrät (Rechnung, Beleg, Datenblatt, datasheet, Folien,
+   slides, lecture), jeweils am Wortanfang, Groß und klein gleich.
+4. Dokument: höchstens `EINORDNEN_DOKUMENT_BIS_SEITEN` (4) Seiten und keine ISBN.
 
 Eine Art, die der Nutzer gesetzt hat, fasst keine Regel an; das entscheidet, wer die Regeln anwendet."""
 
@@ -21,8 +24,10 @@ from backend.app.core.config import settings
 PROGRAMM = re.compile(r"^\s*microsoft\s+(?:office\s+)?(word|powerpoint|excel)\s*-", re.I)
 PROGRAMME = {"word": "einem Schreibprogramm", "powerpoint": "einem Folienprogramm", "excel": "einer Tabellenkalkulation"}
 ENDUNG = re.compile(r"\.(docx?|pptx?|xlsx?)(?!\w)", re.I)
-SCHRIFTSTUECK = re.compile(r"(?<!\w)(rechnung|beleg|datenblatt|datasheet|bedienungsanleitung|gebrauchsanweisung|user\s+manual|folien|"
-                           r"slides|lecture)", re.I)
+ANLEITUNG = re.compile(r"(?<!\w)(bedienungsanleitung|gebrauchsanweisung|gebrauchsanleitung|montageanleitung|aufbauanleitung|bauanleitung|"
+                       r"kurzanleitung|benutzerhandbuch|user\s+manual|owner'?s\s+manual|instruction\s+manual|quick\s+start\s+guide|"
+                       r"installation\s+guide)", re.I)
+SCHRIFTSTUECK = re.compile(r"(?<!\w)(rechnung|beleg|datenblatt|datasheet|folien|slides|lecture)", re.I)
 
 
 class Werk(BaseModel):
@@ -73,6 +78,9 @@ def urteil(w: Werk) -> Regelurteil | None:
         if w.seiten > settings.einordnen_buch_ab_seiten and w.umschlag_schlicht == 0:
             return Regelurteil(typ="", grund=f"ISBN und {w.seiten} Seiten")
         return None
+    if gefunden := _im_namen(ANLEITUNG, w):
+        t, wo = gefunden
+        return Regelurteil(typ="anleitung", grund=f"\"{t.group(1)}\" im {wo}, keine ISBN")
     if t := PROGRAMM.search(w.title or ""):
         return Regelurteil(typ="dokument", grund=f"Der Titel stammt aus {PROGRAMME[t.group(1).lower()]}")
     if gefunden := _im_namen(ENDUNG, w):

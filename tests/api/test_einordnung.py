@@ -111,7 +111,7 @@ async def test_erst_regeln_dann_die_ki_gebuendelt(client, test_db, ki_sagt, monk
     assert "Anfang: Kapitel 1 Die Leiche lag im Arbeitszimmer" in nutzer and nutzer.count("Wort") < 80
     werke = koerper["response_format"]["json_schema"]["schema"]["properties"]["werke"]
     assert (werke["minItems"], werke["maxItems"]) == (2, 2)
-    assert werke["items"]["properties"]["art"]["enum"] == ["buch", "dokument", "heft", "katalog", "broschuere"]
+    assert werke["items"]["properties"]["art"]["enum"] == ["buch", "dokument", "heft", "katalog", "broschuere", "anleitung"]
     bunt_anfrage = next(json.loads(r.content)["messages"][1]["content"] for r in chats if "Bunte Tage" in r.content.decode())
     assert "Titel: Bunte Tage" in bunt_anfrage and "Bunte Tage | Autor: Testautor | Verlag: Testverlag | Seiten: 200 | ISBN: nein | Datei: testbuch.pdf\n" in bunt_anfrage
     assert chats[0].headers["X-Leitstelle-Prioritaet"] == "hintergrund"

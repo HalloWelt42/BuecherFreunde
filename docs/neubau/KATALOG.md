@@ -73,8 +73,8 @@ Abschlussarbeiten, Folien und Vorträge, Kataloge und Prospekte, Zeitschriften u
 Zeugnisse und Urkunden, Formulare.
 
 Jeder Bereich nennt die Arten des Werks, für die er gilt (`arten`, aus `books.typ`: "" für Buch, dokument, heft,
-katalog, broschuere; gespeichert als JSON an `categories` des Bereichs, im Datei-Format, in `GET /api/katalog` und in
-POST/PATCH der Bereiche). Im Standard gilt "Besonderes" für dokument, heft, katalog und broschuere, alle anderen Bereiche
+katalog, broschuere, anleitung; gespeichert als JSON an `categories` des Bereichs, im Datei-Format, in `GET /api/katalog` und in
+POST/PATCH der Bereiche). Im Standard gilt "Besonderes" für dokument, heft, katalog, broschuere und anleitung, alle anderen Bereiche
 für Bücher. Regeln und KI schlagen einem Werk nur Kategorien aus Bereichen vor, die für seine Art gelten. Das Menü links
 zeigt "Bücher" und "Besonderes" nach der Art (BF-77). Sachgruppen sind die Nummern der Bibliotheken (Dezimal und die
 Buchstabengruppen der Nationalbibliografie wie B für Belletristik, K für Kinder- und Jugendliteratur), Schlagworte und

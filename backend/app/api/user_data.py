@@ -8,6 +8,7 @@ from backend.app.core.auth import braucht, profil
 from backend.app.core.database import db
 from backend.app.familie import lesestand, sichtbar
 from backend.app.familie.modelle import Geteilt, Privat, Profil
+from backend.app.material import dienst as material_dienst
 from backend.app.models.grenzen import GROESSTE_ZAHL, Leseposition, Nr
 
 router = APIRouter(prefix="/api/books", tags=["Nutzerdaten"])
@@ -107,13 +108,17 @@ async def set_reading_position(book_id: Nr, data: ReadingPositionUpdate, p: Prof
     return {"book_id": book_id, "position": data.position}
 
 
-@router.put("/{book_id}/privat", response_model=Privat)
-async def set_privat(book_id: Nr, data: Privat, p: Profil = Depends(braucht("privat"))) -> Privat:
-    """Privat: nur dieses Profil sieht das Buch; die anderen sehen es nicht mehr, auch nicht in Zählern (BF-78)."""
+class PrivatStand(Privat):
+    material: int = 0                    # so viele Dateien Begleitmaterial gelten mit (BF-81): das Material folgt dem Buch
+
+
+@router.put("/{book_id}/privat", response_model=PrivatStand)
+async def set_privat(book_id: Nr, data: Privat, p: Profil = Depends(braucht("privat"))) -> PrivatStand:
+    """Privat: nur dieses Profil sieht das Buch und sein Material; die anderen sehen es nicht mehr, auch nicht in Zählern (BF-78)."""
     await _check_book_exists(book_id)
     await sichtbar.privat_setzen(p.id, book_id, data.privat)
     await db.commit()
-    return data
+    return PrivatStand(privat=data.privat, material=(await material_dienst.anzahlen([book_id])).get(book_id, 0))
 
 
 @router.put("/{book_id}/geteilt", response_model=Geteilt)

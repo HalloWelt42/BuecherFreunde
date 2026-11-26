@@ -90,6 +90,16 @@ class Settings(BaseSettings):
     # nur hier einstellbar:
     katalog_abstand_s: float = Field(default=5, ge=0)            # Pause zwischen zwei Anfragen an die KI
     katalog_neu_ab: int = Field(default=3, ge=1)                 # ab so vielen Büchern zählt ein Schlagwort ohne Kategorie als häufig
+    # Hinzufügen mit Vorschau (BF-80): Vorgaben; was in den Einstellungen (annahme/einstellungen.py) steht, gilt vor ihnen
+    bestaetigen_eingangsordner: bool = False                     # der Eingangsordner wartet auf die Bestätigung
+    bestaetigen_ordner: bool = False                             # Ordner auf dem Gerät (Einlese-Ordner, externe Sammlung) ebenso
+    zip_dateien_hoechstens: int = Field(default=2000, ge=1)      # so viele Einträge darf eine ZIP haben
+    zip_datei_mb_hoechstens: int = Field(default=2048, ge=1)     # so groß darf ein Eintrag ausgepackt sein
+    zip_gesamt_mb_hoechstens: int = Field(default=16384, ge=1)   # so groß darf alles zusammen ausgepackt sein
+    zip_tiefe_hoechstens: int = Field(default=16, ge=1)          # so viele Ordner tief darf ein Eintrag liegen
+    zip_verhaeltnis_hoechstens: int = Field(default=200, ge=1)   # so stark darf ein Eintrag gepackt sein (ausgepackt durch gepackt)
+    # Begleitmaterial (BF-81)
+    material_abgleich_takt_s: float = Field(default=86400, gt=0)  # so oft sucht der Abgleich neben den Originalen nach Material
 
     # Quellen für Angaben zu Büchern und Autoren (backend/app/quellen), jede freiwillig und ohne Schlüssel.
     # Google Books antwortet seit 2026 nur noch mit eigenem Schlüssel
@@ -151,6 +161,12 @@ class Settings(BaseSettings):
     def host_pfade(self) -> dict[str, str]:
         """Pfade auf dem Gerät, wie Compose sie eingehängt hat (nur zur Anzeige)."""
         return {"bestand": self.host_database_dir, "suche": "", "texte": self.host_storage_dir, "umschlaege": "", "zwischen": "Arbeitsspeicher" if "/app/" in str(self.zwischen_dir) else ""}
+
+    @property
+    def eingang_dir(self) -> Path:
+        """Der Eingang ohne Kellerwolke (BF-80): Hochgeladenes, auch Ausgepacktes, bis es im Regal ist; was nicht übernommen
+        wird, bleibt hier liegen. Dauerhaft, weil eine Vorschau über Tage und einen Neustart wartet."""
+        return self.storage_dir / "eingang"
 
     @property
     def database_path(self) -> Path:

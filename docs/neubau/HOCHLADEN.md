@@ -54,5 +54,6 @@ einzeln oder für alle angehakten Zeilen änderbar.
 ## Reihenfolge des Baus
 
 1. Entwurf zur Abnahme, zusammen mit BF-75 (Lücken) und BF-81 (Begleitmaterial).
-2. Server: Halt "Zum Bestätigen", Vorschau je Datei, ZIP, Doppel und Formate, Ordnerhinweise, Verwerfen mit Folgen.
+2. Server: Halt "Zum Bestätigen", Vorschau je Datei, ZIP, Doppel und Formate, Ordnerhinweise, Verwerfen mit Folgen. Gebaut,
+   Wege und Felder in [SCHNITTSTELLE.md](SCHNITTSTELLE.md) (Annahme: Hochladen mit Vorschau, Dateien je Buch).
 3. Oberfläche nach dem Entwurf, danach BF-75 auf dieser Grundlage.

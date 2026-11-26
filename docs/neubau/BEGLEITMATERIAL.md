@@ -41,5 +41,7 @@ ohne Kellerwolke. Begleitmaterial ist alles, was zu einem Buch gehört, ohne das
 ## Reihenfolge des Baus
 
 1. Entwurf zur Abnahme, zusammen mit BF-80 (Hochladen mit Vorschau) und BF-75 (Lücken).
-2. Server: Tabelle, Ablage hinter der Schnittstelle, Wege auf der Buchseite, Suche, Erkennen in der Kellerwolke.
+2. Server: Tabelle, Ablage hinter der Schnittstelle, Wege auf der Buchseite, Suche, Erkennen in der Kellerwolke. Gebaut, Wege
+   und Felder in [SCHNITTSTELLE.md](SCHNITTSTELLE.md) (Begleitmaterial). Rolle und Zusatz in der Kellerwolke nur aus
+   Kleinbuchstaben: `material_<kennung aus Buchstaben>` und `.material.<name klein, Umlaute ausgeschrieben>`.
 3. Oberfläche nach dem Entwurf.

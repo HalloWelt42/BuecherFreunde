@@ -19,18 +19,23 @@ geholt und kommen ins Regal "Gutenberg". Wartende Einträge gehen nach einem Neu
 ```
 { "id": 7, "name": "Buch.epub", "groesse": 50541233, "sha256": "...", "empfangen": 31457280, "teil_groesse": 4194304,
   "stand": "laedt", "schritt": 1, "anteil": 0.62, "text": "Wird in der Kellerwolke abgelegt, 30,0 von 48,2 MB",
-  "buch_id": null, "quelle": "hochladen", "angelegt_am": "2026-11-25T21:00:00Z", "geaendert_am": "..." }
+  "buch_id": null, "quelle": "hochladen", "angelegt_am": "2026-11-25T21:00:00Z", "geaendert_am": "...",
+  "vorschau": "3f2c...-uuid", "teil_von": null, "material_fuer": null }
 ```
 
-`stand`: `wartet`, `laedt`, `angehalten`, `liest`, `angaben`, `regal`, `wissen` (in der Bibliothek, Bedeutung folgt),
-`fertig`, `ohne_text` (in der Bibliothek, kein Text gefunden), `da` (gibt es schon, `buch_id` gesetzt), `format` (nicht
-möglich), `kaputt` (leer oder unlesbar, nicht eingetragen), `fehler` (mit Grund in `text`, erneut möglich).
-`schritt` 0 bis 6: Prüfen, Wolke, Lesen, Angaben, Regal, Wissen, alles fertig.
+`stand`: `wartet`, `laedt`, `angehalten`, `liest`, `angaben`, `entpacken` (eine ZIP wird ausgepackt), `bestaetigen` (wartet
+vor dem Regal auf die Bestätigung, BF-80), `regal`, `wissen` (in der Bibliothek, Bedeutung folgt), `fertig`, `ohne_text` (in
+der Bibliothek, kein Text gefunden), `da` (gibt es schon, `buch_id` gesetzt; auch weggelassen), `entpackt` (eine ZIP, deren
+Teile eigene Aufnahmen sind; sie bleibt im Eingang), `format` (nicht möglich oder nicht übernommen, Grund in `text`),
+`kaputt` (leer oder unlesbar, nicht eingetragen), `fehler` (mit Grund in `text`, erneut möglich), `verworfen` (BF-80, bleibt
+im Verlauf). `schritt` 0 bis 6: Prüfen, Wolke, Lesen, Angaben, Regal, Wissen, alles fertig; wer wartet, steht bei 4 (Regal).
+`vorschau`: die Vorschau, zu der die Aufnahme gehört (leer: ohne Halt); `teil_von`: die Aufnahme der ZIP, aus der sie
+stammt; `material_fuer`: Begleitmaterial zu diesem Buch (BF-81).
 
 | Weg | Zweck |
 |---|---|
-| `GET /api/annahme` | `{eintraege: [...], weitere, zaehler: {alle, laeuft, klaeren, da, fertig}, quellen: {<quelle>: {gesamt, laeuft, fertig, da, gescheitert}}}`, neueste zuerst; die Liste hat höchstens 300 Einträge (`weitere` sagt, wie viele darüber hinaus da sind), die Zähler zählen alle sichtbaren |
-| `POST /api/annahme` `{name, groesse, sha256}` | anlegen; antwortet sofort mit `da`, `format` oder `kaputt`, wenn nichts hochzuladen ist |
+| `GET /api/annahme` | `{eintraege: [...], weitere, zaehler: {alle, laeuft, bestaetigen, klaeren, da, fertig}, quellen: {<quelle>: {gesamt, laeuft, bestaetigen, fertig, da, gescheitert}}, vorschauen: [Vorschau kurz]}`, neueste zuerst; die Liste hat höchstens 300 Einträge (`weitere` sagt, wie viele darüber hinaus da sind), die Zähler zählen alle sichtbaren; `vorschauen` sind die offenen ("Zum Bestätigen") |
+| `POST /api/annahme` `{name, groesse, sha256, anreichern?, vorschau?}` | anlegen; antwortet sofort mit `da`, `format` oder `kaputt`, wenn nichts hochzuladen ist. PDF, EPUB, MOBI, TXT, MD und ZIP. Jede Datei aus dem Browser gehört zu einer Vorschau: `vorschau` nennt eine aus `POST /api/annahme/vorschau` (mehrere Dateien, eine Lücke), ohne bekommt jede Datei ihre eigene; unbekannt 404, erledigt 409 |
 | `PATCH /api/annahme/{id}` Kopf `Upload-Offset`, Körper roh | nächstes Teil; 409 `{detail, empfangen}` nennt den wahren Stand, 413 bei mehr Daten als angesagt |
 | `GET /api/annahme/{id}` | Stand, sagt wo es weitergeht |
 | `POST /api/annahme/{id}/erneut` | Auswertung noch einmal |
@@ -39,11 +44,204 @@ möglich), `kaputt` (leer oder unlesbar, nicht eingetragen), `fehler` (mit Grund
 | `POST /api/annahme/ausblenden` | fertige und schon vorhandene ausblenden (bleiben im Verlauf) |
 | `GET /api/annahme/eingangsordner` | `{bereit, ort, pfad, dateien: [{name, groesse, stand, text, buch_id}]}`, was im Eingangsordner liegt; `ort`: `kellerwolke` oder `geraet` |
 | `POST /api/annahme/eingangsordner` | jetzt nachsehen, sonst jede Minute; `{neu}` |
-| `GET /api/annahme/ereignisse` | Ereignisstrom, je Änderung `data: {eintraege, zaehler}` |
+| `GET /api/annahme/ereignisse` | Ereignisstrom, je Änderung `data: {eintraege, zaehler, quellen, vorschauen}` |
+| `GET /api/annahme/{id}/umschlag` | der Umschlag, den das Lesen fand (für die Vorschau, vor dem Übernehmen), über das Inhalts-Cookie; 404 ohne |
 
 Der Browser rechnet den sha256 stückweise (npm `hash-wasm`), schickt Teile zu `teil_groesse` nacheinander, höchstens zwei
 Dateien zugleich, und setzt nach Verbindungsverlust am Stand des Servers fort. Wer die Seite neu lädt, wählt die Datei
 erneut; gleicher sha256 und Name findet den angefangenen Eintrag wieder (POST liefert ihn mit `empfangen`).
+
+Ohne Kellerwolke liegt, was hochgeladen oder ausgepackt ist, im Eingang auf dem Gerät (`<STORAGE_DIR>/eingang/<id>/`,
+dauerhaft, weil eine Vorschau über einen Neustart wartet); mit Kellerwolke in `Apps/BücherFreunde/Eingang` (Teile einer ZIP
+in `Eingang/<id> <Name der ZIP>/`).
+
+### Hochladen mit Vorschau (BF-80)
+
+Plan und Entscheidungen in [HOCHLADEN.md](HOCHLADEN.md); gebaut in `backend/app/annahme/` (`vorschau.py`, `zuordnen.py`,
+`ki_vorschau.py`, `entpacken.py`, `uebernehmen.py`, `verwerfen.py`, `einstellungen.py`, Formen in `modelle.py`).
+
+**Halt "Zum Bestätigen"**: vor der Station Regal wartet jede Aufnahme, die zu einer Vorschau gehört (`stand` `bestaetigen`,
+`schritt` 4), bis sie übernommen oder verworfen wird, auch über Tage und nach einem Neustart. Hochladen im Browser hält
+immer; der Eingangsordner und Ordner auf dem Gerät (Einlese-Ordner und externe Sammlung) nur, wenn es in den Einstellungen
+eingeschaltet ist, dann in der offenen Vorschau ihrer Quelle ("Eingangsordner", "Ordner auf dem Gerät", "Externe Sammlung").
+Gemeinfreie Bücher halten nie. Beim Halt ist die Datei schon gelesen (Angaben, Text, Umschlag); im Regal, in der Suche und in
+den Zählern steht nichts. Eine ZIP nimmt nur das Hochladen im Browser, im Eingangsordner und in Ordnern bleibt sie `format`.
+
+**ZIP**: auf dem Server ausgepackt, Eintrag für Eintrag, jeder eine eigene Aufnahme derselben Vorschau (`teil_von`); nach
+einer Unterbrechung geht es beim angefangenen Eintrag weiter. Die ZIP selbst steht danach auf `entpackt` und bleibt im
+Eingang. Grenzen aus den Einstellungen (`zip`): mehr Einträge als `dateien` oder ausgepackt mehr als `gesamt_mb` macht die
+ganze ZIP `kaputt`, mit Grund. Ein Eintrag über `datei_mb`, tiefer als `tiefe` Ordner, stärker gepackt als `verhaeltnis` zu 1
+(ab 1 MB ausgepackt), verschlüsselt, eine Verknüpfung, eine Begleitdatei des Systems (`__MACOSX`, `.DS_Store`) oder mit einem
+Pfad, der aus der ZIP herausführt (`..`, absolut), wird nicht ausgepackt und steht mit Grund da (`format`); wird er beim
+Auspacken größer, als die ZIP sagt, bricht er ab. Pfade aus der ZIP sind nur Hinweise (`ordner` der Zeile), nie ein Pfad auf
+dem Gerät. Eingeteilt wird so: lesbare Buchformate sind Werke; eine andere Datei, deren Name mit dem Stamm eines Werks im selben
+Ordner beginnt und dann einen Trenner hat (` - `, `_`, `.`, `(`, `[`), wird sein Begleitmaterial, ebenso ein Buchformat, dessen
+Rest keinen Band nennt ("Holz - Schaltpläne.pdf" zu "Holz.pdf"; "Holz - Band 2.pdf" ist ein eigenes Werk); der Rest wird nicht
+übernommen ("Bild ohne Buch gleichen Namens") und lässt sich als Material wählen.
+
+**Vorschau kurz** (in `GET /api/annahme` und `GET /api/annahme/vorschau`):
+
+```
+{ "id": "uuid", "name": "Werkstatt-Ablage.zip", "quelle": "hochladen", "stand": "offen", "dateien": 14, "warten": 13,
+  "laeuft": 0, "ki": 1, "groesse": 43827200, "hinweis": "", "angelegt_am": "...", "geaendert_am": "..." }
+```
+
+`stand`: `offen`, `uebernommen`, `verworfen`. `dateien` ohne die ZIP selbst; `warten` stehen auf `bestaetigen`; `laeuft` werden
+noch hochgeladen, gelesen oder ausgepackt; `ki` prüft die KI noch; `hinweis` nach dem Übernehmen, etwa "3 Dateien blieben im
+Eingang" (aus Ordnern auf dem Gerät "im Ordner"). Ganz (`GET /api/annahme/vorschau/{id}`) dazu `vorgabe` (`{sammlung_id, band,
+sprache}`), `zaehler` und `zeilen`:
+
+```
+zaehler: { gesamt, uebernehmen, buecher, besonderes, material, formate, weglassen, nicht, offen, laeuft, ki }
+Zeile:   { id, name, groesse, ordner, stand, text, rolle, buch_id, umschlag, ki, material,
+           gelesen: { titel, autor, isbn, verlag, jahr, sprache, beschreibung, seiten, umschlag, umschlag_schlicht,
+                      alter_von, alter_bis, alter_quelle } | null,
+           felder:  Zuordnung | null,
+           ablage:  { ort: "kellerwolke" | "geraet" | "bleibt", ordner, name } | null }
+```
+
+`rolle`: `buch` (ein Werk, auch Besonderes und weiteres Format), `material`, `zip` (die ZIP selbst), `doppel` (weggelassen,
+auch eine Datei, die es schon gibt), `rest` (nicht übernommen, Grund in `felder.nicht` oder `text`). `ki`: `offen` (die KI prüft
+noch), `fertig`, leer (nicht gefragt). `material`: so viele Dateien dieser Vorschau kommen als Begleitmaterial zu diesem Werk
+("+2"). `umschlag`: es gibt ein Bild unter `GET /api/annahme/{id}/umschlag`. `ablage`: wohin die
+Datei beim Übernehmen kommt (Kellerwolke `Apps/BücherFreunde/Bücher/<Fach>`, neben dem Original bei Format und Material, auf dem
+Gerät der Speicher oder der Buchordner unter `Material`); bei `bleibt` der Ort, an dem sie liegen bleibt.
+
+**Zuordnung** (`felder`), je Feld `{wert, herkunft, grund}`; `herkunft`: `regel`, `ki`, `ordner` (Ordnername in der ZIP),
+`datei` (Name oder Inhalt der Datei), `luecke` (Vorgabe einer Lücke, BF-75), `bestand` (das vorhandene Buch), `nutzer`; leer:
+noch kein Vorschlag.
+
+| Feld | Wert |
+|---|---|
+| `art` | `buch` (books.typ leer), `dokument`, `heft`, `katalog`, `broschuere`, `anleitung` (Besonderes) oder `material`; leer: offen, die App ordnet nach dem Übernehmen ein wie jedes Werk |
+| `gattung` | nur von der KI, wo das gezeichnete Deckblatt sie braucht; nicht zu setzen |
+| `kategorien` | Nummern von Kategorien des Katalogs |
+| `etiketten` | Namen; beim Übernehmen Etiketten des Profils, das übernimmt |
+| `sammlung`, `band` | Nummer einer Sammlung, Band als Text |
+| `sprache` | Kürzel, etwa `de` |
+| `doppel` | `{art: neu, gleich oder format, wahl: neu, weglassen, format oder eigenes, herkunft, grund}`; `grund` etwa "zu Sturmflut, EPUB" |
+| `ziel` | `{buch_id, aufnahme, titel}` oder null: zu welchem Buch die Datei als weiteres Format oder Material gehört, eins im Bestand oder eine andere Aufnahme dieser Vorschau |
+| `nicht` | warum nicht übernommen; leer: wird übernommen |
+| `hinweise` | kurze Sätze, etwa "Die Datei ist englisch, die Lücke deutsch" oder "Im Bestand gibt es X schon als PDF, aus einer anderen Datei" |
+| `bestaetigt`, `von_profil` | übernommen, von welchem Profil |
+
+Vorschläge der Regeln, sofort nach dem Lesen: Art nach den festen Regeln (`services/artregeln.py`, wie im Bestand, mit dem Befund
+des Umschlags); Kategorie aus einem Ordnernamen der ZIP, der wie eine Kategorie heißt, sonst die beste Regel des Katalogs für
+die Art; Sammlung aus der Lücke, einem Ordnernamen wie eine Sammlung oder Reihe und Band im Titel (`regel`) oder Dateinamen
+(`datei`), der Band ebenso; Ordnernamen, die weder Kategorie noch Sammlung sind, werden Etiketten; Sprache aus der Datei, sonst
+aus der Lücke. Doppel: gibt es die Prüfsumme schon (als Buch oder weiteres Format), antwortet `POST` mit `da`, die Zeile ist ein
+Doppel und wird weggelassen; dieselbe Datei noch einmal in derselben Vorschau ist `gleich` und `weglassen`. Dasselbe Buch in
+einem anderen Format (gleiche ISBN, sonst gleicher Titel und erster Autor; nur Bücher, die niemand privat hat, und nur, wenn das
+Buch das Format noch nicht hat) ist `format`, vorgewählt `format`, mit dem Buch als Ziel; die übrigen Felder zeigen es
+(`bestand`). Derselbe Name in einem anderen Format im selben Ordner derselben Vorschau ist `format` zu der früheren Aufnahme
+(`datei`).
+
+KI im Hintergrund (`ki_vorschau.py`): was nach den Regeln offen ist (Art, sonst Kategorie), über die Leitstelle mit Vorrang
+Hintergrund, gebündelt wie beim Einordnen (bis zu `EINORDNEN_JE_ANFRAGE` Dateien je Anfrage, die Kategorie je Art eine Anfrage,
+dazwischen `EINORDNEN_ABSTAND_S`). Sie setzt nur Felder ohne Vorschlag oder mit einem früheren der KI, nie, was der Nutzer, eine
+Regel, ein Ordner, die Datei, eine Lücke oder der Bestand vorschlägt. Übernehmen geht jederzeit, auch bevor die KI fertig ist.
+Nach einem Neustart geht sie mit dem Offenen weiter.
+
+| Weg | Zweck |
+|---|---|
+| `GET /api/annahme/vorschau` | die offenen Vorschauen, kurz, die neueste zuerst |
+| `POST /api/annahme/vorschau` `{name, vorgabe?: {sammlung_id, band, sprache}}` | eine leere Vorschau für mehrere Dateien oder eine Lücke; Antwort wie `GET` einer; unbekannte Sammlung 422 |
+| `GET /api/annahme/vorschau/{id}` | die ganze Vorschau; Aufnahmen zu Büchern, die das Profil nicht sieht, fehlen |
+| `PATCH /api/annahme/vorschau/{id}` `{ids, felder: {art?, kategorien?, etiketten?, sammlung?, band?, sprache?, doppel?, ziel?}}` | Felder einer oder mehrerer Dateien setzen, Herkunft danach `nutzer`; `ziel` ist `{buch_id}` oder `{aufnahme}`, `sammlung` und `ziel` leert null. Geht eine nicht, ändert sich keine: 422 mit Feld und Grund (unbekannte Kategorie oder Sammlung, Material oder Format ohne Ziel, kein Buchformat, dieselbe Datei nur weglassen), 404 für eine fremde Aufnahme, 409 wenn sie nicht mehr wartet. Antwort die ganze Vorschau |
+| `POST /api/annahme/vorschau/{id}/uebernehmen` `{ids?}` | übernimmt die genannten (ohne: alle wartenden): Werke ins Regal mit ihren Feldern, weitere Formate und Material zum Buch; Weggelassenes und Nicht-Übernommenes bleibt im Eingang (`da`, `format`, Grund in `text`). Gehört eine Datei zu einer anderen Aufnahme, die weder genannt noch im Regal ist: 422. Wird eine noch hochgeladen oder gelesen, geht sie danach ohne Halt weiter. Antwort `{weiter, vorschau}`; ist nichts mehr offen, ist die Vorschau `uebernommen`, mit `hinweis` |
+| `GET /api/annahme/vorschau/{id}/folgen?ids=` | vor dem Verwerfen: `{vorschau, name, dateien: [{id, name, ordner, groesse, wirkung, pfad}], papierkorb, endgueltig, bleibt, stand}`; `wirkung`: `papierkorb` (Kellerwolke, dort zurückzuholen), `endgueltig` (auf dem Gerät, auch im Eingangsordner), `bleibt` (Einlese-Ordner und externe Sammlung gehören der App nicht), `nichts` (es gibt keine Datei) |
+| `DELETE /api/annahme/vorschau/{id}?stand=&ids=` | verwerfen, nur mit `stand` aus den Folgen (422 ohne, 409 wenn sich seither etwas geändert hat); ins Regal kommt nichts, die Aufnahmen bleiben im Verlauf (`verworfen`), was die Vorschau zur Prüfsumme abgelegt hat, geht mit. Kommt eine Datei nicht in den Papierkorb: 502, was schon verworfen ist, bleibt es. Antwort `{verworfen, vorschau}` |
+
+Beim Übernehmen schreibt die Zuordnung an das neue Buch: die Art mit `einordnung` wie beim Einordnen (`nutzer` wird `hand`,
+`regel` mit Grund, `ki` mit Gattung; offen bleibt offen), Kategorien (`book_categories.quelle` `katalog-regel`, `katalog-ki`,
+sonst `manuell`), Sammlung und Band (ohne Band hinten an), die Sprache nur, wenn der Nutzer oder die Lücke sie setzt, und die
+Etiketten für das Profil, das übernimmt.
+
+**Einstellungen** (Fähigkeit `einstellungen`, sonst 403):
+
+| Weg | Zweck |
+|---|---|
+| `GET /api/annahme/einstellungen` | `{bestaetigen: {hochladen: true, eingangsordner, ordner}, zip: {dateien, datei_mb, gesamt_mb, tiefe, verhaeltnis}}` |
+| `PUT /api/annahme/einstellungen` | dieselbe Form; `hochladen` ist fest `true` (sonst 422); Grenzen: 1 bis 100000 Dateien, 1 bis 1048576 MB, Tiefe 1 bis 64, Verhältnis 1 bis 10000 |
+
+`ordner` gilt für Einlese-Ordner und externe Sammlung. Vorgaben der Einrichtung, solange nichts gemerkt ist:
+`BESTAETIGEN_EINGANGSORDNER` (false), `BESTAETIGEN_ORDNER` (false), `ZIP_DATEIEN_HOECHSTENS` (2000), `ZIP_DATEI_MB_HOECHSTENS`
+(2048), `ZIP_GESAMT_MB_HOECHSTENS` (16384), `ZIP_TIEFE_HOECHSTENS` (16), `ZIP_VERHAELTNIS_HOECHSTENS` (200).
+
+### Dateien je Buch (BF-80)
+
+Ein Buch kann mehrere Formate haben: die Dateien stehen in `buch_datei` (`id` UUID, `buch_id`, `hash`, `format`, `name`,
+`groesse`, `haupt`), je Buch höchstens eine je Format. Das Original (`haupt`) ist `books.hash`, aus ihm stammen Text, Umschlag
+und Angaben; seine Zeile hält die Datenbank selbst gleich (Trigger). Beim ersten Start mit dieser Fassung bekam jedes vorhandene
+Buch genau seine eine Datei, nach einer Sicherung neben der Datenbank (`<name>.vor-dateien-<Zeit>.db`); ein zweiter Lauf ändert
+nichts (`ablage/formate_umbau.py`). In der Kellerwolke liegt ein weiteres Format als Begleiter neben dem Original (Rolle
+`format_<endung>`, Name wie das Original mit der anderen Endung) und zieht mit ihm um, auch in den Papierkorb; ohne Kellerwolke
+liegt es im Speicher je Prüfsumme.
+
+- `GET /api/books/{id}` trägt `dateien: [{id, format, name, groesse, haupt}]` (das Original zuerst) und `material` (Anzahl);
+  die Bücherliste trägt `material`.
+- `GET /api/books/{id}/file?format=epub` liest ein bestimmtes Format, ohne `format` das Original; ein Format, das das Buch
+  nicht hat: 404.
+- `GET /api/books/{id}/loeschfolgen` dazu `formate` und `material`, je `[{pfad, groesse, papierkorb}]`; `DELETE /api/books/{id}`
+  nimmt beides mit (in der Kellerwolke mit dem Original in den Papierkorb, auf dem Gerät fort).
+
+## Begleitmaterial (BF-81)
+
+Plan und Entscheidungen in [BEGLEITMATERIAL.md](BEGLEITMATERIAL.md); gebaut in `backend/app/material/` (`dienst.py` führt die
+Liste, `ablage.py` legt ab, `textlauf.py` bringt Text in die Suche, `suche.py` sucht, `erkennen.py` gleicht ab, `arten.json` kennt
+die Arten), Wege in `backend/app/api/material.py`. Eine Tabelle `buch_material` (`id` UUID, `buch_id`, `name`, `art`, `groesse`,
+`sha256`, `ort`, `knoten`, `rolle`, `pfad`, `herkunft`, `text_stand`, `text_seiten`, `angelegt_am`); Buchseite, Suche und Folgen
+lesen nur sie. Der Auszug (Umschlag, Volltext, Angaben) bleibt ein eigener Begleiter und ist kein Material.
+
+**Ablage** hinter einer Schnittstelle mit zwei Umsetzungen, nach dem Ort des Originals: in der Kellerwolke ist jede Datei
+Begleiter des Originals mit eigener Rolle `material_<kennung>` (nur Buchstaben) und dem Zusatz `.material.<name>` im Namen,
+etwa `Sensoren - Wendt, Lutz [4790].material.schaltplaene.pdf`; sie liegt neben dem Original und zieht beim Verschieben,
+Umbenennen und in den Papierkorb mit. Rolle und Zusatz erlaubt die Kellerwolke nur aus Kleinbuchstaben, Ziffern, `_` und `-`
+(Umlaute ausgeschrieben, höchstens 20 Zeichen je Teil); der Name in der App bleibt, wie er ist. Ohne Kellerwolke (oder solange
+das Original nur auf dem Gerät liegt) liegt es im Buchordner unter `Material/`. Vorhandenes Material bleibt an dem Ort, den
+seine Zeile nennt.
+
+```
+Material: { id, buch_id, name, art, art_name, zeichen, groesse, ort: "kellerwolke" | "geraet", pfad, herkunft, oeffnen, lesbar,
+            text_stand, text_seiten, angelegt_am }
+```
+
+`art` nach der Endung (`material/arten.json`): `pdf`, `epub`, `text`, `markdown`, `bild`, `ton`, `video`, `tabelle`, `zip`, `archiv`,
+`dokument`, `folien`, `code`, `mobi`, sonst `datei`; `art_name` zum Anzeigen (PDF, Bild, Tabelle ...), `zeichen` aus Font Awesome.
+`oeffnen`: PDF, EPUB, Bilder, Text und Markdown öffnen in der App, alles andere lädt herunter. `lesbar`: PDF, EPUB, Text und
+Markdown kommen in die Suche. `herkunft`: `buchseite`, `hochladen` (aus einer Vorschau, BF-80), `erkannt` (aus dem Abgleich).
+`text_stand`: `offen` (wird gelesen), `fertig`, `ohne` (nicht lesbar oder ohne Text), `fehler`.
+
+**Rechte**: das Material folgt dem Buch. Wer das Buch nicht sieht (privat eines anderen Profils, einem Kind nicht freigegeben),
+bekommt 404 wie für ein Buch, das es nicht gibt; Kinder lesen das Material freigegebener Bücher nur. Lesen und Öffnen brauchen
+`lesen`, Hinzufügen, Umbenennen und Funde entscheiden `bearbeiten`, Entfernen `loeschen` (sonst 403).
+
+| Weg | Zweck |
+|---|---|
+| `GET /api/books/{id}/material` | `{material: [Material], funde: [Fund], ort, groesse}`; `ort`: wohin neues Material kommt; `groesse` alles zusammen |
+| `POST /api/books/{id}/material` `{name, groesse, sha256, entpacken?}` | eine Datei anmelden (je Datei ein Aufruf), jedes Format; antwortet wie `POST /api/annahme` mit der Aufnahme (`material_fuer` gesetzt), die Teile gehen an `PATCH /api/annahme/{id}` (Fähigkeit `hinzufuegen`), der Fortschritt steht bei den Aufträgen. Gleiche Datei schon Material dieses Buchs: `da`. Eine ZIP bleibt eine Datei, mit `entpacken: true` wird jeder Eintrag eigenes Material (Grenzen wie beim Hochladen) |
+| `PATCH /api/books/{id}/material/{mid}` `{name}` | umbenennen; die Endung bleibt (fehlt sie, kommt sie dazu); `/` und andere verbotene Zeichen 422; in der Kellerwolke bekommt der Begleiter den neuen Zusatz |
+| `GET /api/books/{id}/material/{mid}/datei?herunterladen=` | die Datei mit Bereichen, inline zum Ansehen oder als Anhang; was nicht in der App öffnet, immer als Anhang; über das Inhalts-Cookie wie Buchdateien |
+| `GET /api/books/{id}/material/{mid}/folgen` | vor dem Entfernen: `{id, name, buch_id, titel, ort, pfad, groesse, papierkorb, suche, seiten, stand}`; `papierkorb`: in den Papierkorb der Kellerwolke (sonst auf dem Gerät endgültig); `suche`: sein Text steht in der Suche (`seiten` Seiten) und fehlt danach |
+| `DELETE /api/books/{id}/material/{mid}?stand=` | entfernen, nur mit `stand` aus den Folgen (422 ohne, 409 wenn sich seither etwas geändert hat); Buch und übriges Material bleiben; kommt die Datei nicht in den Papierkorb: 502 |
+| `POST /api/books/{id}/material/funde/{knoten}/annehmen` | Ja: die Datei neben dem Original wird Begleiter des Originals und Material, in der App ohne den Namen des Buchs davor ("Lösungen.pdf"); Antwort Material |
+| `POST /api/books/{id}/material/funde/{knoten}/ablehnen` | Nein: sie bleibt, wo sie ist, und wird nie wieder angeboten |
+| `GET /api/material/stand` | `{abgleich: {bereit, laeuft, ordner, ordner_gesamt, gefunden, grund, zuletzt}, texte: {offen, fertig, ohne, fehler, laeuft}}` (Fähigkeit `bearbeiten`) |
+| `POST /api/material/abgleich` | den Abgleich jetzt anstoßen (sonst im Takt `MATERIAL_ABGLEICH_TAKT_S`, Vorgabe einmal am Tag); Antwort wie `.../stand` |
+
+`Fund`: `{knoten, buch_id, name, groesse, pfad, gefunden_am}`. **Erkennen**: der Abgleich sieht in der Kellerwolke jeden Ordner
+mit Originalen einmal an; eine Datei, deren Name mit dem Stamm des Originals beginnt (mit oder ohne die Nummer des Buchs) und dann
+einen Trenner hat (` - `, `_`, `.`, `(`, `[`), keine Begleiterin ist und keinem Buch gehört, wird ein Fund des Buchs mit dem
+längsten passenden Namen. Ohne Kellerwolke gibt es nichts abzugleichen.
+
+**Suche**: lesbares Material liest ein Auftrag im Hintergrund (im eigenen Prozess wie beim Aufnehmen, nach einem Neustart mit dem
+Offenen weiter) und legt den Text je Seite in den Suchindex. `GET /api/search` trägt auf der ersten Seite dazu
+`material: [{material_id, buch_id, titel, autor, name, seite, auszug, deckblatt}]`: ein Treffer nennt das Buch, die Datei und bei
+einem PDF die Seite; nur Material von Büchern, die das Profil sieht.
+
+**Folgen für das Buch**: `GET /api/books/{id}` und die Bücherliste (auch die Bücher der Freigaben) tragen `material` (Anzahl);
+`PUT /api/books/{id}/privat` antwortet `{privat, material}`; die Löschfolgen nennen das Material (`material`, siehe Dateien je
+Buch), und das Löschen nimmt es mit.
 
 ## Suche nach Bedeutung
 
@@ -100,7 +298,7 @@ gestaltetes Deckblatt: Bücher nach Gattung, Dokumente, Hefte, Kataloge und Bros
 Titelseite bleibt und ist je Buch wählbar.
 
 - Arten (`typ`, `GET /api/collections/typen`): leer ist ein Buch, dazu `dokument` (Handbuch, Arbeit, Skript oder Beleg),
-  `heft`, `katalog`, `broschuere`.
+  `heft`, `katalog`, `broschuere` und seit BF-80 `anleitung` (Bedienungs-, Gebrauchs-, Montage- oder Bauanleitung eines Geräts).
 - Gattungen (`gattung`, `GET /api/collections/gattungen` -> `[{id, name}]`, feste Reihenfolge): `krimi`, `thriller`,
   `historisch`, `fantasy`, `liebesroman`, `roman`, `klassiker`, `sachbuch`, `ratgeber`, `informatik`, `mathematik`,
   `fachbuch`, `wirtschaft`; leer: keine. Nur bei Büchern sinnvoll.
@@ -129,9 +327,11 @@ Zwei Läufe im Hintergrund, gestartet mit der App:
   und das keine Art hat (eine schon gesetzte Art stammt vom Nutzer und bleibt). Eine Runde wendet erst feste Regeln an
   (`services/artregeln.py`, Herkunft `regel`, Begründung in `einordnung_grund`): ISBN und mehr als `EINORDNEN_BUCH_AB_SEITEN`
   (40) Seiten ist ein Buch, aber nur bei einem sicher nicht schlichten Umschlag (sonst braucht das Deckblatt die Gattung);
-  ohne ISBN ist ein Dokument, was im Titel das Programm nennt, aus dem es stammt, eine Endung .docx, .pptx oder .xlsx im
-  Titel oder Dateinamen trägt, dort am Wortanfang Rechnung, Beleg, Datenblatt, datasheet, Bedienungsanleitung,
-  Gebrauchsanweisung, user manual, Folien, slides oder lecture nennt oder höchstens `EINORDNEN_DOKUMENT_BIS_SEITEN` (4) Seiten
+  ohne ISBN ist eine Anleitung (BF-80), was im Titel oder Dateinamen am Wortanfang Bedienungsanleitung, Gebrauchsanweisung,
+  Gebrauchsanleitung, Montageanleitung, Aufbauanleitung, Bauanleitung, Kurzanleitung, Benutzerhandbuch, user manual, owner's
+  manual, instruction manual, quick start guide oder installation guide nennt; sonst ein Dokument, was im Titel das Programm
+  nennt, aus dem es stammt, eine Endung .docx, .pptx oder .xlsx im Titel oder Dateinamen trägt, dort am Wortanfang Rechnung,
+  Beleg, Datenblatt, datasheet, Folien, slides oder lecture nennt oder höchstens `EINORDNEN_DOKUMENT_BIS_SEITEN` (4) Seiten
   hat. Den Rest bestimmt die KI über die Leitstelle, gebündelt: bis zu `EINORDNEN_JE_ANFRAGE` (40) Werke je Anfrage (Titel,
   Autor, Verlag, Seiten, ISBN ja oder nein, Dateiname, Anfang des Volltexts), Antwort als Liste fester Länge, mit
   `EINORDNEN_ABSTAND_S` (5) Sekunden Abstand. Die KI bekommt nur Werke mit geprüftem Umschlag und fragt die Gattung nur, wo
@@ -152,7 +352,7 @@ Spalten in `books`: `gattung`, `umschlag_wahl`, `umschlag_schlicht` (NULL noch n
 
 ### Bücher und Besonderes (BF-77)
 
-Ein Werk ist ein Buch (`typ` leer) oder etwas Besonderes (`dokument`, `heft`, `katalog`, `broschuere`).
+Ein Werk ist ein Buch (`typ` leer) oder etwas Besonderes (`dokument`, `heft`, `katalog`, `broschuere`, `anleitung`).
 
 - `GET /api/books?art=buch|besonderes` filtert danach (sonst 422), mit jedem anderen Filter und mit `zusammenfassen=true`.
 - `GET /api/config/stats` zählt dazu `buecher` und `besonderes`; `buecher_mit_isbn` und `dokumente` bleiben vorerst für
@@ -262,7 +462,9 @@ Plan, Begriffe und alle Wege unter `/api/katalog` stehen in [KATALOG.md](KATALOG
 - **Arten der Bereiche**: ein Bereich trägt `arten` (Werte von `books.typ`, `""` für Buch; Spalte `categories.arten` als JSON,
   Vorgabe `[""]`), in der Datei, in `GET /api/katalog` und in `POST`/`PATCH /api/katalog/bereiche`. Regeln und KI schlagen einem
   Werk nur Kategorien aus Bereichen seiner Art vor; die KI sieht je Anfrage nur Werke einer Art und deren Kategorien. Im
-  Standard gilt `besonderes` für `dokument`, `heft`, `katalog`, `broschuere`, alle anderen Bereiche für Bücher.
+  Standard gilt `besonderes` für `dokument`, `heft`, `katalog`, `broschuere`, `anleitung`, alle anderen Bereiche für Bücher. Beim
+  ersten Start mit BF-80 bekam jeder Bereich, der für `dokument` galt, auch `anleitung` (einmal je Bestand, danach entscheidet der
+  Nutzer; gemerkt als `katalog_arten_anleitung` in `app_settings`).
 - **Zeichen** heißen wie in Font Awesome ohne `fa-`; Eingaben mit `fa-` (Symbolwahl) werden ohne gespeichert.
 - **Farbe einer Kategorie**: Antworten zeigen die Farbe, die gilt (die eigene oder die des Bereichs). Beim Schreiben (Entwurf,
   `POST`/`PATCH /api/katalog/kategorien`, die beide `farbe` nehmen) heißt leer oder die Farbe des Bereichs "erbt"; gespeichert

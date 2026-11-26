@@ -33,7 +33,9 @@ from backend.app.services.textansicht import Baustein, Codeteil, abbildung_png, 
 import fitz
 
 from backend.app.codestellen.dienst import codestellen
+from backend.app.ablage import formate
 from backend.app.ablage.antwort import FEHLT, original_antwort
+from backend.app.material import dienst as material_dienst
 from backend.app.annahme.eintragen import autoren_verknuepfen
 from backend.app.services import buch_loeschen, buchliste, buchsuche, deckblatt, sammlungen, schnellfilter
 from backend.app.katalog import kategorien as katalog_kategorien
@@ -118,6 +120,7 @@ async def _enrich_book_list_item(book: dict, p: Profil) -> BookListItem:
         categories=cats,
         sammlung=sammlung,
         privat=bool(await sichtbar.private(p.id, [book["id"]])),
+        material=(await material_dienst.anzahlen([book["id"]])).get(book["id"], 0),
     )
 
 
@@ -136,6 +139,7 @@ async def listenbuecher(rows: list[dict], p: Profil) -> list[BookListItem]:
     )
     ud_map = {r["book_id"]: r for r in ud_rows}
     privat = await sichtbar.private(p.id, book_ids)
+    material = await material_dienst.anzahlen(book_ids)
 
     # 2. Kategorien batch
     cat_rows = await db.fetch_all(
@@ -183,6 +187,7 @@ async def listenbuecher(rows: list[dict], p: Profil) -> list[BookListItem]:
             categories=cats,
             sammlung=sammlung,
             privat=bid in privat,
+            material=material.get(bid, 0),
         ))
     return result
 
@@ -520,6 +525,8 @@ async def get_book(book_id: Nr, p: Profil = Depends(profil)):
         sammlung=sammlung,
         authors=authors,
         privat=bool(await sichtbar.private(p.id, [book_id])),
+        dateien=await formate.dateien(book_id),
+        material=(await material_dienst.anzahlen([book_id])).get(book_id, 0),
     )
 
 
@@ -558,6 +565,8 @@ async def loeschfolgen(book_id: Nr, _p: Profil = Depends(braucht("loeschen"))):
     f = await buch_loeschen.folgen(book_id)
     if f is None:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+    f.material = [buch_loeschen.Datei(pfad=m.pfad if m.ort == "kellerwolke" else m.name, groesse=m.groesse, papierkorb=m.ort == "kellerwolke")
+                  for m in await material_dienst.des_buchs(book_id)]          # das Material geht mit dem Buch (BF-81)
     return f
 
 
@@ -889,13 +898,15 @@ async def re_extract_cover(book_id: Nr, _p: Profil = Depends(braucht("bearbeiten
 
 @router.get("/{book_id}/file")
 async def get_file(book_id: Nr, request: Request, herunterladen: bool = Query(False, description="Als Anhang (Herunterladen) statt zum Ansehen im Browser"),
+                   format: str | None = Query(None, pattern=r"^[a-z0-9]{1,10}$", description="Ein weiteres Format des Buchs (BF-80); ohne: das Original"),
                    _token: str = Depends(verify_token_inhalt)):
-    """Streamt die Buchdatei (mit Range-Request-Unterstützung)."""
-    book = await db.fetch_one(
-        "SELECT hash, file_name, file_format FROM books WHERE id = ?", (book_id,)
-    )
-    if not book:
+    """Streamt die Buchdatei (mit Range-Request-Unterstützung); das Lesen wählt das Format, ohne Wahl das Original."""
+    if not await db.fetch_one("SELECT 1 AS da FROM books WHERE id = ?", (book_id,)):
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
+    datei = await formate.zum_lesen(book_id, format)
+    if datei is None:
+        raise HTTPException(status_code=404, detail=f"Dieses Buch gibt es nicht als {format.upper() if format else 'Datei'}")
+    book = {"hash": datei["hash"], "file_name": datei["name"], "file_format": datei["format"]}
 
     media_types = {
         "pdf": "application/pdf",

@@ -13,6 +13,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from backend.app.ablage import formate
 from backend.app.ablage.antwort import auf_dem_geraet
 from backend.app.ablage.wolke import WolkeFehler, wolke
 from backend.app.core.anschluesse import anschluesse
@@ -43,6 +44,9 @@ class Folgen(BaseModel):
     datei: Datei | None
     abschnitte: int | None      # in der Suche nach Bedeutung; None, wenn sie nicht angeschlossen ist oder das Buch nicht kennt
     fassungen: list[Datei] = []  # übersetzte Fassungen (BF-71): in der Kellerwolke in den Papierkorb, auf dem Gerät mit dem Buch fort
+    formate: list[Datei] = []    # weitere Formate (BF-80): neben dem Original, gehen mit ihm
+    material: list[Datei] = []   # Begleitmaterial (BF-81, setzt api/books.py ein): in der Kellerwolke mit dem Original in den Papierkorb,
+    #                              sonst mit dem Buchordner fort
 
 
 class NichtGeloescht(Exception):
@@ -92,6 +96,7 @@ async def folgen(buch: int) -> Folgen | None:
         datei=datei,
         abschnitte=stand["abschnitte"] if stand else None,
         fassungen=[_fassungsdatei(f) for f in await _fassungen(buch)],
+        formate=[Datei(pfad=f["pfad"] or f["name"], groesse=f["groesse"], papierkorb=bool(f["knoten"])) for f in await formate.weitere(buch)],
     )
 
 
@@ -101,11 +106,15 @@ async def loeschen(buch: int) -> bool:
     if z is None:
         return False
     ablage = await _ablage(z["hash"])
-    knoten = ([ablage["knoten"]] if ablage is not None else []) + [f["knoten"] for f in await _fassungen(buch) if f["knoten"]]
+    weitere = await formate.weitere(buch)
+    # das Original zuerst: es nimmt seine Begleiter mit (Auszug, weitere Formate, Material); was danach noch da ist, einzeln
+    knoten = ([ablage["knoten"]] if ablage is not None else []) + [f["knoten"] for f in await _fassungen(buch) if f["knoten"]] \
+        + [f["knoten"] for f in weitere if f["knoten"]]
     if knoten and not wolke.bereit:
         raise NichtGeloescht("Die Kellerwolke ist nicht angebunden, die Datei käme nicht in den Papierkorb.")
+    hashes = [z["hash"], *(f["hash"] for f in weitere)]
     await db.execute("DELETE FROM books WHERE id = ?", (buch,))
-    await db.execute("DELETE FROM ablage_datei WHERE hash = ?", (z["hash"],))
+    await db.execute(f"DELETE FROM ablage_datei WHERE hash IN ({','.join('?' * len(hashes))})", tuple(hashes))
     for k in knoten:
         try:
             # in den Papierkorb der Kellerwolke, der Begleiter geht mit; endgültig löscht nur das Konto
@@ -115,7 +124,8 @@ async def loeschen(buch: int) -> bool:
                 raise NichtGeloescht(f.meldung) from f
     await db.commit()
     get_sidecar_path(z["hash"], "cover.jpg").unlink(missing_ok=True)
-    await asyncio.to_thread(delete_stored_file, z["hash"])
-    await asyncio.to_thread(shutil.rmtree, settings.zwischen_dir / "original" / z["hash"], True)
+    for h in hashes:
+        await asyncio.to_thread(delete_stored_file, h)
+        await asyncio.to_thread(shutil.rmtree, settings.zwischen_dir / "original" / h, True)
     logger.info("Buch %d gelöscht", buch)
     return True

@@ -2,7 +2,10 @@
 
 Die Datei wird an die Verbindung des Bestands gehängt (Schema `suche`). `buch_text` hält Titel, Autor und Suchtext je Buch,
 `buch_fts` ist der Volltextindex darüber. Änderungen am Bestand ziehen flüchtige Trigger nach (TEMP, weil nur sie über zwei
-Dateien hinweg schreiben dürfen); der Suchtext kommt einmal über `books.fts_content` herein und wird dort danach geleert."""
+Dateien hinweg schreiben dürfen); der Suchtext kommt einmal über `books.fts_content` herein und wird dort danach geleert.
+
+Begleitmaterial (BF-81): `material_text` hält den Text lesbaren Materials je Seite (material/suche.py schreibt ihn),
+`material_fts` den Index darüber; geht das Material (oder sein Buch), geht sein Text mit."""
 
 from __future__ import annotations
 
@@ -27,6 +30,16 @@ CREATE TRIGGER IF NOT EXISTS suche.buch_text_anders AFTER UPDATE ON buch_text BE
     INSERT INTO buch_fts(buch_fts, rowid, title, author, inhalt) VALUES ('delete', old.id, old.title, old.author, old.inhalt);
     INSERT INTO buch_fts(rowid, title, author, inhalt) VALUES (new.id, new.title, new.author, new.inhalt);
 END;
+CREATE TABLE IF NOT EXISTS suche.material_text(id INTEGER PRIMARY KEY, material TEXT NOT NULL, buch_id INTEGER NOT NULL, seite INTEGER,
+                                               inhalt TEXT NOT NULL DEFAULT '');
+CREATE INDEX IF NOT EXISTS suche.idx_material_text_material ON material_text(material);
+CREATE VIRTUAL TABLE IF NOT EXISTS suche.material_fts USING fts5(inhalt, content='material_text', content_rowid='id', tokenize='unicode61 remove_diacritics 2');
+CREATE TRIGGER IF NOT EXISTS suche.material_text_neu AFTER INSERT ON material_text BEGIN
+    INSERT INTO material_fts(rowid, inhalt) VALUES (new.id, new.inhalt);
+END;
+CREATE TRIGGER IF NOT EXISTS suche.material_text_weg AFTER DELETE ON material_text BEGIN
+    INSERT INTO material_fts(material_fts, rowid, inhalt) VALUES ('delete', old.id, old.inhalt);
+END;
 """
 
 FLUECHTIG = """
@@ -43,6 +56,9 @@ END;
 CREATE TEMP TRIGGER IF NOT EXISTS suche_buch_text AFTER UPDATE OF fts_content ON main.books
 WHEN COALESCE(new.fts_content, '') <> '' BEGIN
     UPDATE buch_text SET inhalt = new.fts_content WHERE id = new.id;
+END;
+CREATE TEMP TRIGGER IF NOT EXISTS suche_material_weg AFTER DELETE ON main.buch_material BEGIN
+    DELETE FROM material_text WHERE material = old.id;
 END;
 """
 
@@ -78,6 +94,9 @@ async def _uebernehmen(v: aiosqlite.Connection) -> None:
         await v.execute("DROP TABLE IF EXISTS main.books_fts")
     await v.execute("DELETE FROM buch_text WHERE id NOT IN (SELECT id FROM books)")
     await v.execute("UPDATE books SET fts_content = '' WHERE COALESCE(fts_content, '') <> ''")
+    # Material: Text ohne Material geht, Material ohne Text (etwa nach einer neuen Suchdatei) wird wieder gelesen
+    await v.execute("DELETE FROM material_text WHERE material NOT IN (SELECT id FROM buch_material)")
+    await v.execute("UPDATE buch_material SET text_stand = 'offen' WHERE text_stand = 'fertig' AND id NOT IN (SELECT material FROM material_text)")
     await v.commit()
     if alt:
         await v.execute("VACUUM main")

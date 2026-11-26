@@ -107,7 +107,7 @@ def test_grosse_kategorien_haben_teile():
 
 def test_arten_der_bereiche():
     arten = {b.schluessel: b.arten for b in standard().bereiche}
-    assert arten.pop("besonderes") == ["dokument", "heft", "katalog", "broschuere"]
+    assert arten.pop("besonderes") == ["dokument", "heft", "katalog", "broschuere", "anleitung"]
     assert set(map(tuple, arten.values())) == {("",)}
     bekannt = {"", *(t["id"] for t in TYPEN)}
     assert all(set(a) <= bekannt for a in arten.values())

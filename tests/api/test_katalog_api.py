@@ -113,7 +113,7 @@ async def test_datei_sichern_und_wieder_laden(client):
      "Anfrage: Der Schlüssel romane/krimi steht mehr als einmal im Katalog"),
     (lambda d: d["bereiche"][0].update(farbe="lila"), "Bereiche, Eintrag 1, Farbe: keine Farbe wie #3366ff"),
     (lambda d: d["bereiche"][0]["kategorien"][0].update(zeichen="Lupe!"), "Bereiche, Eintrag 1, Kategorien, Eintrag 1, Zeichen: hat nicht die erwartete Form"),
-    (lambda d: d["bereiche"][0].update(arten=["roman"]), "Bereiche, Eintrag 1, Arten, Eintrag 1: erlaubt ist leer oder dokument, heft, katalog, broschuere"),
+    (lambda d: d["bereiche"][0].update(arten=["roman"]), "Bereiche, Eintrag 1, Arten, Eintrag 1: erlaubt ist leer oder dokument, heft, katalog, broschuere, anleitung"),
     (lambda d: d["bereiche"][0]["kategorien"][0]["regeln"].update(farben=["rot"]), "Bereiche, Eintrag 1, Kategorien, Eintrag 1, Regeln, farben: ist hier nicht vorgesehen"),
     (lambda d: d["bereiche"][0]["kategorien"][0].update(schluessel="krimi"), "Bereiche, Eintrag 1, Kategorien, Eintrag 1, Schlüssel: hat nicht die erwartete Form"),
 ])

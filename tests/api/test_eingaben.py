@@ -31,7 +31,7 @@ async def ohne_ausnahmen(test_db, auth_headers):
     ("year", 12, "Jahr: mindestens 1000"),
     ("page_count", -1, "Seiten: mindestens 0"),
     ("isbn", "keine ISBN", "ISBN: hat nicht die erwartete Form"),
-    ("typ", "roman", "Typ: erlaubt ist leer oder dokument, heft, katalog, broschuere"),
+    ("typ", "roman", "Typ: erlaubt ist leer oder dokument, heft, katalog, broschuere, anleitung"),
     ("gattung", "heft", "Gattung: erlaubt ist leer oder krimi, thriller, historisch"),
     ("umschlag_wahl", "bunt", 'Umschlag: erlaubt ist "", "gestaltet" oder "titelseite"'),
     ("sammlung_id", ZU_GROSS, "Sammlung: höchstens"),
@@ -183,7 +183,7 @@ async def test_langer_dateiname_wird_gekuerzt(annahme_dienst, auth_headers):
     assert z["stand"] != "fehler", z
     z = await warten(annahme_dienst, auth_headers, z["id"])
     assert z["stand"] == "fertig" and z["name"] == name, z
-    eingang = settings.zwischen_dir / "eingang"
+    eingang = settings.eingang_dir
     assert not eingang.exists() or not any(eingang.iterdir()), "der leere Ordner der Aufnahme bleibt nicht liegen"
 
 
@@ -200,7 +200,7 @@ async def test_leere_ordner_beim_start(annahme_dienst, auth_headers):
     from backend.app.annahme.dienst import annahme
     from backend.app.core.config import settings
 
-    leer, voll = settings.zwischen_dir / "eingang" / "41", settings.zwischen_dir / "eingang" / "42"
+    leer, voll = settings.eingang_dir / "41", settings.eingang_dir / "42"
     leer.mkdir(parents=True)
     voll.mkdir(parents=True)
     (voll / "angefangen.pdf").write_bytes(b"%PDF")
@@ -226,7 +226,7 @@ async def test_zaehler_je_quelle_und_aufraeumen(annahme_dienst, auth_headers, te
         dienst.LISTE = alt
     assert len(stand["eintraege"]) == 2 and stand["weitere"] == 4
     assert stand["zaehler"]["alle"] == 6
-    assert stand["quellen"]["ordner"] == {"gesamt": 5, "laeuft": 0, "fertig": 3, "da": 0, "gescheitert": 2}
+    assert stand["quellen"]["ordner"] == {"gesamt": 5, "laeuft": 0, "bestaetigen": 0, "fertig": 3, "da": 0, "gescheitert": 2}
     assert stand["quellen"]["hochladen"]["gescheitert"] == 1
 
     r = await annahme_dienst.delete("/api/annahme", headers=auth_headers)

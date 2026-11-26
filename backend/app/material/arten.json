@@ -1,0 +1,21 @@
+{
+ "fassung": 1,
+ "beschreibung": "Arten des Begleitmaterials (BF-81) nach der Endung der Datei. oeffnen: öffnet in der App, sonst Herunterladen; lesbar: der Text kommt in die Suche. Die letzte Art ohne Endungen gilt für alles andere.",
+ "arten": [
+  {"art": "pdf", "name": "PDF", "zeichen": "file-pdf", "endungen": ["pdf"], "oeffnen": true, "lesbar": true},
+  {"art": "epub", "name": "EPUB", "zeichen": "book", "endungen": ["epub"], "oeffnen": true, "lesbar": true},
+  {"art": "text", "name": "Text", "zeichen": "file-lines", "endungen": ["txt"], "oeffnen": true, "lesbar": true},
+  {"art": "markdown", "name": "Markdown", "zeichen": "file-lines", "endungen": ["md", "markdown"], "oeffnen": true, "lesbar": true},
+  {"art": "bild", "name": "Bild", "zeichen": "file-image", "endungen": ["jpg", "jpeg", "png", "gif", "webp", "svg", "avif"], "oeffnen": true, "lesbar": false},
+  {"art": "ton", "name": "Ton", "zeichen": "file-audio", "endungen": ["mp3", "ogg", "oga", "opus", "wav", "m4a", "flac", "aac"], "oeffnen": false, "lesbar": false},
+  {"art": "video", "name": "Video", "zeichen": "file-video", "endungen": ["mp4", "webm", "mkv", "mov", "m4v"], "oeffnen": false, "lesbar": false},
+  {"art": "tabelle", "name": "Tabelle", "zeichen": "file-csv", "endungen": ["csv", "tsv", "xlsx", "xls", "ods"], "oeffnen": false, "lesbar": false},
+  {"art": "zip", "name": "ZIP", "zeichen": "file-zipper", "endungen": ["zip"], "oeffnen": false, "lesbar": false},
+  {"art": "archiv", "name": "Archiv", "zeichen": "file-zipper", "endungen": ["tar", "gz", "tgz", "bz2", "xz", "7z", "rar"], "oeffnen": false, "lesbar": false},
+  {"art": "dokument", "name": "Dokument", "zeichen": "file-word", "endungen": ["doc", "docx", "odt", "rtf"], "oeffnen": false, "lesbar": false},
+  {"art": "folien", "name": "Folien", "zeichen": "file-powerpoint", "endungen": ["ppt", "pptx", "odp", "key"], "oeffnen": false, "lesbar": false},
+  {"art": "code", "name": "Code", "zeichen": "file-code", "endungen": ["py", "js", "ts", "c", "h", "cpp", "hpp", "java", "kt", "rs", "go", "rb", "php", "sh", "ino", "html", "css", "json", "xml", "yaml", "yml", "toml", "sql", "ipynb"], "oeffnen": false, "lesbar": false},
+  {"art": "mobi", "name": "MOBI", "zeichen": "book", "endungen": ["mobi", "azw3"], "oeffnen": false, "lesbar": false},
+  {"art": "datei", "name": "Datei", "zeichen": "file", "endungen": [], "oeffnen": false, "lesbar": false}
+ ]
+}

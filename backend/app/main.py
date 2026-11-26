@@ -11,6 +11,7 @@ from backend.app.ablage import orte
 from backend.app.ablage.wolke import wolke
 from backend.app.annahme import eingangsordner
 from backend.app.annahme.dienst import annahme
+from backend.app.annahme.ki_vorschau import ki_vorschau
 from backend.app.api.ai import router as ai_router
 from backend.app.api.ausfuehren import router as ausfuehren_router
 from backend.app.api.annahme import router as annahme_router
@@ -32,6 +33,7 @@ from backend.app.api.fundus import router as fundus_router
 from backend.app.api.helfer import router as helfer_router
 from backend.app.api.highlights import router as highlights_router
 from backend.app.api.labels import router as labels_router
+from backend.app.api.material import router as material_router, stand_router as material_stand_router
 from backend.app.api.neubau import router as neubau_router
 from backend.app.api.notes import router as notes_router
 from backend.app.api.uebersetzung import router as uebersetzung_router
@@ -49,6 +51,9 @@ from backend.app.codestellen.vorpruefung import vorpruefer
 from backend.app.services import bedeutung, gespraech, nachschlagen, pflege
 from backend.app.services.ausfuehren import sandbox
 from backend.app.katalog.bestandslauf import bestandslauf
+from backend.app.katalog.kategorien import anleitung_nachziehen
+from backend.app.material.erkennen import abgleich as material_abgleich
+from backend.app.material.textlauf import textlauf as material_textlauf
 from backend.app.katalog.einordnen import einordner as katalog_einordner
 from backend.app.services.einordnung import einordner
 from backend.app.services.ki import ki
@@ -94,7 +99,11 @@ async def lifespan(app: FastAPI):
     _ensure_directories()
     await db.connect()
     await ki.wahl_laden()
+    await anleitung_nachziehen()                      # einmal je Bestand: die Anleitung als Art neben dem Dokument (BF-80)
     annahme.starten()
+    ki_vorschau.starten()                             # die KI ergänzt wartende Vorschauen, auch nach einem Neustart (BF-80)
+    material_textlauf.starten()                       # lesbares Begleitmaterial in die Suche (BF-81)
+    material_abgleich.starten()                       # Dateien neben den Originalen als Material anbieten (BF-81)
     codestellen.erkannt.append(vorpruefer.nach_erkennung)
     codestellen.starten()
     vorpruefer.starten()
@@ -111,6 +120,9 @@ async def lifespan(app: FastAPI):
     for lauf in im_hintergrund:
         lauf.cancel()
     await annahme.stoppen()
+    await ki_vorschau.stoppen()
+    await material_textlauf.stoppen()
+    await material_abgleich.stoppen()
     await vorpruefer.stoppen()
     await einordner.stoppen()
     await katalog_einordner.stoppen()
@@ -161,6 +173,8 @@ app.include_router(helfer_router)
 app.include_router(imports_router)
 app.include_router(highlights_router)
 app.include_router(labels_router)
+app.include_router(material_router)
+app.include_router(material_stand_router)
 app.include_router(metadata_router)
 app.include_router(notes_router)
 app.include_router(search_router)

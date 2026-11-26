@@ -13,6 +13,7 @@ from collections import Counter
 
 from pydantic import ValidationError
 
+from backend.app.core import einstellungen
 from backend.app.core.database import db
 from backend.app.familie.sichtbar import Sicht
 from backend.app.katalog import merkmale
@@ -62,6 +63,23 @@ def arten_aus(text: str | None) -> list[str]:
     except ValueError:
         return [BUCH]
     return [a for a in arten if isinstance(a, str)] if isinstance(arten, list) else [BUCH]
+
+
+ANLEITUNG_NACHGEZOGEN = "katalog_arten_anleitung"        # app_settings: einmal je Bestand geschehen
+
+
+async def anleitung_nachziehen() -> int:
+    """Seit BF-80 ist die Anleitung eine eigene Art, abgespalten vom Dokument: einmal je Bestand bekommt jeder Bereich, der
+    für Dokumente gilt, auch die Anleitung. Danach entscheidet der Nutzer allein über die Arten; liefert, wie viele es waren."""
+    if await einstellungen.lesen(ANLEITUNG_NACHGEZOGEN) is not None:
+        return 0
+    bereiche = [b for b in await db.fetch_all("SELECT id, arten FROM categories WHERE art = 'bereich'")
+                if "dokument" in (arten := arten_aus(b["arten"])) and "anleitung" not in arten]
+    async with db.einheit():
+        for b in bereiche:
+            await db.execute("UPDATE categories SET arten = ? WHERE id = ?", (json.dumps([*arten_aus(b["arten"]), "anleitung"]), b["id"]))
+        await einstellungen.schreiben(ANLEITUNG_NACHGEZOGEN, "1")
+    return len(bereiche)
 
 
 # -- lesen ------------------------------------------------------------------------------------------------------------------

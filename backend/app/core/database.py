@@ -17,6 +17,7 @@ from pathlib import Path
 
 import aiosqlite
 
+from backend.app.ablage import formate_umbau
 from backend.app.core import suchindex
 from backend.app.core.config import settings
 from backend.app.familie import umbau as familie_umbau
@@ -426,6 +427,72 @@ CREATE TABLE IF NOT EXISTS katalog_alt_vorschlag (  -- was die KI je altem Regal
 );
 CREATE INDEX IF NOT EXISTS idx_aufnahme_stand ON aufnahme(stand);
 CREATE INDEX IF NOT EXISTS idx_aufnahme_sha ON aufnahme(sha256);
+CREATE TABLE IF NOT EXISTS vorschau (                -- vor dem Übernehmen (BF-80, annahme/vorschau.py): ein Hochladen, eine ZIP, ein Weg
+    id TEXT PRIMARY KEY,                             -- UUID
+    name TEXT NOT NULL,
+    quelle TEXT NOT NULL,                            -- hochladen, eingangsordner, ordner, extern
+    vorgabe TEXT NOT NULL DEFAULT '{}',              -- JSON: Sammlung, Band und Sprache einer Lücke (BF-75)
+    stand TEXT NOT NULL DEFAULT 'offen',             -- offen, uebernommen, verworfen
+    hinweis TEXT NOT NULL DEFAULT '',                -- nach dem Übernehmen: was im Eingang liegen blieb
+    angelegt_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    geaendert_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE TABLE IF NOT EXISTS buch_datei (              -- die Dateien eines Buchs (BF-80, ablage/formate.py): das Original und weitere Formate
+    id TEXT PRIMARY KEY,                             -- UUID
+    buch_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    hash TEXT NOT NULL UNIQUE,                       -- wo sie liegt, sagt ablage_datei (Kellerwolke) oder der Speicher je Prüfsumme
+    format TEXT NOT NULL,                            -- pdf, epub, mobi, txt, md
+    name TEXT NOT NULL DEFAULT '',
+    groesse INTEGER NOT NULL DEFAULT 0,
+    haupt INTEGER NOT NULL DEFAULT 0,                -- 1: das Original (books.hash), aus dem Text und Umschlag stammen
+    angelegt_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    UNIQUE (buch_id, format)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_buch_datei_haupt ON buch_datei(buch_id) WHERE haupt = 1;
+-- Die Zeile des Originals hält die Datenbank selbst gleich mit books: jedes neue Buch hat sofort genau eine Datei
+CREATE TRIGGER IF NOT EXISTS buch_datei_neu AFTER INSERT ON books BEGIN
+    INSERT OR IGNORE INTO buch_datei (id, buch_id, hash, format, name, groesse, haupt)
+    VALUES (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))), 2) || '-'
+            || substr('89ab', 1 + (abs(random()) % 4), 1) || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6))),
+            NEW.id, NEW.hash, NEW.file_format, NEW.file_name, NEW.file_size, 1);
+END;
+CREATE TRIGGER IF NOT EXISTS buch_datei_original AFTER UPDATE OF hash, file_format, file_name, file_size ON books BEGIN
+    UPDATE buch_datei SET hash = NEW.hash, format = NEW.file_format, name = NEW.file_name, groesse = NEW.file_size
+    WHERE buch_id = NEW.id AND haupt = 1;
+END;
+CREATE TABLE IF NOT EXISTS buch_material (           -- Begleitmaterial je Buch (BF-81, material/): die eine Liste für Buchseite, Suche, Folgen
+    id TEXT PRIMARY KEY,                             -- UUID
+    buch_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,                              -- wie es in der App heißt, mit Endung
+    art TEXT NOT NULL,                               -- aus material/arten.json, nach der Endung
+    groesse INTEGER NOT NULL DEFAULT 0,
+    sha256 TEXT NOT NULL DEFAULT '',
+    ort TEXT NOT NULL,                               -- kellerwolke (Begleiter des Originals), geraet (Buchordner, Material/)
+    knoten TEXT DEFAULT NULL,                        -- in der Kellerwolke: der Begleiter
+    rolle TEXT NOT NULL DEFAULT '',                  -- in der Kellerwolke: seine Rolle am Original, material_<kennung>
+    pfad TEXT NOT NULL DEFAULT '',                   -- Pfad in der Kellerwolke oder auf dem Gerät
+    herkunft TEXT NOT NULL,                          -- buchseite, hochladen, erkannt
+    text_stand TEXT NOT NULL DEFAULT 'offen',        -- für die Suche: offen, fertig, ohne (nicht lesbar), fehler
+    text_seiten INTEGER NOT NULL DEFAULT 0,          -- so viele Seiten Text stehen in der Suche
+    text_grund TEXT NOT NULL DEFAULT '',
+    angelegt_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_buch_material_buch ON buch_material(buch_id);
+CREATE TABLE IF NOT EXISTS material_fund (           -- Dateien neben dem Original in der Kellerwolke, die Material sein könnten (BF-81)
+    knoten TEXT PRIMARY KEY,
+    buch_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    groesse INTEGER NOT NULL DEFAULT 0,
+    pfad TEXT NOT NULL DEFAULT '',
+    stand TEXT NOT NULL DEFAULT 'offen',             -- offen, angenommen, abgelehnt; abgelehnte kommen nie wieder
+    gefunden_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+"""
+
+# Indizes über Spalten aus NEUBAU_SPALTEN: erst, wenn es die Spalten gibt
+NEUBAU_INDIZES = """
+CREATE INDEX IF NOT EXISTS idx_aufnahme_vorschau ON aufnahme(vorschau);
+CREATE INDEX IF NOT EXISTS idx_aufnahme_teil_von ON aufnahme(teil_von);
 """
 
 
@@ -465,6 +532,15 @@ NEUBAU_SPALTEN: tuple[tuple[str, str, str], ...] = (
     ("uebersetzung_block", "seite_gedruckt", "TEXT NOT NULL DEFAULT ''"),  # die Beschriftung dieser Seite, sonst die Dateiseite
     ("uebersetzung_block", "lage", "TEXT NOT NULL DEFAULT ''"),    # JSON [links, oben, rechts, unten] in Punkten der Seite
     ("uebersetzung_block", "reparaturen", "TEXT NOT NULL DEFAULT '[]'"),  # JSON: was an der Übersetzung berichtigt ist (BF-71)
+    # Hinzufügen mit Vorschau (BF-80) und Begleitmaterial (BF-81), Bedeutung in annahme/modelle.py
+    ("aufnahme", "vorschau", "TEXT DEFAULT NULL"),                 # die Vorschau, in der sie auf die Bestätigung wartet; leer: ohne Halt
+    ("aufnahme", "zuordnung", "TEXT DEFAULT NULL"),                # JSON: die Felder der Vorschau mit ihrer Herkunft
+    ("aufnahme", "gelesen", "TEXT DEFAULT NULL"),                  # JSON: Angaben aus der Datei, gemerkt bis zum Übernehmen
+    ("aufnahme", "ki_stand", "TEXT NOT NULL DEFAULT ''"),          # Vorschläge der KI: leer nicht gefragt, offen, fertig
+    ("aufnahme", "teil_von", "INTEGER DEFAULT NULL"),              # die Aufnahme der ZIP, aus der sie stammt
+    ("aufnahme", "zip_pfad", "TEXT DEFAULT NULL"),                 # ihr Ort in der ZIP, nur als Hinweis, nie als Pfad benutzt
+    ("aufnahme", "material_fuer", "INTEGER DEFAULT NULL"),         # Begleitmaterial zu diesem Buch, von der Buchseite
+    ("aufnahme", "entpacken", "INTEGER NOT NULL DEFAULT 0"),       # 1: eine ZIP als Material Teil für Teil auspacken
 )
 
 
@@ -502,10 +578,12 @@ class Database:
         await self._init_schema()
         await self._connection.executescript(NEUBAU_SQL)
         await self._spalten_nachziehen()
+        await self._connection.executescript(NEUBAU_INDIZES)
         await suchindex.anhaengen(self._connection, self.suche_dir)
         await self._connection.commit()
         await self._connection.close()
         await asyncio.to_thread(familie_umbau.umbauen, self.db_path)   # Profile und Daten je Profil (BF-78), ohne andere Verbindung
+        await asyncio.to_thread(formate_umbau.umbauen, self.db_path)   # jedes Buch mit genau einer Datei (BF-80)
         # die gemeinsame Verbindung: außerhalb einer Einheit gilt jede Anweisung für sich
         self._connection = await self._oeffnen(isolation_level=None)
         logger.info("Datenbank verbunden: %s", self.db_path)

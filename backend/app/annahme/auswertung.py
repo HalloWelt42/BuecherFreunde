@@ -52,18 +52,35 @@ def _lesen(pfad: str) -> Ergebnis:
     return e
 
 
-async def auswerten(pfad: Path) -> Ergebnis:
+def _nur_text(pfad: str) -> Ergebnis:
+    """Nur der Text, ohne Umschlag (Begleitmaterial, BF-81); Seiten eines PDF durch einen Seitenvorschub getrennt."""
+    from backend.app.services.processor import process_book
+
+    r = process_book(Path(pfad))
+    return Ergebnis(fulltext=r.fulltext or "", page_count=r.page_count or 0,
+                    grund="" if (r.fulltext or "").strip() else "Kein Text in der Datei" + (f" ({r.error})" if r.error else ""))
+
+
+async def _im_prozess(art, pfad: Path) -> Ergebnis:
     global _prozess
     if _prozess is None:
         _prozess = ProcessPoolExecutor(max_workers=1, mp_context=multiprocessing.get_context("spawn"), max_tasks_per_child=20)
     try:
-        return await asyncio.wait_for(asyncio.get_running_loop().run_in_executor(_prozess, _lesen, str(pfad)), ZEITGRENZE_S)
+        return await asyncio.wait_for(asyncio.get_running_loop().run_in_executor(_prozess, art, str(pfad)), ZEITGRENZE_S)
     except BrokenProcessPool:
         _prozess = None
         return Ergebnis(grund="Die Datei bringt den Leser zum Absturz")
     except TimeoutError:
         schliessen()
         return Ergebnis(grund="Das Lesen dauerte länger als eine halbe Stunde")
+
+
+async def auswerten(pfad: Path) -> Ergebnis:
+    return await _im_prozess(_lesen, pfad)
+
+
+async def text(pfad: Path) -> Ergebnis:
+    return await _im_prozess(_nur_text, pfad)
 
 
 def schliessen() -> None:

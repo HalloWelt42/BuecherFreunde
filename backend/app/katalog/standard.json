@@ -921,7 +921,7 @@
    "zeichen": "file-lines",
    "farbe": "#5f6673",
    "beschreibung": "Alles, was kein Buch ist",
-   "arten": ["dokument", "heft", "katalog", "broschuere"],
+   "arten": ["dokument", "heft", "katalog", "broschuere", "anleitung"],
    "kategorien": [
     {
      "schluessel": "besonderes/gebrauchsanleitungen",

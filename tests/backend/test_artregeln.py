@@ -32,8 +32,6 @@ def test_buch_mit_isbn_und_vielen_seiten_nur_ohne_schlichten_umschlag():
     ({"title": "Scan", "file_name": "scan_RECHNUNG_mai.pdf"}, "\"RECHNUNG\" im Dateinamen, keine ISBN"),
     ({"title": "Datenblatt Schrittmotor"}, "\"Datenblatt\" im Titel, keine ISBN"),
     ({"title": "Pump Datasheet Rev B"}, "\"Datasheet\" im Titel, keine ISBN"),
-    ({"title": "Gebrauchsanweisung Toaster"}, "\"Gebrauchsanweisung\" im Titel, keine ISBN"),
-    ({"title": "Kaffeemaschine User Manual"}, "\"User Manual\" im Titel, keine ISBN"),
     ({"title": "Folien zur Vorlesung"}, "\"Folien\" im Titel, keine ISBN"),
     ({"title": "Lecture 7: Graphs"}, "\"Lecture\" im Titel, keine ISBN"),
     ({"title": "Einladung", "page_count": 2}, "2 Seiten und keine ISBN"),
@@ -41,6 +39,18 @@ def test_buch_mit_isbn_und_vielen_seiten_nur_ohne_schlichten_umschlag():
 ])
 def test_dokument_nach_namen_und_seiten(angaben, erwartet):
     assert art(werk(**angaben)) == ("dokument", erwartet)
+
+
+@pytest.mark.parametrize(("angaben", "erwartet"), [
+    ({"title": "Gebrauchsanweisung Toaster"}, "\"Gebrauchsanweisung\" im Titel, keine ISBN"),
+    ({"title": "Kaffeemaschine User Manual"}, "\"User Manual\" im Titel, keine ISBN"),
+    ({"title": "Scan", "file_name": "Regal_Montageanleitung.pdf"}, "\"Montageanleitung\" im Dateinamen, keine ISBN"),
+    ({"title": "Microsoft Word - Bedienungsanleitung Funkwecker"}, "\"Bedienungsanleitung\" im Titel, keine ISBN"),
+    ({"title": "Quick Start Guide Router", "page_count": 2}, "\"Quick Start Guide\" im Titel, keine ISBN"),
+])
+def test_anleitung_nach_namen(angaben, erwartet):
+    """Seit BF-80 eine eigene Art neben dem Dokument, vor allen Regeln für Dokumente."""
+    assert art(werk(**angaben)) == ("anleitung", erwartet)
 
 
 def test_keine_regel_sicher():
