@@ -42,6 +42,7 @@ MARKEN, SEITE = WURZEL / "src" / "stil" / "marken.css", WURZEL / "index.html"
 IPHONES = [(440, 956, 3), (420, 912, 3), (402, 874, 3), (430, 932, 3), (393, 852, 3), (428, 926, 3), (390, 844, 3), (375, 812, 3),
            (414, 896, 3), (414, 896, 2), (414, 736, 3), (375, 667, 2)]
 STARTSYMBOL = 0.3      # Breite des Symbols am Startbild, Anteil der Breite
+SICHER = 0.8           # maskierbar: alles Sichtbare im Kreis mit 80 % des Radius (Deckkraft ab 10 %)
 ANFANG, ENDE = "<!-- Startbild und Statusleiste", "<!-- /Startbild und Statusleiste -->"
 
 
@@ -62,6 +63,18 @@ def deckend(bild: Image.Image) -> Image.Image:
     """Ohne Durchsichtigkeit: iOS füllt durchsichtige Stellen sonst schwarz."""
     grund = Image.new("RGBA", bild.size, bild.getpixel((1, 1)))
     return Image.alpha_composite(grund, bild).convert("RGB")
+
+
+def pruefe_sichere_zone() -> None:
+    """Bricht ab, wenn das Motiv des maskierbaren Symbols über den sicheren Kreis reicht (BF-19); gemessen ohne den Grund."""
+    motiv = re.sub(r'<rect width="1024" height="1024"[^>]*/>', "", (QUELLEN / "maskierbar.svg").read_text(encoding="utf-8"))
+    g = 256
+    bild = Image.open(io.BytesIO(cairosvg.svg2png(bytestring=motiv.encode(), output_width=g, output_height=g))).convert("RGBA")
+    deckkraft = bild.getchannel("A").load()
+    weit = max(((x + 0.5 - g / 2) ** 2 + (y + 0.5 - g / 2) ** 2) ** 0.5 for y in range(g) for x in range(g) if deckkraft[x, y] >= 26) / (g / 2)
+    if weit > SICHER:
+        raise SystemExit(f"maskierbar.svg: das Motiv reicht bis {weit:.1%} des Radius, sicher sind {SICHER:.0%}")
+    print(f"maskierbar.svg: Motiv bis {weit:.1%} des Radius (sicher bis {SICHER:.0%})")
 
 
 def grundfarben() -> dict[str, str]:
@@ -105,6 +118,7 @@ def kopf(farben: dict[str, str], verweise: list[str]) -> None:
 
 
 def main() -> None:
+    pruefe_sichere_zone()
     for quelle, ziel in (("symbol.svg", "symbol.svg"), ("tab.svg", "favicon.svg"), ("einfarbig.svg", "einfarbig.svg")):
         shutil.copyfile(QUELLEN / quelle, ZIEL / ziel)
     ico = [rastern("tab.svg", g) for g in (48, 32, 16)]
