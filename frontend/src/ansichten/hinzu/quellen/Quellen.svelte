@@ -12,13 +12,13 @@
 
   type Quelle = "import" | "extern" | "gutenberg";
 
-  /** Eingangsordner in der Kellerwolke; ohne sie gilt der Ordner auf dem Gerät. */
+  /** Eingangsordner, in der Kellerwolke oder auf dem Gerät (ort) */
   let wolke = $state<Ordnerstand | null>(null);
 
   // Gemeinfreie Bücher nur, wenn die Quelle in der Einrichtung eingeschaltet ist
   let ohneGemeinfreie = $derived(verzeichnisse.aus("gutenberg"));
   const quellen: [Quelle, string, string, string][] = $derived([
-    ["import", "folder-open", "Eingangsordner", wolke?.bereit ? "in der Kellerwolke, wird beim Ablegen erkannt" : "einlesen, was im Ordner der App liegt"],
+    ["import", "folder-open", "Eingangsordner", !wolke?.bereit ? "einlesen, was im Ordner der App liegt" : wolke.ort === "kellerwolke" ? "in der Kellerwolke, wird beim Ablegen erkannt" : "auf dem Gerät, wird beim Ablegen erkannt"],
     ["extern", "hard-drive", "Alte Sammlung einlesen", "nur lesend, Doppel werden erkannt"],
     ...(ohneGemeinfreie ? [] : [["gutenberg", "landmark", "Gemeinfreie Bücher", "suchen nach Titel, Autor, Sprache"] as [Quelle, string, string, string]]),
   ]);

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { route } from "../../lib/router.svelte";
-  import { aehnlicheBuecher, dateiUrl, holeBuch } from "../../lib/api/books";
+  import { aehnlicheBuecher, holeBuch, ladeUrl } from "../../lib/api/books";
   import { rollstand } from "../../lib/rollstand";
   import { filter } from "../../lib/stand/filter.svelte";
   import { wahl } from "../../lib/stand/wahl.svelte";
@@ -46,7 +46,7 @@
   <Knopf text="Bibliothek" symbol="arrow-left" klein href={filter.letzteAdresse} />
   <span class="reihe schiebt">
     <Knopf text="Bearbeiten" symbol="pen" klein gedrueckt={bearbeitet} gesperrt={!buch} onclick={() => (bearbeitet = !bearbeitet)} />
-    {#if buch}<Knopf text="Herunterladen" symbol="download" klein href={dateiUrl(buch.id)} download={buch.file_name || buch.title} />{/if}
+    {#if buch}<Knopf text="Herunterladen" symbol="download" klein href={ladeUrl(buch.id)} download={buch.file_name || buch.title} />{/if}
   </span>
 </div>
 

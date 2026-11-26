@@ -1,5 +1,6 @@
 <script lang="ts">
-  // Eingangsordner in der Kellerwolke: Abgelegtes kommt von selbst in die Bibliothek. Hier steht, was noch darin liegt und warum.
+  // Eingangsordner, in der Kellerwolke oder auf dem Gerät (ort): Abgelegtes kommt von selbst in die Bibliothek. Hier steht, was
+  // noch darin liegt und warum.
   import { lageFuer } from "../../../lib/annahme/zeilen";
   import { ladeEingangsordner, nimmEingangsordnerAuf, type Eingangsordner } from "../../../lib/api/annahme";
   import { anzahl, groesse, zahl } from "../../../lib/format";
@@ -33,7 +34,7 @@
 <Karte titel="Eingangsordner" symbol="folder-open">
   <p>Was du dort ablegst, kommt binnen einer Minute in die Bibliothek und zieht dabei um.</p>
   <div class="reihe">
-    <span class="leise pfad"><Symbol name="cloud" /> {ordner.pfad}</span>
+    <span class="leise pfad"><Symbol name={ordner.ort === "kellerwolke" ? "cloud" : "hard-drive"} /> {ordner.pfad}</span>
     <span class="schiebt"><Knopf text="Jetzt nachsehen" symbol="arrows-rotate" klein laeuft={sieht} onclick={() => void siehNach()} /></span>
   </div>
   {#if fehler}<p class="marke-text schlecht" role="alert"><Symbol name="triangle-exclamation" />{fehler}</p>{/if}

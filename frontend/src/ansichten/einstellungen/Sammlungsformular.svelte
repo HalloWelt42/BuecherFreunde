@@ -36,9 +36,10 @@
 <Fenster titel={sammlung ? "Sammlung bearbeiten" : "Neue Sammlung"} {onschliessen}>
   <form id="sammlungsformular" class="formular" onsubmit={speichere}>
     <label class="feld">Name<input class="eingabe" data-fokus bind:value={angaben.name} required maxlength="120" /></label>
+    <!-- Die Antwort des Servers gleich unter dem Namen (meist gilt sie ihm), nie unten außer Sicht -->
+    {#if fehler}<p class="marke-text schlecht" role="alert">{fehler}</p>{/if}
     <label class="feld">Beschreibung<textarea class="eingabe" rows="3" bind:value={angaben.description}></textarea></label>
     <div class="feld">Farbe<Farbwahl wert={angaben.color} onwahl={(f) => (angaben.color = f)} /></div>
-    {#if fehler}<p class="marke-text schlecht" role="alert">{fehler}</p>{/if}
   </form>
   {#snippet fuss()}
     <span class="schiebt reihe">

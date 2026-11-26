@@ -1,7 +1,7 @@
 // Was im Hintergrund läuft: Ergänzen der Bibliothek und eigene Aufträge einzelner Ansichten. Einlesen von Ordnern und
 // gemeinfreie Bücher stehen in der einen Liste der Annahme (lib/stand/annahme.svelte.ts) und werden hier als Auftrag gezeigt.
 import { brecheRescanAb, holeRescanStatus } from "../api/imports";
-import { erledigte, wartende, type Sammelstand } from "../annahme/sammlung";
+import { EINLESEN, ERLEDIGT, GEMEINFREI, WARTEND, type Sammelstand } from "../annahme/sammlung";
 import { annahme } from "./annahme.svelte";
 import { bestand } from "./bestand.svelte";
 
@@ -32,7 +32,7 @@ export interface EigenerAuftrag {
   abbrechen?: () => void;
 }
 
-const GEMEINFREI = "gemeinfrei";
+const GEMEINFREI_AUFTRAG = "gemeinfrei";
 const ERGAENZUNG: Ergaenzung = { laeuft: false, typ: "", gesamt: 0, fortschritt: 0, aktuelles_buch: "", cover_gefunden: 0, isbn_gefunden: 0, metadaten_aktualisiert: 0, volltext_extrahiert: 0, fehler: 0 };
 const TAKT_AKTIV_MS = 1500;
 const TAKT_RUHE_MS = 10_000;
@@ -42,7 +42,7 @@ function gemeinfreiAuftrag(s: Sammelstand): EigenerAuftrag | null {
   if (!s.gesamt) return null;
   const neben = [s.da ? `${s.da} gab es schon` : "", s.gescheitert ? `${s.gescheitert} gescheitert` : ""].filter(Boolean);
   const jetzt = s.aktuell ? s.aktuell.name.replace(/\.(?:epub|txt)$/, "") : s.laeuft ? "" : "fertig";
-  return { id: GEMEINFREI, titel: "Gemeinfreie Bücher holen", text: [`${s.erledigt} von ${s.gesamt}`, jetzt, ...neben].filter(Boolean).join(", "), anteil: s.erledigt / s.gesamt, laeuft: s.laeuft, weg: "/import" };
+  return { id: GEMEINFREI_AUFTRAG, titel: "Gemeinfreie Bücher holen", text: [`${s.erledigt} von ${s.gesamt}`, jetzt, ...neben].filter(Boolean).join(", "), anteil: s.erledigt / s.gesamt, laeuft: s.laeuft, weg: "/import" };
 }
 
 class Auftraege {
@@ -102,12 +102,12 @@ class Auftraege {
   /** Fertig Eingelesenes ausblenden (die Bücher bleiben) und das Ergebnis der Ergänzung dazu */
   async bereinigen(): Promise<void> {
     this.#gesehen = this.#kennung();
-    await annahme.entferneAlle(erledigte(annahme.einlesen));
+    await annahme.raeumeAuf(EINLESEN, ERLEDIGT);
   }
 
   /** Wartende Dateien nicht mehr einlesen; was gerade läuft, läuft zu Ende */
   async einlesenAbbrechen(): Promise<void> {
-    await annahme.entferneAlle(wartende(annahme.einlesen));
+    await annahme.raeumeAuf(EINLESEN, WARTEND);
   }
 
   async ergaenzenAbbrechen(): Promise<void> {
@@ -124,13 +124,13 @@ class Auftraege {
   }
 
   entferne(id: string): void {
-    if (id === GEMEINFREI) void this.gemeinfreiAufraeumen();
+    if (id === GEMEINFREI_AUFTRAG) void this.gemeinfreiAufraeumen();
     else this.eigene = this.eigene.filter((e) => e.id !== id);
   }
 
   /** Die gemeinfreie Übernahme aufräumen: Geholtes, schon Vorhandenes und Gescheitertes aus der Liste (Bücher bleiben) */
   async gemeinfreiAufraeumen(): Promise<void> {
-    await annahme.entferneAlle(erledigte(annahme.gemeinfrei));
+    await annahme.raeumeAuf(GEMEINFREI, ERLEDIGT);
   }
 }
 

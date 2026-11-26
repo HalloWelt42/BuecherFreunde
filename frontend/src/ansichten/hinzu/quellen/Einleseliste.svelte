@@ -49,6 +49,7 @@
       <li><span class="marke-text {ton}"><Symbol name={symbol} dreht={lage(a) === "laeuft"} /></span><span class="name"><b>{a.name}</b><br /><span class="marke-text {ton}">{wort}</span> <span class="klein">{text(a)}</span></span>{#if a.buch_id}<Knopf text="Buch öffnen" symbol="book-open" klein href="/book/{a.buch_id}" />{/if}</li>
     {/each}
   </ul>
+  {#if s.weitere}<p class="leise zahl">und {zahl(s.weitere)} weitere</p>{/if}
 </Karte>
 
 <style>

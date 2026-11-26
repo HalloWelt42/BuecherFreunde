@@ -9,7 +9,7 @@
   let s = $derived(annahme.einlesen);
   let nach = (lage: Sammellage) => s.eintraege.filter((e) => s.lagen.get(e.id) === lage);
   let fehler = $derived(nach("fehler").slice(0, 5));
-  let wartend = $derived(nach("wartet"));
+  let wartend = $derived(nach("wartet").slice(0, 3));
   let zuletzt = $derived(nach("fertig").slice(-3).reverse());
 </script>
 
@@ -19,8 +19,8 @@
   <span class="leise zahl">{s.imRegal} von {s.gesamt} im Regal{s.da ? `, ${s.da} gab es schon` : ""}{s.gescheitert ? `, ${s.gescheitert} gescheitert` : ""}</span>
   {#if s.aktuell}<span class="marke-text info">{s.aktuell.name}: {s.aktuell.text || "läuft"}</span>{/if}
   {#each fehler as a (a.id)}<span class="marke-text schlecht">{a.name}: {a.text || "gescheitert"}</span>{/each}
-  {#each wartend.slice(0, 3) as a (a.id)}<span class="leise">{a.name} wartet</span>{/each}
-  {#if wartend.length > 3}<span class="leise zahl">und {wartend.length - 3} weitere</span>{/if}
+  {#each wartend as a (a.id)}<span class="leise">{a.name} wartet</span>{/each}
+  {#if s.wartend > wartend.length}<span class="leise zahl">und {s.wartend - wartend.length} weitere</span>{/if}
   {#each zuletzt as a (a.id)}
     <span class="reihe"><span class="marke-text gut name">{a.name}</span>{#if a.buch_id}<Knopf text="Anzeigen" symbol="arrow-right" klein frei href="/book/{a.buch_id}" onclick={() => schale.schliesseAlles()} />{/if}</span>
   {/each}

@@ -41,6 +41,7 @@
       if (eingabe[k] !== (buch[k] ?? "")) daten[k] = eingabe[k];
     }
     if (!eingabe.title.trim()) throw new Error("Der Titel fehlt");
+    if ("author" in daten && !eingabe.author.trim()) throw new Error("Der Autor fehlt");
     const jahr = alsZahl(eingabe.year, "Das Jahr");
     if (jahr !== buch.year) daten.year = jahr;
     const seiten = alsZahl(eingabe.page_count, "Die Seitenzahl") ?? 0;

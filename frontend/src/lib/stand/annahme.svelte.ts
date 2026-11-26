@@ -1,10 +1,10 @@
 // Die Annahme in der Oberfläche: Einträge des Servers (Ereignisstrom) zusammen mit dem, was dieser Browser hochlädt. Eine
 // Liste für alle Quellen; einzeln gezeigt wird, was jemand hochlädt oder ablegt, Ordner und gemeinfreie Bücher als ein Auftrag.
-import { annahmeDienst, annahmeEreignisse, annahmeErneut, blendeAnnahmenAus, entferneAnnahme, ladeAnnahmen } from "../api/annahme";
+import { annahmeDienst, annahmeEreignisse, annahmeErneut, blendeAnnahmenAus, entferneAnnahme, ladeAnnahmen, raeumeAnnahmeAuf } from "../api/annahme";
 import { hochladenZaehlen } from "../api/client";
 import { Hochlader } from "../annahme/hochlader";
 import { pruefsumme } from "../annahme/pruefsumme";
-import type { AnnahmeEintrag, AnnahmeListe, AnnahmeZaehler, Hochladung } from "../annahme/typen";
+import type { AnnahmeEintrag, AnnahmeListe, Annahmequelle, AnnahmeZaehler, Hochladung, Quellenzahlen } from "../annahme/typen";
 import { EINLESEN, EINZELN, GEMEINFREI, gehoertZu, sammle } from "../annahme/sammlung";
 import { fuegeZusammen, laeuftVonSelbst, type Annahmezeile } from "../annahme/zeilen";
 import { bestand } from "./bestand.svelte";
@@ -12,12 +12,12 @@ import { bestand } from "./bestand.svelte";
 const IM_REGAL = ["wissen", "fertig", "ohne_text"];
 const LEER: AnnahmeZaehler = { alle: 0, laeuft: 0, klaeren: 0, da: 0, fertig: 0 };
 const AUFFRISCHEN_MS = 800;
-/** So viele Einträge zugleich entfernen, wenn ein ganzer Auftrag aufgeräumt wird */
-const ZUGLEICH = 6;
 
 class Annahme {
   eintraege = $state<AnnahmeEintrag[]>([]);
   zaehler = $state<AnnahmeZaehler>(LEER);
+  /** Zahlen je Quelle über alle Einträge, vom Server */
+  quellen = $state<Partial<Record<Annahmequelle, Quellenzahlen>>>({});
   hochladungen = $state<Hochladung[]>([]);
   /** Antwortet der Server auf die Annahme? Vor der ersten Antwort unbekannt */
   grund = $state("");
@@ -25,9 +25,9 @@ class Annahme {
 
   zeilen = $derived<Annahmezeile[]>(fuegeZusammen(this.eintraege.filter((e) => gehoertZu(e, EINZELN)), this.hochladungen));
   /** Einlesen aus dem Einlese-Ordner und der externen Sammlung */
-  einlesen = $derived(sammle(this.eintraege, EINLESEN));
+  einlesen = $derived(sammle(this.eintraege, EINLESEN, this.quellen));
   /** Gemeinfreie Bücher holen */
-  gemeinfrei = $derived(sammle(this.eintraege, GEMEINFREI));
+  gemeinfrei = $derived(sammle(this.eintraege, GEMEINFREI, this.quellen));
   laufend = $derived(this.zeilen.filter((z) => z.gruppe === "laeuft"));
   vonSelbst = $derived(this.laufend.filter(laeuftVonSelbst).length);
   angehalten = $derived(this.laufend.length - this.vonSelbst);
@@ -74,6 +74,7 @@ class Annahme {
     const neuImRegal = liste.eintraege.some((e) => IM_REGAL.includes(e.stand) && vorher.has(e.id) && !IM_REGAL.includes(vorher.get(e.id)!));
     this.eintraege = liste.eintraege;
     this.zaehler = liste.zaehler ?? LEER;
+    if (liste.quellen) this.quellen = liste.quellen;
     if (!neuImRegal) return;
     clearTimeout(this.#uhr);
     this.#uhr = setTimeout(() => bestand.geaendert(), AUFFRISCHEN_MS);
@@ -108,13 +109,9 @@ class Annahme {
     await this.auffrischen();
   }
 
-  /** Mehrere Einträge entfernen (ein Auftrag räumt auf); eingetragene Bücher bleiben */
-  async entferneAlle(eintraege: readonly AnnahmeEintrag[]): Promise<void> {
-    const offen = eintraege.map((e) => e.id);
-    await Promise.all(Array.from({ length: Math.min(ZUGLEICH, offen.length) }, async () => {
-      for (let id = offen.shift(); id !== undefined; id = offen.shift()) await entferneAnnahme(id);
-    }));
-    await this.auffrischen();
+  /** Einen Auftrag aufräumen: alle Einträge der Quellen in diesen Ständen, am Server in einem Schritt; Bücher bleiben */
+  async raeumeAuf(quellen: readonly Annahmequelle[], staende: readonly string[]): Promise<void> {
+    for (const quelle of quellen) this.#uebernimm(await raeumeAnnahmeAuf(quelle, staende));
   }
 }
 

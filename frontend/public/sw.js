@@ -196,7 +196,7 @@ self.addEventListener("message", (e) => {
 self.addEventListener("fetch", (e) => {
   const ziel = new URL(e.request.url);
   if (e.request.method !== "GET" || ziel.origin !== location.origin) return;
-  const buch = ZUM_BUCH.exec(ziel.pathname);
+  const buch = ziel.searchParams.has("herunterladen") ? null : ZUM_BUCH.exec(ziel.pathname);
   if (buch) e.respondWith(lesestoff(e, buch[1]));
   else if (ziel.pathname.startsWith("/api/")) return;
   else if (e.request.mode === "navigate") e.respondWith(seite(e.request));

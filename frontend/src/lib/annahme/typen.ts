@@ -30,9 +30,22 @@ export interface AnnahmeZaehler {
   fertig: number;
 }
 
+/** Zahlen je Quelle über alle sichtbaren Einträge, nicht nur über die gelieferten */
+export interface Quellenzahlen {
+  gesamt: number;
+  laeuft: number;
+  fertig: number;
+  da: number;
+  gescheitert: number;
+}
+
 export interface AnnahmeListe {
+  /** Die neuesten, höchstens 300 */
   eintraege: AnnahmeEintrag[];
+  /** Wie viele es darüber hinaus gibt */
+  weitere?: number;
   zaehler: AnnahmeZaehler;
+  quellen?: Partial<Record<Annahmequelle, Quellenzahlen>>;
 }
 
 export interface NeueDatei {

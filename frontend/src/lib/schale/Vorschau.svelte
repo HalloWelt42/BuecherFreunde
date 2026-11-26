@@ -1,6 +1,6 @@
 <script lang="ts">
   // Rechts: das gewählte Buch mit den häufigsten Griffen
-  import { dateiUrl } from "../api/books";
+  import { ladeUrl } from "../api/books";
   import { ladeAblage } from "../api/orte";
   import { formatName, groesse, zahl } from "../format";
   import { ablageText } from "../ablage";
@@ -39,7 +39,7 @@
       <div class="knopfreihe">
         <Knopf text={leseKnopf(buch)} symbol="book-open" haupt klasse="voll" href={leseAdresse(buch.id)} />
         <Knopf text="Buchseite" symbol="up-right-and-down-left-from-center" href="/book/{buch.id}" />
-        <Knopf text="Herunterladen" symbol="download" href={dateiUrl(buch.id)} download={buch.title} />
+        <Knopf text="Herunterladen" symbol="download" href={ladeUrl(buch.id)} download={buch.title} />
       </div>
       {#if stand.angefangen}<div><Balken anteil={stand.anteil} name="Lesestand" /><p class="leise zahl">{standText(buch)}</p></div>{/if}
       <div class="reihe">

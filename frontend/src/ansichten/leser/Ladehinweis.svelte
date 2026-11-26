@@ -1,5 +1,6 @@
 <script lang="ts">
   // Wartet der Leser lange oder scheitert er, gibt es die Datei auch direkt
+  import { alsAnhang } from "../../lib/api/books";
   import type { Ladefehler } from "../../lib/leser/ladefehler";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Zustand from "../../lib/teile/Zustand.svelte";
@@ -17,7 +18,7 @@
   <Zustand art={fehler ? "fehler" : "laedt"} text={fehler?.text ?? (langsam ? "Das dauert länger. Die Datei lässt sich auch direkt öffnen." : "Buch wird geladen")} onerneut={fehler ? onerneut : undefined}>
     {#if fehler ? fehler.dateiDa : langsam}
       <Knopf text="Im Browser öffnen" symbol="up-right-from-square" klein extern href={adresse} />
-      <Knopf text="Herunterladen" symbol="download" klein href={adresse} download={name} />
+      <Knopf text="Herunterladen" symbol="download" klein href={alsAnhang(adresse)} download={name} />
     {/if}
   </Zustand>
 </div>

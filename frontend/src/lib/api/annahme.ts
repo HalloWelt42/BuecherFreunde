@@ -1,6 +1,6 @@
 // Schnittstelle der Annahme (Hochladen in Teilen)
 import { anfrage, del, get, post, ApiError } from "./client";
-import { AndererStand, OhneVerbindung, type AnnahmeDienst, type AnnahmeEintrag, type AnnahmeListe, type NeueDatei } from "../annahme/typen";
+import { AndererStand, OhneVerbindung, type AnnahmeDienst, type AnnahmeEintrag, type AnnahmeListe, type Annahmequelle, type NeueDatei } from "../annahme/typen";
 
 /** Netzfehler und vorübergehende Antworten des Servers (5xx, 429) heißen: später noch einmal. */
 async function mitVerbindung<T>(tun: () => Promise<T>): Promise<T> {
@@ -31,9 +31,12 @@ export const ladeAnnahmen = (): Promise<AnnahmeListe> => get("/api/annahme");
 export const annahmeErneut = (id: number): Promise<AnnahmeEintrag> => post(`/api/annahme/${id}/erneut`);
 export const entferneAnnahme = (id: number): Promise<unknown> => del(`/api/annahme/${id}`);
 export const blendeAnnahmenAus = (): Promise<unknown> => post("/api/annahme/ausblenden");
+/** Viele auf einmal entfernen, nach Quelle und Stand; antwortet mit der neuen Liste */
+export const raeumeAnnahmeAuf = (quelle: Annahmequelle, staende: readonly string[]): Promise<AnnahmeListe & { entfernt: number }> =>
+  del(`/api/annahme?${new URLSearchParams([["quelle", quelle], ...staende.map((s) => ["stand", s])])}`);
 
 export type Eingangsdatei = { name: string; groesse: number; stand: string; text: string; buch_id: number | null };
-export type Eingangsordner = { bereit: boolean; pfad: string; dateien: Eingangsdatei[] };
+export type Eingangsordner = { bereit: boolean; ort: "kellerwolke" | "geraet"; pfad: string; dateien: Eingangsdatei[] };
 export const ladeEingangsordner = (): Promise<Eingangsordner> => get("/api/annahme/eingangsordner");
 export const nimmEingangsordnerAuf = (): Promise<{ neu: number }> => post("/api/annahme/eingangsordner");
 

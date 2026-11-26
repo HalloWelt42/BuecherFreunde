@@ -35,9 +35,17 @@ export function coverUrl(id: number, stand?: string | number): string {
   return `/api/books/${id}/cover${stand ? `?_v=${encodeURIComponent(stand)}` : ""}`;
 }
 
+/** Die Datei zum Ansehen: der Server schickt sie inline (Im Browser, Leser) */
 export function dateiUrl(id: number): string {
   return `/api/books/${id}/file`;
 }
+
+/** Dieselbe Adresse zum Herunterladen: der Server schickt die Datei als Anhang */
+export function alsAnhang(adresse: string): string {
+  return `${adresse}${adresse.includes("?") ? "&" : "?"}herunterladen=true`;
+}
+
+export const ladeUrl = (id: number): string => alsAnhang(dateiUrl(id));
 
 export function volltextSuche(id: number, wort: string, schalter: Suchschalter = {}): Promise<{ treffer: Buchtreffer[]; gesamt: number; seiten_gesamt?: number }> {
   const { limit = 500, ganzes_wort, gross_klein, regex } = schalter;

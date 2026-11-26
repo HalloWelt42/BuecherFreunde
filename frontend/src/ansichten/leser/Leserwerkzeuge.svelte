@@ -1,6 +1,6 @@
 <script lang="ts">
   // Unten im Darstellungsfeld: was für jedes Format gilt und am Telefon nicht in die Leiste passt
-  import { dateiUrl } from "../../lib/api/books";
+  import { dateiUrl, ladeUrl } from "../../lib/api/books";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
   import { randmarken } from "../../lib/leser/randschalter.svelte";
@@ -15,7 +15,7 @@
   Werkzeuge
   <div class="tastenraster">
     <Knopf klasse="kachel" text="Vollbild" symbol="expand" onclick={() => void schale.vollbildUmschalten()} />
-    <Knopf klasse="kachel" text="Herunterladen" symbol="download" href={dateiUrl(sitzung.buch.id)} download={sitzung.buch.file_name || sitzung.buch.title} />
+    <Knopf klasse="kachel" text="Herunterladen" symbol="download" href={ladeUrl(sitzung.buch.id)} download={sitzung.buch.file_name || sitzung.buch.title} />
     <Knopf klasse="kachel" text="Im Browser" titel="Im Browser öffnen" symbol="up-right-from-square" extern href={dateiUrl(sitzung.buch.id)} />
   </div>
 </div>

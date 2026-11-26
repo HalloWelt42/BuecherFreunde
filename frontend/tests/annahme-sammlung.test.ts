@@ -1,5 +1,5 @@
 // BF-8: Einlesen aus Ordnern und gemeinfreie Übernahme sind Einträge der einen Annahme, als Auftrag zusammengefasst
-import { EINLESEN, EINZELN, GEMEINFREI, erledigte, gehoertZu, inArbeit, sammle, wartende } from "../src/lib/annahme/sammlung";
+import { EINLESEN, EINZELN, ERLEDIGT, GEMEINFREI, WARTEND, gehoertZu, inArbeit, sammle } from "../src/lib/annahme/sammlung";
 import type { AnnahmeEintrag } from "../src/lib/annahme/typen";
 
 function eintrag(ueber: Partial<AnnahmeEintrag>): AnnahmeEintrag {
@@ -35,10 +35,16 @@ describe("Aufträge aus der Annahme", () => {
     expect(g.laeuft).toBe(true);
   });
 
-  it("aufräumen nimmt nur Erledigtes, anhalten nur Wartendes, nie den laufenden", () => {
-    const s = sammle(liste, EINLESEN);
-    expect(erledigte(s).map((e) => e.id)).toEqual([3, 4, 5]);
-    expect(wartende(s).map((e) => e.id)).toEqual([7, 8]);
+  it("zählt mit den Zahlen des Servers alle Einträge, auch über die gelieferten hinaus", () => {
+    const zahlen = { ordner: { gesamt: 900, laeuft: 600, fertig: 250, da: 30, gescheitert: 20 }, extern: { gesamt: 4, laeuft: 1, fertig: 3, da: 0, gescheitert: 0 } };
+    const s = sammle(liste, EINLESEN, zahlen);
+    expect([s.gesamt, s.imRegal, s.da, s.gescheitert, s.erledigt, s.wartend, s.weitere]).toEqual([904, 253, 30, 20, 303, 600, 898]);
+    expect(s.aktuell?.id).toBe(6);
+  });
+
+  it("räumt am Server nach Stand auf: Erledigtes oder Wartendes", () => {
+    expect(ERLEDIGT).toEqual(["wissen", "fertig", "ohne_text", "da", "fehler", "kaputt", "format"]);
+    expect(WARTEND).toEqual(["liest"]);
   });
 
   it("einzeln bleiben Hochladen und Eingangsordner, auch ältere Einträge ohne Quelle", () => {
