@@ -1,66 +1,92 @@
-"""Vorlesen über den Sprechdienst: Stimmen, Teilen langer Texte, Strom und klare Meldungen."""
+"""Vorlesen über den Sprechdienst der Leitstelle (BF-14): Stimmen aus dem Katalog, Sätze, Strom und klare Meldungen; gegen
+eine Attrappe der Leitstelle, ohne Netz."""
 
+import base64
 import json
+from urllib.parse import unquote
 
 import httpx
-import pytest
 
 from backend.app.core.config import settings
 from backend.app.services import vorlesen
+from tests.api.test_ausfuehren import LEITSTELLE, leitstelle  # noqa: F401 - Attrappe der Leitstelle
+
+DIENST = f"/v1/dienste/{settings.sprechdienst}"
+WAV = b"RIFF0000WAVEfmt "
 
 
-def dienst(monkeypatch, antwort) -> None:
-    monkeypatch.setattr(settings, "vorlesen_url", "https://sprechen.test")
-    monkeypatch.setattr(vorlesen, "_client", httpx.AsyncClient(base_url="https://sprechen.test", transport=httpx.MockTransport(antwort)))
+def sprechdienst(r: httpx.Request) -> httpx.Response:
+    if r.url.path == f"{DIENST}/tts/voices":
+        return httpx.Response(200, json={"speakers": ["Thorsten", "Kerstin"]})
+    if r.url.path == f"{DIENST}/v1/audio/speech":
+        return httpx.Response(200, content=WAV, headers={"content-type": "audio/wav"})
+    return httpx.Response(404, json={"detail": "unbekannt"})
 
 
-def test_teile_schneiden_an_saetzen_und_behalten_allen_text():
-    text = " ".join(f"Satz Nummer {n} mit etwas Inhalt." for n in range(60))
-    stuecke = vorlesen.teile(text, 200)
-    assert all(len(s) <= 200 for s in stuecke) and all(s.endswith(".") for s in stuecke)
-    assert " ".join(stuecke) == text
-    assert "".join(vorlesen.teile("x" * 950, 200)) == "x" * 950
+def test_saetze_wie_im_text_und_lange_geteilt():
+    text = "Erster Satz hier. Zweiter Satz dort!\n\n- \nDritter: ein " + "langes Wort, " * 60 + "Ende."
+    teile = vorlesen.saetze(text, 120)
+    assert teile[:2] == ["Erster Satz hier.", "Zweiter Satz dort!"] and all(len(t) <= 120 for t in teile)
+    assert all(t in text for t in teile) and "-" not in teile                   # jeder Satz steht so im Text, Striche fallen weg
 
 
-@pytest.mark.asyncio
-async def test_ohne_sprechdienst_sagt_es_die_app(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(settings, "vorlesen_url", "")
-    assert (await client.get("/api/vorlesen/stimmen", headers=auth_headers)).json() == {"da": False, "stimmen": [], "hinweis": ""}
-    r = await client.post("/api/vorlesen", headers=auth_headers, json={"text": "Hallo"})
+async def test_ohne_leitstelle_die_stimmen_des_geraets(client, monkeypatch):
+    monkeypatch.setattr(settings, "leitstelle_adresse", "")
+    assert (await client.get("/api/vorlesen/stimmen")).json() == {"da": False, "stimmen": [], "hinweis": ""}
+    r = await client.post("/api/vorlesen", json={"text": "Hallo"})
     assert r.status_code == 503 and "Sprechdienst" in r.json()["detail"]
+    assert (await client.get("/api/config/oberflaeche")).json()["anschluesse"]["vorlesen"] is False
 
 
-@pytest.mark.asyncio
-async def test_stimmen_ohne_freigabe_der_eigenen(client, auth_headers, monkeypatch):
-    def antwort(r: httpx.Request) -> httpx.Response:
-        if r.url.params["bereich"] == "privat":
-            return httpx.Response(403, json={"detail": "nein"})
-        return httpx.Response(200, json=[{"id": f"katalog:{r.url.params['bereich']}", "name": "Stimme"}])
-
-    dienst(monkeypatch, antwort)
-    s = (await client.get("/api/vorlesen/stimmen", headers=auth_headers)).json()
-    assert s["da"] and [x["gruppe"] for x in s["stimmen"]] == ["weitere", "eingebaut"] and "Eigene Stimmen" in s["hinweis"]
+async def test_stimmen_aus_dem_katalog(client, leitstelle, monkeypatch):  # noqa: F811
+    monkeypatch.setattr(vorlesen, "_katalog", None)
+    leitstelle.antwort = sprechdienst
+    s = (await client.get("/api/vorlesen/stimmen")).json()
+    assert s == {"da": True, "hinweis": "", "stimmen": [{"id": "katalog:Kerstin", "name": "Kerstin", "gruppe": "eingebaut"},
+                                                        {"id": "katalog:Thorsten", "name": "Thorsten", "gruppe": "eingebaut"}]}
+    assert (await client.get("/api/config/oberflaeche")).json()["anschluesse"]["vorlesen"] is True
 
 
-@pytest.mark.asyncio
-async def test_strom_zaehlt_saetze_durch_und_schickt_die_stimme(client, auth_headers, monkeypatch):
-    gesehen = []
-
-    def antwort(r: httpx.Request) -> httpx.Response:
-        gesehen.append(json.loads(r.content))
-        return httpx.Response(200, text='{"art":"satz","nr":0,"text":"a","ton":"QQ=="}\n{"art":"ende"}\n')
-
-    dienst(monkeypatch, antwort)
-    monkeypatch.setattr(vorlesen, "TEIL", 20)
-    monkeypatch.setattr(vorlesen.teile, "__defaults__", (20,))
-    r = await client.post("/api/vorlesen", headers=auth_headers, json={"text": "Erster Satz hier. Zweiter Satz dort.", "stimme": "katalog:anna"})
+async def test_strom_satz_fuer_satz_ueber_die_leitstelle(client, leitstelle):  # noqa: F811
+    leitstelle.antwort = sprechdienst
+    r = await client.post("/api/vorlesen", json={"text": "Erster Satz hier. Zweiter Satz dort.", "stimme": "katalog:Kerstin"})
     zeilen = [json.loads(z) for z in r.text.splitlines()]
-    assert [z.get("nr") for z in zeilen] == [0, 1, None] and zeilen[-1]["art"] == "ende"
-    assert gesehen[0]["stimme"] == {"art": "katalog", "name": "anna"}
+    assert [(z["art"], z.get("nr"), z.get("text")) for z in zeilen] == [("satz", 0, "Erster Satz hier."), ("satz", 1, "Zweiter Satz dort."),
+                                                                         ("ende", None, None)]
+    assert base64.b64decode(zeilen[0]["ton"]) == WAV
+    sprechen = [a for a in leitstelle.anfragen if a.url.path.endswith("/v1/audio/speech")]
+    assert [json.loads(a.content) for a in sprechen] == [{"input": "Erster Satz hier.", "response_format": "wav", "voice": "Kerstin"},
+                                                        {"input": "Zweiter Satz dort.", "response_format": "wav", "voice": "Kerstin"}]
+    kopf = sprechen[0].headers
+    assert sprechen[0].url == httpx.URL(f"{LEITSTELLE}{DIENST}/v1/audio/speech") and kopf["Authorization"] == "Bearer ls_app_test"
+    assert unquote(kopf["X-Leitstelle-Titel"]) == "BücherFreunde: Vorlesen" and kopf["X-Leitstelle-Arbeit"].startswith("bf-vorlesen-")
+    assert sprechen[1].headers["X-Leitstelle-Arbeit"] == kopf["X-Leitstelle-Arbeit"]  # eine Vorlesung ist eine Arbeit
 
 
-@pytest.mark.asyncio
-async def test_fehler_vor_dem_ersten_satz_ist_eine_antwort(client, auth_headers, monkeypatch):
-    dienst(monkeypatch, lambda r: httpx.Response(422, json={"detail": "Diese Stimme gibt es nicht"}))
-    r = await client.post("/api/vorlesen", headers=auth_headers, json={"text": "Hallo", "stimme": "x"})
-    assert r.status_code == 400 and r.json()["detail"] == "Diese Stimme gibt es nicht"
+async def test_vorgabe_des_dienstes_ohne_stimme(client, leitstelle):  # noqa: F811
+    leitstelle.antwort = sprechdienst
+    await client.post("/api/vorlesen", json={"text": "Nur ein Satz."})
+    assert "voice" not in json.loads(leitstelle.anfragen[-1].content)
+
+
+async def test_fehler_vor_dem_ersten_satz_ist_eine_antwort(client, leitstelle):  # noqa: F811
+    leitstelle.antwort = lambda r: httpx.Response(403, json={"error": {"code": "faehigkeit_nicht_erlaubt", "message": "Fähigkeit stimme fehlt"}})
+    r = await client.post("/api/vorlesen", json={"text": "Hallo."})
+    assert r.status_code == 403 and "nicht frei" in r.json()["detail"] and "stimme fehlt" in r.json()["detail"]
+    r = await client.post("/api/vorlesen", json={"text": "Hallo.", "stimme": "a1b2c3"})               # frühere eigene Stimme
+    assert r.status_code == 400 and "aus der Liste" in r.json()["detail"]
+
+
+async def test_fehler_nach_dem_ersten_satz_ist_eine_zeile(client, leitstelle):  # noqa: F811
+    gesprochen = []
+
+    def antwort(r: httpx.Request) -> httpx.Response:
+        gesprochen.append(r)
+        if len(gesprochen) == 1:
+            return sprechdienst(r)
+        return httpx.Response(503, json={"error": {"code": "halt", "message": "Hauptregler auf Halt"}})
+
+    leitstelle.antwort = antwort
+    r = await client.post("/api/vorlesen", json={"text": "Eins. Zwei. Drei."})
+    zeilen = [json.loads(z) for z in r.text.splitlines()]
+    assert zeilen[0]["art"] == "satz" and zeilen[-1] == {"art": "fehler", "meldung": "Vorlesen gerade nicht möglich: Hauptregler auf Halt"}

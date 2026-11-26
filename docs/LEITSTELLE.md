@@ -17,9 +17,15 @@ Abschnitt 9).
 |---|---|
 | `LEITSTELLE_ADRESSE` | Adresse der Leitstelle (mit oder ohne `/v1`); leer: ohne KI |
 | `LEITSTELLE_SCHLUESSEL_DATEI` | Schlüssel der Anwendung als Datei, Modus 0600; im Betrieb `zugang/leitstelle.schluessel`, im Container `/app/zugang/leitstelle.schluessel` (der Ordner `zugang` ist schon nur lesend eingehängt) |
+| `SPRECHDIENST` | Dienst der Leitstelle zum Vorlesen (Vorgabe `klangwerk-sprechen`, Fähigkeit `stimme`); ohne Leitstelle liest die Oberfläche mit den Stimmen des Geräts |
 | `KI_MODELL` | Modellwahl der App (Vorgabe `qwen/qwen3-next-80b`); in den Einstellungen änderbar (`PATCH /api/ai/config`, gemerkt als `ki_modell` in `app_settings`), die Leitstelle wählt nie ein Modell |
 
 Die Zertifikatsstelle des Hauses gilt wie für die Kellerwolke (`KELLERWOLKE_CA`).
+
+Welches Modell gilt: die Wahl aus den Einstellungen, solange die Leitstelle sie anbietet (Kennung, Name ohne Anbieter oder
+Anzeigename aus `GET /v1/models`), sonst `KI_MODELL`; der Grund steht dann in `GET /api/ai/status` und unter Verbindungen
+(gelbe LED). Eine Modellwahl der früheren direkten Anbindung (`lm_studio_model`) wird nur übernommen, wenn die Leitstelle
+den Namen anbietet. Keine Wahl wird gelöscht.
 
 ## Ein Ort für KI
 
@@ -40,10 +46,13 @@ Die Zertifikatsstelle des Hauses gilt wie für die Kellerwolke (`KELLERWOLKE_CA`
 | Teil | Fähigkeit | Priorität | Was ohne Leitstelle geschieht |
 |---|---|---|---|
 | Vorprüfung der Codestellen (BF-29, `codestellen/vorpruefung.py`) | `text`, Antwort in fester Form (JSON-Schema) | `hintergrund`, alle Anfragen einer Runde als eine Arbeit (`X-Leitstelle-Arbeit`) | der Fehler des Laufs ist der Grund |
+| Vorlesen (BF-14, `services/vorlesen.py`) | `stimme`: Dienst `SPRECHDIENST`, Katalog `GET /tts/voices`, je Satz `POST /v1/audio/speech` (WAV) | `hoch` (ein Mensch hört zu; die Leitstelle kappt auf die Vorgabe der App), alle Sätze einer Vorlesung als eine Arbeit, zwei Sätze zugleich bestellt | Stimmen des Geräts |
 | Einordnen von Büchern (BF-10, `services/ai_categorization.py`) | `text`, Anweisung aus `ai_prompts` | Vorgabe der App (ein Mensch wartet) | keine Vorschläge, Grund statt Fehler; eingeordnet wird von Hand |
 
 ## Was geändert wurde
 
+- BF-14: Vorlesen über den Sprechdienst der Leitstelle, Schnittstelle `/api/vorlesen` und `/api/vorlesen/stimmen` mit
+  denselben Feldern wie zuvor; Anschluss `vorlesen` heißt: Leitstelle eingerichtet und Sprechdienst gesetzt.
 - BF-29: `services/ki.py` (Leitstellen-Anschluss), Einstellungen `LEITSTELLE_ADRESSE`, `LEITSTELLE_SCHLUESSEL_DATEI`,
   `KI_MODELL`; Vorprüfung der Codestellen als erste Nutzerin; Leitstelle unter `GET /api/verbindungen`.
 - BF-10: das Einordnen nutzt denselben Anschluss und denselben Schlüssel. `GET /api/ai/status` fragt nur die Modellliste der
@@ -52,6 +61,10 @@ Die Zertifikatsstelle des Hauses gilt wie für die Kellerwolke (`KELLERWOLKE_CA`
   früher gewählte Modellwahl (`lm_studio_model`) gilt als Wahl für die Leitstelle weiter; der alte Wert bleibt stehen.
 
 ## Was zurückgebaut wurde
+
+- BF-14: der direkte Weg zur App Vertonung (`VORLESEN_URL`, `/api/v1/stimmen`, `/api/v1/sprechen/strom` im Auftrag des
+  Menschen) samt eigenem Verbindungsaufbau mit Lese-Zeitgrenze. Die Stimmen der Vertonung (eigene und weitere) gibt es
+  damit nicht mehr, nur die des Sprechdienstes; früher gewählte eigene Stimmen meldet die Schnittstelle mit Grund.
 
 - BF-10: Einstellungen `LM_STUDIO_ENABLED`, `LM_STUDIO_URL`, `LM_STUDIO_MODEL`, `KI_SCHLUESSEL_DATEI` (config.py,
   .env.example, README, install.sh, setup.sh, einrichten.sh).

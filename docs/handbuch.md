@@ -13,7 +13,7 @@ schluessel_orte:
   - "pi5b: `{{wurzel}}/zugang/leitstelle.schluessel`, Modus 0600 (Schlüssel der Anwendung in der Leitstelle), wenn `LEITSTELLE_ADRESSE` gesetzt ist"
   - "pi5b: `{{wurzel}}/.env` (Orte, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
 einrichten: einrichten.sh
-stand: 069fabf
+stand: bc19142
 ---
 
 # BücherFreunde (Neubau)
@@ -35,8 +35,8 @@ nach `Bücher` um. Doppel, fremde Formate und Unlesbares bleiben liegen und steh
 
 - Docker und die [[Kellerwolke]] mit einem App-Zugang als Datei `zugang/kellerwolke.schluessel`, dazu die Hausstelle als
   `zugang/hausstelle.pem`; Adresse der Kellerwolke `{{umgebung:KELLERWOLKE_URL}}`.
-- Ohne sie läuft sie weiter, ihr fehlt nur die Fähigkeit: [[Fundus]] für die Suche nach Bedeutung, [[Vertonung]] zum Vorlesen
-  (`VORLESEN_URL`), Nachschlag zum Nachschlagen im Leser (`NACHSCHLAG_URL`; ohne ihn schlägt der Leser im öffentlichen Lexikon
+- Ohne sie läuft sie weiter, ihr fehlt nur die Fähigkeit: [[Fundus]] für die Suche nach Bedeutung, der Sprechdienst der
+  [[Leitstelle]] zum Vorlesen (`SPRECHDIENST`, ohne ihn die Stimmen des Geräts), Nachschlag zum Nachschlagen im Leser (`NACHSCHLAG_URL`; ohne ihn schlägt der Leser im öffentlichen Lexikon
   im Netz nach, solange `WIKIPEDIA_ENABLED` an ist), Assistent für das Gespräch über eine Stelle (`ASSISTENT_URL`). Ohne [[Kellerwolke]] gelten eigene Konten und die Ablage auf dem Gerät; hier ist sie angeschlossen.
 - Codestellen in Lehrbüchern erkennt die App selbst (im Hintergrund, je Buch einmal, Begleiter `codestellen.json` neben
   dem Volltext). Ausgeführt werden sie in der Sandbox der Codeschmiede (`CODESCHMIEDE_URL`; die Codeschmiede muss

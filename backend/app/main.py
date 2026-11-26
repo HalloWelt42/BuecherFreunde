@@ -39,7 +39,7 @@ from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.codestellen.dienst import codestellen
 from backend.app.codestellen.vorpruefung import vorpruefer
-from backend.app.services import bedeutung, gespraech, nachschlagen, pflege, vorlesen
+from backend.app.services import bedeutung, gespraech, nachschlagen, pflege
 from backend.app.services.ausfuehren import sandbox
 from backend.app.services.ki import ki
 
@@ -114,7 +114,6 @@ async def lifespan(app: FastAPI):
     await sandbox.schliessen()
     await ki.schliessen()
     await bedeutung.schliessen()
-    await vorlesen.schliessen()
     await nachschlagen.schliessen()
     await gespraech.dienst.schliessen()
     await wolke.schliessen()

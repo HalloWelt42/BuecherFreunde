@@ -1,12 +1,12 @@
-"""Vorlesen: Stimmen zur Wahl und der Ton als Strom."""
+"""Vorlesen über den Sprechdienst der Leitstelle: Stimmen zur Wahl und der Ton als Strom, Satz für Satz."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from backend.app.core.auth import KOPF, verify_token
+from backend.app.core.auth import verify_token
 from backend.app.services import vorlesen
 
 router = APIRouter(prefix="/api/vorlesen", tags=["Vorlesen"])
@@ -23,8 +23,8 @@ async def stimmen(_=Depends(verify_token)):
 
 
 @router.post("", response_class=StreamingResponse)
-async def vorlesen_strom(v: Vorlesetext, request: Request, _=Depends(verify_token)):
-    zeilen = vorlesen.strom(v.text, v.stimme, request.headers.get(KOPF, ""))
+async def vorlesen_strom(v: Vorlesetext, _=Depends(verify_token)):
+    zeilen = vorlesen.strom(v.text, v.stimme)
     try:
         erste = await anext(zeilen)                       # was vor dem ersten Satz scheitert, ist eine Antwort mit Grund
     except vorlesen.VorlesenFehler as f:

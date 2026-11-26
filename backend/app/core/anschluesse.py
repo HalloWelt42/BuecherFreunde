@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from backend.app.ablage.wolke import wolke
 from backend.app.core.config import settings
-from backend.app.services import nachschlagen
+from backend.app.services import nachschlagen, vorlesen
 from backend.app.services.ki import ki
 
 
@@ -19,12 +19,12 @@ class Anschluesse(BaseModel):
     nachschlag: str                   # Adresse des Lexikons oder leer
     nachschlag_art: str               # "nachschlag" (Hausdienst), "netz" (öffentliches Lexikon) oder leer
     ki: bool                          # Leitstelle für Einordnung und Vorprüfung
-    vorlesen: bool                    # Sprechdienst; die Stimmen des Geräts gehen immer
+    vorlesen: bool                    # Sprechdienst der Leitstelle; die Stimmen des Geräts gehen immer
     ausfuehren: bool                  # Sandbox der Codeschmiede für Codestellen (Taste und Fenster); die Erkennung läuft immer
 
 
 def anschluesse() -> Anschluesse:
     lexikon = nachschlagen.lexikon()
     return Anschluesse(ablage="kellerwolke" if wolke.bereit else "geraet", anmeldung="kellerwolke" if settings.kellerwolke_url else "eigen",
-                       bedeutung=bool(settings.fundus_url), assistent=settings.assistent_url, nachschlag=lexikon.adresse if lexikon else "", nachschlag_art=lexikon.art if lexikon else "", ki=ki.bereit, vorlesen=bool(settings.vorlesen_url),
+                       bedeutung=bool(settings.fundus_url), assistent=settings.assistent_url, nachschlag=lexikon.adresse if lexikon else "", nachschlag_art=lexikon.art if lexikon else "", ki=ki.bereit, vorlesen=vorlesen.bereit(),
                        ausfuehren=bool(settings.codeschmiede_url.strip()))
