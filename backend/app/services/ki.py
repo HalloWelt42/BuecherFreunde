@@ -25,9 +25,11 @@ from pydantic import BaseModel, Field
 
 from backend.app.ablage.wolke import _pruefung
 from backend.app.core.config import settings
+from backend.app.core.database import db
 
 logger = logging.getLogger("buecherfreunde.ki")
 APP = "BücherFreunde"
+WAHL = "ki_modell"                                                 # Schlüssel der Modellwahl in app_settings
 ARBEIT = httpx.Timeout(10.0, read=None, write=None, pool=None)    # Verbindungsaufbau begrenzt, laufende Arbeit nie
 
 Art = Literal["weg", "abgelehnt", "einzeln"]
@@ -103,6 +105,19 @@ class Ki:
 
     def modell(self) -> str:
         return settings.ki_modell
+
+    async def wahl_laden(self) -> None:
+        """Beim Start: das in den Einstellungen gewählte Modell (überschreibt KI_MODELL)."""
+        z = await db.fetch_one("SELECT value FROM app_settings WHERE key = ?", (WAHL,))
+        if z and z["value"]:
+            settings.ki_modell = z["value"]
+
+    async def waehlen(self, modell: str) -> None:
+        """Ein anderes Modell, gemerkt über einen Neustart."""
+        await db.execute("INSERT INTO app_settings(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                         (WAHL, modell))
+        await db.commit()
+        settings.ki_modell = modell
 
     def leitstelle(self) -> Leitstelle:
         schluessel = self._schluessel()

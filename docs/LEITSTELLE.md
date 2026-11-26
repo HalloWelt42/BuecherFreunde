@@ -17,7 +17,7 @@ Abschnitt 9).
 |---|---|
 | `LEITSTELLE_ADRESSE` | Adresse der Leitstelle (mit oder ohne `/v1`); leer: ohne KI |
 | `LEITSTELLE_SCHLUESSEL_DATEI` | Schlüssel der Anwendung als Datei, Modus 0600; im Betrieb `zugang/leitstelle.schluessel`, im Container `/app/zugang/leitstelle.schluessel` (der Ordner `zugang` ist schon nur lesend eingehängt) |
-| `KI_MODELL` | Modellwahl der App (Vorgabe `qwen/qwen3-next-80b`); die Leitstelle wählt nie ein Modell |
+| `KI_MODELL` | Modellwahl der App (Vorgabe `qwen/qwen3-next-80b`); in den Einstellungen änderbar (`PATCH /api/ai/config`, gemerkt als `ki_modell` in `app_settings`), die Leitstelle wählt nie ein Modell |
 
 Die Zertifikatsstelle des Hauses gilt wie für die Kellerwolke (`KELLERWOLKE_CA`).
 
@@ -40,16 +40,25 @@ Die Zertifikatsstelle des Hauses gilt wie für die Kellerwolke (`KELLERWOLKE_CA`
 | Teil | Fähigkeit | Priorität | Was ohne Leitstelle geschieht |
 |---|---|---|---|
 | Vorprüfung der Codestellen (BF-29, `codestellen/vorpruefung.py`) | `text`, Antwort in fester Form (JSON-Schema) | `hintergrund`, alle Anfragen einer Runde als eine Arbeit (`X-Leitstelle-Arbeit`) | der Fehler des Laufs ist der Grund |
-| Einordnen von Büchern (`services/ai_categorization.py`) | noch direkt über `LM_STUDIO_*` | - | Einordnen von Hand |
+| Einordnen von Büchern (BF-10, `services/ai_categorization.py`) | `text`, Anweisung aus `ai_prompts` | Vorgabe der App (ein Mensch wartet) | keine Vorschläge, Grund statt Fehler; eingeordnet wird von Hand |
 
 ## Was geändert wurde
 
 - BF-29: `services/ki.py` (Leitstellen-Anschluss), Einstellungen `LEITSTELLE_ADRESSE`, `LEITSTELLE_SCHLUESSEL_DATEI`,
   `KI_MODELL`; Vorprüfung der Codestellen als erste Nutzerin; Leitstelle unter `GET /api/verbindungen`.
+- BF-10: das Einordnen nutzt denselben Anschluss und denselben Schlüssel. `GET /api/ai/status` fragt nur die Modellliste der
+  Leitstelle; `GET /api/ai/config` nennt Adresse, Modell und ob eingerichtet; `PATCH /api/ai/config` wählt nur noch das
+  Modell, eine Adresse lehnt es mit Hinweis auf die Einrichtung ab. Anschluss `ki` heißt: Leitstelle eingerichtet. Eine
+  früher gewählte Modellwahl (`lm_studio_model`) gilt als Wahl für die Leitstelle weiter; der alte Wert bleibt stehen.
 
 ## Was zurückgebaut wurde
 
-- Noch nichts; das Einordnen läuft bis zur Umstellung über die eigene Adresse.
+- BF-10: Einstellungen `LM_STUDIO_ENABLED`, `LM_STUDIO_URL`, `LM_STUDIO_MODEL`, `KI_SCHLUESSEL_DATEI` (config.py,
+  .env.example, README, install.sh, setup.sh, einrichten.sh).
+- BF-10: eigener Aufruf der Vervollständigung mit Lese-Zeitgrenze 60 s und eigenem Schlüsselkopf (`send_prompt` alt,
+  `_kopf`), Erreichbarkeitsprüfung über die Modellliste des Läufers mit Zeitgrenze 5 s (`check_connection`), Adresse
+  aus der Oberfläche (`PATCH /api/ai/config` mit `lm_studio_url`) und die Suche nach Modell-Läufern im Netz
+  (`GET /api/ai/scan`, Ausweichliste von Adressen).
 
 ## Abnahme Stufe 1
 
@@ -59,10 +68,13 @@ Die Zertifikatsstelle des Hauses gilt wie für die Kellerwolke (`KELLERWOLKE_CA`
 | Warten ohne Zeitgrenze | im Appkern ohne Lese-Zeitgrenze; Halt mit Retry-After gegen die Attrappe geprüft (wartet, fragt erneut, lässt sich anhalten) |
 | Halt zeigt Hinweis statt Fehlerspur | Grund in der Vorprüfung (`GET /api/ausfuehren/vorpruefung`) |
 | Anwendung und Aufträge in der Leitstelle sichtbar | offen: an der echten Leitstelle zu prüfen |
-| Rückbau sichtbar | offen: Einordnen noch über `LM_STUDIO_*` |
+| Rückbau sichtbar | ja: keine eigene Adresse, keine Netzsuche, keine Lese-Zeitgrenze, kein Laden oder Entladen; die Modellwahl bleibt bei der App |
 
 ## Offene Punkte
 
-- Einordnen auf denselben Anschluss umstellen, `LM_STUDIO_*` und die Netzsuche nach Modell-Läufern zurückbauen.
+- Oberfläche: Die Felder der KI-Einstellungen heißen in der Schnittstelle noch wie früher (`lm_studio` in `GET /api/config`,
+  `lm_studio_model` in `PATCH /api/ai/config`), damit die heutige Oberfläche weiterläuft; umbenennen zusammen mit der
+  Oberfläche. Dort entfallen dann Adressfeld und "Netz absuchen" (die Schnittstelle lehnt die Adresse ab, die Suche gibt
+  es nicht mehr).
 - Prüfung an der echten Leitstelle (Anwendung sichtbar, Auftrag im Verlauf mit Dauer und Modell).
 - Stufe 2 und 3, sobald die Leitstelle Anwendungen über den Kanal anmeldet.

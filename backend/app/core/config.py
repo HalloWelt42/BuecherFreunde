@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     codeschmiede_url: str = ""
     codestellen_je_runde: int = Field(default=3, ge=0)        # so viele Bücher erkennt die Pflege je Runde nach (alle 10 Minuten)
     vorpruefung_abstand_s: float = Field(default=5.0, ge=0)   # Pause zwischen zwei Vorprüfungen, damit die Sandbox frei bleibt
-    # Leitstelle: der eine Weg zur KI (Vorprüfung, Einordnen); leer: ohne KI
+    # Leitstelle: der eine Weg zur KI (Vorprüfung, Einordnen); leer: ohne KI, eingeordnet wird von Hand
     leitstelle_adresse: str = ""
     leitstelle_schluessel_datei: str = ""                     # Schlüssel der Anwendung (Datei, Modus 0600)
     ki_modell: str = "qwen/qwen3-next-80b"                    # Modellwahl der App; die Leitstelle wählt nie eins
@@ -69,12 +69,6 @@ class Settings(BaseSettings):
     quellen_kontakt: str = ""          # freiwillig: Adresse einer Seite oder Mail im Ausweis der App, manche Quellen erlauben damit mehr
     quellen_hintergrund_tag: int = Field(default=500, ge=1)   # höchstens so viele Anfragen je Quelle und Tag in Hintergrundläufen
     quellen_vorrat_mb: int = Field(default=32, ge=1)          # so viel dürfen gemerkte Antworten in der Datenbank belegen
-
-    # LM Studio
-    lm_studio_enabled: bool = False
-    lm_studio_url: str = "http://localhost:1234/v1"
-    lm_studio_model: str = "qwen2.5"
-    ki_schluessel_datei: str = ""      # Schlüssel der KI-Schnittstelle (Datei, Modus 0600), falls sie einen verlangt
 
     # Host-Pfade (von Docker durchgereicht, für Anzeige im Frontend)
     host_storage_dir: str = ""
@@ -153,10 +147,11 @@ class Settings(BaseSettings):
                 "kontakt": bool(self.quellen_kontakt),
                 "hintergrund_tag": self.quellen_hintergrund_tag,
             },
+            # KI über die Leitstelle; der Feldname ist der, den die Oberfläche liest
             "lm_studio": {
-                "aktiviert": self.lm_studio_enabled,
-                "url": self.lm_studio_url,
-                "modell": self.lm_studio_model,
+                "aktiviert": bool(self.leitstelle_adresse.strip() and self.leitstelle_schluessel_datei),
+                "url": self.leitstelle_adresse,
+                "modell": self.ki_modell,
             },
             "pfade": {
                 "speicher": str(self.storage_dir),

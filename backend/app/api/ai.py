@@ -1,12 +1,12 @@
-"""API-Endpunkte für KI-Kategorisierung und Prompt-Verwaltung."""
+"""Schnittstelle der KI-Einordnung (BF-10): Vorschläge, Übernahme, Stand und Modellwahl über die Leitstelle, Anweisungen."""
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.app.core.auth import verify_token
-from backend.app.core.config import settings
 from backend.app.core.database import db
-from backend.app.services.ai_categorization import categorize_book, check_connection
+from backend.app.services.ai_categorization import categorize_book
+from backend.app.services.ki import KiFehler, ki
 from backend.app.services.storage import load_fulltext
 
 router = APIRouter(prefix="/api/ai", tags=["KI"])
@@ -28,17 +28,12 @@ async def categorize(book_id: int, _token: str = Depends(verify_token)):
     # Textauszug laden
     fulltext = load_fulltext(book["hash"]) or ""
 
-    vorschlaege = await categorize_book(
-        title=book["title"],
-        author=book["author"],
-        text_excerpt=fulltext[:2000],
-    )
-
+    try:
+        vorschlaege = await categorize_book(title=book["title"], author=book["author"], text_excerpt=fulltext[:2000])
+    except KiFehler as f:
+        raise HTTPException(status_code=503, detail=f.grund) from f
     if not vorschlaege:
-        raise HTTPException(
-            status_code=503,
-            detail="KI-Kategorisierung nicht verfügbar. Ist LM Studio gestartet?",
-        )
+        raise HTTPException(status_code=503, detail="Die KI hat keine passenden Kategorien vorgeschlagen")
 
     return {"book_id": book_id, "vorschlaege": vorschlaege}
 
@@ -100,128 +95,38 @@ async def accept_categories(
 
 @router.get("/status")
 async def ai_status(_token: str = Depends(verify_token)):
-    """Prüft ob LM Studio erreichbar ist und welche Modelle verfügbar sind."""
-    result = await check_connection()
-    # Gespeichertes Modell aus DB laden (überschreibt .env)
-    saved = await db.fetch_one(
-        "SELECT value FROM app_settings WHERE key = 'lm_studio_model'"
-    )
-    modell = saved["value"] if saved else settings.lm_studio_model
-    result["url"] = settings.lm_studio_url
-    result["modell"] = modell
-    result["aktiviert"] = settings.lm_studio_enabled
-    return result
+    """Ob die KI über die Leitstelle antwortet und welche Modelle sie anbietet (lädt nie ein Modell)."""
+    stand = await ki.stand()
+    return {"erreichbar": stand.erreichbar and not stand.grund, "grund": stand.grund, "modelle": stand.modelle,
+            "url": ki.adresse, "modell": ki.modell(), "aktiviert": stand.bereit}
 
 
 # --- KI-Config ---
 
 class AiConfigUpdate(BaseModel):
+    """Feldnamen der Oberfläche (frontend/src/lib/api/ai.ts). Die Adresse steht in der Einrichtung, nicht hier."""
+    lm_studio_model: str | None = Field(None, min_length=1, max_length=200)
     lm_studio_url: str | None = None
-    lm_studio_model: str | None = None
-    lm_studio_enabled: bool | None = None
+
+
+def _ki_config() -> dict:
+    return {"url": ki.adresse, "modell": ki.modell(), "aktiviert": ki.bereit}
 
 
 @router.get("/config")
 async def get_ai_config(_token: str = Depends(verify_token)):
-    """Gibt die KI-Konfiguration zurück."""
-    saved_model = await db.fetch_one(
-        "SELECT value FROM app_settings WHERE key = 'lm_studio_model'"
-    )
-    saved_url = await db.fetch_one(
-        "SELECT value FROM app_settings WHERE key = 'lm_studio_url'"
-    )
-    modell = saved_model["value"] if saved_model else settings.lm_studio_model
-    url = saved_url["value"] if saved_url else settings.lm_studio_url
-    # Runtime-Settings synchronisieren
-    if saved_url:
-        settings.lm_studio_url = url
-    return {
-        "url": url,
-        "modell": modell,
-        "aktiviert": settings.lm_studio_enabled,
-    }
+    """Adresse der Leitstelle, gewähltes Modell und ob die KI eingerichtet ist."""
+    return _ki_config()
 
 
 @router.patch("/config")
 async def update_ai_config(data: AiConfigUpdate, _token: str = Depends(verify_token)):
-    """Aktualisiert die KI-Konfiguration (persistiert Modellwahl und URL)."""
-    if data.lm_studio_model is not None:
-        await db.execute(
-            """INSERT INTO app_settings (key, value) VALUES ('lm_studio_model', ?)
-               ON CONFLICT(key) DO UPDATE SET value = ?""",
-            (data.lm_studio_model, data.lm_studio_model),
-        )
-        settings.lm_studio_model = data.lm_studio_model
-
+    """Das Modell wählen (bleibt über einen Neustart); die Leitstelle wählt nie eins."""
     if data.lm_studio_url is not None:
-        await db.execute(
-            """INSERT INTO app_settings (key, value) VALUES ('lm_studio_url', ?)
-               ON CONFLICT(key) DO UPDATE SET value = ?""",
-            (data.lm_studio_url, data.lm_studio_url),
-        )
-        settings.lm_studio_url = data.lm_studio_url
-
-    await db.commit()
-
-    saved_model = await db.fetch_one(
-        "SELECT value FROM app_settings WHERE key = 'lm_studio_model'"
-    )
-    saved_url = await db.fetch_one(
-        "SELECT value FROM app_settings WHERE key = 'lm_studio_url'"
-    )
-    return {
-        "url": saved_url["value"] if saved_url else settings.lm_studio_url,
-        "modell": saved_model["value"] if saved_model else settings.lm_studio_model,
-        "aktiviert": settings.lm_studio_enabled,
-    }
-
-
-@router.get("/scan")
-async def scan_network(_token: str = Depends(verify_token)):
-    """Scannt das lokale Netzwerk nach LM Studio Instanzen."""
-    import httpx
-    import socket
-
-    gefunden = []
-
-    # Eigene IPs ermitteln
-    ips_to_scan = set()
-    try:
-        hostname = socket.gethostname()
-        for info in socket.getaddrinfo(hostname, None, socket.AF_INET):
-            ip = info[4][0]
-            if ip.startswith("127."):
-                continue
-            # Subnet scannen
-            parts = ip.split(".")
-            prefix = ".".join(parts[:3])
-            ips_to_scan.add(prefix)
-    except Exception:
-        pass
-
-    # Localhost immer prüfen
-    standard_urls = [
-        "http://localhost:1234",
-        "http://127.0.0.1:1234",
-    ]
-
-    # Subnet-IPs auf Port 1234 prüfen (nur .1, .2, ... .20 und .100-.110)
-    for prefix in ips_to_scan:
-        for last in list(range(1, 21)) + list(range(100, 111)):
-            standard_urls.append(f"http://{prefix}.{last}:1234")
-
-    async with httpx.AsyncClient(timeout=1.5) as client:
-        for url in standard_urls:
-            try:
-                resp = await client.get(f"{url}/v1/models")
-                if resp.status_code == 200:
-                    data = resp.json()
-                    modelle = len(data.get("data", []))
-                    gefunden.append({"url": url, "modelle": modelle})
-            except Exception:
-                continue
-
-    return {"gefunden": gefunden}
+        raise HTTPException(status_code=422, detail="Die Adresse der KI steht in der Einrichtung (LEITSTELLE_ADRESSE)")
+    if data.lm_studio_model is not None:
+        await ki.waehlen(data.lm_studio_model)
+    return _ki_config()
 
 
 # --- Prompt-Verwaltung ---

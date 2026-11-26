@@ -41,7 +41,7 @@ Das Skript fragt interaktiv nach:
 - Pfad für Datenbank
 - Pfad für externen Scan-Ordner (optional)
 - Port (Standard: 8160)
-- LM Studio Einstellungen (optional)
+- Adresse der Leitstelle für die KI (optional)
 
 Danach werden die Docker-Container gebaut und gestartet.
 
@@ -102,10 +102,10 @@ QUELLEN_KONTAKT=                # freiwillig: Seite oder Mail im Ausweis der App
 QUELLEN_HINTERGRUND_TAG=500     # höchstens so viele Anfragen je Quelle und Tag in Hintergrundläufen
 QUELLEN_VORRAT_MB=32            # gemerkte Antworten in der Datenbank
 
-# LM Studio (optional)
-LM_STUDIO_ENABLED=false         # KI-Kategorisierung
-LM_STUDIO_URL=http://ip:1234/v1
-LM_STUDIO_MODEL=qwen2.5
+# KI über die Leitstelle (optional): Einordnen und Vorprüfung der Codestellen
+LEITSTELLE_ADRESSE=             # leer: ohne KI
+LEITSTELLE_SCHLUESSEL_DATEI=    # Schlüssel der Anwendung als Datei, Modus 0600
+KI_MODELL=qwen/qwen3-next-80b   # Modellwahl der App
 ```
 
 ### Anschlüsse
@@ -120,8 +120,7 @@ Alles hier ist freiwillig. Fehlt ein Anschluss, fehlt nur seine Fähigkeit, und 
 | Nachschlag (Lexika, Handbücher) | `NACHSCHLAG_URL` | Nachschlagen im öffentlichen Lexikon im Netz (`WIKIPEDIA_ENABLED`), abgeschaltet keins |
 | Sprechdienst | `VORLESEN_URL` | vorgelesen wird mit den Stimmen des Geräts |
 | Codeschmiede (Sandbox) | `CODESCHMIEDE_URL`, dazu `CODESTELLEN_JE_RUNDE`, `VORPRUEFUNG_ABSTAND_S` | Codestellen werden erkannt, aber nicht ausgeführt (docs/neubau/AUSFUEHREN.md) |
-| Leitstelle (KI) | `LEITSTELLE_ADRESSE`, `LEITSTELLE_SCHLUESSEL_DATEI`, `KI_MODELL` | Vorprüfung der Codestellen nur per Lauf (docs/LEITSTELLE.md) |
-| KI | `LM_STUDIO_ENABLED`, `LM_STUDIO_URL`, `LM_STUDIO_MODEL`, auf Wunsch `KI_SCHLUESSEL_DATEI` | Einordnen von Hand |
+| Leitstelle (KI) | `LEITSTELLE_ADRESSE`, `LEITSTELLE_SCHLUESSEL_DATEI`, `KI_MODELL` | Einordnen von Hand, Vorprüfung der Codestellen nur per Lauf (docs/LEITSTELLE.md) |
 | Verzeichnisse, Lexikon, Normdatei | `DNB_ENABLED`, `K10PLUS_ENABLED`, `OPENLIBRARY_ENABLED`, `CROSSREF_ENABLED`, `WIKIPEDIA_ENABLED`, `GND_ENABLED`, `GOOGLE_BOOKS_API_KEY` | Angaben aus den Dateien |
 
 Der Port ist im Heimnetz offen (`BINDUNG=0.0.0.0`). Von außen erreichbar macht man die App nur hinter einem Vorbau mit HTTPS
@@ -244,7 +243,7 @@ BücherFreunde/
 | Datenbank | SQLite + FTS5 |
 | Metadaten | Deutsche Nationalbibliothek, K10plus, Open Library, Crossref, Wikidata und Wikipedia, GND (lobid.org), Google Books mit eigenem Schlüssel; ein gemeinsamer Abruf mit Takt, Vorrat und Pausen (`backend/app/quellen`) |
 | Gutenberg | Gutendex-API (gutendex.com), Dateien von den Spiegeln |
-| KI | LM Studio (lokal, optional) |
+| KI | über die Leitstelle des Hauses (optional, docs/LEITSTELLE.md) |
 | Container | Docker Compose (python:3.12-slim, nginx:alpine) |
 
 ### API
@@ -299,4 +298,3 @@ docker compose --env-file ../.env up -d --build --force-recreate
 |--------|------|-------------|
 | Frontend (Nginx) | 8160 (konfigurierbar) | Externer Zugang |
 | Backend (Uvicorn) | 8000 (intern) | Nur via Nginx erreichbar |
-| LM Studio | 1234 (extern) | Optional, auf separatem Rechner |

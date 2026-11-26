@@ -21,7 +21,7 @@ echo "  Import-Verzeichnis:  ${IMPORT_DIR:-./import}"
 echo "  Datenbank:           ${DATABASE_DIR:-./database}"
 echo "  Externer Scan:       ${EXTERNAL_DIR:-./external}"
 echo "  Port:                ${EXTERNAL_PORT:-8160}"
-echo "  LM Studio:           ${LM_STUDIO_ENABLED:-false} (${LM_STUDIO_URL:-nicht gesetzt})"
+echo "  Leitstelle (KI):     ${LEITSTELLE_ADRESSE:-nicht gesetzt} (Modell ${KI_MODELL:-Vorgabe})"
 echo ""
 
 echo "Was möchtest du ändern?"
@@ -32,7 +32,7 @@ echo "  3) Externer Scan-Ordner"
 echo "  4) Datenbank-Verzeichnis"
 echo "  5) Port"
 echo "  6) Adresse der Kellerwolke"
-echo "  7) LM Studio Einstellungen"
+echo "  7) Leitstelle (KI)"
 echo "  8) .env direkt bearbeiten"
 echo "  9) Alle Pfade anzeigen (Docker-Volumes)"
 echo "  0) Beenden"
@@ -94,20 +94,21 @@ case "$CHOICE" in
         fi
         ;;
     7)
-        read -rp "LM Studio aktivieren? (j/n) [${LM_STUDIO_ENABLED:-n}]: " ENABLED
-        if [[ "$ENABLED" =~ ^[jJyY] ]]; then
-            sed -i "s|^LM_STUDIO_ENABLED=.*|LM_STUDIO_ENABLED=true|" .env
-            read -rp "LM Studio URL [${LM_STUDIO_URL:-http://localhost:1234/v1}]: " URL
-            if [ -n "$URL" ]; then
-                sed -i "s|^LM_STUDIO_URL=.*|LM_STUDIO_URL=$URL|" .env
+        # Adresse und Modell; der Schlüssel liegt als Datei in zugang/ (Modus 0600), nie in der .env
+        for WERT in LEITSTELLE_ADRESSE KI_MODELL; do
+            read -rp "$WERT [${!WERT:-}]: " NEW
+            if [ -n "$NEW" ]; then
+                if grep -q "^$WERT=" .env; then
+                    sed -i "s|^$WERT=.*|$WERT=$NEW|" .env
+                else
+                    echo "$WERT=$NEW" >> .env
+                fi
             fi
-            read -rp "Modell [${LM_STUDIO_MODEL:-qwen2.5}]: " MODEL
-            if [ -n "$MODEL" ]; then
-                sed -i "s|^LM_STUDIO_MODEL=.*|LM_STUDIO_MODEL=$MODEL|" .env
-            fi
-        else
-            sed -i "s|^LM_STUDIO_ENABLED=.*|LM_STUDIO_ENABLED=false|" .env
+        done
+        if ! grep -q "^LEITSTELLE_SCHLUESSEL_DATEI=." .env; then
+            echo "LEITSTELLE_SCHLUESSEL_DATEI=/app/zugang/leitstelle.schluessel" >> .env
         fi
+        echo "Schlüssel der Anwendung als zugang/leitstelle.schluessel ablegen (chmod 600)."
         echo "Geändert. Neustart nötig: cd docker && docker compose restart backend"
         ;;
     8)

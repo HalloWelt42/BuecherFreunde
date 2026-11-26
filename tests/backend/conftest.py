@@ -82,7 +82,6 @@ def test_settings(tmp_path, storage_dir, external_dir, import_dir):
         mock_settings.database_path = database_dir / "test.db"
         mock_settings.api_token = "test-token"
         mock_settings.openlibrary_enabled = False
-        mock_settings.lm_studio_enabled = False
         mock_settings.log_level = "debug"
         yield mock_settings
 

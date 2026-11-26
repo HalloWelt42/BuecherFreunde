@@ -1,17 +1,17 @@
-"""LM Studio KI-Kategorisierung über OpenAI-kompatible API."""
+"""Bücher einordnen mit der KI (BF-10): Vorschläge für Kategorien aus Titel, Autor und Textauszug, über den einen Weg zur
+KI (services/ki.py, die Leitstelle). Die Anweisung kommt aus der Datenbank (Tabelle ai_prompts, in den Einstellungen
+pflegbar). Ohne Leitstelle gibt es keine Vorschläge; eingeordnet wird dann von Hand."""
 
 import json
 import logging
-from pathlib import Path
 
-import httpx
-
-from backend.app.core.config import settings
+from backend.app.core.database import db
 from backend.app.services.data_cleaner import bereinige_kategorien
+from backend.app.services.ki import KiFehler, ki
 
 logger = logging.getLogger("buecherfreunde.ai")
 
-# Fallback-Prompt falls DB noch leer
+# Rückfall, solange die Datenbank noch keine Anweisung hat
 FALLBACK_PROMPT = """Du bist ein Bibliothekar der Bücher kategorisiert.
 Analysiere den gegebenen Buchtitel, Autor und Textauszug.
 Schlage 3-5 passende Kategorien vor.
@@ -22,168 +22,45 @@ Antworte ausschließlich als JSON-Array mit Objekten:
 Verwende deutsche Kategorienamen."""
 
 
-def _kopf() -> dict[str, str]:
-    """Anmeldung bei der KI-Schnittstelle; ohne Schlüsseldatei keine."""
-    if not settings.ki_schluessel_datei:
-        return {}
-    try:
-        schluessel = Path(settings.ki_schluessel_datei).read_text(encoding="utf-8").strip()
-    except OSError as f:
-        logger.warning("Schlüssel der KI nicht lesbar: %s", f)
-        return {}
-    return {"Authorization": f"Bearer {schluessel}"} if schluessel else {}
-
-
 async def _load_prompt(schluessel: str) -> dict | None:
-    """Lädt einen Prompt aus der Datenbank."""
-    from backend.app.core.database import db
-    return await db.fetch_one(
-        "SELECT * FROM ai_prompts WHERE schluessel = ? AND aktiv = 1",
-        (schluessel,),
-    )
+    return await db.fetch_one("SELECT * FROM ai_prompts WHERE schluessel = ? AND aktiv = 1", (schluessel,))
 
 
-async def send_prompt(
-    schluessel: str,
-    user_message: str,
-) -> str | None:
-    """Sendet einen Prompt an LM Studio und gibt die Antwort zurück.
-
-    Nutzt die Prompt-Konfiguration aus der Datenbank.
-    """
-    if not settings.lm_studio_enabled:
-        return None
-
+async def send_prompt(schluessel: str, user_message: str, titel: str) -> str:
+    """Die Anweisung `schluessel` mit der Nachricht an die KI; wirft KiFehler mit dem Grund, wenn es nicht geht."""
+    if not ki.bereit:
+        raise KiFehler("Keine Leitstelle eingetragen (LEITSTELLE_ADRESSE)", "abgelehnt")
     prompt = await _load_prompt(schluessel)
-    system_prompt = prompt["system_prompt"] if prompt else FALLBACK_PROMPT
-    temperatur = prompt["temperatur"] if prompt else 0.3
-    max_tokens = prompt["max_tokens"] if prompt else 500
-
-    try:
-        async with httpx.AsyncClient(timeout=60.0, headers=_kopf()) as client:
-            response = await client.post(
-                f"{settings.lm_studio_url}/chat/completions",
-                json={
-                    "model": settings.lm_studio_model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_message},
-                    ],
-                    "temperature": temperatur,
-                    "max_tokens": max_tokens,
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
-            return data["choices"][0]["message"]["content"]
-
-    except httpx.ConnectError:
-        logger.warning("LM Studio nicht erreichbar unter %s", settings.lm_studio_url)
-        return None
-    except httpx.HTTPError as e:
-        logger.warning("LM Studio Fehler: %s", e)
-        return None
-    except Exception as e:
-        logger.error("LM Studio Anfrage fehlgeschlagen: %s", e)
-        return None
+    return await ki.antwort(prompt["system_prompt"] if prompt else FALLBACK_PROMPT, user_message, titel=titel,
+                            temperature=prompt["temperatur"] if prompt else 0.3, max_tokens=prompt["max_tokens"] if prompt else 500)
 
 
-async def categorize_book(
-    title: str,
-    author: str,
-    text_excerpt: str = "",
-) -> list[dict]:
-    """Kategorisiert ein Buch mittels LM Studio.
-
-    Args:
-        title: Buchtitel
-        author: Autor
-        text_excerpt: Erste 2000 Zeichen des Textes
-
-    Returns:
-        Liste von Kategorie-Vorschlägen mit Konfidenz.
-    """
-    excerpt = text_excerpt[:2000] if text_excerpt else ""
+async def categorize_book(title: str, author: str, text_excerpt: str = "") -> list[dict]:
+    """Vorschläge `[{kategorie, konfidenz}]`, bereinigt; wirft KiFehler, wenn die KI nicht antwortet."""
     user_msg = f"Titel: {title}\nAutor: {author}"
-    if excerpt:
-        user_msg += f"\n\nTextauszug:\n{excerpt}"
-
-    content = await send_prompt("kategorisierung", user_msg)
-    if not content:
-        return []
-
+    if text_excerpt:
+        user_msg += f"\n\nTextauszug:\n{text_excerpt[:2000]}"
+    content = await send_prompt("kategorisierung", user_msg, titel=f"Einordnen: {title[:80]}")
     categories = _parse_categories(content)
-
-    # Kategorie-Namen durch den zentralen Cleaner bereinigen
-    roh_namen = [c["kategorie"] for c in categories]
-    bereinigte_namen = bereinige_kategorien(roh_namen)
-    bereinigte_set = {n.lower() for n in bereinigte_namen}
-    categories = [c for c in categories if c["kategorie"].lower() in bereinigte_set]
-
-    logger.info(
-        "KI-Kategorisierung für '%s': %d Vorschläge",
-        title,
-        len(categories),
-    )
+    bereinigt = {n.lower() for n in bereinige_kategorien([c["kategorie"] for c in categories])}
+    categories = [c for c in categories if c["kategorie"].lower() in bereinigt]
+    logger.info("KI-Einordnung für '%s': %d Vorschläge", title, len(categories))
     return categories
 
 
+def _als_liste(result: object) -> list[dict]:
+    if not isinstance(result, list):
+        return []
+    return [{"kategorie": item.get("kategorie", ""), "konfidenz": min(1.0, max(0.0, float(item.get("konfidenz", 0.5))))}
+            for item in result if isinstance(item, dict) and item.get("kategorie")]
+
+
 def _parse_categories(content: str) -> list[dict]:
-    """Extrahiert Kategorien aus der KI-Antwort."""
-    # Versuche JSON direkt zu parsen
-    try:
-        result = json.loads(content)
-        if isinstance(result, list):
-            return [
-                {
-                    "kategorie": item.get("kategorie", ""),
-                    "konfidenz": min(1.0, max(0.0, float(item.get("konfidenz", 0.5)))),
-                }
-                for item in result
-                if item.get("kategorie")
-            ]
-    except json.JSONDecodeError:
-        pass
-
-    # Versuche JSON aus dem Text zu extrahieren (zwischen [ und ])
-    start = content.find("[")
-    end = content.rfind("]")
-    if start >= 0 and end > start:
+    """Die Kategorien aus der Antwort; das JSON-Array darf von Text umgeben sein."""
+    for kandidat in (content, content[content.find("["):content.rfind("]") + 1] if "[" in content else ""):
         try:
-            result = json.loads(content[start : end + 1])
-            if isinstance(result, list):
-                return [
-                    {
-                        "kategorie": item.get("kategorie", ""),
-                        "konfidenz": min(1.0, max(0.0, float(item.get("konfidenz", 0.5)))),
-                    }
-                    for item in result
-                    if item.get("kategorie")
-                ]
-        except json.JSONDecodeError:
-            pass
-
-    logger.warning("KI-Antwort konnte nicht geparst werden: %s", content[:200])
+            return _als_liste(json.loads(kandidat))
+        except (ValueError, TypeError):
+            continue
+    logger.warning("KI-Antwort nicht lesbar: %s", content[:200])
     return []
-
-
-async def check_connection() -> dict:
-    """Prüft ob LM Studio erreichbar ist."""
-    if not settings.lm_studio_enabled:
-        return {"erreichbar": False, "grund": "Deaktiviert"}
-
-    try:
-        async with httpx.AsyncClient(timeout=5.0, headers=_kopf()) as client:
-            response = await client.get(f"{settings.lm_studio_url}/models")
-            if response.status_code == 200:
-                data = response.json()
-                models = [m.get("id", "") for m in data.get("data", [])]
-                return {
-                    "erreichbar": True,
-                    "modelle": models,
-                }
-            return {"erreichbar": False, "status_code": response.status_code}
-    except httpx.ConnectError:
-        return {"erreichbar": False, "grund": "Verbindung fehlgeschlagen"}
-    except httpx.HTTPError as e:
-        return {"erreichbar": False, "grund": str(e)}

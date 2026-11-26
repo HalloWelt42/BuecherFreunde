@@ -335,6 +335,8 @@ CREATE TABLE IF NOT EXISTS code_vorpruefung (       -- je Code (codestellen/vorp
     geprueft_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     PRIMARY KEY (sprache, pruefsumme)
 );
+-- Modellwahl der früheren direkten KI-Anbindung als Wahl für die Leitstelle übernehmen (BF-10; der alte Wert bleibt)
+INSERT OR IGNORE INTO app_settings(key, value) SELECT 'ki_modell', value FROM app_settings WHERE key = 'lm_studio_model' AND value != '';
 CREATE INDEX IF NOT EXISTS idx_aufnahme_stand ON aufnahme(stand);
 CREATE INDEX IF NOT EXISTS idx_aufnahme_sha ON aufnahme(sha256);
 """

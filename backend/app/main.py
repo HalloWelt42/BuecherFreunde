@@ -97,6 +97,7 @@ async def lifespan(app: FastAPI):
                        "(KELLERWOLKE_URL, KELLERWOLKE_SCHLUESSEL_DATEI)")
     _ensure_directories()
     await db.connect()
+    await ki.wahl_laden()
     annahme.starten()
     codestellen.erkannt.append(vorpruefer.nach_erkennung)
     codestellen.starten()

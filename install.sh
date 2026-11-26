@@ -69,19 +69,12 @@ if [ ! -f .env ]; then
         KELLERWOLKE_CA="/app/zugang/hausstelle.pem"; KELLERWOLKE_SCHLUESSEL="/app/zugang/kellerwolke.schluessel"
     fi
 
-    # LM Studio
+    # KI über die Leitstelle (leer: ohne KI); der Schlüssel liegt als Datei in zugang/leitstelle.schluessel (Modus 0600)
     echo ""
-    read -rp "LM Studio aktivieren? (j/n) [n]: " LM_ENABLED
-    LM_URL="http://localhost:1234/v1"
-    LM_MODEL="qwen2.5"
-    if [[ "$LM_ENABLED" =~ ^[jJyY] ]]; then
-        LM_ENABLED="true"
-        read -rp "LM Studio URL [http://localhost:1234/v1]: " LM_URL_INPUT
-        LM_URL="${LM_URL_INPUT:-$LM_URL}"
-        read -rp "LM Studio Modell [qwen2.5]: " LM_MODEL_INPUT
-        LM_MODEL="${LM_MODEL_INPUT:-$LM_MODEL}"
-    else
-        LM_ENABLED="false"
+    read -rp "Adresse der Leitstelle (leer lassen: ohne KI): " LEITSTELLE
+    LEITSTELLE_SCHLUESSEL=""
+    if [ -n "$LEITSTELLE" ]; then
+        LEITSTELLE_SCHLUESSEL="/app/zugang/leitstelle.schluessel"
     fi
 
     cat > .env <<ENVFILE
@@ -109,10 +102,9 @@ DATABASE_DIR=$DATABASE
 OPENLIBRARY_ENABLED=true
 OPENLIBRARY_RATE_LIMIT=1
 
-# LM Studio (KI-Kategorisierung)
-LM_STUDIO_ENABLED=$LM_ENABLED
-LM_STUDIO_URL=$LM_URL
-LM_STUDIO_MODEL=$LM_MODEL
+# KI über die Leitstelle (Einordnen, Vorprüfung der Codestellen); leer: ohne KI
+LEITSTELLE_ADRESSE=$LEITSTELLE
+LEITSTELLE_SCHLUESSEL_DATEI=$LEITSTELLE_SCHLUESSEL
 
 # Logging
 LOG_LEVEL=info
