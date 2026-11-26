@@ -1,7 +1,7 @@
 <script lang="ts">
   // Rahmen aller Leser: Leiste oben, Feld rechts, Leiste unten, Auswahlmenü. Das Format liefert Fläche, Fuß und Darstellung.
   import type { Snippet } from "svelte";
-  import { beiEsc } from "../../lib/flucht";
+  import { beiEsc, offenesFeld } from "../../lib/flucht";
   import type { Leseart } from "../../lib/leser/fluss/fluss";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { blattrand } from "../../lib/leser/blattrand.svelte";
@@ -47,6 +47,8 @@
   let { sitzung, papier = "normal", grund, tinte, art, onart, satz = true, bereit, onzurueck, onabwahl, darstellung, fuss, treffer = undefined, children }: Eigenschaften = $props();
 
   let rahmen: HTMLElement | undefined = $state();
+  let feldflaeche: HTMLElement | undefined = $state();
+  let leisteOben: HTMLElement | undefined = $state();
   let vorleseKnopf = $state<HTMLElement | null>(null);
   let vorleseZeichen = $state<HTMLElement | null>(null);
   let vorlesenOffen = $state(false);
@@ -67,8 +69,11 @@
 
   let zustand = $derived(!liestHier ? "volume-low" : vorlesen.wartet && !vorlesen.pausiert ? "circle-notch" : vorlesen.pausiert ? "pause" : "volume-high");
 
+  // Esc und ein Druck daneben schließen das Feld (lib/flucht.ts); die Leiste oben schaltet es selbst, und beim Feld Fokus
+  // gehören die Griffe des Fokus dazu
   $effect(() => {
-    if (sitzung.feld) return beiEsc(() => (sitzung.feld = ""));
+    if (!sitzung.feld) return;
+    return offenesFeld(() => [feldflaeche, leisteOben, sitzung.feld === "fokus" ? rahmen?.querySelector(".fokus") : null], () => (sitzung.feld = ""));
   });
   $effect(() => {
     if (schale.vollbild) return beiEsc(() => void schale.vollbildUmschalten());
@@ -92,7 +97,7 @@
     <button type="button" class="schwebezeichen links" aria-label="Vollbild verlassen" title="Vollbild verlassen" onclick={() => void schale.vollbildUmschalten()}><Symbol name="compress" /></button>
     {#if bereit}<button type="button" class="schwebezeichen rechts" aria-label="Vorlesen" title="Vorlesen" aria-expanded={vorlesenOffen} bind:this={vorleseZeichen} onclick={() => (vorlesenOffen = !vorlesenOffen)}><Symbol name={zustand} dreht={zustand === "circle-notch"} /></button>{/if}
   {:else}
-    <div class="leseleiste oben glas klar">
+    <div class="leseleiste oben glas klar" bind:this={leisteOben}>
       <Knopf text="Zurück" symbol="arrow-left" nur frei klein onclick={onzurueck} />
       <b title={sitzung.buch.title}>{sitzung.buch.title}</b>
       <Knopf text="Inhaltsverzeichnis" symbol="list" nur frei klein gesperrt={!sitzung.kapitel.length} titel={sitzung.kapitel.length ? "Inhaltsverzeichnis" : "Dieses Buch hat kein Inhaltsverzeichnis"} gedrueckt={sitzung.feld === "inhalt"} onclick={() => sitzung.schalteFeld("inhalt")} />
@@ -109,7 +114,7 @@
   {/if}
 
   {#if sitzung.feld && bereit}
-    <aside class="seitenfeld glas dicht" aria-label="Seitenfeld">
+    <aside class="seitenfeld glas dicht" aria-label="Seitenfeld" bind:this={feldflaeche}>
       <!-- Glas rollt nie selbst: die Scheibe steht, gerollt wird innen -->
       <div class="rollen">
       {#if sitzung.feld === "inhalt"}

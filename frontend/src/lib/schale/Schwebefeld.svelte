@@ -1,25 +1,14 @@
 <script lang="ts">
   // Feld unter dem Kopf: Aufträge, Darstellung, Konto
   import type { Snippet } from "svelte";
-  import { beiEsc } from "../flucht";
+  import { offenesFeld } from "../flucht";
   import { schale } from "../stand/schale.svelte";
 
   let { titel, breite = "21rem", children }: { titel: string; breite?: string; children: Snippet } = $props();
   let feld: HTMLElement | undefined = $state();
 
-  $effect(() => {
-    const zu = () => (schale.offen = "");
-    const ab = beiEsc(zu);
-    const daneben = (e: PointerEvent) => {
-      const ziel = e.target as Element;
-      if (!feld?.contains(ziel) && !ziel.closest(".kopf")) zu();
-    };
-    document.addEventListener("pointerdown", daneben, true);
-    return () => {
-      ab();
-      document.removeEventListener("pointerdown", daneben, true);
-    };
-  });
+  // Der Kopf gehört dazu: seine Knöpfe öffnen und schließen die Felder selbst
+  $effect(() => offenesFeld(() => [feld, document.querySelector(".kopf")], () => (schale.offen = "")));
 </script>
 
 <div class="schwebe unterm-kopf glas dicht" style:--breite={breite} role="dialog" aria-label={titel} bind:this={feld}>

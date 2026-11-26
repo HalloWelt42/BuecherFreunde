@@ -1,7 +1,7 @@
 <script lang="ts">
   // Schwebendes Feld an einem Knopf. Hängt an der App statt an der Bühne, damit nichts es abschneidet.
   import type { Snippet } from "svelte";
-  import { beiEsc } from "../flucht";
+  import { offenesFeld } from "../flucht";
 
   let { anker, name, breite = "20rem", onschliessen, children }: { anker: HTMLElement | null; name: string; breite?: string; onschliessen: () => void; children: Snippet } = $props();
   let feld: HTMLElement | undefined = $state();
@@ -27,20 +27,12 @@
     knoten.style.setProperty("--oben", `${oben}px`);
   }
 
+  // Esc und ein Druck daneben schließen, wie bei jedem Feld (lib/flucht.ts)
+  $effect(() => offenesFeld(() => [feld, anker], () => onschliessen()));
   $effect(() => {
-    const ab = beiEsc(() => onschliessen());
-    const daneben = (e: Event) => {
-      const z = e.target as Node;
-      if (!feld?.contains(z) && !anker?.contains(z)) onschliessen();
-    };
     const neu = () => feld && setze(feld);
-    document.addEventListener("pointerdown", daneben, true);
     addEventListener("resize", neu);
-    return () => {
-      ab();
-      document.removeEventListener("pointerdown", daneben, true);
-      removeEventListener("resize", neu);
-    };
+    return () => removeEventListener("resize", neu);
   });
 </script>
 

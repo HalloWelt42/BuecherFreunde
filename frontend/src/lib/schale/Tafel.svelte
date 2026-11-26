@@ -40,5 +40,5 @@
     {/if}
   {/each}
   <button type="button" disabled={!imLeser} title={imLeser ? undefined : "Vollbild gibt es im Leser"} onclick={vollbild}><Symbol name="expand" />Vollbild</button>
-  <button type="button" aria-current={schale.leisteOffen ? "page" : undefined} aria-expanded={schale.leisteOffen} onclick={() => schale.leisteUmschalten()}><Symbol name="ellipsis" />Mehr</button>
+  <button type="button" data-leistenschalter aria-current={schale.leisteOffen ? "page" : undefined} aria-expanded={schale.leisteOffen} onclick={() => schale.leisteUmschalten()}><Symbol name="ellipsis" />Mehr</button>
 </nav>

@@ -1,6 +1,6 @@
 <script lang="ts">
   // Schwebt an der Auswahl: markieren, kopieren, vorlesen, in Schnellnotiz oder Buchnotiz
-  import { beiEsc } from "../../lib/flucht";
+  import { offenesFeld } from "../../lib/flucht";
   import { bezugAus } from "../../lib/leser/bezug";
   import { alsZitat, type Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
@@ -28,7 +28,9 @@
     return { links, oben: oben > 60 ? oben : Math.max(8, unten) };
   });
 
-  $effect(() => beiEsc(zu));
+  // Esc und ein Druck daneben schließen, wie bei jedem Feld (lib/flucht.ts)
+  let menue: HTMLElement | undefined = $state();
+  $effect(() => offenesFeld(() => [menue], zu));
 
   function zu() {
     sitzung.auswahl = null;
@@ -49,7 +51,7 @@
 </script>
 
 <!-- Ein Druck auf das Menü darf die Auswahl im Text nicht aufheben -->
-<div class="auswahlmenue glas dicht" role="dialog" tabindex="-1" aria-label="Auswahl" bind:offsetWidth={breite} bind:offsetHeight={hoehe} style:left="{ort.links}px" style:top="{ort.oben}px" style:visibility={breite ? "visible" : "hidden"} onmousedown={(e) => e.preventDefault()}>
+<div class="auswahlmenue glas dicht" role="dialog" tabindex="-1" aria-label="Auswahl" bind:this={menue} bind:offsetWidth={breite} bind:offsetHeight={hoehe} style:left="{ort.links}px" style:top="{ort.oben}px" style:visibility={breite ? "visible" : "hidden"} onmousedown={(e) => e.preventDefault()}>
   {#if schritt === "tun"}
     {#if a.cfi}<Farbreihe name="Markieren" wert={sitzung.stift ? sitzung.stiftfarbe : ""} onwahl={(f) => void tun(() => sitzung.markiere(a, f))} />{/if}
     <div class="reihe knoepfe">

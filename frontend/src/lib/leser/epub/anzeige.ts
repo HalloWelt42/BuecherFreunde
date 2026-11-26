@@ -2,6 +2,7 @@
 import type { FoliateKapitel, FoliateStand, View } from "foliate-js/view.js";
 import { dateiUrl } from "../../api/books";
 import { anfrage } from "../../api/client";
+import { beobachteDokument } from "../../flucht";
 import type { Markierung } from "../../typen";
 import { blaettergesten, type Blaettergriffe } from "../blaettergesten";
 import { VORGABE_STIFT } from "../farben";
@@ -111,6 +112,8 @@ export class EpubAnzeige {
     const rahmen = doc.defaultView?.frameElement as HTMLElement | null;
     if (rahmen) rahmen.style.backgroundColor = randfarbe(this.darstellung);
     requestAnimationFrame(() => void this.zeichne(this.#markierungen));
+    // Ein Druck in den Text schließt offene Felder wie überall (BF-39)
+    beobachteDokument(doc);
     const auswerten = () => this.#auswahl(doc, index);
     doc.addEventListener("pointerup", () => setTimeout(auswerten));
     doc.addEventListener("selectionchange", () => {

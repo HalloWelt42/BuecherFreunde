@@ -1,6 +1,7 @@
 <script lang="ts">
   // Leiste links: Bestand, Lesen, Regale, Sammlungen. Filter lassen sich kombinieren, "Alle" hebt sie auf.
   import { abmelden } from "../api/client";
+  import { offenesFeld } from "../flucht";
   import { zahl } from "../format";
   import { route } from "../router.svelte";
   import { bestand } from "../stand/bestand.svelte";
@@ -19,6 +20,12 @@
     schale.leisteOffen = false;
   }
 
+  // Über dem Inhalt aufgeklappt (schmal, Telefon): Esc und ein Druck daneben klappen sie zu; ihre Schalter gehören dazu
+  let leiste: HTMLElement | undefined = $state();
+  $effect(() => {
+    if (schale.leisteOffen) return offenesFeld(() => [leiste, ...document.querySelectorAll("[data-leistenschalter], .kopf .leisteknopf")], zu);
+  });
+
   async function ab() {
     zu();
     await abmelden();
@@ -29,7 +36,7 @@
   <Punkt {text} {symbol} zahl={n} gedrueckt={an(schluessel, wert)} onclick={() => { filter.schalte(schluessel, wert); zu(); }} />
 {/snippet}
 
-<nav class="leiste glas milch" aria-label="Bereiche">
+<nav class="leiste glas milch" aria-label="Bereiche" bind:this={leiste}>
   <div class="rollen">
     <Punkt text="Alle" symbol="layer-group" zahl={z.buecher_gesamt} gedrueckt={aufBibliothek && !filter.aktiv} onclick={() => { filter.leere(); zu(); }} />
     {@render schalter("hat_isbn", "true", "Bücher", "book", z.buecher_mit_isbn)}
