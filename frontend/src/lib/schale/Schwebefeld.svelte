@@ -20,7 +20,8 @@
 
 <style>
   .unterm-kopf {
-    top: calc(var(--kopf) + 10px);
+    /* unter dem Kopf, der am Telefon und als Web-App um den oberen sicheren Rand tiefer steht (BF-20) */
+    top: calc(var(--kopf) + env(safe-area-inset-top, 0px) + 10px);
     --rechts: var(--fuge);
   }
 </style>
