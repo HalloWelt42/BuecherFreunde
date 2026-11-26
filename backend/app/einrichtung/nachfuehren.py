@@ -55,12 +55,20 @@ async def merken(art: str) -> int:
     return c.rowcount
 
 
+async def _zurueckstellen(buch: int, grund: str) -> None:
+    """Ein Buch, dessen Persönliches sich nicht schreiben ließ, bekommt die Marke `fehler` mit Grund. Es hält die übrigen nicht auf
+    und wird erst wieder versucht, wenn sich an ihm etwas ändert (dann setzt ein Trigger eine neue Marke `buch`)."""
+    await db.execute("INSERT INTO nachfuehren(art, ziel, seit, grund) VALUES ('fehler', ?, ?, ?) "
+                     "ON CONFLICT(art, ziel) DO UPDATE SET seit = excluded.seit, grund = excluded.grund", (buch, jetzt(), grund))
+
+
 class Nachfuehren:
     def __init__(self) -> None:
         self._anstoss = asyncio.Event()
         self._aufgabe: asyncio.Task | None = None
         self.laeuft = False
         self.geschrieben = 0
+        self.uebersprungen = 0
         self.bytes = 0
         self.grund = ""
         self.begonnen: str | None = None
@@ -137,9 +145,16 @@ class Nachfuehren:
                 "SELECT n.art, n.ziel, n.seit, b.hash, a.knoten FROM nachfuehren n JOIN books b ON b.id = n.ziel JOIN ablage_datei a ON a.hash = b.hash "
                 "WHERE n.art IN ('buch', 'leeren') AND n.seit <= ? ORDER BY n.seit, n.ziel LIMIT ?", (grenze, settings.persoenlich_je_runde))
             for z in zeilen:
-                if await self._ein_buch(z["art"], z["ziel"], z["hash"], z["knoten"]):
-                    n += 1
-                    self.geschrieben += 1
+                try:
+                    if await self._ein_buch(z["art"], z["ziel"], z["hash"], z["knoten"]):
+                        n += 1
+                        self.geschrieben += 1
+                except WolkeFehler:
+                    raise                                  # die Kellerwolke fehlt: die ganze Runde wartet
+                except Exception as f:                     # noqa: BLE001 - ein Buch mit unerwarteten Daten hält die übrigen nicht auf
+                    logger.exception("%s: Buch %d übersprungen", WAS, z["ziel"])
+                    await _zurueckstellen(z["ziel"], f"{type(f).__name__}: {f}"[:300])
+                    self.uebersprungen += 1
                 # nur, was seither nicht wieder geändert wurde
                 await db.execute("DELETE FROM nachfuehren WHERE art = ? AND ziel = ? AND seit = ?", (z["art"], z["ziel"], z["seit"]))
                 await db.commit()
@@ -159,7 +174,17 @@ class Nachfuehren:
         return Auftragsstand(art="nachfuehren", was=WAS, stand=art, gesamt=offen + self.geschrieben, fertig=self.geschrieben,
                              teile=[Teil(schluessel="buecher", name="Bücher", gesamt=offen + self.geschrieben, fertig=self.geschrieben),
                                     Teil(schluessel="bytes", name="Geschrieben", gesamt=self.bytes, fertig=self.bytes)],
-                             grund=self.grund, begonnen=self.begonnen, geaendert=self.geaendert)
+                             grund=self.grund or await _fehlergrund(), begonnen=self.begonnen, geaendert=self.geaendert)
+
+
+async def _fehlergrund() -> str:
+    """Wie viele Bücher übersprungen sind, mit dem Grund des ersten; leer, wenn keins."""
+    z = await db.fetch_one("SELECT COUNT(*) AS n, MIN(ziel) AS erstes FROM nachfuehren WHERE art = 'fehler'")
+    if not z or not z["n"]:
+        return ""
+    g = await db.fetch_one("SELECT grund FROM nachfuehren WHERE art = 'fehler' AND ziel = ?", (z["erstes"],))
+    wort = "Buch" if z["n"] == 1 else "Bücher"
+    return f"{z['n']} {wort} übersprungen, etwa Buch {z['erstes']}: {g['grund'] if g else ''}"
 
 
 nachfuehren = Nachfuehren()

@@ -121,7 +121,15 @@ CREATE TABLE IF NOT EXISTS nachfuehren (             -- Persönliches nachführe
     art TEXT NOT NULL,
     ziel INTEGER NOT NULL,
     seit TEXT NOT NULL DEFAULT {JETZT},              -- letzte Änderung; nachgeführt wird nach einer ruhigen Weile
+    grund TEXT NOT NULL DEFAULT '',                  -- bei art fehler: warum das Buch übersprungen wurde
     PRIMARY KEY (art, ziel)
 );
 {_trigger()}
 """
+
+
+# Spalten, die nach dem ersten Anlegen dazukamen; fehlen sie in einem vorhandenen Bestand, zieht die Datenbank sie nach dem
+# Anlegen dieser Tabellen nach (core/database.py)
+SPALTEN: tuple[tuple[str, str, str], ...] = (
+    ("nachfuehren", "grund", "TEXT NOT NULL DEFAULT ''"),
+)

@@ -622,6 +622,7 @@ class Database:
         # die gemeinsame Verbindung: außerhalb einer Einheit gilt jede Anweisung für sich
         self._connection = await self._oeffnen(isolation_level=None)
         await self._connection.executescript(einrichtung_schema.SQL)   # Ersteinrichtung (BF-82), Trigger an den Tabellen der Familie
+        await self._spalten_nachziehen(einrichtung_schema.SPALTEN)
         logger.info("Datenbank verbunden: %s", self.db_path)
 
     async def _oeffnen(self, **art: object) -> aiosqlite.Connection:
@@ -666,9 +667,9 @@ class Database:
             else:
                 await v.close()
 
-    async def _spalten_nachziehen(self) -> None:
+    async def _spalten_nachziehen(self, spalten: tuple[tuple[str, str, str], ...] = NEUBAU_SPALTEN) -> None:
         assert self._connection is not None
-        for tabelle, spalte, art in NEUBAU_SPALTEN:
+        for tabelle, spalte, art in spalten:
             vorhanden = {z[1] for z in await (await self._connection.execute(f"PRAGMA table_info({tabelle})")).fetchall()}
             if spalte not in vorhanden:
                 await self._connection.execute(f"ALTER TABLE {tabelle} ADD COLUMN {spalte} {art}")

@@ -195,3 +195,38 @@ async def test_alte_auszuege_werden_gelesen(test_db):
     je = g.angaben.persoenliches()
     assert je[""].lesestand.reading_position == "page:3" and je[KIND].notizen[0].content == "alt"
     assert set(g.dateien) == {"fulltext.txt"}
+
+
+async def test_seitenangaben_als_freier_text_wie_in_alten_bestaenden(wolke, test_db):
+    """Ältere Bestände halten die Seite einer Notiz als Text ("S.19", "2%") in einer Spalte mit Zahl als Art."""
+    buch, knoten = await _buch_in_der_wolke(test_db, wolke, "Seitenband", "c" * 64)
+    ich = await verwaltung(test_db)
+    for seite in ("S.19", "2%", 19, None):
+        await db.execute("INSERT INTO book_notes(profil_id, book_id, content, page_reference) VALUES (?, ?, 'Notiz', ?)", (ich, buch, seite))
+    await db.commit()
+    assert await nachfuehren.runde(sofort=True) == 1
+    assert [n.page_reference for n in _persoenlich(wolke, knoten).profile[ich].notizen] == ["S.19", "2%", "19", None]
+
+
+async def test_ein_buch_mit_fehler_haelt_die_uebrigen_nicht_auf(wolke, test_db, monkeypatch):
+    gut, k_gut = await _buch_in_der_wolke(test_db, wolke, "Gutband", "d" * 64)
+    schlecht, _ = await _buch_in_der_wolke(test_db, wolke, "Schlechtband", "e" * 64)
+    ich = await verwaltung(test_db)
+    for buch in (schlecht, gut):
+        await db.execute("INSERT INTO book_notes(profil_id, book_id, content) VALUES (?, ?, 'Notiz')", (ich, buch))
+    await db.commit()
+    echt = persoenlich.schreiben
+
+    async def schreiben(original: str, buch: int, file_hash: str) -> int:
+        if buch == schlecht:
+            raise ValueError("unerwartete Daten")
+        return await echt(original, buch, file_hash)
+
+    monkeypatch.setattr(persoenlich, "schreiben", schreiben)
+    assert await nachfuehren.runde(sofort=True) == 1
+    assert _begleiter(wolke, k_gut) is not None
+    zurueck = await db.fetch_one("SELECT grund FROM nachfuehren WHERE art = 'fehler' AND ziel = ?", (schlecht,))
+    assert zurueck and "unerwartete Daten" in zurueck["grund"]
+    assert not await db.fetch_one("SELECT 1 FROM nachfuehren WHERE art = 'buch'"), "keine Marke bleibt hängen"
+    assert "1 Buch übersprungen" in (await nachfuehren.stand()).grund
+    assert await nachfuehren.runde(sofort=True) == 0, "ohne neue Änderung kein neuer Versuch"

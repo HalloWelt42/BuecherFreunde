@@ -8,7 +8,9 @@ Form `buecherfreunde-persoenlich/1`: `{art, buch, hash, profile: {<profil_id>: P
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from typing import Annotated
+
+from pydantic import BeforeValidator, BaseModel, Field
 
 from backend.app.ablage.wolke import wolke
 from backend.app.core import einstellungen
@@ -19,6 +21,11 @@ FORM = "buecherfreunde-persoenlich/1"
 ROLLE = "persoenlich"                          # Rollen der Kellerwolke nur aus [a-z_]
 ZUSATZ = ".persoenlich.json"
 EINSTELLUNG = "persoenlich_in_kellerwolke"     # app_settings: "1" an, "0" aus; ohne Eintrag gilt PERSOENLICH_IN_KELLERWOLKE
+
+
+# Die Seitenangabe ist freier Text, wie in der Schnittstelle der App ("S.19", "2%", "12"); ältere Bestände halten sie in einer
+# Spalte mit Zahl als Art, SQLite gibt dann je nach Wert Zahl oder Text zurück. Im Begleiter steht sie immer als Text.
+Seite = Annotated[str | None, BeforeValidator(lambda v: None if v is None else str(v))]
 
 
 class Lesestand(BaseModel):
@@ -46,7 +53,7 @@ class Vorlesestelle(BaseModel):
 
 class Notiz(BaseModel):
     content: str
-    page_reference: int | None = None
+    page_reference: Seite = None
     cfi_reference: str | None = ""
     created_at: str | None = None
     updated_at: str | None = None
@@ -65,7 +72,7 @@ class Etikett(BaseModel):
     color: str = "#4FC3F7"
     name: str = ""
     note: str = ""
-    page_reference: str | None = ""
+    page_reference: Seite = ""
     position_percent: float | None = 0
     cfi_reference: str | None = ""
     created_at: str | None = None
