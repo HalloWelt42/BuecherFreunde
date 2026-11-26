@@ -1,6 +1,7 @@
 /* Schale: richtet sich nach der Breite der App (Container), damit Telefonrahmen und echtes Telefon dasselbe zeigen */
 .app { position: relative; width: 100%; height: 100%; overflow: hidden; overflow: clip; container: app / inline-size; }
-.schale { position: relative; z-index: 1; height: 100%; display: grid; gap: var(--fuge); padding: var(--fuge);
+/* Oben der sichere Rand (Statusleiste, Kamera), ohne Zusatzluft; unten nie (Regel des Hauses) */
+.schale { position: relative; z-index: 1; height: 100%; display: grid; gap: var(--fuge); padding: var(--fuge); padding-top: calc(var(--fuge) + env(safe-area-inset-top, 0px));
   grid-template: var(--kopf) minmax(0, 1fr) / 15.25rem minmax(0, 1fr) 20rem; }
 .schale.ohne-vorschau { grid-template-columns: 15.25rem minmax(0, 1fr); }
 .schale.ohne-leiste { grid-template-columns: minmax(0, 1fr) 20rem; }

@@ -2,6 +2,7 @@
  * API-Client mit Bearer Token Auth, Fehlerbehandlung und SSE-Support.
  */
 
+import { sprich } from "../hintergrund";
 import { netz } from "../stand/netz.svelte";
 
 const SCHLUESSEL = "api_token";
@@ -75,7 +76,13 @@ export async function abmelden(): Promise<void> {
     // egal: lokal ist man danach abgemeldet
   }
   setToken("");
+  vergissLesestoff();
   if (onAuthRequired) onAuthRequired();
+}
+
+/** Die für das Lesen ohne Netz gemerkten Bücher gehören dem, der abgemeldet ist */
+function vergissLesestoff(): void {
+  void sprich({ art: "abgemeldet" });
 }
 
 /**

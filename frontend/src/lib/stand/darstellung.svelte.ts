@@ -83,7 +83,21 @@ class Darstellung {
       if (wert) merkmale[name] = wert;
       else delete merkmale[name];
     }
+    statusleiste();
   }
+}
+
+/**
+ * Statusleiste und Leiste des Browsers in der Farbe des Grunds (--grund in stil/marken.css). Bis das Skript läuft, gelten
+ * die zwei Angaben in index.html nach der Einstellung des Geräts; danach eine, die der gewählten Darstellung folgt (der
+ * Leser färbt sie im Vollbild um, lib/stand/blattgrund.ts).
+ */
+function statusleiste(): void {
+  const [meta, ...weitere] = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+  if (!meta) return;
+  for (const m of weitere) m.remove();
+  meta.removeAttribute("media");
+  meta.content = getComputedStyle(document.documentElement).getPropertyValue("--grund").trim() || meta.content;
 }
 
 export const darstellung = new Darstellung();

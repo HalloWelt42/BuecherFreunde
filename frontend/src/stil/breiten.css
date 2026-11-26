@@ -23,7 +23,7 @@
 }
 @container app (max-width: 720px) {
   .schale, .schale.ohne-vorschau, .schale.ohne-leiste, .schale.ohne-leiste.ohne-vorschau { grid-template: auto minmax(0, 1fr) auto / minmax(0, 1fr); padding: 0; gap: 0; }
-  .kopf { grid-area: 1 / 1; border-radius: 0; height: 3.5rem; padding: 0 var(--rand-seite); }
+  .kopf { grid-area: 1 / 1; border-radius: 0; height: calc(3.5rem + env(safe-area-inset-top, 0px)); padding: env(safe-area-inset-top, 0px) var(--rand-seite) 0; }
   .buehne { grid-area: 2 / 1; border-radius: 0; box-shadow: none; }
   .buehne.glas::before { display: none; }
   .schale.leiste-offen > .leiste { grid-area: 2 / 1; width: 100%; }

@@ -28,14 +28,39 @@ function symbolEinbetten() {
   };
 }
 
-// Der Dienst im Hintergrund (public/sw.js) trägt die Fassung, so räumt eine neue die alte Hülle weg
+// Module, die der Leser ohne Netz nie braucht oder die zu groß sind: Diagramme in Markdown laden erst bei Bedarf
+const OHNE_VORRAT = /node_modules\/(?:mermaid|@mermaid-js|cytoscape|katex|elkjs)\//;
+const LESER = /\/src\/(?:ansichten|lib)\/leser\//;
+
+/** Was der Dienst im Hintergrund vorab speichert: die Hülle der App (alles, was der Einstieg fest lädt) und der Leser mit
+ *  allen Formaten (pdf.js samt Worker, foliate-js, Textleser), dazu ihr Stil, ihre Schriften und Bilder */
+export function vorratAus(bundle) {
+  const teile = new Map(Object.values(bundle).filter((t) => t.type === "chunk").map((t) => [t.fileName, t]));
+  const aus = new Set();
+  const nimm = (name, mitNachgeladenem) => {
+    const t = teile.get(name);
+    if (!t || aus.has(name) || t.moduleIds.some((m) => OHNE_VORRAT.test(m))) return;
+    aus.add(name);
+    for (const datei of [...(t.viteMetadata?.importedCss ?? []), ...(t.viteMetadata?.importedAssets ?? [])]) aus.add(datei);
+    for (const i of t.imports) nimm(i, mitNachgeladenem);
+    for (const d of t.dynamicImports) if (mitNachgeladenem || teile.get(d)?.moduleIds.some((m) => LESER.test(m))) nimm(d, true);
+  };
+  for (const t of teile.values()) if (t.isEntry) nimm(t.fileName, false);
+  return [...aus].sort().map((datei) => `/${datei}`);
+}
+
+// Der Dienst im Hintergrund (public/sw.js) trägt die Fassung, so räumt eine neue die alte Hülle weg, und seinen Vorrat
 function dienstFassung() {
+  let vorrat = [];
   return {
     name: "dienst-fassung",
     apply: "build",
+    generateBundle(_optionen, bundle) {
+      vorrat = vorratAus(bundle);
+    },
     writeBundle(optionen) {
       const ziel = `${optionen.dir}/sw.js`;
-      writeFileSync(ziel, readFileSync(ziel, "utf-8").replace("__FASSUNG__", FASSUNG));
+      writeFileSync(ziel, readFileSync(ziel, "utf-8").replace("__FASSUNG__", FASSUNG).replace('"__VORRAT__"', JSON.stringify(vorrat)));
     },
   };
 }
@@ -70,6 +95,17 @@ export default defineConfig({
   },
   resolve: {
     conditions: ["browser"],
+  },
+  // Der Editor des Appkerns (appkern-oberflaeche/code, BF-29) kommt als Svelte-Quelltext und wird wie eigener Code
+  // übersetzt; CodeMirror nur einmal vorgebündelt, sonst greifen Erweiterungen und Farben nicht (zwei Fassungen von state)
+  optimizeDeps: {
+    exclude: ["appkern-oberflaeche"],
+    include: [
+      "@codemirror/autocomplete", "@codemirror/commands", "@codemirror/lang-css", "@codemirror/lang-html",
+      "@codemirror/lang-javascript", "@codemirror/lang-markdown", "@codemirror/lang-php", "@codemirror/lang-python",
+      "@codemirror/lang-sql", "@codemirror/language", "@codemirror/lint", "@codemirror/search", "@codemirror/state",
+      "@codemirror/view", "@lezer/common", "@lezer/highlight",
+    ],
   },
   test: {
     globals: true,
