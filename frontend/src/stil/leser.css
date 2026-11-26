@@ -2,7 +2,9 @@
 /* Messfläche von pdf.js, hängt am body */
 .hiddenCanvasElement { position: absolute; top: 0; left: 0; width: 0; height: 0; display: none; }
 .leser { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
-.leser .seiten { min-height: 0; overflow: auto; padding: 4.5rem var(--rand-seite) 4.5rem; display: grid; justify-content: center; align-content: start; grid-template-columns: minmax(0, 44rem); will-change: transform; }
+/* Aufteilung des Leseraums (lib/leser/leseraum.svelte.ts): rechts vom Blatt nehmen Marken und Feld --raum-rechts, das Blatt
+   wird höchstens --lesebreite breit; jede Ansicht rechnet beim Einpassen mit dem Platz, der bleibt */
+.leser .seiten { min-height: 0; overflow: auto; padding: 4.5rem calc(var(--rand-seite) + var(--raum-rechts, 0px)) 4.5rem var(--rand-seite); display: grid; justify-content: center; align-content: start; grid-template-columns: minmax(0, 44rem); will-change: transform; }
 .blatt { background: var(--papier); color: var(--papier-tinte); border-radius: 3px; padding: var(--blattrand, clamp(1.25rem, 5cqw, 3.25rem)); box-shadow: 0 0 0 1px rgb(0 0 0 / .14), 0 18px 40px -18px rgb(0 0 0 / .6); font: 400 var(--lesegroesse, 1.125rem)/1.62 var(--buchschrift); hyphens: auto; }
 .blatt h2 { font: 600 1.45em/1.25 var(--buchschrift); margin-bottom: .75em; }
 .blatt p + p { margin-top: .85em; }
@@ -10,8 +12,11 @@
 .leser[data-papier="sepia"] { --papier: #f1e3c6; --papier-tinte: #3c2c16; }
 .leser[data-papier="dunkel"] { --papier: #181b1a; --papier-tinte: #d7d8d0; }
 .leser[data-papier="kontrast"] { --papier: #000000; --papier-tinte: #ffffff; }
-.leseleiste { position: absolute; z-index: 5; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: .25rem; padding: .375rem; max-width: calc(100% - 1.25rem); }
-.leseleiste.oben { top: .625rem; } .leseleiste.unten { bottom: .625rem; width: min(44rem, calc(100% - 1.25rem)); }
+.leseleiste { position: absolute; z-index: 5; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: .25rem; padding: .375rem; max-width: calc(100% - var(--raum-rechts, 0px) - 1.25rem); }
+.leseleiste.oben { top: .625rem; } .leseleiste.unten { bottom: .625rem; width: min(44rem, calc(100% - var(--raum-rechts, 0px) - 1.25rem)); }
+/* Die Leisten stehen mittig über dem Blatt, nicht über Marken und Feld */
+.leseleiste:is(.unten, .treffer) { left: 0; right: var(--raum-rechts, 0px); transform: none; margin-inline: auto; }
+.leseleiste.treffer { width: max-content; }
 .leseleiste .balken { flex: 1; }
 .leseleiste b { font: 600 .9375rem var(--buchschrift); padding: 0 .5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .seitenfeld { position: absolute; z-index: 6; top: 4rem; right: .625rem; max-height: calc(100% - 8rem); width: min(20rem, calc(100% - 1.25rem)); display: flex; flex-direction: column; }
@@ -21,7 +26,7 @@
 /* Papier und App können verschieden hell sein: über dem Blatt braucht die Leiste mehr Grund */
 .leseleiste.glas { background: rgb(var(--glas) / max(var(--a-klar), .84)); }
 /* Mittig über die Ränder statt über left: 50 %, sonst bliebe der Leiste nur die halbe Breite */
-.leseleiste.oben { left: 0; right: 0; transform: none; margin-inline: auto; width: max-content; }
+.leseleiste.oben { left: 0; right: var(--raum-rechts, 0px); transform: none; margin-inline: auto; width: max-content; }
 .leseleiste .reihe { flex-wrap: nowrap; }
 .leseleiste .knopf { flex: none; }
 .leseleiste.unten .stand + .stand { margin-left: .5rem; }
@@ -53,9 +58,9 @@
 .schwebezeichen.rechts { right: var(--rechts, 0px); padding-right: 18px; justify-content: flex-end; }
 .schwebezeichen:is(:hover, :active, :focus-visible, [aria-expanded="true"]) { opacity: 1; }
 /* Vorlesen: schmaler Spieler im Vollbild, "Zur Stelle", wenn man weggeblättert hat */
-.spielerleiste { position: absolute; z-index: 6; left: 0; right: 0; margin-inline: auto; bottom: calc(.625rem + var(--unten, 0px)); width: min(24rem, calc(100% - 1.25rem)); display: grid; gap: .125rem; padding: .375rem .5rem; }
+.spielerleiste { position: absolute; z-index: 6; left: 0; right: var(--raum-rechts, 0px); margin-inline: auto; bottom: calc(.625rem + var(--unten, 0px)); width: min(24rem, calc(100% - 1.25rem)); display: grid; gap: .125rem; padding: .375rem .5rem; }
 .spielername { text-align: center; color: var(--tinte-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.zurstelle { position: absolute; z-index: 6; left: 0; right: 0; margin-inline: auto; width: max-content; bottom: 4.5rem; }
+.zurstelle { position: absolute; z-index: 6; left: 0; right: var(--raum-rechts, 0px); margin-inline: auto; width: max-content; bottom: 4.5rem; }
 .leser.mit-treffer .zurstelle { bottom: 8rem; }
 .leser.randlos .zurstelle { bottom: calc(.75rem + var(--unten, 0px)); }
 .leser.randlos .zurstelle.hoeher { bottom: calc(6.5rem + var(--unten, 0px)); }
@@ -91,7 +96,7 @@
 .pdfseite > .hervorhebungen { z-index: 1; }
 .textLayer ::selection { background: rgb(0 100 255 / .4); }
 /* EPUB */
-.epubflaeche { position: absolute; inset: 4.25rem var(--rand-seite); max-width: var(--lesebreite); margin-inline: auto; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgb(0 0 0 / .14), 0 18px 40px -18px rgb(0 0 0 / .6); }
+.epubflaeche { position: absolute; inset: 4.25rem calc(var(--rand-seite) + var(--raum-rechts, 0px)) 4.25rem var(--rand-seite); max-width: var(--lesebreite); margin-inline: auto; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgb(0 0 0 / .14), 0 18px 40px -18px rgb(0 0 0 / .6); }
 .epubflaeche.ohne-grund { box-shadow: none; }
 .leser.mit-treffer .epubflaeche { bottom: 7.75rem; }
 /* Felder */

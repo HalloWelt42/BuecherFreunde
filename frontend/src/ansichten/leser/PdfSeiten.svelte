@@ -6,6 +6,8 @@
   import { PdfAnzeige } from "../../lib/leser/pdf/anzeige";
   import type { PdfBuch } from "../../lib/leser/pdf/dokument";
   import { Pdfmarkierungen } from "../../lib/leser/pdf/markierung";
+  import { blattbreite } from "../../lib/leser/leseraum.svelte";
+  import { schale } from "../../lib/stand/schale.svelte";
   import { einpassen, geblaettert, nachbarn, sichtbareSeiten, type Ansicht, type Seitenrest } from "../../lib/leser/pdf/zoom";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { schreibweise } from "../../lib/leser/typen";
@@ -51,19 +53,31 @@
     const s = getComputedStyle(flaeche!);
     return { breite: flaeche!.clientWidth - punkte(s.paddingLeft) - punkte(s.paddingRight), hoehe: flaeche!.clientHeight - punkte(s.paddingTop) - punkte(s.paddingBottom) };
   }
-  /** Maß, mit dem die Seite in dieser Ansicht passt */
+  /** Maß, mit dem die Seite in dieser Ansicht passt: in den freien Platz, höchstens so breit wie das Blatt (BF-36) */
   export function passend(fuer: Ansicht): number | null {
-    return flaeche ? einpassen(fuer, pdf.mass, frei()) : null;
+    return flaeche ? einpassen(fuer, pdf.mass, frei(), schale.telefon ? Infinity : blattbreite.wert) : null;
+  }
+
+  /** Wie weit die Seite oben schon durchgerollt ist, als Anteil ihrer Höhe */
+  function durchgerollt(nr: number): number {
+    const r = anzeige?.rahmen(nr)?.getBoundingClientRect();
+    if (!flaeche || !r?.height) return 0;
+    const oben = flaeche.getBoundingClientRect().top + punkte(getComputedStyle(flaeche).paddingTop);
+    return Math.min(1, Math.max(0, (oben - r.top) / r.height));
   }
 
   async function rechne() {
     if (!anzeige) return;
     const mass = zoom ?? passend(ansicht) ?? anzeige.mass;
+    // Ändert sich das Maß beim Rollen (Feld daneben, andere Breite), bleibt die Stelle in der Seite, wo sie war
+    const anteil = blaettert ? 0 : durchgerollt(seite);
     Object.assign(anzeige, { mass, ansicht, seite });
     gezeigt = seite;
     onmass(mass);
     await tick();
     await anzeige.neu();
+    const r = anteil && flaeche ? anzeige.rahmen(seite) : null;
+    if (r && flaeche) flaeche.scrollTop += anteil * r.getBoundingClientRect().height;
     meldeRest();
   }
 
@@ -103,9 +117,9 @@
     };
   });
 
-  // Ansicht oder Zoom: neu rechnen, die Seite bleibt
+  // Ansicht, Zoom oder Breite des Blatts: neu rechnen, die Seite bleibt
   $effect(() => {
-    void [ansicht, zoom];
+    void [ansicht, zoom, blattbreite.wert];
     untrack(() => void rechne());
   });
 

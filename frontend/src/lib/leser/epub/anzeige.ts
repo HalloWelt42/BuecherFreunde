@@ -10,7 +10,7 @@ import type { Leseart } from "../fluss/fluss";
 import type { Kapitel } from "../typen";
 import { kapitelrand } from "./kapitelrand";
 import { nutzeSchrift, schriftCss } from "../schriften";
-import { breite, einspaltig, epubCss, randfarbe, setzeStil, type Epubdarstellung } from "./stile";
+import { einspaltig, epubCss, randfarbe, setzeStil, type Epubdarstellung } from "./stile";
 
 export interface Epubstand {
   anteil: number;
@@ -27,6 +27,8 @@ export interface Seitenmass {
   /** Rand links und rechts, und oben und unten */
   rand: number;
   oben: number;
+  /** Breite einer Spalte (Breite des Blatts) */
+  spalte: number;
 }
 
 export interface Epubgriffe {
@@ -63,7 +65,12 @@ export class EpubAnzeige {
 
   #gesten: () => void;
   // Der Rand hängt an der Breite der Fläche (Drehen, Vollbild)
-  #groesse = new ResizeObserver(() => this.#seitenmass());
+  #groesse = new ResizeObserver(() => this.#neueGroesse());
+  /** Stelle, an der zuletzt in Ruhe gelesen wurde; nach einem neuen Umbruch kehrt die Ansicht dorthin zurück */
+  #ruhestelle = "";
+  #breite = 0;
+  /** Läuft, solange ein Umbruch nach neuer Breite auf die Rückkehr wartet */
+  #umbruch: ReturnType<typeof setTimeout> | undefined;
 
   constructor(private flaeche: HTMLElement, private darstellung: Epubdarstellung, private seite: Seitenmass, private griffe: Epubgriffe) {
     this.#gesten = this.#hoere(flaeche);
@@ -95,6 +102,7 @@ export class EpubAnzeige {
 
   schliesse(): void {
     clearTimeout(this.#uhr);
+    clearTimeout(this.#umbruch);
     this.#gesten();
     this.#groesse.disconnect();
     this.#view?.close();
@@ -213,11 +221,30 @@ export class EpubAnzeige {
     for (const { doc } of this.#view?.renderer?.getContents() ?? []) doc.getSelection()?.removeAllRanges();
   }
 
+  // Neue Breite (Feld daneben, Breite des Blatts, Fenster, Drehen): die Bibliothek bricht neu um und landet dabei oft eine
+  // Spalte weiter; die gelesene Stelle soll auf dem Schirm bleiben (BF-41)
+  #neueGroesse(): void {
+    this.#seitenmass();
+    const breite = this.flaeche.clientWidth;
+    if (!breite || breite === this.#breite) return;
+    const zuvor = this.#breite;
+    this.#breite = breite;
+    const ziel = this.#ruhestelle;
+    if (!zuvor || !ziel) return;
+    clearTimeout(this.#umbruch);
+    this.#umbruch = setTimeout(() => {
+      void this.zurStelle(ziel);
+      this.#umbruch = setTimeout(() => (this.#umbruch = undefined), 400);
+    }, 250);
+  }
+
   #gerueckt(s: FoliateStand): void {
     const nr = this.kapitel.findIndex((k) => k.ziel === s.tocItem?.href);
     // Gescrollt zählt die Bibliothek nur, was über dem Bild liegt: am Ende des Buchs fehlte sonst der letzte Schirm
     const r = this.#view?.renderer;
     const zuEnde = !!r?.scrolled && !!r.atEnd && this.#amRand(1);
+    // Meldet die Bibliothek eine Stelle, weil sie nach neuer Breite schon umgebrochen hat, zählt sie nicht als gelesen
+    if (!this.#umbruch && this.flaeche.clientWidth === this.#breite) this.#ruhestelle = s.cfi ?? "";
     this.griffe.beiStand({ anteil: zuEnde ? 1 : (s.fraction ?? 0), cfi: s.cfi ?? "", kapitel: s.tocItem?.label?.trim() ?? "", kapitelNr: nr, gedruckt: s.pageItem?.label?.trim() ?? "" });
   }
 
@@ -226,13 +253,13 @@ export class EpubAnzeige {
     const r = this.#view?.renderer;
     if (!r) return;
     const d = this.darstellung;
-    const { art, rand, oben } = this.seite;
+    const { art, rand, oben, spalte } = this.seite;
     const [eins, scrollt, weite] = [einspaltig(d, art), art === "scrollen", this.flaeche.clientWidth || 1];
     const werte = {
       margin: `${oben}px`,
       // Die Bibliothek nimmt den Rand als Anteil der Breite, gescrollt der Breite ohne ihn
       gap: `${((rand / (scrollt ? weite + rand : weite)) * 100).toFixed(3)}%`,
-      flow: scrollt ? "scrolled" : "paginated", "max-column-count": eins ? "1" : "2", "max-inline-size": `${eins ? breite(d, art) : Math.round(breite(d, art) / 2)}px`,
+      flow: scrollt ? "scrolled" : "paginated", "max-column-count": eins ? "1" : "2", "max-inline-size": `${spalte}px`,
     };
     // Jedes Setzen bricht das Kapitel neu um, darum nur, was sich ändert
     for (const [name, wert] of Object.entries(werte)) if (r.getAttribute(name) !== wert) r.setAttribute(name, wert);

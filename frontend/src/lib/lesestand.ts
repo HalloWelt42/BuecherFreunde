@@ -14,13 +14,10 @@ export interface Lesewerte {
   lineHeight?: number;
   fgColor?: string;
   bgColor?: string;
-  maxWidthSingle?: number;
-  maxWidthDouble?: number;
   singlePage?: boolean;
   randTransparent?: boolean;
   blattTransparent?: boolean;
   scrollPct?: number;
-  breite?: number;
   /** Ansicht und Zoom am Telefon, getrennt von denen des Rechners */
   telefon?: { ansicht?: string; zoom?: number };
 }
@@ -32,7 +29,6 @@ export interface Lesestand {
   anteil: number;
 }
 
-const BREITEN = ["schmal", "mittel", "breit", "volle Breite"];
 const ANSICHTEN: Record<string, string> = { scroll: "fortlaufend", breite: "Seitenbreite", seite: "ganze Seite", doppel: "Doppelseite", einzeln: "Einzelseite", text: "nur Text" };
 const THEMEN: Record<string, string> = { "#ffffff": "Hell", "#f4ecd8": "Sepia", "#3d3526": "Dämmerung", "#1e1e1e": "Dunkel", "#0a0a0a": "Nacht" };
 
@@ -90,9 +86,6 @@ export function leseweise(position: string | null | undefined): string[] {
   if (w.fontFamily) teile.push(w.fontFamily.split(",")[0].replace(/['"]/g, "").trim());
   if (w.lineHeight) teile.push(`Zeilenabstand ${String(w.lineHeight).replace(".", ",")}`);
   if (w.singlePage !== undefined) teile.push(w.singlePage ? "einseitig" : "zweiseitig");
-  if (w.maxWidthSingle && w.singlePage) teile.push(`Breite ${w.maxWidthSingle} px`);
-  if (w.maxWidthDouble && w.singlePage === false) teile.push(`Breite ${w.maxWidthDouble} px`);
-  if (w.breite !== undefined && w.breite >= 0) teile.push(BREITEN[w.breite] ?? "mittel");
   if (w.fgColor && w.bgColor) teile.push(`Thema ${THEMEN[w.bgColor] ?? "individuell"}`);
   return teile;
 }

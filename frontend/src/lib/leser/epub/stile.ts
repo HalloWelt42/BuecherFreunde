@@ -11,15 +11,14 @@ export interface Epubdarstellung {
   randTransparent: boolean;
   blattTransparent: boolean;
   einseitig: boolean;
-  breiteEins: number;
-  breiteZwei: number;
 }
 
 export const randfarbe = (d: Epubdarstellung) => (d.randTransparent ? "transparent" : d.bg);
 export const blattfarbe = (d: Epubdarstellung) => (d.blattTransparent ? "transparent" : d.bg);
 /** Gescrollt steht immer nur eine Spalte */
 export const einspaltig = (d: Epubdarstellung, art: Leseart) => d.einseitig || art === "scrollen";
-export const breite = (d: Epubdarstellung, art: Leseart) => (einspaltig(d, art) ? d.breiteEins : d.breiteZwei);
+/** Breite der Fläche: eine Spalte oder zwei nebeneinander, jede so breit wie das Blatt (lib/leser/leseraum.svelte.ts) */
+export const breite = (d: Epubdarstellung, art: Leseart, spalte: number) => (einspaltig(d, art) ? spalte : 2 * spalte);
 
 export function epubCss(d: Epubdarstellung, schriften: string): string {
   // Die gewählte Schrift gilt für allen Text, auch wo das Buch eigene Schriften setzt; Code bleibt, wie er ist

@@ -3,10 +3,11 @@
   // alle anderen an festem Platz. Am Telefon nur schmale Streifen, die kein Wischen und keine Auswahl blockieren.
   import { legeAnStelle, legeFest, randeintraege, schriftAuf, type Gelegt, type Randeintrag } from "../../lib/leser/randmarken";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
+  import type { Aufteilung } from "../../lib/leser/leseraum.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
   import type { Markierung } from "../../lib/typen";
 
-  let { sitzung, rahmen }: { sitzung: Lesesitzung; rahmen: HTMLElement } = $props();
+  let { sitzung, rahmen, raum, feld }: { sitzung: Lesesitzung; rahmen: HTMLElement; raum: Aufteilung; feld?: HTMLElement } = $props();
 
   const MASS = { rechner: { fern: [15, 26], hier: [34, 46] }, telefon: { fern: [6, 30], hier: [6, 64] } };
   const ABSTAND = 4;
@@ -16,9 +17,9 @@
   let eintraege = $derived(randeintraege(sitzung.markierungen, sitzung.notizen, sitzung.etiketten));
   let telefon = $derived(schale.telefon);
   let mass = $derived(telefon ? MASS.telefon : MASS.rechner);
-  let lage = $state<{ links: number; breite: number; hier: Gelegt<Randeintrag>[]; fern: Gelegt<Randeintrag>[] }>({ links: 0, breite: 0, hier: [], fern: [] });
-  /** Rechts neben der Marke ist kein Platz für die Karte: sie klappt nach links */
-  let nachLinks = $derived(lage.links + 240 > lage.breite);
+  let lage = $state<{ links: number; grenze: number; hier: Gelegt<Randeintrag>[]; fern: Gelegt<Randeintrag>[] }>({ links: 0, grenze: 0, hier: [], fern: [] });
+  /** Rechts neben der Marke ist kein Platz für die Karte (Kante der Bühne oder das Feld daneben): sie klappt nach links */
+  let nachLinks = $derived(lage.links + 240 > lage.grenze);
   let offen = $state("");
   let bild = 0;
 
@@ -46,16 +47,19 @@
     }
     const kante = ort.kante();
     const breite = mass.hier[0];
-    const links = telefon || kante === null ? r.width - (telefon ? mass.hier[0] : breite + 2) : Math.min(kante - r.left, r.width - breite - 2);
+    // Am Rechner stehen sie im eigenen Rand rechts neben dem Blatt, nie unter dem Feld daneben (lib/leser/leseraum.svelte.ts)
+    const rechtsBis = r.width - (raum.rechts - raum.markenrand);
+    const links = telefon ? r.width - mass.hier[0] : kante === null ? rechtsBis - breite - 2 : Math.min(kante - r.left, rechtsBis - breite - 2);
+    const grenze = feld ? feld.getBoundingClientRect().left - r.left - 8 : r.width;
     const nah = legeAnStelle(hier, oben, unten, mass.hier[1], ABSTAND);
     const gesperrt = nah.map((g): [number, number] => [g.y - oben, g.y - oben + mass.hier[1]]);
     const fest = legeFest(fern, unten - oben - mass.fern[1], mass.fern[1], ABSTAND, gesperrt).map((g) => ({ ...g, y: g.y + oben }));
-    lage = { links, breite: r.width, hier: nah, fern: fest };
+    lage = { links, grenze, hier: nah, fern: fest };
   }
 
   // Bei jeder Bewegung der Ansicht, neuen Einträgen und anderer Größe neu legen, einmal je Bild
   $effect(() => {
-    void [sitzung.bewegung, eintraege, telefon, sitzung.rand, schale.vollbild, sitzung.feld];
+    void [sitzung.bewegung, eintraege, telefon, sitzung.rand, schale.vollbild, sitzung.feld, raum, feld];
     cancelAnimationFrame(bild);
     bild = requestAnimationFrame(lege);
   });

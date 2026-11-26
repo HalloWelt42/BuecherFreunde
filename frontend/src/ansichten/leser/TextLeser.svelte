@@ -37,7 +37,7 @@
   import Markdown from "./Markdown.svelte";
   import Schlichttext from "./Schlichttext.svelte";
   import Seitenstand from "./Seitenstand.svelte";
-  import TextDarstellung, { BREITEN, type Textdarstellung } from "./TextDarstellung.svelte";
+  import TextDarstellung, { type Textdarstellung } from "./TextDarstellung.svelte";
   import Trefferleiste from "./Trefferleiste.svelte";
 
   let { buch, ziel, sitzung, onzurueck }: { buch: BuchEinzeln; ziel: Leseziel; sitzung: Lesesitzung; onzurueck: () => void } = $props();
@@ -51,7 +51,7 @@
   let eigeneFarben = $state(!!(alt.fgColor && alt.bgColor));
   let w = $state<Textdarstellung>({
     groesse: oderVorgabe(alt.fontSize, GROESSE), schrift: alt.fontFamily ?? "", zeilen: oderVorgabe(alt.lineHeight, ZEILEN),
-    breite: alt.breite !== undefined && BREITEN[alt.breite] ? alt.breite : 1, fg: alt.fgColor ?? "", bg: alt.bgColor ?? "", durchsichtig: alt.blattTransparent ?? false,
+    fg: alt.fgColor ?? "", bg: alt.bgColor ?? "", durchsichtig: alt.blattTransparent ?? false,
   });
   let thema = $derived(vorgabeThema(app.dunkel));
   let d = $derived<Textdarstellung>({ ...w, fg: eigeneFarben ? w.fg : thema.fg, bg: eigeneFarben ? w.bg : thema.bg });
@@ -168,7 +168,7 @@
   function merke() {
     const farben = eigeneFarben ? { fgColor: w.fg, bgColor: w.bg } : {};
     const prozent = Math.round(stand.anteil * 1000) / 10;
-    speicher.merke({ scrollPct: prozent, fontSize: w.groesse, fontFamily: w.schrift, lineHeight: w.zeilen, breite: w.breite, ...farben, blattTransparent: w.durchsichtig }, { percent: prozent > 0 ? prozent : undefined });
+    speicher.merke({ scrollPct: prozent, fontSize: w.groesse, fontFamily: w.schrift, lineHeight: w.zeilen, ...farben, blattTransparent: w.durchsichtig }, { percent: prozent > 0 ? prozent : undefined });
   }
 
   function setze(neu: Partial<Textdarstellung>) {
@@ -270,7 +270,7 @@
     <Ladehinweis {fehler} adresse={dateiUrl(buch.id)} name={buch.file_name || buch.title} onerneut={() => void lade()} />
   {:else}
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-    <div class="seiten lesetext textbuch rollen" tabindex="0" role="document" aria-label="Text" style:--lesebreite={BREITEN[d.breite].breite} bind:this={flaeche}>
+    <div class="seiten lesetext textbuch rollen" tabindex="0" role="document" aria-label="Text" bind:this={flaeche}>
       <article class="blatt" class:ohne-grund={d.durchsichtig} class:dunkel={istDunkel(d.bg)} class:markdown={istMarkdown} lang={buch.language || "de"} bind:this={blatt}
         style:--blattgrund={d.durchsichtig ? "transparent" : d.bg} style:--blatttinte={d.fg} style:--lesegroesse="{(1.125 * d.groesse) / 100}rem" style:font-family={d.schrift || undefined} style:line-height={d.zeilen}>
         <div class="satz" bind:this={satz}>

@@ -20,6 +20,8 @@
   import Randmarken from "./Randmarken.svelte";
   import Spieler from "./Spieler.svelte";
   import Blattfeinheiten from "./Blattfeinheiten.svelte";
+  import Breitenregler from "./Breitenregler.svelte";
+  import { blattbreite, teileAuf } from "../../lib/leser/leseraum.svelte";
   import Fokusfeld from "./Fokusfeld.svelte";
   import Hilfensteuerung from "./Hilfensteuerung.svelte";
   import Tastenfeld from "./Tastenfeld.svelte";
@@ -46,9 +48,16 @@
   }
   let { sitzung, papier = "normal", grund, tinte, art, onart, satz = true, bereit, onzurueck, onabwahl, darstellung, fuss, treffer = undefined, children }: Eigenschaften = $props();
 
+  /** Seitenrand der Bühne (--rand-seite) */
+  const RAND_SEITE = 16;
+
   let rahmen: HTMLElement | undefined = $state();
   let feldflaeche: HTMLElement | undefined = $state();
   let leisteOben: HTMLElement | undefined = $state();
+  // Aufteilung des Leseraums (lib/leser/leseraum.svelte.ts): rechts Marken und Feld, links das Blatt
+  let raumbreite = $state(0);
+  let feldbreite = $state(0);
+  let raum = $derived(teileAuf({ breite: raumbreite, feld: feldbreite, rand: RAND_SEITE, telefon: schale.telefon, vollbild: schale.vollbild, marken: randmarken.an, feldOffen: !!sitzung.feld && bereit }));
   let vorleseKnopf = $state<HTMLElement | null>(null);
   let vorleseZeichen = $state<HTMLElement | null>(null);
   let vorlesenOffen = $state(false);
@@ -89,9 +98,9 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="leser" onpointermove={(e) => sitzung.regt(e)} onclickcapture={tippeRand} class:mit-treffer={!!treffer && !schale.vollbild} class:randlos={schale.vollbild} class:ruhig={sitzung.ruhig} style={hilfen} data-papier={papier} style:--randgrund={grund} style:--randtinte={tinte} style:--blattrand="{blattrand.wert}px" style:--blattrand-oben="{blattrand.oben(schale.vollbild)}px" bind:this={rahmen}>
+<div class="leser" onpointermove={(e) => sitzung.regt(e)} onclickcapture={tippeRand} class:mit-treffer={!!treffer && !schale.vollbild} class:randlos={schale.vollbild} class:ruhig={sitzung.ruhig} class:feld-daneben={raum.feldDaneben} style={hilfen} data-papier={papier} style:--randgrund={grund} style:--randtinte={tinte} style:--blattrand="{blattrand.wert}px" style:--blattrand-oben="{blattrand.oben(schale.vollbild)}px" style:--raum-rechts="{raum.rechts}px" style:--lesebreite="{blattbreite.wert}px" bind:this={rahmen} bind:clientWidth={raumbreite}>
   {@render children()}
-  {#if bereit && rahmen && randmarken.an}<Randmarken {sitzung} {rahmen} />{/if}
+  {#if bereit && rahmen && randmarken.an}<Randmarken {sitzung} {rahmen} {raum} feld={raum.feldDaneben ? feldflaeche : undefined} />{/if}
   {#if bereit && rahmen}<Hilfensteuerung {sitzung} {rahmen} offen={vorlesenOffen} />{/if}
 
   {#if schale.vollbild}
@@ -115,7 +124,7 @@
   {/if}
 
   {#if sitzung.feld && bereit}
-    <aside class="seitenfeld glas dicht" aria-label="Seitenfeld" bind:this={feldflaeche}>
+    <aside class="seitenfeld glas dicht" aria-label="Seitenfeld" bind:this={feldflaeche} bind:offsetWidth={feldbreite}>
       <!-- Glas rollt nie selbst: die Scheibe steht, gerollt wird innen -->
       <div class="rollen">
       {#if sitzung.feld === "inhalt"}
@@ -130,6 +139,7 @@
         <h2>Schrift und Papier</h2>
         <Leseartwahl {art} {onart} />
         {@render darstellung()}
+        {#if !schale.telefon}<Breitenregler />{/if}
         {#if !schale.telefon}<Blattfeinheiten {sitzung} text={satz} />{/if}
         <Leserwerkzeuge {sitzung} />
       {/if}

@@ -6,7 +6,8 @@
   import { blaettertaste } from "../../lib/leser/blaettertasten";
   import { nimmAuswahl } from "../../lib/leser/auswahl";
   import { blattrand } from "../../lib/leser/blattrand.svelte";
-  import { BREITE_EINS, BREITE_ZWEI, GROESSE, klemme, oderVorgabe, vorgabeThema, ZEILEN } from "../../lib/leser/darstellung";
+  import { GROESSE, klemme, oderVorgabe, vorgabeThema, ZEILEN } from "../../lib/leser/darstellung";
+  import { blattbreite } from "../../lib/leser/leseraum.svelte";
   import { EpubAnzeige, type Epubstand, type Seitenmass } from "../../lib/leser/epub/anzeige";
   import { breite, randfarbe, type Epubdarstellung } from "../../lib/leser/epub/stile";
   import { leseart } from "../../lib/leser/leseart.svelte";
@@ -41,13 +42,13 @@
   let w = $state<Epubdarstellung>({
     groesse: oderVorgabe(alt.fontSize, GROESSE), schrift: alt.fontFamily ?? "", zeilen: oderVorgabe(alt.lineHeight, ZEILEN),
     fg: alt.fgColor ?? "", bg: alt.bgColor ?? "", randTransparent: alt.randTransparent ?? false, blattTransparent: alt.blattTransparent ?? false,
-    einseitig: alt.singlePage ?? false, breiteEins: oderVorgabe(alt.maxWidthSingle, BREITE_EINS), breiteZwei: oderVorgabe(alt.maxWidthDouble, BREITE_ZWEI),
+    einseitig: alt.singlePage ?? false,
   });
   let thema = $derived(vorgabeThema(app.dunkel));
   let d = $derived<Epubdarstellung>({ ...w, fg: eigeneFarben ? w.fg : thema.fg, bg: eigeneFarben ? w.bg : thema.bg });
 
   let art = $derived(leseart.buch.art);
-  let mass = $derived<Seitenmass>({ art, rand: blattrand.wert, oben: blattrand.oben(schale.vollbild) });
+  let mass = $derived<Seitenmass>({ art, rand: blattrand.wert, oben: blattrand.oben(schale.vollbild), spalte: blattbreite.wert });
 
   let flaeche: HTMLElement | undefined = $state();
   let bereit = $state(false);
@@ -166,7 +167,7 @@
     const farben = eigeneFarben ? { fgColor: w.fg, bgColor: w.bg } : {};
     speicher.merke({
       cfi: stand.cfi, percent: prozent, fontSize: w.groesse, fontFamily: w.schrift, lineHeight: w.zeilen, ...farben,
-      maxWidthSingle: w.breiteEins, maxWidthDouble: w.breiteZwei, singlePage: w.einseitig, randTransparent: w.randTransparent, blattTransparent: w.blattTransparent,
+      singlePage: w.einseitig, randTransparent: w.randTransparent, blattTransparent: w.blattTransparent,
     }, { cfi: stand.cfi || undefined });
   }
 
@@ -238,7 +239,7 @@
 <svelte:window onkeydown={taste} />
 
 <Leserahmen {sitzung} {art} onart={(a) => leseart.buch.setze(a)} grund={d.bg} tinte={d.fg} {bereit} {onzurueck} onabwahl={abwahl} treffer={treffer ? trefferleiste : undefined}>
-  <div class="epubflaeche" class:ohne-grund={d.randTransparent && d.blattTransparent} style:--lesebreite="{breite(d, art)}px" style:background={randfarbe(d)} bind:this={flaeche}></div>
+  <div class="epubflaeche" class:ohne-grund={d.randTransparent && d.blattTransparent} style:--lesebreite="{breite(d, art, blattbreite.wert)}px" style:background={randfarbe(d)} bind:this={flaeche}></div>
   {#if !bereit}<Ladehinweis {fehler} adresse={dateiUrl(buch.id)} name={buch.file_name || buch.title} onerneut={() => void lade()} />{/if}
 
   {#snippet darstellung()}<EpubDarstellung {d} {art} onwahl={setze} />{/snippet}

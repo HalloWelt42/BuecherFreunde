@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { BREITE_EINS, BREITE_ZWEI, FARBTHEMEN, GROESSE, ZEILEN } from "../../lib/leser/darstellung";
-  import { blattfarbe, einspaltig, type Epubdarstellung } from "../../lib/leser/epub/stile";
+  import { FARBTHEMEN, GROESSE, ZEILEN } from "../../lib/leser/darstellung";
+  import { blattfarbe, type Epubdarstellung } from "../../lib/leser/epub/stile";
   import type { Leseart } from "../../lib/leser/fluss/fluss";
   import { schale } from "../../lib/stand/schale.svelte";
   import Haekchen from "../../lib/teile/Haekchen.svelte";
@@ -26,11 +26,6 @@
 <!-- Am Telefon steht ohnehin eine Spalte in voller Breite -->
 {#if !schale.telefon}
   {#if art === "blaettern"}<div class="feld">Ansicht<Segment name="Ansicht" werte={[["zwei", "Zweiseitig"], ["eins", "Einseitig"]]} wert={d.einseitig ? "eins" : "zwei"} onwahl={(a) => onwahl({ einseitig: a === "eins" })} /></div>{/if}
-  {#if einspaltig(d, art)}
-    <Stufenregler name="Breite" wert={d.breiteEins} bereich={BREITE_EINS} anzeige="{d.breiteEins} px" onwahl={(breiteEins) => onwahl({ breiteEins })} />
-  {:else}
-    <Stufenregler name="Breite" wert={d.breiteZwei} bereich={BREITE_ZWEI} anzeige="{d.breiteZwei} px" onwahl={(breiteZwei) => onwahl({ breiteZwei })} />
-  {/if}
 {/if}
 <Randregler />
 <div class="feld">

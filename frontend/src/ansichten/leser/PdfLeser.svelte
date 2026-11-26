@@ -7,6 +7,7 @@
   import type { Leseart } from "../../lib/leser/fluss/fluss";
   import { ladefehler, type Ladefehler } from "../../lib/leser/ladefehler";
   import { leseart } from "../../lib/leser/leseart.svelte";
+  import { blattbreite } from "../../lib/leser/leseraum.svelte";
   import { ladePdf, verzeichnis, type PdfBuch } from "../../lib/leser/pdf/dokument";
   import { Pdfquelle } from "../../lib/leser/pdf/lesequelle";
   import type { Randeintrag } from "../../lib/leser/randmarken";
@@ -193,6 +194,18 @@
   }
 
   const zoome = (richtung: 1 | -1) => setzeZoom(naechsteStufe(mass, richtung));
+
+  // Fortlaufend hat einen eigenen Zoom; wer dort die Breite des Blatts wählt, bekommt die Seite so breit (BF-36)
+  let breiteZuvor = untrack(() => blattbreite.wert);
+  $effect(() => {
+    const breite = blattbreite.wert;
+    if (breite === breiteZuvor) return;
+    breiteZuvor = breite;
+    untrack(() => {
+      const neu = !nurText && ansicht === "scroll" ? (seiten?.passend("breite") ?? null) : null;
+      if (neu) setzeZoom(neu);
+    });
+  });
   const zoomtaste = (richtung: 1 | -1) => (nurText ? undefined : () => zoome(richtung));
 
   const griffe: Lesegriffe = {

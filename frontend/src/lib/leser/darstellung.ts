@@ -56,8 +56,6 @@ export interface Bereich {
 
 export const GROESSE: Bereich = { min: 50, max: 300, schritt: 5, vorgabe: 100 };
 export const ZEILEN: Bereich = { min: 1, max: 3, schritt: 0.1, vorgabe: 1.6 };
-export const BREITE_EINS: Bereich = { min: 300, max: 1200, schritt: 50, vorgabe: 700 };
-export const BREITE_ZWEI: Bereich = { min: 600, max: 2400, schritt: 50, vorgabe: 1400 };
 
 export function klemme(wert: number, { min, max, schritt }: Bereich): number {
   const gerundet = Math.round(wert / schritt) * schritt;

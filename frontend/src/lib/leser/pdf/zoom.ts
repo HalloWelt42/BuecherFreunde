@@ -32,11 +32,12 @@ const FUGE_DOPPEL = 16;
 /** Darunter ist eine ganze Seite unlesbar klein (Telefon quer): dann gilt die Breite, geblättert wird in Abschnitten */
 const NIEDRIG = 480;
 
-/** Maß, mit dem eine Seite in die freie Fläche passt; null, wenn die Fläche gerade verborgen ist */
-export function einpassen(ansicht: Ansicht, seite: Mass, flaeche: Mass): number | null {
+/** Maß, mit dem eine Seite in die freie Fläche passt; null, wenn die Fläche gerade verborgen ist. hoechstens: so breit
+ *  wird eine Seite höchstens (Breite des Blatts); in der Doppelseite gilt es für jede der beiden */
+export function einpassen(ansicht: Ansicht, seite: Mass, flaeche: Mass, hoechstens = Infinity): number | null {
   if (flaeche.breite <= 0 || flaeche.hoehe <= 0) return null;
   const hoch = flaeche.hoehe / seite.hoehe;
-  const breit = flaeche.breite / seite.breite;
+  const breit = Math.min(flaeche.breite, hoechstens) / seite.breite;
   switch (ansicht) {
     case "breite":
       return breit;
@@ -45,7 +46,7 @@ export function einpassen(ansicht: Ansicht, seite: Mass, flaeche: Mass): number 
     case "seite":
       return Math.min(breit, hoch);
     case "doppel":
-      return Math.min((flaeche.breite - FUGE_DOPPEL) / (seite.breite * 2), hoch);
+      return Math.min(Math.min((flaeche.breite - FUGE_DOPPEL) / 2, hoechstens) / seite.breite, hoch);
     default:
       return null;
   }
