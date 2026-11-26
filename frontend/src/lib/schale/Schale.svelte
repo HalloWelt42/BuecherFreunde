@@ -6,6 +6,7 @@
   import { auftraege } from "../stand/auftraege.svelte";
   import { schale } from "../stand/schale.svelte";
   import { verbindungen } from "../stand/verbindungen.svelte";
+  import { werkarten } from "../stand/werkarten.svelte";
   import Auftraege from "./Auftraege.svelte";
   import Darstellungswahl from "./Darstellungswahl.svelte";
   import Konto from "./Konto.svelte";
@@ -31,10 +32,12 @@
     void bestand.laden();
     void annahme.starte();
     auftraege.starte();
+    werkarten.starte();
     verbindungen.starte();
     return () => {
       annahme.halte();
       auftraege.halte();
+      werkarten.halte();
       verbindungen.halte();
     };
   });

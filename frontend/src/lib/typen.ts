@@ -376,6 +376,9 @@ export interface Zahlen {
   leseliste: number;
   gelesen: number;
   ungelesen: number;
+  /** Werke der Art Buch und alles, was kein Buch ist (BF-77) */
+  buecher: number;
+  besonderes: number;
   buecher_mit_isbn: number;
   dokumente: number;
   weiterlesen: number;
@@ -484,4 +487,21 @@ export interface Ablage {
   wolke: Wolkenablage | null;
   volltext: { seiten: number; zeichen: number } | null;
   wissen: { stand: Guete; text: string; abschnitte?: number | null } | null;
+}
+
+/** Stand des Laufs, der die Art aller Werke bestimmt (GET /api/einordnung/stand, BF-59, BF-77) */
+export interface Einordnungsstand {
+  /** Eingeschaltet in der Einrichtung */
+  an: boolean;
+  /** An und eine Leitstelle eingetragen */
+  bereit: boolean;
+  laeuft: boolean;
+  /** Die Leitstelle hat abgelehnt; weiter mit POST /api/einordnung/fortsetzen */
+  angehalten: boolean;
+  grund: string;
+  /** Alle Werke, davon nach Regel, durch die KI und noch offen */
+  gesamt: number;
+  nach_regel: number;
+  durch_ki: number;
+  offen: number;
 }

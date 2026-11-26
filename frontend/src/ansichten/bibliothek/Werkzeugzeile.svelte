@@ -28,7 +28,7 @@
   // Ein einzelnes Regal lässt sich von Hand füllen (BF-67). Kategorien des Katalogs wählt die Leiste, sie zählen hier nicht (BF-69).
   let regale = $derived(filter.werte("category").filter((id) => bestand.regal(id)));
   let regal = $derived(filter.werte("category").length === 1 && regale.length === 1 ? regale[0] : "");
-  let weitere = $derived(regale.length + (["sammlung", "min_rating", "hat_labels", "hat_highlights"].filter((k) => filter.wert(k)).length) + (filter.hat("file_format", "mobi") ? 1 : 0));
+  let weitere = $derived(regale.length + (["sammlung", "min_rating", "hat_isbn", "hat_labels", "hat_highlights"].filter((k) => filter.wert(k)).length) + (filter.hat("file_format", "mobi") ? 1 : 0));
 
   function schalteText() {
     const rest = filter.werte("file_format").filter((f) => !texte.includes(f));
@@ -37,7 +37,7 @@
 </script>
 
 {#snippet mehr()}
-  <span class="mehrfilter" bind:this={filterKnopf}><Chip text="Mehr" symbol="sliders" nur={schale.telefon} zahl={weitere || undefined} gedrueckt={filterOffen || weitere > 0} titel="Regale, Sammlung, Format, Bewertung, Etiketten" onclick={() => (filterOffen = !filterOffen)} /></span>
+  <span class="mehrfilter" bind:this={filterKnopf}><Chip text="Mehr" symbol="sliders" nur={schale.telefon} zahl={weitere || undefined} gedrueckt={filterOffen || weitere > 0} titel="Regale, Sammlung, Format, ISBN, Bewertung, Etiketten" onclick={() => (filterOffen = !filterOffen)} /></span>
 {/snippet}
 {#snippet bearbeiten()}
   <span class="bearbeiten"><Knopf text="Bearbeiten" symbol="pen" nur={schale.telefon} klein gedrueckt={auswahl.bearbeiten} onclick={() => auswahl.modus(!auswahl.bearbeiten)} /></span>

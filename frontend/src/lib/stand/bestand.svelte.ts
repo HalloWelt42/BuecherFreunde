@@ -5,7 +5,10 @@ import { ladeSammlungen } from "../api/collections";
 import { ladeKatalog } from "../api/katalog";
 import type { Katalog, Regal, Sammlung, Zahlen } from "../typen";
 
-const LEER: Zahlen = { buecher_gesamt: 0, favoriten: 0, leseliste: 0, gelesen: 0, ungelesen: 0, buecher_mit_isbn: 0, dokumente: 0, weiterlesen: 0, autoren: 0, mit_labels: 0, mit_highlights: 0 };
+const LEER: Zahlen = {
+  buecher_gesamt: 0, favoriten: 0, leseliste: 0, gelesen: 0, ungelesen: 0, buecher: 0, besonderes: 0, buecher_mit_isbn: 0, dokumente: 0, weiterlesen: 0, autoren: 0,
+  mit_labels: 0, mit_highlights: 0,
+};
 
 type Zuhoerer = () => void;
 

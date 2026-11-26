@@ -63,8 +63,9 @@
   <div class="rollen leiste-flaeche">
     <div class="leiste-oben">
       <Punkt text="Alle" symbol="layer-group" zahl={z.buecher_gesamt} gedrueckt={aufBibliothek && !filter.aktiv} onclick={() => { filter.leere(); zu(); }} />
-      {@render schalter("hat_isbn", "true", "Bücher", "book", z.buecher_mit_isbn)}
-      {@render schalter("hat_isbn", "false", "Dokumente", "file-lines", z.dokumente)}
+      <!-- Nach der Art des Werks (BF-77): Bücher und alles, was kein Buch ist; die ISBN filtert unter "Mehr" -->
+      {@render schalter("art", "buch", "Bücher", "book", z.buecher)}
+      {@render schalter("art", "besonderes", "Besonderes", "shapes", z.besonderes)}
       <Punkt text="Autoren" symbol="users" zahl={z.autoren} href="/authors" hier={route.path.startsWith("/author")} onclick={zu} />
       <!-- Am Telefon hat die untere Leiste dafür Vollbild (BF-33) -->
       <span class="nur-telefon"><Punkt text="Hinzufügen" symbol="plus" href="/import" hier={route.path === "/import"} onclick={zu} /></span>

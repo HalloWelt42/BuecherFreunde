@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Alle Filter, die nicht in der Leiste stehen: Regale mit Suche, Sammlung, Formate, Bewertung, Etiketten
+  // Alle Filter, die nicht in der Leiste stehen: Regale mit Suche, Sammlung, Formate, ISBN, Bewertung, Etiketten
   import { eingrenzen } from "../../lib/eingrenzen";
   import { zahl } from "../../lib/format";
   import { bestand } from "../../lib/stand/bestand.svelte";
@@ -45,6 +45,13 @@
   <section>
     <h3>Format</h3>
     <div class="reihe">{#each formate as [w, t] (w)}<Chip text={t} gedrueckt={filter.hat("file_format", w)} onclick={() => filter.schalte("file_format", w)} />{/each}</div>
+  </section>
+  <section>
+    <h3>ISBN</h3>
+    <div class="reihe">
+      <Chip text="Mit ISBN" symbol="barcode" gedrueckt={filter.hat("hat_isbn", "true")} onclick={() => filter.schalte("hat_isbn", "true")} />
+      <Chip text="Ohne ISBN" symbol="file-lines" gedrueckt={filter.hat("hat_isbn", "false")} onclick={() => filter.schalte("hat_isbn", "false")} />
+    </div>
   </section>
   <section>
     <h3>Bewertung</h3>

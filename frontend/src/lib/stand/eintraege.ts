@@ -2,10 +2,10 @@
 import type { Buch, BuchListe, Eintrag } from "../typen";
 
 /** Filter der Adresse, unter denen große Sammlungen als ein Eintrag stehen: die Ansichten Alle (kein Filter), Bücher und
- *  Dokumente (hat_isbn), die Regale und Kategorien (category) und "Ohne Kategorie" (BF-69). Jeder andere Filter sucht
- *  einzelne Bücher (Schnellfilter, Weiterlesen, Favoriten, Lesesofa, Gelesen, Ungelesen, Markiertes, Etiketten, Sammlung,
- *  Format, Bewertung): dort steht jedes Buch für sich. */
-const MIT_SAMMELEINTRAG = new Set(["hat_isbn", "category", "ohne_kategorie"]);
+ *  Besonderes (art, BF-77), mit oder ohne ISBN (hat_isbn), die Regale und Kategorien (category) und "Ohne Kategorie"
+ *  (BF-69). Jeder andere Filter sucht einzelne Bücher (Schnellfilter, Weiterlesen, Favoriten, Lesesofa, Gelesen,
+ *  Ungelesen, Markiertes, Etiketten, Sammlung, Format, Bewertung): dort steht jedes Buch für sich. */
+const MIT_SAMMELEINTRAG = new Set(["art", "hat_isbn", "category", "ohne_kategorie"]);
 
 /** Die eine Stelle, die entscheidet, ob die Liste große Sammlungen zusammenfasst */
 export function fasstZusammen(gesetzt: Iterable<string>): boolean {

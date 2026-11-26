@@ -6,7 +6,7 @@ const SCHLUESSEL = "lib_filter";
 /** Mehrere Werte zugleich, mit Komma getrennt */
 const MEHRERE = ["category", "file_format"];
 /** q ist der Schnellfilter (Titel, Autor, ISBN, Etikett), ein Filter wie die anderen */
-const BEKANNT = ["category", "ohne_kategorie", "sammlung", "file_format", "min_rating", "is_favorite", "is_to_read", "gelesen", "hat_isbn", "hat_highlights", "weiterlesen", "hat_labels", "q"];
+const BEKANNT = ["category", "ohne_kategorie", "art", "sammlung", "file_format", "min_rating", "is_favorite", "is_to_read", "gelesen", "hat_isbn", "hat_highlights", "weiterlesen", "hat_labels", "q"];
 
 class Filter {
   #werte = $derived.by(() => {

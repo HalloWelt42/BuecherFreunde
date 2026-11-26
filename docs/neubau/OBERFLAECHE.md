@@ -57,6 +57,8 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 | Funktion | Neu | Geprüft |
 |---|---|---|
 | Alle, Bücher, Dokumente, Gelesen, Ungelesen, Weiterlesen, Favoriten, Lesesofa, Markiertes mit Zahlen | Leiste, kombinierbar, Gelesen und Ungelesen als zwei Einträge | ja |
+| Bücher und Besonderes nach der Art des Werks (BF-77): `art=buch` und `art=besonderes` mit den Zahlen aus `/api/config/stats`, Überschrift, große Sammlungen als ein Eintrag; mit oder ohne ISBN unter "Mehr" | Leiste, `Filterfeld`, `stand/eintraege` | Tests, Probe-Server |
+| Lauf "Art der Werke bestimmen" unter Aufträge, solange er läuft oder angehalten ist (dann Fortsetzen), danach einmal mit Ergebnis | `stand/werkarten`, Schale | Tests, Probe-Server |
 | Regale mit Symbol, Farbe, Zahl, mehrere zugleich; Sammlungen, eine zugleich | Leiste | ja |
 | Autoren, Einstellungen | Leiste | ja |
 | Hinzufügen | Kopf, am Telefon Tafel | ja |
