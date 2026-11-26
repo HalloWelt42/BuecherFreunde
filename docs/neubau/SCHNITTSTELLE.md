@@ -145,7 +145,7 @@ Spalten in `books`: `gattung`, `umschlag_wahl`, `umschlag_schlicht` (NULL noch n
   `{typ, gattung, umschlag_wahl, umschlag_schlicht, umschlag, cover_path, file_format, year}` (services/deckblattangaben.py), damit
   überall dasselbe Deckblatt erscheint wie in der Bücherliste.
 
-## Sammlungen: als ein Eintrag, Finden (BF-66)
+## Sammlungen: als ein Eintrag, Zuordnen, Finden (BF-66, BF-67)
 
 Ein Buch gehört höchstens zu einer Sammlung (`sammlung_id`), seine Bandnummer (`band_nummer`, Text) gilt nur in ihr. Regale
 sind `categories` mit `book_categories`; "Ungeordnet" (slug `ungeordnet`) zählt nie als Regal.
@@ -178,10 +178,28 @@ neuen Felder sind dann `null`.
 Ein Sammlungseintrag sortiert nach Titel unter seinem Namen, nach Datum unter seinem neuesten Buch, nach Autor unter seinem
 häufigsten Autor, sonst unter seinem ersten Buch in der gewählten Ordnung; bei Gleichstand nach Name oder Titel.
 
-### Bandfolge
+### Bandfolge und Filter
 
 - `sortierung=band`: natürliche Folge von `band_nummer` (Nummern der Zahl nach, Bände ohne Zahl dahinter, leere immer zuletzt),
   dann Titel. `richtung=desc` dreht nur die Nummern. Dieselbe Folge gilt für `books` in `GET /api/collections/{id}`.
+- `ohne_sammlung=true`: nur Bücher ohne Sammlung (`false`: nur die in einer).
+- `nicht_kategorie=<id>`: nur Bücher, die nicht in diesem Regal stehen.
+
+### Zuordnen
+
+`POST /api/books/bulk` `{book_ids, aktion, wert}`, Antwort `{betroffen, aktion}`:
+
+| aktion | wert | Wirkung |
+|---|---|---|
+| `sammlung_zuweisen` | Sammlung | in die Sammlung; Bücher ohne Nummer in ihr kommen hinten an (bisher höchste Nummer + 1, in der Reihenfolge von `book_ids`), wer dort schon eine Nummer hat, bleibt; `betroffen` zählt geänderte |
+| `sammlung_entfernen` | - | `sammlung_id` leer, `band_nummer` leer; `betroffen` zählt die, die in einer waren |
+| `kategorie_zuweisen` | Regal | wie bisher |
+| `kategorie_entfernen` | Regal | aus diesem Regal nehmen; fehlt `wert`: 400, unbekanntes Regal: 404 |
+
+`PUT /api/collections/{id}/reihenfolge` `{book_ids: [...]}` setzt `band_nummer` 1 bis n in dieser Reihenfolge; nicht genannte
+Bücher der Sammlung folgen in ihrer bisherigen Bandfolge (keine Nummer doppelt). Antwort wie `GET /api/collections/{id}`.
+Gehört ein Buch nicht zur Sammlung: 400 `"Das Buch 12 gehört nicht zu dieser Sammlung"`; doppelt genannt: 400
+`"Ein Buch steht mehr als einmal in der Reihenfolge"`.
 
 ### Sammlungen finden
 

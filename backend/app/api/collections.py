@@ -1,5 +1,5 @@
-"""API-Endpunkte für Sammlungen: anlegen und pflegen, ab wann eine Sammlung in der Bücherliste ein Eintrag ist, und
-Sammlungen finden (BF-66, services/sammlungsfinder.py)."""
+"""API-Endpunkte für Sammlungen: anlegen und pflegen, Bücher zuordnen und ordnen (BF-67), ab wann eine Sammlung in der
+Bücherliste ein Eintrag ist, und Sammlungen finden (BF-66, services/sammlungsfinder.py)."""
 
 from typing import Literal
 
@@ -40,6 +40,10 @@ class BuchZuordnung(BaseModel):
 
 class SammlungEinstellungen(BaseModel):
     als_eintrag_ab: AlsEintragAb                # ab so vielen Büchern unter dem Filter ist eine Sammlung ein Eintrag
+
+
+class Reihenfolge(BaseModel):
+    book_ids: list[Nr] = Field(max_length=AUSWAHL_HOECHSTENS)
 
 
 class VorschlagAnpassen(BaseModel):
@@ -226,6 +230,17 @@ async def loesche_sammlung(
     await db.execute("DELETE FROM collections WHERE id = ?", (collection_id,))
     await db.commit()
     return {"message": "Sammlung gelöscht"}
+
+
+@router.put("/{collection_id}/reihenfolge")
+async def setze_reihenfolge(collection_id: Nr, data: Reihenfolge, _: str = Depends(verify_token)):
+    """Bandnummern 1 bis n in der gegebenen Reihenfolge; nicht genannte Bücher der Sammlung folgen in ihrer bisherigen."""
+    await vorhanden.eintrag("collections", collection_id, FEHLT, "id")
+    try:
+        await sammlungen.reihenfolge_setzen(collection_id, data.book_ids)
+    except sammlungen.NichtInDerSammlung as f:
+        raise HTTPException(status_code=400, detail=str(f)) from None
+    return await hole_sammlung(collection_id)
 
 
 # --- Buch-Zuordnung (1:1) ---

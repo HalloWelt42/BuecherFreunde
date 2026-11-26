@@ -1,8 +1,9 @@
-"""Große Sammlungen als ein Eintrag der Bücherliste (BF-66) und die Bandfolge. Titel, Autoren und Reihen sind erfunden."""
+"""Große Sammlungen als ein Eintrag der Bücherliste (BF-66), die Bandfolge und die Filter der rechten Spalte beim Zuordnen
+(BF-67). Titel, Autoren und Reihen sind erfunden."""
 
 import itertools
 
-from tests.api.conftest import buch_erstellen, sammlung_erstellen
+from tests.api.conftest import buch_erstellen, kategorie_erstellen, sammlung_erstellen
 
 _nummern = itertools.count(1)
 
@@ -146,7 +147,7 @@ async def test_umschlaege_sind_die_ersten_nach_band(client, test_db):
     assert stapel["anzahl"] == 5 and [b["title"] for b in stapel["umschlaege"]] == ["Eins", "Zwei", "Drei"]
 
 
-# -- Bandfolge --------------------------------------------------------------------------------------------------------------
+# -- Bandfolge und Filter der rechten Spalte --------------------------------------------------------------------------------
 
 async def test_sortierung_nach_band(client, test_db):
     sterne = await sammlung_erstellen(test_db, name="Sternenfahrer")
@@ -162,3 +163,22 @@ async def test_sortierung_nach_band(client, test_db):
     sammlung = (await client.get(f"/api/collections/{sterne}")).json()
     assert [b["title"] for b in sammlung["books"]] == ["Eins", "Auch zwei", "Zwei", "Zehn", "Sonder", "Ohne"]
 
+
+async def test_filter_ohne_sammlung_und_nicht_im_regal(client, test_db):
+    sterne = await sammlung_erstellen(test_db, name="Sternenfahrer")
+    regal = await kategorie_erstellen(test_db, name="Abenteuer")
+    drin = await buch(test_db, "In der Sammlung", sammlung=sterne, band="1")
+    frei = await buch(test_db, "Frei")
+    im_regal = await buch(test_db, "Im Regal")
+    for b in (drin, im_regal):
+        await test_db.execute("INSERT INTO book_categories (book_id, category_id) VALUES (?, ?)", (b, regal))
+    await test_db.commit()
+
+    async def titel(**angaben) -> list[str]:
+        return [b["title"] for b in (await client.get("/api/books", params=angaben)).json()["buecher"]]
+
+    assert await titel(ohne_sammlung="true") == ["Frei", "Im Regal"]
+    assert await titel(ohne_sammlung="false") == ["In der Sammlung"]
+    assert await titel(nicht_kategorie=regal) == ["Frei"]
+    assert await titel(nicht_kategorie=regal, ohne_sammlung="true", suche="frei") == ["Frei"]
+    assert (await client.get("/api/books", params={"nicht_kategorie": 0})).status_code == 422

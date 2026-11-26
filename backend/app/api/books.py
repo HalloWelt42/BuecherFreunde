@@ -185,6 +185,8 @@ async def list_books(
     pro_seite: int = Query(24, ge=1, le=100, description="Einträge pro Seite"),
     kategorie: str | None = Query(None, description="Kategorie-ID(s), kommagetrennt"),
     sammlung: Nr | None = Query(None, description="Sammlungs-ID Filter"),
+    ohne_sammlung: bool | None = Query(None, description="True: nur Bücher ohne Sammlung, False: nur die in einer"),
+    nicht_kategorie: Nr | None = Query(None, description="Nur Bücher, die nicht in diesem Regal stehen"),
     typ: str | None = Query(None, description="Typ-Filter (dokument, heft, katalog, broschuere)"),
     favorit: bool | None = Query(None, description="Nur Favoriten"),
     zu_lesen: bool | None = Query(None, description="Nur Zum-Lesen"),
@@ -226,6 +228,13 @@ async def list_books(
     if sammlung is not None:
         conditions.append("b.sammlung_id = ?")
         params.append(sammlung)
+
+    if ohne_sammlung is not None:
+        conditions.append(f"b.sammlung_id IS {'' if ohne_sammlung else 'NOT '}NULL")
+
+    if nicht_kategorie is not None:
+        conditions.append("b.id NOT IN (SELECT book_id FROM book_categories WHERE category_id = ?)")
+        params.append(nicht_kategorie)
 
     if typ is not None and typ.strip():
         conditions.append("b.typ = ?")
@@ -526,7 +535,8 @@ async def delete_book(book_id: Nr, _token: str = Depends(verify_token)):
 class BulkAction(BaseModel):
     """Massenbearbeitung für mehrere Bücher."""
     book_ids: list[Nr] = Field(max_length=AUSWAHL_HOECHSTENS)
-    aktion: Literal["loeschen", "kategorie_zuweisen", "sammlung_zuweisen", "typ_setzen", "favorit", "zu_lesen"]
+    aktion: Literal["loeschen", "kategorie_zuweisen", "kategorie_entfernen", "sammlung_zuweisen", "sammlung_entfernen", "typ_setzen",
+                    "favorit", "zu_lesen"]
     wert: Nr | bool | Annotated[str, StringConstraints(max_length=50)] | None = None  # Nummer von Regal oder Sammlung, Typ, true/false
 
 
@@ -571,16 +581,24 @@ async def bulk_action(
             )).rowcount
         await db.commit()
 
+    elif action.aktion == "kategorie_entfernen":
+        if action.wert is None:
+            raise HTTPException(status_code=400, detail="Kategorie-ID fehlt")
+        kat_id = await _nummer(action.wert, "categories", "Regal nicht gefunden")
+        for bid in action.book_ids:
+            betroffen += (await db.execute(
+                "DELETE FROM book_categories WHERE book_id = ? AND category_id = ?", (bid, kat_id),
+            )).rowcount
+        await db.commit()
+
     elif action.aktion == "sammlung_zuweisen":
         if action.wert is None:
             raise HTTPException(status_code=400, detail="Sammlungs-ID fehlt")
         samml_id = await _nummer(action.wert, "collections", "Sammlung nicht gefunden")
-        for bid in action.book_ids:
-            betroffen += (await db.execute(
-                "UPDATE books SET sammlung_id = ? WHERE id = ?",
-                (samml_id, bid),
-            )).rowcount
-        await db.commit()
+        betroffen = await sammlungen.anhaengen(samml_id, action.book_ids)
+
+    elif action.aktion == "sammlung_entfernen":
+        betroffen = await sammlungen.entfernen(action.book_ids)
 
     elif action.aktion == "typ_setzen":
         typ_wert = _typ(action.wert)
