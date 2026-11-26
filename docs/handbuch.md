@@ -13,7 +13,7 @@ schluessel_orte:
   - "pi5b: `{{wurzel}}/zugang/leitstelle.schluessel`, Modus 0600 (Schlüssel der Anwendung in der Leitstelle), wenn `LEITSTELLE_ADRESSE` gesetzt ist"
   - "pi5b: `{{wurzel}}/.env` (Orte, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
 einrichten: einrichten.sh
-stand: b82b655
+stand: 0358295
 ---
 
 # BücherFreunde (Neubau)

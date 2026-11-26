@@ -71,6 +71,7 @@ class Settings(BaseSettings):
     quellen_kontakt: str = ""          # freiwillig: Adresse einer Seite oder Mail im Ausweis der App, manche Quellen erlauben damit mehr
     quellen_hintergrund_tag: int = Field(default=500, ge=1)   # höchstens so viele Anfragen je Quelle und Tag in Hintergrundläufen
     quellen_vorrat_mb: int = Field(default=32, ge=1)          # so viel dürfen gemerkte Antworten in der Datenbank belegen
+    suche_ausdruck_s: float = Field(default=5.0, gt=0)        # so lange darf ein regulärer Ausdruck im Buch suchen
 
     # Host-Pfade (von Docker durchgereicht, für Anzeige im Frontend)
     host_storage_dir: str = ""

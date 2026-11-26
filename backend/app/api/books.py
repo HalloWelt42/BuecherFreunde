@@ -1,7 +1,6 @@
 """API-Endpunkte für Bücher."""
 
 import asyncio
-import html
 import logging
 import math
 from pathlib import Path
@@ -13,6 +12,7 @@ from pydantic import BaseModel
 
 from backend.app.services.seiten import buch_seiten
 from backend.app.core.auth import verify_token, verify_token_inhalt
+from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate
 from backend.app.models.textansicht import TextBaustein, TextSeite, TextSeitenAntwort
@@ -24,7 +24,7 @@ from backend.app.codestellen.dienst import codestellen
 from backend.app.ablage.antwort import FEHLT, original_antwort
 from backend.app.ablage.wolke import wolke
 from backend.app.annahme.eintragen import autoren_verknuepfen
-from backend.app.services import deckblatt, schnellfilter
+from backend.app.services import buchsuche, deckblatt, schnellfilter
 from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover, save_fulltext
 
 router = APIRouter(prefix="/api/books", tags=["Bücher"])
@@ -1030,76 +1030,13 @@ async def fulltext_search_book(
     regex: bool = Query(False, description="Regulaerer Ausdruck"),
     _token: str = Depends(verify_token),
 ):
-    """Durchsucht den Volltext eines einzelnen Buches.
-
-    Gibt Treffer mit Seitennummer und Kontext-Snippet zurueck.
-    """
-    import re
-
-    book = await db.fetch_one(
-        "SELECT id, hash, page_count, file_format FROM books WHERE id = ?", (book_id,)
-    )
+    """Durchsucht den Volltext eines Buchs: Treffer mit Seite, Ausschnitt und Lage. Gesucht wird nie in der
+    Ereignisschleife; ein regulärer Ausdruck läuft in einem eigenen Prozess mit Zeitgrenze (`SUCHE_AUSDRUCK_S`). Geht es
+    nicht (ungültiger Ausdruck, Zeit um), sagt `grund` warum."""
+    book = await db.fetch_one("SELECT id, hash, page_count, file_format FROM books WHERE id = ?", (book_id,))
     if not book:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
-
-    import asyncio
     seiten, _gedruckt = await asyncio.to_thread(buch_seiten, book["hash"], book["file_format"], book["page_count"])
     if not seiten:
-        return {"treffer": [], "gesamt": 0, "suchbegriff": q}
-
-    # Suchmuster erstellen
-    try:
-        if regex:
-            pat_str = q
-        else:
-            pat_str = re.escape(q)
-        if ganzes_wort:
-            pat_str = r"\b" + pat_str + r"\b"
-        flags = 0 if gross_klein else re.IGNORECASE
-        pattern = re.compile(pat_str, flags)
-    except re.error:
-        return {"treffer": [], "gesamt": 0, "suchbegriff": q}
-
-    treffer = []
-    gesamt_count = 0
-    text_len = sum(len(s) + 1 for s in seiten)
-    seiten_offset = 0  # Zeichenoffset am Anfang der aktuellen Seite
-    for seiten_nr, seite in enumerate(seiten, 1):
-        for match in pattern.finditer(seite):
-            gesamt_count += 1
-            if len(treffer) >= limit:
-                continue  # Weiterzaehlen aber nicht mehr speichern
-
-            start = max(0, match.start() - 80)
-            end = min(len(seite), match.end() + 80)
-            kontext = seite[start:end].strip()
-            # Treffer hervorheben
-            # Buchtext wird entschärft, nur unsere Hervorhebung bleibt (BF-5)
-            teile, zuletzt = [], 0
-            for m in pattern.finditer(kontext):
-                teile += [html.escape(kontext[zuletzt:m.start()], quote=False), f"<mark>{html.escape(m.group(), quote=False)}</mark>"]
-                zuletzt = m.end()
-            kontext_marked = "".join(teile) + html.escape(kontext[zuletzt:], quote=False)
-            if start > 0:
-                kontext_marked = "..." + kontext_marked
-            if end < len(seite):
-                kontext_marked = kontext_marked + "..."
-
-            # Globaler Offset und Prozent fuer positionsgenaue Navigation
-            global_offset = seiten_offset + match.start()
-            prozent = round((global_offset / text_len) * 100, 1) if text_len > 0 else 0
-
-            treffer.append({
-                "seite": seiten_nr,
-                "kontext": kontext_marked,
-                "position": match.start(),
-                "prozent": prozent,
-            })
-        seiten_offset += len(seite) + 1  # +1 fuer \f oder Trennzeichen
-
-    return {
-        "treffer": treffer,
-        "gesamt": gesamt_count,
-        "seiten_gesamt": len(seiten),
-        "suchbegriff": q,
-    }
+        return {"treffer": [], "gesamt": 0, "seiten_gesamt": 0, "suchbegriff": q, "grund": ""}
+    return await buchsuche.suche(seiten, q, limit, ganzes_wort, gross_klein, regex, settings.suche_ausdruck_s)
