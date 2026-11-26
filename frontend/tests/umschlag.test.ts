@@ -188,6 +188,18 @@ describe("Titel bleiben im Feld", () => {
     expect(texte(gestaltetesBlatt({ id: 1, title: "Handbuch", year: 2016, typ: "dokument" }))).toContain("2016");
     expect(texte(gestaltetesBlatt({ id: 1, title: "Handbuch", typ: "dokument" }))).toEqual(["Handbuch"]);
   });
+
+  // BF-70: der Aktenordner steht flach im Rahmen, ohne Falz, Lichtkante und helle Unterkante wie Buchseiten
+  it("nur Dokumente stehen als Ordner, alles andere als Buch", () => {
+    const form = (b: Blattangaben) => lies(gestaltetesBlatt(b)).documentElement.getAttribute("data-form");
+    for (const b of alleGestalten({ id: 3, title: "Probe", author: "Jemand" })) expect(form(b)).toBe(b.typ === "dokument" ? "ordner" : "buch");
+  });
+
+  it("der Ordner hat keine helle Leiste am unteren Rand", () => {
+    const doc = lies(gestaltetesBlatt({ id: 1, title: "Handbuch", typ: "dokument" }));
+    const unten = [...doc.querySelectorAll("rect")].filter((r) => Number(r.getAttribute("y")) >= 280 && r.getAttribute("width") === "200");
+    expect(unten).toEqual([]);
+  });
 });
 
 describe("Umschlag", () => {

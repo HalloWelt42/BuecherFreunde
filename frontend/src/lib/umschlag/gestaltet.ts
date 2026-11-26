@@ -3,7 +3,7 @@
 import type { Dreiklang } from "../farben";
 import { MUSTER, type Blatt, type Mustername } from "./muster";
 import { gekuerzt, H } from "./satz";
-import { farbsatz, gestaltFuer } from "./zuordnung";
+import { farbsatz, gestaltFuer, type Form } from "./zuordnung";
 
 export interface Blattangaben {
   id: number;
@@ -17,10 +17,10 @@ export interface Blattangaben {
 /** Längere Titel enden mit " ..."; so bleibt die Schrift auf dem Blatt lesbar */
 const TITEL_HOECHSTENS = 80;
 
-/** Welches Muster in welchen Farben ein Buch bekommt */
-export function gestaltung(buch: Blattangaben): { muster: Mustername; farben: Dreiklang } {
+/** Welches Muster in welchen Farben und welcher Form ein Buch bekommt */
+export function gestaltung(buch: Blattangaben): { muster: Mustername; farben: Dreiklang; form: Form } {
   const gestalt = gestaltFuer(buch.typ, buch.gattung);
-  return { muster: gestalt.muster, farben: farbsatz(gestalt, buch.id) };
+  return { muster: gestalt.muster, farben: farbsatz(gestalt, buch.id), form: gestalt.form ?? "buch" };
 }
 
 /** Die drei Farben des Blatts, für Licht und Regalwand */
@@ -31,8 +31,8 @@ function blatt(buch: Blattangaben): Blatt {
   return { titel: gekuerzt(titel || "Ohne Titel", TITEL_HOECHSTENS), autor: (buch.author ?? "").trim().replace(/\s+/g, " "), jahr: buch.year ? String(buch.year) : "" };
 }
 
-/** Das Blatt als SVG, 200 breit und 300 hoch */
+/** Das Blatt als SVG, 200 breit und 300 hoch; data-form sagt dem Rahmen (.umschlag), ob es als Buch oder Ordner steht */
 export function gestaltetesBlatt(buch: Blattangaben): string {
-  const { muster, farben } = gestaltung(buch);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 ${H}" aria-hidden="true">${MUSTER[muster](blatt(buch), farben)}</svg>`;
+  const { muster, farben, form } = gestaltung(buch);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 ${H}" data-form="${form}" aria-hidden="true">${MUSTER[muster](blatt(buch), farben)}</svg>`;
 }

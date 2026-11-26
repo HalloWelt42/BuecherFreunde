@@ -4,13 +4,17 @@
 import type { Dreiklang } from "../farben";
 import type { Mustername } from "./muster";
 
+/** Wie das Blatt im Rahmen steht: gebunden mit Falz und Lichtkante, oder flach und kantig wie ein Aktenordner (BF-70) */
+export type Form = "buch" | "ordner";
+
 export interface Gestalt {
   muster: Mustername;
   farben: Dreiklang[];
+  form?: Form;
 }
 
 const ARTEN = new Map<string, Gestalt>(Object.entries({
-  dokument: { muster: "ordnerRuecken", farben: [["#22384f", "#f6f3ea", "#1d2228"], ["#59636d", "#f6f3ea", "#1d2228"], ["#8a2c23", "#f6f3ea", "#1d2228"], ["#2f5a43", "#f6f3ea", "#1d2228"]] },
+  dokument: { muster: "ordnerRuecken", form: "ordner", farben:[["#22384f", "#f6f3ea", "#1d2228"], ["#59636d", "#f6f3ea", "#1d2228"], ["#8a2c23", "#f6f3ea", "#1d2228"], ["#2f5a43", "#f6f3ea", "#1d2228"]] },
   heft: { muster: "heft", farben: [["#b3402a", "#f0e3c4", "#20323b"], ["#2c4a63", "#e7dfc8", "#d86a2a"]] },
   katalog: { muster: "katalog", farben: [["#e9e2d0", "#c4572e", "#253646"], ["#e4eadf", "#4f8a3c", "#23332b"]] },
   broschuere: { muster: "broschuere", farben: [["#f3efe6", "#c4572e", "#253646"], ["#eef2f5", "#2f6d7a", "#1d2a33"]] },
