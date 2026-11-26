@@ -1,4 +1,5 @@
-"""API-Endpunkte für Bücher."""
+"""API-Endpunkte für Bücher. Jede Liste und jedes Buch nur, wie es das Profil sieht (BF-78, familie/sichtbar.py); Lesestand,
+Favoriten und Sterne sind die des Profils."""
 
 import asyncio
 import logging
@@ -13,12 +14,17 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, StringConstraints
 
 from backend.app.services.seiten import buch_seiten
-from backend.app.core.auth import verify_token, verify_token_inhalt
+from backend.app.core.auth import braucht, profil, verify_token_inhalt
 from backend.app.core.config import settings
 from backend.app.core.database import db
+from backend.app.core.fehlerantworten import BEZUG_FEHLT
+from backend.app.familie import rechte, sichtbar
+from backend.app.familie.stufen import stufenbuch
+from backend.app.familie.modelle import Profil
+from backend.app.familie.sichtbar import Sicht
 from backend.app.api import vorhanden
 from backend.app.models.book import (
-    DARSTELLUNG, FELDER_DER_EINORDNUNG, VON_HAND, BookListResponse, BookListItem, BookResponse, BookUpdate, BuchEintrag,
+    DARSTELLUNG, FELDER_DER_EINORDNUNG, FELDER_DES_ALTERS, LEERBAR, VON_HAND, BookListResponse, BookListItem, BookResponse, BookUpdate, BuchEintrag,
     Listeneintrag, SammlungsEintrag, Sammlungsstapel, Werkart, typ_pruefen,
 )
 from backend.app.models.textansicht import TextBaustein, TextSeite, TextSeitenAntwort
@@ -38,7 +44,8 @@ router = APIRouter(prefix="/api/books", tags=["Bücher"])
 
 # Die Spalten eines Buchs in der Liste (BookListItem), für jede Abfrage, die Listeneinträge liefert
 LISTENSPALTEN = ("id", "hash", "title", "author", "publisher", "file_format", "file_size", "cover_path", "page_count", "year", "isbn",
-                 "typ", "gattung", "umschlag_wahl", "umschlag_schlicht", "sammlung_id", "band_nummer", "created_at", "updated_at")
+                 "typ", "gattung", "umschlag_wahl", "umschlag_schlicht", "sammlung_id", "band_nummer", "alter_von", "alter_bis", "alter_quelle",
+                 "created_at", "updated_at")
 
 
 def listenspalten(tabelle: str = "b") -> str:
@@ -78,10 +85,10 @@ async def _get_book_authors(book_id: int) -> list[dict]:
     return rows
 
 
-async def _get_user_data(book_id: int) -> dict:
-    """Lädt Nutzerdaten eines Buches."""
+async def _get_user_data(book_id: int, p: Profil) -> dict:
+    """Lädt die Nutzerdaten des Profils zu einem Buch."""
     row = await db.fetch_one(
-        "SELECT * FROM user_book_data WHERE book_id = ?", (book_id,)
+        "SELECT * FROM user_book_data WHERE profil_id = ? AND book_id = ?", (p.id, book_id)
     )
     if row:
         return row
@@ -94,9 +101,9 @@ async def _get_user_data(book_id: int) -> dict:
     }
 
 
-async def _enrich_book_list_item(book: dict) -> BookListItem:
+async def _enrich_book_list_item(book: dict, p: Profil) -> BookListItem:
     """Reichert ein Buch-Dict mit Relationen an (Einzelbuch-Fallback)."""
-    ud = await _get_user_data(book["id"])
+    ud = await _get_user_data(book["id"], p)
     cats = await _get_book_categories(book["id"])
     sammlung = await _get_book_sammlung(book)
     return BookListItem(
@@ -108,23 +115,25 @@ async def _enrich_book_list_item(book: dict) -> BookListItem:
         last_read_at=ud.get("last_read_at"),
         categories=cats,
         sammlung=sammlung,
+        privat=bool(await sichtbar.private(p.id, [book["id"]])),
     )
 
 
-async def listenbuecher(rows: list[dict]) -> list[BookListItem]:
-    """Buchzeilen als Listeneinträge, die Relationen je Art in einer Abfrage für alle (statt N+1)."""
+async def listenbuecher(rows: list[dict], p: Profil) -> list[BookListItem]:
+    """Buchzeilen als Listeneinträge, die Relationen je Art in einer Abfrage für alle (statt N+1); Nutzerdaten des Profils."""
     if not rows:
         return []
 
     book_ids = [r["id"] for r in rows]
     ph = ",".join("?" * len(book_ids))
 
-    # 1. user_book_data batch
+    # 1. user_book_data batch, die des Profils
     ud_rows = await db.fetch_all(
-        f"SELECT * FROM user_book_data WHERE book_id IN ({ph})",
-        tuple(book_ids),
+        f"SELECT * FROM user_book_data WHERE profil_id = ? AND book_id IN ({ph})",
+        (p.id, *book_ids),
     )
     ud_map = {r["book_id"]: r for r in ud_rows}
+    privat = await sichtbar.private(p.id, book_ids)
 
     # 2. Kategorien batch
     cat_rows = await db.fetch_all(
@@ -170,13 +179,14 @@ async def listenbuecher(rows: list[dict]) -> list[BookListItem]:
             last_read_at=ud.get("last_read_at"),
             categories=cats,
             sammlung=sammlung,
+            privat=bid in privat,
         ))
     return result
 
 
 @router.get("", response_model=BookListResponse)
 async def list_books(
-    _token: str = Depends(verify_token),
+    p: Profil = Depends(profil),
     seite: int = Query(1, ge=1, le=LISTENSEITE, description="Seitennummer"),
     pro_seite: int = Query(24, ge=1, le=100, description="Einträge pro Seite"),
     kategorie: str | None = Query(None, description="Kategorie-ID(s), kommagetrennt"),
@@ -205,10 +215,16 @@ async def list_books(
     zusammenfassen: bool = Query(False, description="Große Sammlungen als ein Eintrag (BF-66)"),
 ):
     """Listet Bücher paginiert und filterbar auf. Jeder Schalter filtert in beide Richtungen: true nur die mit, false nur
-    die ohne."""
-    # Basis-Query aufbauen
-    conditions = []
-    params: list = []
+    die ohne. Nur Bücher, die das Profil sieht; Favorit, Lesesofa, Sterne, Lesestand, Etiketten und Markierungen sind seine."""
+    # Basis-Query aufbauen: zuerst die Sichtbarkeit (BF-78)
+    sicht_sql, sicht_werte = Sicht.von(p).bedingung("b.id")
+    conditions = [sicht_sql]
+    params: list = [*sicht_werte]
+
+    def eigene(bedingung: str) -> str:
+        """Bücher, zu denen das Profil Nutzerdaten mit dieser Bedingung hat."""
+        params.append(p.id)
+        return f"SELECT book_id FROM user_book_data WHERE profil_id = ? AND {bedingung}"
 
     def ob(wert: bool, buecher: str) -> str:
         return f"b.id {'' if wert else 'NOT '}IN ({buecher})"
@@ -247,27 +263,28 @@ async def list_books(
         params.extend(werte)
 
     if favorit is not None:
-        conditions.append(ob(favorit, "SELECT book_id FROM user_book_data WHERE is_favorite = 1"))
+        conditions.append(ob(favorit, eigene("is_favorite = 1")))
 
     if zu_lesen is not None:
-        conditions.append(ob(zu_lesen, "SELECT book_id FROM user_book_data WHERE is_to_read = 1"))
+        conditions.append(ob(zu_lesen, eigene("is_to_read = 1")))
 
     if bewertung_min is not None:
-        conditions.append("b.id IN (SELECT book_id FROM user_book_data WHERE rating >= ?)")
+        conditions.append(f"b.id IN ({eigene('rating >= ?')})")
         params.append(bewertung_min)
 
     if gelesen is not None:
-        conditions.append(ob(gelesen, "SELECT book_id FROM user_book_data WHERE last_read_at IS NOT NULL"))
+        conditions.append(ob(gelesen, eigene("last_read_at IS NOT NULL")))
 
     if weiterlesen is not None:
-        conditions.append(ob(weiterlesen, "SELECT book_id FROM user_book_data WHERE reading_position IS NOT NULL AND reading_position != '' "
-                                          "AND last_read_at IS NOT NULL"))
+        conditions.append(ob(weiterlesen, eigene("reading_position IS NOT NULL AND reading_position != '' AND last_read_at IS NOT NULL")))
 
     if hat_labels is not None:
         conditions.append(ob(hat_labels, schnellfilter.MIT_ETIKETTEN))
+        params.extend((p.id, p.id))
 
     if hat_highlights is not None:
-        conditions.append(ob(hat_highlights, "SELECT book_id FROM book_highlights"))
+        conditions.append(ob(hat_highlights, "SELECT book_id FROM book_highlights WHERE profil_id = ?"))
+        params.append(p.id)
 
     if hat_isbn is not None:
         if hat_isbn:
@@ -305,16 +322,18 @@ async def list_books(
 
     # Schnellfilter zuletzt: die Zahl davor sagt, wie viele die Ansicht ohne ihn zeigt
     gesamt_ohne_suche = None
-    filter_sql, filter_werte = schnellfilter.bedingung(suche)
+    if suche and suche.strip() and not rechte.darf(p, "suche"):
+        raise HTTPException(status_code=403, detail=f"Das darf dieses Profil nicht: {stufenbuch().faehigkeiten['suche']}")
+    filter_sql, filter_werte = schnellfilter.bedingung(suche, p.id)
     if filter_sql:
         ohne_row = await db.fetch_one(f"SELECT COUNT(*) as total FROM books b WHERE {where}", tuple(params))
         gesamt_ohne_suche = ohne_row["total"] if ohne_row else 0
         where = f"{where} AND {filter_sql}"
         params.extend(filter_werte)
 
-    o = buchliste.ordnung(sortierung, richtung)
+    o = buchliste.ordnung(sortierung, richtung, p.id)
     if zusammenfassen:
-        return await _zusammengefasst(where, tuple(params), o, seite, pro_seite, gesamt_ohne_suche)
+        return await _zusammengefasst(where, tuple(params), o, seite, pro_seite, gesamt_ohne_suche, p)
 
     # Gesamt zählen
     count_sql = f"SELECT COUNT(*) as total FROM books b WHERE {where}"
@@ -331,9 +350,9 @@ async def list_books(
         ORDER BY {o.sql()}
         LIMIT ? OFFSET ?
     """
-    rows = await db.fetch_all(select_sql, tuple(params) + (pro_seite, offset))
+    rows = await db.fetch_all(select_sql, (*o.werte, *params, pro_seite, offset))
 
-    buecher = await listenbuecher(rows)
+    buecher = await listenbuecher(rows, p)
 
     return BookListResponse(
         buecher=buecher,
@@ -345,32 +364,34 @@ async def list_books(
     )
 
 
-async def buecher_mit_nummern(nummern: list[int]) -> dict[int, BookListItem]:
-    """Die Bücher mit diesen Nummern als Listeneinträge, je Nummer."""
+async def buecher_mit_nummern(nummern: list[int], p: Profil) -> dict[int, BookListItem]:
+    """Die Bücher mit diesen Nummern als Listeneinträge, je Nummer; nur die, die das Profil sieht."""
     if not nummern:
         return {}
-    zeilen = await db.fetch_all(f"SELECT {listenspalten()} FROM books b WHERE b.id IN ({','.join('?' * len(nummern))})", tuple(nummern))
-    return {b.id: b for b in await listenbuecher(zeilen)}
+    bedingung, werte = Sicht.von(p).bedingung("b.id")
+    zeilen = await db.fetch_all(f"SELECT {listenspalten()} FROM books b WHERE b.id IN ({','.join('?' * len(nummern))}) AND {bedingung}",
+                                (*nummern, *werte))
+    return {b.id: b for b in await listenbuecher(zeilen, p)}
 
 
-async def _stapel(where: str, werte: tuple, seite: list[buchliste.Eintrag]) -> dict[int, Sammlungsstapel]:
+async def _stapel(where: str, werte: tuple, seite: list[buchliste.Eintrag], p: Profil) -> dict[int, Sammlungsstapel]:
     """Die Sammlungseinträge der Seite mit ihren ersten Umschlägen."""
     eintraege = [e for e in seite if e.art == "sammlung"]
     roh = await buchliste.stapel(where, werte, [e.nr for e in eintraege], listenspalten())
-    umschlaege = await listenbuecher([z for e in eintraege for z in roh.get(e.nr, [])])
+    umschlaege = await listenbuecher([z for e in eintraege for z in roh.get(e.nr, [])], p)
     return {e.nr: Sammlungsstapel(id=e.nr, name=e.name, anzahl=e.anzahl, autor=e.autor,
                                   umschlaege=[b for b in umschlaege if b.sammlung_id == e.nr]) for e in eintraege}
 
 
 async def _zusammengefasst(where: str, werte: tuple, o: buchliste.Ordnung, seite: int, pro_seite: int,
-                           gesamt_ohne_suche: int | None) -> BookListResponse:
+                           gesamt_ohne_suche: int | None, p: Profil) -> BookListResponse:
     """Die Liste mit großen Sammlungen als je einem Eintrag (BF-66); `buecher` trägt nur die einzeln gezeigten."""
     ab = await sammlungen.als_eintrag_ab()
     zahlen = await buchliste.zahlen(where, werte, ab)
     seite_ = await buchliste.eintraege(where, werte, o, ab, pro_seite, (seite - 1) * pro_seite)
     einzeln = [e.nr for e in seite_ if e.art == "buch"]
-    buecher = await buecher_mit_nummern(einzeln)
-    stapel = await _stapel(where, werte, seite_)
+    buecher = await buecher_mit_nummern(einzeln, p)
+    stapel = await _stapel(where, werte, seite_, p)
     eintraege: list[Listeneintrag] = [BuchEintrag(buch=buecher[e.nr]) if e.art == "buch" else SammlungsEintrag(sammlung=stapel[e.nr])
                                       for e in seite_]
     return BookListResponse(
@@ -389,29 +410,31 @@ async def _zusammengefasst(where: str, werte: tuple, o: buchliste.Ordnung, seite
 
 @router.get("/recently-read", response_model=list[BookListItem])
 async def recently_read(
-    _token: str = Depends(verify_token),
+    p: Profil = Depends(profil),
     limit: int = Query(10, ge=1, le=50),
 ):
-    """Gibt die zuletzt gelesenen Bücher zurück."""
+    """Gibt die zuletzt gelesenen Bücher des Profils zurück."""
+    bedingung, werte = Sicht.von(p).bedingung("b.id")
     sql = f"""
         SELECT {listenspalten()}
         FROM books b
-        JOIN user_book_data ud ON ud.book_id = b.id
-        WHERE ud.last_read_at IS NOT NULL
+        JOIN user_book_data ud ON ud.book_id = b.id AND ud.profil_id = ?
+        WHERE ud.last_read_at IS NOT NULL AND {bedingung}
         ORDER BY ud.last_read_at DESC
         LIMIT ?
     """
-    rows = await db.fetch_all(sql, (limit,))
-    return await listenbuecher(rows)
+    rows = await db.fetch_all(sql, (p.id, *werte, limit))
+    return await listenbuecher(rows, p)
 
 
 @router.get("/{book_id}/aehnliche")
 async def similar_books(
     book_id: Nr,
-    _token: str = Depends(verify_token),
+    p: Profil = Depends(profil),
     limit: int = Query(6, ge=1, le=20),
 ):
-    """Gibt aehnliche Buecher zurueck (gleicher Autor, gleiche Kategorie)."""
+    """Gibt aehnliche Buecher zurueck (gleicher Autor, gleiche Kategorie), nur solche, die das Profil sieht."""
+    bedingung, werte = Sicht.von(p).bedingung("b.id")
     book = await db.fetch_one(
         "SELECT id, author FROM books WHERE id = ?", (book_id,)
     )
@@ -431,19 +454,19 @@ async def similar_books(
             f"""SELECT DISTINCT {listenspalten()}
                 FROM books b
                 JOIN book_authors ba ON ba.book_id = b.id
-                WHERE ba.author_id IN ({placeholders}) AND b.id != ?
+                WHERE ba.author_id IN ({placeholders}) AND b.id != ? AND {bedingung}
                 ORDER BY b.title LIMIT ?""",
-            (*ids, book_id, limit),
+            (*ids, book_id, *werte, limit),
         )
-        result["vom_autor"] = await listenbuecher(rows)
+        result["vom_autor"] = await listenbuecher(rows, p)
     elif book["author"]:
         rows = await db.fetch_all(
             f"""SELECT {listenspalten()}
-               FROM books b WHERE b.author = ? AND b.id != ?
+               FROM books b WHERE b.author = ? AND b.id != ? AND {bedingung}
                ORDER BY b.title LIMIT ?""",
-            (book["author"], book_id, limit),
+            (book["author"], book_id, *werte, limit),
         )
-        result["vom_autor"] = await listenbuecher(rows)
+        result["vom_autor"] = await listenbuecher(rows, p)
 
     # Im selben Regal; "Ungeordnet" ist keins
     cat_ids = await db.fetch_all(
@@ -459,23 +482,23 @@ async def similar_books(
             f"""SELECT DISTINCT {listenspalten()}
                 FROM books b
                 JOIN book_categories bc ON bc.book_id = b.id
-                WHERE bc.category_id IN ({placeholders}) AND b.id NOT IN ({exclude_ph})
+                WHERE bc.category_id IN ({placeholders}) AND b.id NOT IN ({exclude_ph}) AND {bedingung}
                 ORDER BY b.title COLLATE NOCASE LIMIT ?""",
-            (*regale, *already, limit),
+            (*regale, *already, *werte, limit),
         )
-        result["in_kategorie"] = await listenbuecher(rows)
+        result["in_kategorie"] = await listenbuecher(rows, p)
 
     return result
 
 
 @router.get("/{book_id}", response_model=BookResponse)
-async def get_book(book_id: Nr, _token: str = Depends(verify_token)):
-    """Gibt die vollständigen Details eines Buches zurück."""
+async def get_book(book_id: Nr, p: Profil = Depends(profil)):
+    """Gibt die vollständigen Details eines Buches zurück, mit den Nutzerdaten des Profils."""
     row = await db.fetch_one("SELECT * FROM books WHERE id = ?", (book_id,))
     if not row:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
 
-    ud = await _get_user_data(book_id)
+    ud = await _get_user_data(book_id, p)
     cats = await _get_book_categories(book_id)
     sammlung = await _get_book_sammlung(row)
     authors = await _get_book_authors(book_id)
@@ -490,16 +513,17 @@ async def get_book(book_id: Nr, _token: str = Depends(verify_token)):
         categories=cats,
         sammlung=sammlung,
         authors=authors,
+        privat=bool(await sichtbar.private(p.id, [book_id])),
     )
 
 
 @router.patch("/{book_id}", response_model=BookResponse)
 async def update_book(
-    book_id: Nr, update: BookUpdate, _token: str = Depends(verify_token)
+    book_id: Nr, update: BookUpdate, p: Profil = Depends(braucht("bearbeiten"))
 ):
     """Aktualisiert Metadaten eines Buches."""
     await vorhanden.buch(book_id)
-    updates = {k: v for k, v in update.model_dump(exclude_unset=True).items() if v is not None or k == "year"}
+    updates = {k: v for k, v in update.model_dump(exclude_unset=True).items() if v is not None or k in LEERBAR}
     if not updates:
         raise HTTPException(status_code=400, detail="Keine Felder zum Aktualisieren")
     if "sammlung_id" in updates:
@@ -510,16 +534,18 @@ async def update_book(
         zuweisungen += ["manuell_bearbeitet = 1", "updated_at = datetime('now')"]
     if updates.keys() & FELDER_DER_EINORDNUNG:
         zuweisungen.append(f"einordnung = '{VON_HAND}', einordnung_grund = ''")
+    if updates.keys() & FELDER_DES_ALTERS:
+        zuweisungen.append(f"alter_quelle = '{VON_HAND}'")            # überschrieben: die Quelle zählt nicht mehr (BF-78)
     await db.execute(f"UPDATE books SET {', '.join(zuweisungen)} WHERE id = ?", (*updates.values(), book_id))
 
     if "author" in updates:
         await autoren_verknuepfen(book_id, updates["author"])
     await db.commit()                 # der Suchindex zieht Titel und Autor selbst nach (core/suchindex.py)
-    return await get_book(book_id)
+    return await get_book(book_id, p)
 
 
 @router.get("/{book_id}/loeschfolgen", response_model=buch_loeschen.Folgen)
-async def loeschfolgen(book_id: Nr, _token: str = Depends(verify_token)):
+async def loeschfolgen(book_id: Nr, _p: Profil = Depends(braucht("loeschen"))):
     """Was verloren geht, wenn das Buch gelöscht wird (BF-60): für die Rückfrage vor dem Löschen."""
     f = await buch_loeschen.folgen(book_id)
     if f is None:
@@ -528,7 +554,7 @@ async def loeschfolgen(book_id: Nr, _token: str = Depends(verify_token)):
 
 
 @router.delete("/{book_id}")
-async def delete_book(book_id: Nr, _token: str = Depends(verify_token)):
+async def delete_book(book_id: Nr, _p: Profil = Depends(braucht("loeschen"))):
     """Löscht ein Buch mit allem, was an ihm hängt; die Datei geht in den Papierkorb der Kellerwolke (BF-60)."""
     try:
         if not await buch_loeschen.loeschen(book_id):
@@ -560,14 +586,27 @@ def _typ(wert: object) -> str:
         raise HTTPException(status_code=422, detail=f"Wert: {f}") from None
 
 
+# Was eine Sammelaktion braucht (stufen.json); Favorit und Lesesofa betreffen nur das eigene Profil
+FAEHIGKEIT_DER_AKTION = {"loeschen": "loeschen", "favorit": "favoriten", "zu_lesen": "sammeln"}
+# Aktionen, bei denen ein fehlendes Buch 404 ist (die übrigen übergehen es); ein unsichtbares gilt als fehlend
+MUSS_ES_GEBEN = frozenset({"favorit", "zu_lesen", "kategorie_zuweisen"})
+
+
 @router.post("/bulk")
 async def bulk_action(
     action: BulkAction,
-    _token: str = Depends(verify_token),
+    p: Profil = Depends(profil),
 ):
-    """Führt eine Massenbearbeitung für mehrere Bücher durch."""
+    """Führt eine Massenbearbeitung für mehrere Bücher durch; Bücher, die das Profil nicht sieht, gibt es dabei nicht."""
     if not action.book_ids:
         raise HTTPException(status_code=400, detail="Keine Bücher ausgewählt")
+    faehigkeit = FAEHIGKEIT_DER_AKTION.get(action.aktion, "bearbeiten")
+    if not rechte.darf(p, faehigkeit):
+        raise HTTPException(status_code=403, detail=f"Das darf dieses Profil nicht: {stufenbuch().faehigkeiten[faehigkeit]}")
+    sichtbare = await sichtbar.nur_sichtbare(Sicht.von(p), action.book_ids)
+    if len(sichtbare) != len(action.book_ids) and action.aktion in MUSS_ES_GEBEN:
+        raise HTTPException(status_code=404, detail=BEZUG_FEHLT)        # wie die Datenbank für ein Buch, das es nicht gibt
+    action.book_ids = sichtbare
 
     betroffen = 0
 
@@ -619,10 +658,10 @@ async def bulk_action(
         fav = 1 if action.wert in (True, "true", 1) else 0
         for bid in action.book_ids:
             betroffen += (await db.execute(
-                """INSERT INTO user_book_data (book_id, is_favorite)
-                   VALUES (?, ?)
-                   ON CONFLICT(book_id) DO UPDATE SET is_favorite = ?""",
-                (bid, fav, fav),
+                """INSERT INTO user_book_data (profil_id, book_id, is_favorite)
+                   VALUES (?, ?, ?)
+                   ON CONFLICT(profil_id, book_id) DO UPDATE SET is_favorite = ?""",
+                (p.id, bid, fav, fav),
             )).rowcount
         await db.commit()
 
@@ -630,10 +669,10 @@ async def bulk_action(
         val = 1 if action.wert in (True, "true", 1) else 0
         for bid in action.book_ids:
             betroffen += (await db.execute(
-                """INSERT INTO user_book_data (book_id, is_to_read)
-                   VALUES (?, ?)
-                   ON CONFLICT(book_id) DO UPDATE SET is_to_read = ?""",
-                (bid, val, val),
+                """INSERT INTO user_book_data (profil_id, book_id, is_to_read)
+                   VALUES (?, ?, ?)
+                   ON CONFLICT(profil_id, book_id) DO UPDATE SET is_to_read = ?""",
+                (p.id, bid, val, val),
             )).rowcount
         await db.commit()
 
@@ -645,17 +684,18 @@ async def bulk_action(
 async def delete_books_by_category(
     category_id: Nr,
     datei_loeschen: bool = Query(False, description="Auch Dateien im Speicher löschen"),
-    _token: str = Depends(verify_token),
+    p: Profil = Depends(braucht("loeschen")),
 ):
-    """Löscht alle Bücher einer Kategorie.
+    """Löscht alle Bücher einer Kategorie, die das Profil sieht.
 
     Entfernt die Bücher aus der DB. Optional werden auch die
     Dateien im Hash-Speicher gelöscht.
     """
     # Bücher in dieser Kategorie finden
+    bedingung, werte = Sicht.von(p).bedingung("b.id")
     rows = await db.fetch_all(
-        "SELECT b.id, b.hash FROM books b JOIN book_categories bc ON bc.book_id = b.id WHERE bc.category_id = ?",
-        (category_id,),
+        f"SELECT b.id, b.hash FROM books b JOIN book_categories bc ON bc.book_id = b.id WHERE bc.category_id = ? AND {bedingung}",
+        (category_id, *werte),
     )
     if not rows:
         return {"geloescht": 0, "kategorie_id": category_id}
@@ -679,7 +719,7 @@ async def delete_books_by_category(
 async def delete_all_books(
     datei_loeschen: bool = Query(False, description="Auch Dateien im Speicher löschen"),
     bestaetigung: str = Query(..., description="Muss 'ALLE LOESCHEN' sein"),
-    _token: str = Depends(verify_token),
+    _p: Profil = Depends(braucht("einstellungen")),
 ):
     """Löscht ALLE Bücher aus der Datenbank.
 
@@ -813,7 +853,7 @@ async def get_cover(book_id: Nr, _token: str = Depends(verify_token_inhalt)):
 
 
 @router.post("/{book_id}/cover/neu-extrahieren")
-async def re_extract_cover(book_id: Nr, _token: str = Depends(verify_token)):
+async def re_extract_cover(book_id: Nr, _p: Profil = Depends(braucht("bearbeiten"))):
     """Extrahiert das Cover neu aus der Buchdatei und überschreibt das bestehende."""
     book = await db.fetch_one(
         "SELECT id, hash, file_format FROM books WHERE id = ?", (book_id,)
@@ -862,7 +902,7 @@ async def get_file(book_id: Nr, request: Request, herunterladen: bool = Query(Fa
 
 
 @router.post("/{book_id}/isbn-scan")
-async def isbn_scan(book_id: Nr, _token: str = Depends(verify_token)):
+async def isbn_scan(book_id: Nr, _p: Profil = Depends(braucht("bearbeiten"))):
     """Scannt ein Buch erneut nach ISBNs.
 
     Liest den Volltext und extrahiert alle gültigen ISBNs.
@@ -961,7 +1001,7 @@ async def rescan_books(
     typen: str = Query("cover,isbn", description="Kommagetrennt: cover,isbn,metadaten,volltext"),
     kategorie: Index | None = Query(None, description="Nur Bücher dieser Kategorie (0=ohne Kategorie)"),
     manuell_einschliessen: bool = Query(False, description="Auch manuell bearbeitete Buecher scannen"),
-    _token: str = Depends(verify_token),
+    _p: Profil = Depends(braucht("einstellungen")),
 ):
     """Startet einen selektiven Rescan."""
     from backend.app.services import rescan_service
@@ -970,14 +1010,14 @@ async def rescan_books(
 
 
 @router.get("/rescan/status")
-async def rescan_get_status(_token: str = Depends(verify_token)):
+async def rescan_get_status(_p: Profil = Depends(braucht("einstellungen"))):
     """Gibt den aktuellen Rescan-Status zurück."""
     from backend.app.services import rescan_service
     return rescan_service.status
 
 
 @router.post("/rescan/abbrechen")
-async def rescan_cancel(_token: str = Depends(verify_token)):
+async def rescan_cancel(_p: Profil = Depends(braucht("einstellungen"))):
     """Bricht den laufenden Rescan ab."""
     from backend.app.services import rescan_service
     return rescan_service.abbrechen()
@@ -988,7 +1028,7 @@ async def rescan_vorschau(
     typen: str = Query("cover,isbn", description="Kommagetrennt: cover,isbn,metadaten,volltext"),
     kategorie: Index | None = Query(None, description="Nur Bücher dieser Kategorie (0=ohne Kategorie)"),
     manuell_einschliessen: bool = Query(False),
-    _token: str = Depends(verify_token),
+    _p: Profil = Depends(braucht("einstellungen")),
 ):
     """Vorschau: wie viele Buecher wuerden gescannt werden."""
     from backend.app.services import rescan_service
@@ -1000,7 +1040,7 @@ async def rescan_vorschau(
 async def rescan_kategorien(
     typen: str = Query("cover,isbn", description="Kommagetrennt: cover,isbn,metadaten,volltext"),
     manuell_einschliessen: bool = Query(False),
-    _token: str = Depends(verify_token),
+    _p: Profil = Depends(braucht("einstellungen")),
 ):
     """Zeigt betroffene Buecher pro Kategorie."""
     from backend.app.services import rescan_service
@@ -1048,7 +1088,7 @@ async def text_seiten(
     book_id: Nr,
     ab: int = Query(1, ge=1, le=SEITEN_HOECHSTENS, description="Erste Dateiseite"),
     anzahl: int = Query(6, ge=1, le=30),
-    _token: str = Depends(verify_token),
+    _p: Profil = Depends(profil),
 ):
     """Seiten eines PDF als Bausteine für die Textansicht: umfließende Absätze, Überschriften, Kästen und Abbildungen
     (über den Bild-Endpunkt), ohne Kopf- und Fußzeilen."""
@@ -1081,7 +1121,7 @@ async def fulltext_search_book(
     ganzes_wort: bool = Query(False, description="Nur ganze Woerter"),
     gross_klein: bool = Query(False, description="Gross-/Kleinschreibung beachten"),
     regex: bool = Query(False, description="Regulaerer Ausdruck"),
-    _token: str = Depends(verify_token),
+    _p: Profil = Depends(braucht("suche")),
 ):
     """Durchsucht den Volltext eines Buchs: Treffer mit Seite, Ausschnitt und Lage. Gesucht wird nie in der
     Ereignisschleife; ein regulärer Ausdruck läuft in einem eigenen Prozess mit Zeitgrenze (`SUCHE_AUSDRUCK_S`). Geht es

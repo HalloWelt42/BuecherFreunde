@@ -1,7 +1,9 @@
 """Anbieterweg für Fundus (Protokoll fundus-anbieter/1): Fundus fragt den Bücherbestand, statt ihn doppelt einzulesen.
 
 Zugang nur mit dem App-Schlüssel der Kellerwolke einer erlaubten App (`core/app_zugang.py`). Alles ist Nachschlagen in
-fertigen Daten (Suchindex, fulltext.txt, Angaben), keine Rechnung; die Angaben bleiben hier die Wahrheit.
+fertigen Daten (Suchindex, fulltext.txt, Angaben), keine Rechnung; die Angaben bleiben hier die Wahrheit. Bücher, die ein Profil
+privat markiert hat, gibt es für andere Apps nicht (BF-78, familie/sichtbar.py); Lesestand und Notizen sind die des ersten Profils
+Verwaltung, dem das Konto gehört.
 
 | Weg | Inhalt |
 |---|---|
@@ -33,6 +35,7 @@ from appkern.anmeldung import Konto
 from backend.app.core.auth import app_pruefen
 from backend.app.core.config import settings
 from backend.app.core.database import db
+from backend.app.familie.sichtbar import APPS
 from backend.app.services.search import search_books, search_count
 from backend.app.services.seiten import buch_seiten
 from backend.app.services.storage import get_sidecar_path
@@ -42,6 +45,7 @@ router = APIRouter(prefix="/api/v1/fundus", tags=["Fundus"])
 
 PROTOKOLL = "fundus-anbieter/1"
 HOECHSTENS = 50
+VERWALTUNG = "(SELECT id FROM profil WHERE rolle = 'verwaltung' ORDER BY sortierung, angelegt_am, id LIMIT 1)"
 AUSZUG_ZEICHEN = 320
 SEITEN_JE_BUCH = 3
 _MARKE = re.compile(r"</?(mark|b)>")
@@ -113,7 +117,8 @@ async def _seiten(zeile: dict) -> tuple[list[str], list[str]]:
 
 @router.get("/steckbrief")
 async def steckbrief(_app: Konto = Depends(app_pruefen)):
-    gesamt = await db.fetch_one("SELECT COUNT(*) AS n FROM books")
+    bedingung, werte = APPS.bedingung("b.id")
+    gesamt = await db.fetch_one(f"SELECT COUNT(*) AS n FROM books b WHERE {bedingung}", werte)
     return {
         "protokoll": PROTOKOLL, "kennung": "buecherfreunde", "name": "BücherFreunde", "fassung": settings.version,
         "zweck": "Der Bücherbestand: Volltextsuche in den Büchern mit Seite, Ausschnitt und Umschlag; Seiten lesen.",
@@ -134,12 +139,12 @@ async def suche(q: str = Query(..., min_length=1, max_length=500), n: int = Quer
     verknuepfung = "alle"
     eigene_syntax = '"' in q or "*" in q or re.search(r"\b(AND|OR|NOT)\b", q)
     erste = q if eigene_syntax or not woerter else " ".join(woerter) + (f" {_filter(q)}" if _filter(q) else "")
-    ergebnisse, _ = await search_books(erste, n, ab)
-    gesamt = await search_count(erste) if ergebnisse else 0
+    ergebnisse, _ = await search_books(erste, n, ab, sicht=APPS)
+    gesamt = await search_count(erste, sicht=APPS) if ergebnisse else 0
     if not ergebnisse and len(woerter) > 1:
         oder = " OR ".join(woerter) + (f" {_filter(q)}" if _filter(q) else "")
-        ergebnisse, _ = await search_books(oder, n, ab)
-        gesamt = await search_count(oder) if ergebnisse else 0
+        ergebnisse, _ = await search_books(oder, n, ab, sicht=APPS)
+        gesamt = await search_count(oder, sicht=APPS) if ergebnisse else 0
         verknuepfung = "eines"
     begriff = " ".join(woerter[:3])
     treffer = []
@@ -180,15 +185,17 @@ async def inhalt(buch: Nr, von: int = Query(1, ge=1, le=SEITEN_HOECHSTENS), bis:
 async def bestand(ab: int = Query(0, ge=0, le=VERSATZ), n: int = Query(500, ge=1, le=2000), _app: Konto = Depends(app_pruefen)):
     """Angaben aller Bücher nach Kennung, seitenweise; `lesestand`: es gibt einen Lesestand, `notizen`: Notizen und
     Markierungen zusammen."""
-    gesamt = await db.fetch_one("SELECT COUNT(*) AS n FROM books")
+    bedingung, werte = APPS.bedingung("b.id")
+    gesamt = await db.fetch_one(f"SELECT COUNT(*) AS n FROM books b WHERE {bedingung}", werte)
     zeilen = await db.fetch_all(
-        """SELECT b.id, b.hash, b.title, b.author, b.isbn, b.publisher, b.year, b.language, b.description, b.page_count,
+        f"""SELECT b.id, b.hash, b.title, b.author, b.isbn, b.publisher, b.year, b.language, b.description, b.page_count,
                   b.file_format, b.updated_at,
                   COALESCE(u.reading_position, '') AS lesestand, u.last_read_at,
-                  (SELECT COUNT(*) FROM book_notes n WHERE n.book_id = b.id)
-                  + (SELECT COUNT(*) FROM book_highlights h WHERE h.book_id = b.id) AS notizen
-           FROM books b LEFT JOIN user_book_data u ON u.book_id = b.id
-           ORDER BY b.id LIMIT ? OFFSET ?""", (n, ab))
+                  (SELECT COUNT(*) FROM book_notes n WHERE n.book_id = b.id AND n.profil_id = {VERWALTUNG})
+                  + (SELECT COUNT(*) FROM book_highlights h WHERE h.book_id = b.id AND h.profil_id = {VERWALTUNG}) AS notizen
+           FROM books b LEFT JOIN user_book_data u ON u.book_id = b.id AND u.profil_id = {VERWALTUNG}
+           WHERE {bedingung}
+           ORDER BY b.id LIMIT ? OFFSET ?""", (*werte, n, ab))
     buecher = []
     for z in zeilen:
         volltext = get_sidecar_path(z["hash"], "fulltext.txt")

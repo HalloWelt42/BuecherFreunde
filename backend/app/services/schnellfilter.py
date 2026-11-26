@@ -5,8 +5,10 @@ je Buchstabe ("*[üÜ]ber*"); Zeichen, die in GLOB etwas bedeuten, stehen einzel
 
 import re
 
-# Bücher mit Etiketten: die Etiketten des Lesers und, aus früheren Fassungen, Namen an Markierungen (BF-45)
-MIT_ETIKETTEN = "SELECT book_id FROM book_labels UNION SELECT book_id FROM book_highlights WHERE label_name != ''"
+# Bücher mit Etiketten: die Etiketten des Lesers und, aus früheren Fassungen, Namen an Markierungen (BF-45); je Profil (BF-78),
+# zweimal dessen Nummer als Wert
+MIT_ETIKETTEN = ("SELECT book_id FROM book_labels WHERE profil_id = ? "
+                 "UNION SELECT book_id FROM book_highlights WHERE profil_id = ? AND label_name != ''")
 
 HOECHSTENS_WOERTER = 8
 HOECHSTENS_ZEICHEN = 100
@@ -28,8 +30,8 @@ def muster(wort: str) -> str:
     return f"*{''.join(teile)}*"
 
 
-def bedingung(suche: str | None) -> tuple[str, list[str]]:
-    """Bedingung über `books b` samt Werten; leer, wenn es nichts zu filtern gibt."""
+def bedingung(suche: str | None, profil_id: str) -> tuple[str, list[str]]:
+    """Bedingung über `books b` samt Werten; leer, wenn es nichts zu filtern gibt. Etiketten sind die des Profils."""
     teile: list[str] = []
     werte: list[str] = []
     for wort in (suche or "").split()[:HOECHSTENS_WOERTER]:
@@ -38,10 +40,10 @@ def bedingung(suche: str | None) -> tuple[str, list[str]]:
         oder = [
             "b.title GLOB ?",
             "b.author GLOB ?",
-            "EXISTS (SELECT 1 FROM book_labels l WHERE l.book_id = b.id AND l.name GLOB ?)",
-            "EXISTS (SELECT 1 FROM book_highlights h WHERE h.book_id = b.id AND h.label_name GLOB ?)",
+            "EXISTS (SELECT 1 FROM book_labels l WHERE l.book_id = b.id AND l.profil_id = ? AND l.name GLOB ?)",
+            "EXISTS (SELECT 1 FROM book_highlights h WHERE h.book_id = b.id AND h.profil_id = ? AND h.label_name GLOB ?)",
         ]
-        werte += [m, m, m, m]
+        werte += [m, m, profil_id, m, profil_id, m]
         # ISBN mit oder ohne Bindestriche: verglichen wird nur, was nach einer ISBN aussieht
         ziffern = wort.replace("-", "")
         if _ISBN_TEIL.fullmatch(ziffern):

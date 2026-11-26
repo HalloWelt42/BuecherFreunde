@@ -1,17 +1,19 @@
-"""Schnittstelle der KI-Einordnung (BF-10): Vorschläge, Übernahme, Stand und Modellwahl über die Leitstelle, Anweisungen."""
+"""Schnittstelle der KI-Einordnung (BF-10): Vorschläge, Übernahme, Stand und Modellwahl über die Leitstelle, Anweisungen. Alles
+hier braucht die Fähigkeit `ki`, die kein Kind hat (BF-78); übernehmen und einstellen dazu `bearbeiten` und `einstellungen`."""
 
 from appkern.leitstelle import LeitstellenFehler
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import braucht, verify_token
 from backend.app.core.database import db
 from backend.app.services.ai_categorization import categorize_book
 from backend.app.services.ki import KiFehler, ki
 from backend.app.services.storage import load_fulltext
 from backend.app.models.grenzen import Nr, Prompt, Promptbeschreibung, Promptname, Regalname
 
-router = APIRouter(prefix="/api/ai", tags=["KI"])
+router = APIRouter(prefix="/api/ai", tags=["KI"], dependencies=[Depends(braucht("ki"))])
+EINSTELLUNGEN = Depends(braucht("einstellungen"))
 
 
 class AcceptCategories(BaseModel):
@@ -40,7 +42,7 @@ async def categorize(book_id: Nr, _token: str = Depends(verify_token)):
     return {"book_id": book_id, "vorschlaege": vorschlaege}
 
 
-@router.post("/buch/{book_id}/kategorien-uebernehmen")
+@router.post("/buch/{book_id}/kategorien-uebernehmen", dependencies=[Depends(braucht("bearbeiten"))])
 async def accept_categories(
     book_id: Nr, data: AcceptCategories, _token: str = Depends(verify_token)
 ):
@@ -128,7 +130,7 @@ async def get_ai_config(_token: str = Depends(verify_token)):
     return await _ki_config()
 
 
-@router.patch("/config")
+@router.patch("/config", dependencies=[EINSTELLUNGEN])
 async def update_ai_config(data: AiConfigUpdate, _token: str = Depends(verify_token)):
     """Das Modell wählen (bleibt über einen Neustart); die Leitstelle wählt nie eins."""
     if data.lm_studio_url is not None:
@@ -169,7 +171,7 @@ async def get_prompt(prompt_id: Nr, _token: str = Depends(verify_token)):
     return row
 
 
-@router.patch("/prompts/{prompt_id}")
+@router.patch("/prompts/{prompt_id}", dependencies=[EINSTELLUNGEN])
 async def update_prompt(
     prompt_id: Nr, data: PromptUpdate, _token: str = Depends(verify_token)
 ):
@@ -217,7 +219,7 @@ async def update_prompt(
     return await db.fetch_one("SELECT * FROM ai_prompts WHERE id = ?", (prompt_id,))
 
 
-@router.post("/prompts/{prompt_id}/reset")
+@router.post("/prompts/{prompt_id}/reset", dependencies=[EINSTELLUNGEN])
 async def reset_prompt(prompt_id: Nr, _token: str = Depends(verify_token)):
     """Setzt einen Prompt auf den Standardwert zurück (löscht und migriert neu)."""
     existing = await db.fetch_one(

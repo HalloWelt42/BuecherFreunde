@@ -6,7 +6,8 @@ Die Bandfolge ist natürlich: Nummern der Zahl nach, Bände ohne Zahl dahinter, 
 Zusammenfassen: die Bücher einer Sammlung, von der unter dem Filter mindestens `ab` Bücher dabei sind, erscheinen als ein
 Eintrag. Er sortiert nach Titel unter dem Namen der Sammlung, nach Datum unter ihrem neuesten Buch, nach Autor unter ihrem
 häufigsten Autor, sonst unter ihrem ersten Buch in der gewählten Ordnung. Die Bedingung `where` kommt fertig aus der
-Schnittstelle und spricht die Bücher als `b` an."""
+Schnittstelle und spricht die Bücher als `b` an; sie enthält schon die Sichtbarkeit des Profils (BF-78). Die Bewertung ist die des
+Profils, nach dem sortiert wird (`Ordnung.profil_id`)."""
 
 from __future__ import annotations
 
@@ -65,11 +66,16 @@ class Ordnung:
     name: str
     teile: tuple[Teil, ...]
     richtung: Literal["ASC", "DESC"]
+    profil_id: str = ""                         # wessen Bewertung zählt
 
     @property
     def verbindung(self) -> str:
-        """Was der Schlüssel an Tabellen dazu braucht (nur die Bewertung)."""
-        return "LEFT JOIN user_book_data ud_sort ON ud_sort.book_id = b.id" if self.name == "bewertung" else ""
+        """Was der Schlüssel an Tabellen dazu braucht (nur die Bewertung des Profils); ihre Werte in `werte`."""
+        return "LEFT JOIN user_book_data ud_sort ON ud_sort.book_id = b.id AND ud_sort.profil_id = ?" if self.name == "bewertung" else ""
+
+    @property
+    def werte(self) -> tuple:
+        return (self.profil_id,) if self.name == "bewertung" else ()
 
     def nach(self, spalten: list[str] | None = None) -> str:
         """Die Teile für ORDER BY, je mit Sortierfolge und Richtung; `spalten` statt der Ausdrücke, wenn schon berechnet."""
@@ -82,10 +88,10 @@ class Ordnung:
         return f"{self.nach()}, b.title COLLATE NOCASE, b.id"
 
 
-def ordnung(sortierung: str, richtung: str) -> Ordnung:
+def ordnung(sortierung: str, richtung: str, profil_id: str = "") -> Ordnung:
     """Die Ordnung zu den Angaben der Anfrage; eine unbekannte Sortierung gilt als Titel."""
     name = sortierung if sortierung in SORTIERUNGEN else VORGABE
-    return Ordnung(name, SORTIERUNGEN[name], "DESC" if richtung.lower() == "desc" else "ASC")
+    return Ordnung(name, SORTIERUNGEN[name], "DESC" if richtung.lower() == "desc" else "ASC", profil_id)
 
 
 BANDORDNUNG = Ordnung("band", BANDFOLGE, "ASC")
@@ -160,7 +166,7 @@ async def eintraege(where: str, werte: tuple, o: Ordnung, ab: int, anzahl: int, 
                   FROM erste e JOIN collections c ON c.id = e.sammlung_id)
               SELECT art, nr, name, anzahl, COALESCE(autor, '') AS autor FROM eintraege
               ORDER BY {o.nach(k)}, name COLLATE NOCASE, art, nr LIMIT ? OFFSET ?"""
-    return [Eintrag(**z) for z in await db.fetch_all(sql, (*werte, ab, anzahl, versatz))]
+    return [Eintrag(**z) for z in await db.fetch_all(sql, (*o.werte, *werte, ab, anzahl, versatz))]
 
 
 async def stapel(where: str, werte: tuple, sammlungen: list[int], spalten: str) -> dict[int, list[dict]]:

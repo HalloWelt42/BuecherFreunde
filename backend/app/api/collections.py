@@ -1,5 +1,6 @@
 """API-Endpunkte für Sammlungen: anlegen und pflegen, Bücher zuordnen und ordnen (BF-67), ab wann eine Sammlung in der
-Bücherliste ein Eintrag ist, und Sammlungen finden (BF-66, services/sammlungsfinder.py)."""
+Bücherliste ein Eintrag ist, und Sammlungen finden (BF-66, services/sammlungsfinder.py). Bücher und Zahlen nur, wie das Profil sie
+sieht (BF-78); ein Kind sieht nur Sammlungen mit freigegebenen Büchern."""
 
 from typing import Literal
 
@@ -8,8 +9,10 @@ from pydantic import BaseModel, Field
 
 from backend.app.api import vorhanden
 from backend.app.api.books import buecher_mit_nummern
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import braucht, profil
 from backend.app.core.database import db
+from backend.app.familie.modelle import Profil
+from backend.app.familie.sichtbar import Sicht
 from backend.app.models.book import GATTUNGEN, TYPEN, BookListItem
 from backend.app.models.grenzen import AUSWAHL_HOECHSTENS, AlsEintragAb, Band, Farbe, Nr, Sammlungsbeschreibung, Sammlungsname
 from backend.app.services import sammlungen, vorschlaege
@@ -19,6 +22,7 @@ from backend.app.services.sammlungsfinder import SuchStand, sammlungsfinder
 router = APIRouter(prefix="/api/collections", tags=["Sammlungen"])
 
 FEHLT = "Sammlung nicht gefunden"
+BEARBEITEN = braucht("bearbeiten")
 FARBE_VORGABE = "#2563eb"
 
 
@@ -75,13 +79,13 @@ class Verworfen(BaseModel):
 # --- Systemtypen ---
 
 @router.get("/typen")
-async def liste_typen(_: str = Depends(verify_token)):
+async def liste_typen(_: Profil = Depends(profil)):
     """Gibt die verfügbaren Systemtypen zurück."""
     return TYPEN
 
 
 @router.get("/gattungen")
-async def liste_gattungen(_: str = Depends(verify_token)):
+async def liste_gattungen(_: Profil = Depends(profil)):
     """Die festen Gattungen eines Buchs, in der Reihenfolge, in der sie angeboten werden (BF-59)."""
     return GATTUNGEN
 
@@ -89,36 +93,39 @@ async def liste_gattungen(_: str = Depends(verify_token)):
 # --- Einstellungen und Sammlungen finden (vor den Wegen mit Nummer) ---
 
 @router.get("/einstellungen", response_model=SammlungEinstellungen)
-async def hole_einstellungen(_: str = Depends(verify_token)) -> SammlungEinstellungen:
+async def hole_einstellungen(_: Profil = Depends(profil)) -> SammlungEinstellungen:
     return SammlungEinstellungen(als_eintrag_ab=await sammlungen.als_eintrag_ab())
 
 
 @router.put("/einstellungen", response_model=SammlungEinstellungen)
-async def setze_einstellungen(data: SammlungEinstellungen, _: str = Depends(verify_token)) -> SammlungEinstellungen:
+async def setze_einstellungen(data: SammlungEinstellungen, _: Profil = Depends(braucht("einstellungen"))) -> SammlungEinstellungen:
     await sammlungen.als_eintrag_ab_setzen(data.als_eintrag_ab)
     return data
 
 
 @router.get("/vorschlaege", response_model=list[Vorschlag])
-async def liste_vorschlaege(_: str = Depends(verify_token)) -> list[Vorschlag]:
-    """Die offenen Vorschläge, die größten zuerst; je Buch die erkannte Bandnummer."""
+async def liste_vorschlaege(p: Profil = Depends(BEARBEITEN)) -> list[Vorschlag]:
+    """Die offenen Vorschläge, die größten zuerst; je Buch die erkannte Bandnummer. Bücher, die das Profil nicht sieht, fehlen."""
     offen = await vorschlaege.offene()
-    buecher = await buecher_mit_nummern([b.buch_id for v in offen for b in v.baende])
-    return [Vorschlag(id=v.id, name=v.name, autor=v.autor, anzahl=len(v.baende), wege=v.wege, ki=v.ki, ki_geprueft=v.ki_geprueft,
-                      ki_zweifel=v.ki_zweifel,
-                      buecher=[VorschlagBuch(**buecher[b.buch_id].model_dump(), band=b.band) for b in v.baende])
-            for v in offen]
+    buecher = await buecher_mit_nummern([b.buch_id for v in offen for b in v.baende], p)
+    liste = []
+    for v in offen:
+        baende = [b for b in v.baende if b.buch_id in buecher]
+        if baende:
+            liste.append(Vorschlag(id=v.id, name=v.name, autor=v.autor, anzahl=len(baende), wege=v.wege, ki=v.ki, ki_geprueft=v.ki_geprueft,
+                                   ki_zweifel=v.ki_zweifel, buecher=[VorschlagBuch(**buecher[b.buch_id].model_dump(), band=b.band) for b in baende]))
+    return liste
 
 
-@router.post("/vorschlaege/suchen", response_model=SuchStand)
-async def suche_vorschlaege(_: str = Depends(verify_token)) -> SuchStand:
+@router.post("/vorschlaege/suchen", response_model=SuchStand, dependencies=[Depends(braucht("ki"))])
+async def suche_vorschlaege(_: Profil = Depends(BEARBEITEN)) -> SuchStand:
     """Startet die Suche im Hintergrund; läuft schon eine, bleibt es bei ihr."""
     sammlungsfinder.starten()
     return await sammlungsfinder.stand()
 
 
 @router.get("/vorschlaege/stand", response_model=SuchStand)
-async def stand_vorschlaege(_: str = Depends(verify_token)) -> SuchStand:
+async def stand_vorschlaege(_: Profil = Depends(BEARBEITEN)) -> SuchStand:
     return await sammlungsfinder.stand()
 
 
@@ -128,17 +135,17 @@ def _vorschlagsfehler(f: Exception) -> HTTPException:
 
 
 @router.post("/vorschlaege/{vorschlag_id}/anlegen")
-async def lege_vorschlag_an(vorschlag_id: Nr, data: VorschlagAnpassen = VorschlagAnpassen(), _: str = Depends(verify_token)):
+async def lege_vorschlag_an(vorschlag_id: Nr, data: VorschlagAnpassen = VorschlagAnpassen(), p: Profil = Depends(BEARBEITEN)):
     """Legt die Sammlung an (Name und Bücher anpassbar), mit den erkannten Bandnummern; gibt sie mit ihren Büchern."""
     try:
         sammlung = await vorschlaege.anlegen(vorschlag_id, data.name, data.book_ids, FARBE_VORGABE)
     except (vorschlaege.VorschlagFehlt, vorschlaege.NichtOffen, vorschlaege.FalscheAuswahl) as f:
         raise _vorschlagsfehler(f) from None
-    return await hole_sammlung(sammlung)
+    return await hole_sammlung(sammlung, p)
 
 
 @router.post("/vorschlaege/{vorschlag_id}/verwerfen", response_model=Verworfen)
-async def verwirf_vorschlag(vorschlag_id: Nr, _: str = Depends(verify_token)) -> Verworfen:
+async def verwirf_vorschlag(vorschlag_id: Nr, _: Profil = Depends(BEARBEITEN)) -> Verworfen:
     """Der Vorschlag kommt nie wieder, auch nicht in einem späteren Lauf."""
     try:
         await vorschlaege.verwerfen(vorschlag_id)
@@ -150,21 +157,23 @@ async def verwirf_vorschlag(vorschlag_id: Nr, _: str = Depends(verify_token)) ->
 # --- Sammlungen CRUD ---
 
 @router.get("")
-async def liste_sammlungen(_: str = Depends(verify_token)):
-    """Alle Sammlungen mit Buchanzahl."""
-    rows = await db.fetch_all("""
+async def liste_sammlungen(p: Profil = Depends(profil)):
+    """Alle Sammlungen mit der Zahl der Bücher, die das Profil sieht; ein Kind nur die mit freigegebenen."""
+    bedingung, werte = Sicht.von(p).bedingung("b.id")
+    rows = await db.fetch_all(f"""
         SELECT c.*, COUNT(b.id) AS buch_anzahl
         FROM collections c
-        LEFT JOIN books b ON b.sammlung_id = c.id
+        LEFT JOIN books b ON b.sammlung_id = c.id AND {bedingung}
         GROUP BY c.id
+        {'HAVING COUNT(b.id) > 0' if p.kind else ''}
         ORDER BY c.sort_order, c.name
-    """)
+    """, werte)
     return [dict(r) for r in rows]
 
 
 @router.post("")
 async def erstelle_sammlung(
-    data: CollectionCreate, _: str = Depends(verify_token)
+    data: CollectionCreate, _: Profil = Depends(BEARBEITEN)
 ):
     """Neue Sammlung erstellen."""
     cursor = await db.execute(
@@ -180,16 +189,19 @@ async def erstelle_sammlung(
 
 @router.get("/{collection_id}")
 async def hole_sammlung(
-    collection_id: Nr, _: str = Depends(verify_token)
+    collection_id: Nr, p: Profil = Depends(profil)
 ):
-    """Einzelne Sammlung mit Büchern."""
+    """Einzelne Sammlung mit den Büchern, die das Profil sieht; ein Kind sieht eine ohne freigegebene Bücher nicht."""
     sammlung = await vorhanden.eintrag("collections", collection_id, FEHLT)
+    bedingung, werte = Sicht.von(p).bedingung("b.id")
     buecher = await db.fetch_all(f"""
         SELECT b.id, b.title, b.author, b.isbn, b.file_format, b.cover_path, b.year, b.band_nummer
         FROM books b
-        WHERE b.sammlung_id = ?
+        WHERE b.sammlung_id = ? AND {bedingung}
         ORDER BY {BANDORDNUNG.sql()}
-    """, (collection_id,))
+    """, (collection_id, *werte))
+    if p.kind and not buecher:
+        raise HTTPException(status_code=404, detail=FEHLT)
 
     result = dict(sammlung)
     result["books"] = [dict(b) for b in buecher]
@@ -200,7 +212,7 @@ async def hole_sammlung(
 async def aktualisiere_sammlung(
     collection_id: Nr,
     data: CollectionUpdate,
-    _: str = Depends(verify_token),
+    _: Profil = Depends(BEARBEITEN),
 ):
     """Sammlung aktualisieren."""
     await vorhanden.eintrag("collections", collection_id, FEHLT, "id")
@@ -221,7 +233,7 @@ async def aktualisiere_sammlung(
 
 @router.delete("/{collection_id}")
 async def loesche_sammlung(
-    collection_id: Nr, _: str = Depends(verify_token)
+    collection_id: Nr, _: Profil = Depends(braucht("loeschen"))
 ):
     """Sammlung löschen. Setzt sammlung_id bei zugehörigen Büchern auf NULL."""
     await vorhanden.eintrag("collections", collection_id, FEHLT, "id")
@@ -235,14 +247,14 @@ async def loesche_sammlung(
 
 
 @router.put("/{collection_id}/reihenfolge")
-async def setze_reihenfolge(collection_id: Nr, data: Reihenfolge, _: str = Depends(verify_token)):
+async def setze_reihenfolge(collection_id: Nr, data: Reihenfolge, p: Profil = Depends(BEARBEITEN)):
     """Bandnummern 1 bis n in der gegebenen Reihenfolge; nicht genannte Bücher der Sammlung folgen in ihrer bisherigen."""
     await vorhanden.eintrag("collections", collection_id, FEHLT, "id")
     try:
         await sammlungen.reihenfolge_setzen(collection_id, data.book_ids)
     except sammlungen.NichtInDerSammlung as f:
         raise HTTPException(status_code=400, detail=str(f)) from None
-    return await hole_sammlung(collection_id)
+    return await hole_sammlung(collection_id, p)
 
 
 # --- Buch-Zuordnung (1:1) ---
@@ -252,7 +264,7 @@ async def buch_zuordnen(
     collection_id: Nr,
     book_id: Nr,
     data: BuchZuordnung = BuchZuordnung(),
-    _: str = Depends(verify_token),
+    _: Profil = Depends(BEARBEITEN),
 ):
     """Buch einer Sammlung zuordnen (ersetzt vorherige Zuordnung)."""
     await vorhanden.eintrag("collections", collection_id, FEHLT, "id")
@@ -268,7 +280,7 @@ async def buch_zuordnen(
 
 @router.delete("/{collection_id}/buch/{book_id}")
 async def buch_aus_sammlung(
-    collection_id: Nr, book_id: Nr, _: str = Depends(verify_token)
+    collection_id: Nr, book_id: Nr, _: Profil = Depends(BEARBEITEN)
 ):
     """Buch aus Sammlung entfernen."""
     c = await db.execute(

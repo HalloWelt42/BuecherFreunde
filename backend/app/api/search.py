@@ -1,9 +1,11 @@
-"""API-Endpunkte für die Volltextsuche."""
+"""API-Endpunkte für die Volltextsuche; gefunden wird nur, was das Profil sieht (BF-78)."""
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import braucht
+from backend.app.familie.modelle import Profil
+from backend.app.familie.sichtbar import Sicht
 from backend.app.models.grenzen import VERSATZ
 from backend.app.services import deckblattangaben
 from backend.app.services.search import (
@@ -16,6 +18,7 @@ from backend.app.services.search import (
 )
 
 router = APIRouter(prefix="/api/search", tags=["Suche"])
+SUCHE = braucht("suche")
 
 
 class SearchResponse(BaseModel):
@@ -41,7 +44,7 @@ async def search(
     q: str = Query(..., min_length=1, description="Suchbegriff"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0, le=VERSATZ),
-    _token: str = Depends(verify_token),
+    p: Profil = Depends(SUCHE),
 ):
     """Volltextsuche in allen Buechern mit Kontext-Snippets.
 
@@ -51,8 +54,8 @@ async def search(
     - format:epub / format:pdf
     - datum:2020-2024 / datum:>2020 / datum:<2024 / datum:2023
     """
-    results, parsed = await search_books(q, limit, offset)
-    total = await search_count(q)
+    results, parsed = await search_books(q, limit, offset, sicht=Sicht.von(p))
+    total = await search_count(q, sicht=Sicht.von(p))
     angaben = await deckblattangaben.fuer([r.book_id for r in results])
 
     treffer = [
@@ -81,16 +84,16 @@ async def search(
 async def search_suggest(
     q: str = Query(..., min_length=2, description="Suchbegriff"),
     limit: int = Query(5, ge=1, le=20),
-    _token: str = Depends(verify_token),
+    p: Profil = Depends(SUCHE),
 ):
     """Autovervollständigung für die Suchleiste."""
-    suggestions = await suggest(q, limit)
+    suggestions = await suggest(q, limit, sicht=Sicht.von(p))
     return SuggestResponse(vorschlaege=suggestions, anfrage=q)
 
 
 @router.post("/index-neu-aufbauen")
 async def rebuild(
-    _token: str = Depends(verify_token),
+    _p: Profil = Depends(braucht("einstellungen")),
 ):
     """Baut den FTS-Index komplett neu auf."""
     count = await rebuild_index()
@@ -99,7 +102,7 @@ async def rebuild(
 
 @router.post("/index-optimieren")
 async def optimize(
-    _token: str = Depends(verify_token),
+    _p: Profil = Depends(braucht("einstellungen")),
 ):
     """Optimiert den FTS-Index."""
     await optimize_index()

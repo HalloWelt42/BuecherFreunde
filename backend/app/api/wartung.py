@@ -16,7 +16,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.app.ablage.wolke import WolkeFehler, wolke
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import braucht, verify_token
 from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.services.storage import get_original_file, get_storage_path
@@ -162,7 +162,7 @@ async def _in_der_wolke(row: dict) -> str | None:
     return None if knoten.get("sha256") == row["hash"] else "hat in der Kellerwolke einen anderen Inhalt"
 
 
-@router.post("/defekte-pruefen")
+@router.post("/defekte-pruefen", dependencies=[Depends(braucht("einstellungen"))])
 async def defekte_pruefen(
     verschieben: bool = Query(
         False,

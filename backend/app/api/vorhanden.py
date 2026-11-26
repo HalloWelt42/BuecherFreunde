@@ -21,6 +21,14 @@ async def eintrag(tabelle: str, nr: int, meldung: str, spalten: str = "*") -> di
     return z
 
 
+async def eigenes(tabelle: str, nr: int, profil_id: str, meldung: str) -> dict[str, Any]:
+    """Eine persönliche Zeile dieses Profils (BF-78); die anderer Profile gibt es für es nicht."""
+    z = await db.fetch_one(f"SELECT * FROM {tabelle} WHERE id = ? AND profil_id = ?", (nr, profil_id))
+    if z is None:
+        raise HTTPException(status_code=404, detail=meldung)
+    return z
+
+
 async def buch(nr: int, spalten: str = "id") -> dict[str, Any]:
     return await eintrag("books", nr, BUCH_FEHLT, spalten)
 

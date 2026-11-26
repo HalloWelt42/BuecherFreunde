@@ -18,6 +18,7 @@ from backend.app.services.search import (
     rebuild_index,
     optimize_index,
 )
+from backend.app.familie.sichtbar import APPS as ALLE          # ohne private Bücher; hier gibt es keine
 
 
 # ---------------------------------------------------------------------------
@@ -41,7 +42,7 @@ class TestBuecherSuche:
     @pytest.mark.asyncio
     async def test_einfache_suche_python(self, such_db):
         """Suche nach 'Python' muss passende Buecher finden."""
-        ergebnisse, _ = await search_books("Python")
+        ergebnisse, _ = await search_books("Python", sicht=ALLE)
         assert len(ergebnisse) >= 1
         titel = [e.title for e in ergebnisse]
         assert any("Python" in t for t in titel)
@@ -49,7 +50,7 @@ class TestBuecherSuche:
     @pytest.mark.asyncio
     async def test_suche_ergebnis_ist_search_result(self, such_db):
         """Jedes Ergebnis muss ein SearchResult-Objekt sein."""
-        ergebnisse, _ = await search_books("Python")
+        ergebnisse, _ = await search_books("Python", sicht=ALLE)
         assert len(ergebnisse) > 0
         for e in ergebnisse:
             assert isinstance(e, SearchResult)
@@ -61,7 +62,7 @@ class TestBuecherSuche:
     @pytest.mark.asyncio
     async def test_suche_mit_snippet(self, such_db):
         """Suchergebnisse muessen Snippets mit Markierungen enthalten."""
-        ergebnisse, _ = await search_books("Programmiersprache")
+        ergebnisse, _ = await search_books("Programmiersprache", sicht=ALLE)
         assert len(ergebnisse) >= 1
         # Snippet muss <mark>-Tags enthalten
         hat_markierung = any("<mark>" in e.snippet for e in ergebnisse)
@@ -70,7 +71,7 @@ class TestBuecherSuche:
     @pytest.mark.asyncio
     async def test_suche_linux(self, such_db):
         """Suche nach 'Linux' muss das Linux-Buch finden."""
-        ergebnisse, _ = await search_books("Linux")
+        ergebnisse, _ = await search_books("Linux", sicht=ALLE)
         assert len(ergebnisse) >= 1
         titel = [e.title for e in ergebnisse]
         assert any("Linux" in t for t in titel)
@@ -78,39 +79,39 @@ class TestBuecherSuche:
     @pytest.mark.asyncio
     async def test_suche_ohne_treffer(self, such_db):
         """Suche nach einem nicht vorhandenen Begriff muss leere Liste ergeben."""
-        ergebnisse, _ = await search_books("Quantenphysik")
+        ergebnisse, _ = await search_books("Quantenphysik", sicht=ALLE)
         assert ergebnisse == []
 
     @pytest.mark.asyncio
     async def test_suche_leerer_string(self, such_db):
         """Leerer Suchstring muss leere Liste ergeben."""
-        ergebnisse, _ = await search_books("")
+        ergebnisse, _ = await search_books("", sicht=ALLE)
         assert ergebnisse == []
 
     @pytest.mark.asyncio
     async def test_suche_nur_leerzeichen(self, such_db):
         """Suchstring mit nur Leerzeichen muss leere Liste ergeben."""
-        ergebnisse, _ = await search_books("   ")
+        ergebnisse, _ = await search_books("   ", sicht=ALLE)
         assert ergebnisse == []
 
     @pytest.mark.asyncio
     async def test_suche_mit_limit(self, such_db):
         """Das Limit muss die Anzahl der Ergebnisse begrenzen."""
-        ergebnisse, _ = await search_books("Python", limit=1)
+        ergebnisse, _ = await search_books("Python", limit=1, sicht=ALLE)
         assert len(ergebnisse) <= 1
 
     @pytest.mark.asyncio
     async def test_suche_mit_offset(self, such_db):
         """Der Offset muss Ergebnisse ueberspringen."""
-        alle, _ = await search_books("Python", limit=10)
-        mit_offset, _ = await search_books("Python", limit=10, offset=1)
+        alle, _ = await search_books("Python", limit=10, sicht=ALLE)
+        mit_offset, _ = await search_books("Python", limit=10, offset=1, sicht=ALLE)
         if len(alle) > 1:
             assert len(mit_offset) == len(alle) - 1
 
     @pytest.mark.asyncio
     async def test_praefix_suche(self, such_db):
         """Praefixsuche mit Stern muss funktionieren."""
-        ergebnisse, _ = await search_books("Pyth*")
+        ergebnisse, _ = await search_books("Pyth*", sicht=ALLE)
         assert len(ergebnisse) >= 1
 
 
@@ -124,27 +125,27 @@ class TestTrefferanzahl:
     @pytest.mark.asyncio
     async def test_anzahl_python(self, such_db):
         """Trefferanzahl fuer 'Python' muss groesser 0 sein."""
-        anzahl = await search_count("Python")
+        anzahl = await search_count("Python", sicht=ALLE)
         assert anzahl >= 1
 
     @pytest.mark.asyncio
     async def test_anzahl_kein_treffer(self, such_db):
         """Trefferanzahl fuer unbekannten Begriff muss 0 sein."""
-        anzahl = await search_count("Quantenphysik")
+        anzahl = await search_count("Quantenphysik", sicht=ALLE)
         assert anzahl == 0
 
     @pytest.mark.asyncio
     async def test_anzahl_leerer_string(self, such_db):
         """Leerer String muss 0 Treffer ergeben."""
-        anzahl = await search_count("")
+        anzahl = await search_count("", sicht=ALLE)
         assert anzahl == 0
 
     @pytest.mark.asyncio
     async def test_anzahl_stimmt_mit_suche_ueberein(self, such_db):
         """Trefferanzahl muss mit der Laenge der Suchergebnisse uebereinstimmen."""
         query = "Python"
-        ergebnisse, _ = await search_books(query, limit=100)
-        anzahl = await search_count(query)
+        ergebnisse, _ = await search_books(query, limit=100, sicht=ALLE)
+        anzahl = await search_count(query, sicht=ALLE)
         assert anzahl == len(ergebnisse)
 
 
@@ -158,13 +159,13 @@ class TestVorschlaege:
     @pytest.mark.asyncio
     async def test_vorschlaege_fuer_python(self, such_db):
         """Vorschlaege fuer 'Pyth' muessen Python-Buecher enthalten."""
-        ergebnisse = await suggest("Pyth")
+        ergebnisse = await suggest("Pyth", sicht=ALLE)
         assert len(ergebnisse) >= 1
 
     @pytest.mark.asyncio
     async def test_vorschlag_format(self, such_db):
         """Vorschlaege muessen id, titel, autor und typ enthalten."""
-        ergebnisse = await suggest("Pyth")
+        ergebnisse = await suggest("Pyth", sicht=ALLE)
         assert len(ergebnisse) >= 1
         for v in ergebnisse:
             assert "id" in v
@@ -175,32 +176,32 @@ class TestVorschlaege:
     @pytest.mark.asyncio
     async def test_vorschlag_typ_titel(self, such_db):
         """Titel-Treffer muessen den Typ 'titel' haben."""
-        ergebnisse = await suggest("Pyth")
+        ergebnisse = await suggest("Pyth", sicht=ALLE)
         titel_treffer = [v for v in ergebnisse if v["typ"] == "titel"]
         assert len(titel_treffer) >= 1
 
     @pytest.mark.asyncio
     async def test_vorschlaege_zu_kurzer_string(self, such_db):
         """Zu kurze Eingabe (< 2 Zeichen) muss leere Liste ergeben."""
-        ergebnisse = await suggest("P")
+        ergebnisse = await suggest("P", sicht=ALLE)
         assert ergebnisse == []
 
     @pytest.mark.asyncio
     async def test_vorschlaege_leerer_string(self, such_db):
         """Leerer String muss leere Liste ergeben."""
-        ergebnisse = await suggest("")
+        ergebnisse = await suggest("", sicht=ALLE)
         assert ergebnisse == []
 
     @pytest.mark.asyncio
     async def test_vorschlaege_limit(self, such_db):
         """Das Limit muss die Anzahl der Vorschlaege begrenzen."""
-        ergebnisse = await suggest("Pyth", limit=1)
+        ergebnisse = await suggest("Pyth", limit=1, sicht=ALLE)
         assert len(ergebnisse) <= 1
 
     @pytest.mark.asyncio
     async def test_vorschlaege_nach_autor(self, such_db):
         """Vorschlaege muessen auch Autoren-Treffer liefern."""
-        ergebnisse = await suggest("Muster")
+        ergebnisse = await suggest("Muster", sicht=ALLE)
         # Mustermann sollte gefunden werden
         assert len(ergebnisse) >= 1
 
@@ -222,7 +223,7 @@ class TestIndexVerwaltung:
     async def test_suche_nach_neuaufbau(self, such_db):
         """Nach Neuaufbau muss die Suche weiterhin funktionieren."""
         await rebuild_index()
-        ergebnisse, _ = await search_books("Python")
+        ergebnisse, _ = await search_books("Python", sicht=ALLE)
         assert len(ergebnisse) >= 1
 
     @pytest.mark.asyncio

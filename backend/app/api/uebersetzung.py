@@ -9,7 +9,10 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse
 
-from backend.app.core.auth import verify_token, verify_token_inhalt
+from backend.app.core.auth import braucht, profil, sicht, verify_token, verify_token_inhalt
+from backend.app.familie import sichtbar
+from backend.app.familie.modelle import Profil
+from backend.app.familie.sichtbar import Sicht
 from backend.app.core.database import db
 from backend.app.models.fassung import (
     BegriffAenderung, BegriffEintrag, BegriffNeu, Bericht, BlockAktion, BlockAntwort, FassungEintrag, FassungStand, FassungStart,
@@ -21,6 +24,7 @@ from backend.app.services.fassungen import Beanstandet, BlockZeile, Buchangaben,
 from backend.app.services.uebersetzungslauf import uebersetzungslauf
 
 router = APIRouter(tags=["Übersetzung"])
+KI = Depends(braucht("ki"))                     # übersetzen, prüfen, Begriffe: KI, nie für Kinder (BF-78); lesen darf jeder
 
 
 async def _buch(buch_id: int) -> Buchangaben:
@@ -48,38 +52,41 @@ def _antwort(z: BlockZeile) -> BlockAntwort:
 
 # -- Fassungen ----------------------------------------------------------------------------------------------------------------
 
-@router.get("/api/books/{buch_id}/fassungen", response_model=list[FassungEintrag], dependencies=[Depends(verify_token)])
-async def fassungen_liste(buch_id: Nr) -> list[FassungEintrag]:
-    """Das Original zuerst (`id` null, `original` true), dann jede Fassung mit Stand und Kapiteln."""
+@router.get("/api/books/{buch_id}/fassungen", response_model=list[FassungEintrag])
+async def fassungen_liste(buch_id: Nr, p: Profil = Depends(profil)) -> list[FassungEintrag]:
+    """Das Original zuerst (`id` null, `original` true), dann jede Fassung mit Stand und Kapiteln; die Wahl des Profils."""
     b = await _buch(buch_id)
     z = await db.fetch_one("SELECT created_at FROM books WHERE id = ?", (buch_id,))
-    return await fassungsstand.eintraege(b, z["created_at"], await fassung_lesen.wahl(buch_id))
+    return await fassungsstand.eintraege(b, z["created_at"], await fassung_lesen.wahl(p.id, buch_id))
 
 
-@router.put("/api/books/{buch_id}/fassungen/wahl", response_model=list[FassungEintrag], dependencies=[Depends(verify_token)])
-async def fassung_waehlen(buch_id: Nr, wahl: Fassungswahl) -> list[FassungEintrag]:
+@router.put("/api/books/{buch_id}/fassungen/wahl", response_model=list[FassungEintrag])
+async def fassung_waehlen(buch_id: Nr, wahl: Fassungswahl, p: Profil = Depends(profil)) -> list[FassungEintrag]:
     """Welche Fassung "Lesen" auf der Buchseite öffnet (`sprache` null: das Original); gilt auf jedem Gerät."""
     await _buch(buch_id)
     if wahl.sprache is not None and await fassungen.zum_buch(buch_id, wahl.sprache) is None:
         raise HTTPException(status_code=404, detail="Diese Fassung gibt es noch nicht")
-    await fassung_lesen.waehlen(buch_id, wahl.sprache)
+    await fassung_lesen.waehlen(p.id, buch_id, wahl.sprache)
     await db.commit()
-    return await fassungen_liste(buch_id)
+    return await fassungen_liste(buch_id, p)
 
 
-@router.get("/api/fassungen", response_model=list[LaufEintrag], dependencies=[Depends(verify_token)])
-async def fassungen_in_arbeit() -> list[LaufEintrag]:
-    """Jede Fassung, die läuft, Pause macht oder auf einen Menschen wartet (Fehler), für die Aufträge."""
-    return await fassungsstand.laeufe()
+@router.get("/api/fassungen", response_model=list[LaufEintrag], dependencies=[KI, Depends(verify_token)])
+async def fassungen_in_arbeit(s: Sicht = Depends(sicht)) -> list[LaufEintrag]:
+    """Jede Fassung, die läuft, Pause macht oder auf einen Menschen wartet (Fehler), für die Aufträge; nur von Büchern, die das
+    Profil sieht (BF-78)."""
+    laeufe = await fassungsstand.laeufe()
+    sieht = set(await sichtbar.nur_sichtbare(s, [f.buch_id for f in laeufe]))
+    return [f for f in laeufe if f.buch_id in sieht]
 
 
-@router.get("/api/books/{buch_id}/fassungen/{sprache}/folgen", response_model=Folgen, dependencies=[Depends(verify_token)])
+@router.get("/api/books/{buch_id}/fassungen/{sprache}/folgen", response_model=Folgen, dependencies=[KI, Depends(verify_token)])
 async def fassung_folgen(buch_id: Nr, sprache: Zielsprache) -> Folgen:
     """Rückfrage vor dem Start: Umfang, Dauer, Ablage; `geht` false mit Grund."""
     return await fassungsstand.folgen(await _buch(buch_id), sprache)
 
 
-@router.post("/api/books/{buch_id}/fassungen/{sprache}", response_model=FassungStand, dependencies=[Depends(verify_token)])
+@router.post("/api/books/{buch_id}/fassungen/{sprache}", response_model=FassungStand, dependencies=[KI, Depends(verify_token)])
 async def fassung_starten(buch_id: Nr, sprache: Zielsprache, eingabe: FassungStart | None = None) -> FassungStand:
     """Startet die Übersetzung oder setzt sie fort (aus Pause, abgebrochen, nach einem Fehler, oder fertig mit geänderten
     Prüfungen). `anrede` gilt für eine neue Fassung; eine bestehende bleibt bei ihrer (sonst 409)."""
@@ -105,7 +112,7 @@ async def fassung_stand(fid: Nr) -> FassungStand:
     return await fassungsstand.stand(await _fassung(fid))
 
 
-@router.post("/api/fassungen/{fid}/pause", response_model=FassungStand, dependencies=[Depends(verify_token)])
+@router.post("/api/fassungen/{fid}/pause", response_model=FassungStand, dependencies=[KI, Depends(verify_token)])
 async def fassung_pause(fid: Nr) -> FassungStand:
     """Hält den Lauf sofort an; Fortsetzen nimmt ihn am ersten offenen Block wieder auf."""
     await _fassung(fid)
@@ -115,7 +122,7 @@ async def fassung_pause(fid: Nr) -> FassungStand:
     return await fassungsstand.stand(await _fassung(fid))
 
 
-@router.post("/api/fassungen/{fid}/fortsetzen", response_model=FassungStand, dependencies=[Depends(verify_token)])
+@router.post("/api/fassungen/{fid}/fortsetzen", response_model=FassungStand, dependencies=[KI, Depends(verify_token)])
 async def fassung_fortsetzen(fid: Nr) -> FassungStand:
     await _fassung(fid)
     await fassungen.stand_setzen(fid, "laeuft", nur_aus=("pause", "teilweise", "fehler"))
@@ -123,7 +130,7 @@ async def fassung_fortsetzen(fid: Nr) -> FassungStand:
     return await fassungsstand.stand(await _fassung(fid))
 
 
-@router.post("/api/fassungen/{fid}/abbrechen", response_model=FassungStand, dependencies=[Depends(verify_token)])
+@router.post("/api/fassungen/{fid}/abbrechen", response_model=FassungStand, dependencies=[KI, Depends(verify_token)])
 async def fassung_abbrechen(fid: Nr) -> FassungStand:
     """Beendet den Lauf; Fertiges bleibt, die Fassung bleibt "teilweise" und wird so abgelegt."""
     f = await _fassung(fid)
@@ -135,13 +142,13 @@ async def fassung_abbrechen(fid: Nr) -> FassungStand:
     return await fassungsstand.stand(await _fassung(fid))
 
 
-@router.get("/api/fassungen/{fid}/bericht", response_model=Bericht, dependencies=[Depends(verify_token)])
+@router.get("/api/fassungen/{fid}/bericht", response_model=Bericht, dependencies=[KI, Depends(verify_token)])
 async def fassung_bericht(fid: Nr) -> Bericht:
     """Zahlen und jede offene Stelle mit Original, Übersetzung und Befunden."""
     return await fassungsstand.bericht(await _fassung(fid))
 
 
-@router.post("/api/fassungen/{fid}/bloecke/{kennung}", response_model=BlockAntwort, dependencies=[Depends(verify_token)])
+@router.post("/api/fassungen/{fid}/bloecke/{kennung}", response_model=BlockAntwort, dependencies=[KI, Depends(verify_token)])
 async def block_aendern(fid: Nr, kennung: str, eingabe: BlockAktion) -> BlockAntwort | JSONResponse:
     """neu: wird neu übersetzt; annehmen: eine offene Stelle wie übersetzt; setzen: dein Text, wenn er die festen Prüfungen
     besteht (sonst 422 mit Befunden)."""
@@ -183,31 +190,31 @@ async def fassung_datei(fid: Nr, request: Request, herunterladen: bool = Query(F
     return Response(daten, media_type=fassung_ablage.EPUB, headers={"Content-Disposition": f"{weise}; filename*=UTF-8''{quote(name)}"})
 
 
-@router.get("/api/fassungen/{fid}/leseposition", response_model=Lesestand, dependencies=[Depends(verify_token)])
-async def fassung_lesestand(fid: Nr) -> Lesestand:
-    """Wo man in dieser Fassung liest; getrennt vom Lesestand des Originals."""
+@router.get("/api/fassungen/{fid}/leseposition", response_model=Lesestand)
+async def fassung_lesestand(fid: Nr, p: Profil = Depends(profil)) -> Lesestand:
+    """Wo das Profil in dieser Fassung liest; getrennt vom Lesestand des Originals."""
     await _fassung(fid)
-    return await fassung_lesen.lesestand(fid)
+    return await fassung_lesen.lesestand(p.id, fid)
 
 
-@router.patch("/api/fassungen/{fid}/leseposition", response_model=Lesestand, dependencies=[Depends(verify_token)])
-async def fassung_lesestand_merken(fid: Nr, neu: LesestandNeu) -> Lesestand:
+@router.patch("/api/fassungen/{fid}/leseposition", response_model=Lesestand)
+async def fassung_lesestand_merken(fid: Nr, neu: LesestandNeu, p: Profil = Depends(braucht("lesen"))) -> Lesestand:
     """Merkt die Stelle in dieser Fassung; Lesestand und Vorlesestelle des Originals bleiben unberührt."""
     await _fassung(fid)
-    stand = await fassung_lesen.merken(fid, neu.position)
+    stand = await fassung_lesen.merken(p.id, fid, neu.position)
     await db.commit()
     return stand
 
 
 # -- Begriffsliste ------------------------------------------------------------------------------------------------------------
 
-@router.get("/api/books/{buch_id}/begriffe", response_model=list[BegriffEintrag], dependencies=[Depends(verify_token)])
+@router.get("/api/books/{buch_id}/begriffe", response_model=list[BegriffEintrag], dependencies=[KI, Depends(verify_token)])
 async def begriffe_des_buchs(buch_id: Nr) -> list[BegriffEintrag]:
     await _buch(buch_id)
     return await begriffsliste.liste(buch_id)
 
 
-@router.post("/api/books/{buch_id}/begriffe", response_model=BegriffEintrag, status_code=201, dependencies=[Depends(verify_token)])
+@router.post("/api/books/{buch_id}/begriffe", response_model=BegriffEintrag, status_code=201, dependencies=[KI, Depends(verify_token)])
 async def begriff_anlegen(buch_id: Nr, neu: BegriffNeu) -> BegriffEintrag:
     """Ein Begriff von Hand; Blöcke, in denen er vorkommt, werden neu übersetzt."""
     await _buch(buch_id)
@@ -217,7 +224,7 @@ async def begriff_anlegen(buch_id: Nr, neu: BegriffNeu) -> BegriffEintrag:
 
 
 @router.post("/api/books/{buch_id}/begriffe/fragwuerdige/entfernen", response_model=FragwuerdigeEntfernt,
-             dependencies=[Depends(verify_token)])
+             dependencies=[KI, Depends(verify_token)])
 async def fragwuerdige_entfernen(buch_id: Nr, weg: FragwuerdigeWeg) -> FragwuerdigeEntfernt:
     """Entfernt die genannten fragwürdigen Einträge (die, die die Vorschau zeigte); was inzwischen nicht mehr fragwürdig ist,
     bleibt. Neu übersetzt wird dafür nichts, sie galten nicht."""
@@ -227,21 +234,21 @@ async def fragwuerdige_entfernen(buch_id: Nr, weg: FragwuerdigeWeg) -> Fragwuerd
     return FragwuerdigeEntfernt(entfernt=entfernt)
 
 
-@router.get("/api/begriffe", response_model=list[BegriffEintrag], dependencies=[Depends(verify_token)])
+@router.get("/api/begriffe", response_model=list[BegriffEintrag], dependencies=[KI, Depends(verify_token)])
 async def begriffe_fuer_alle() -> list[BegriffEintrag]:
     """Die Liste für alle Bücher."""
     await begriffsliste.vorgaben_einspielen()
     return await begriffsliste.liste(None)
 
 
-@router.post("/api/begriffe", response_model=BegriffEintrag, status_code=201, dependencies=[Depends(verify_token)])
+@router.post("/api/begriffe", response_model=BegriffEintrag, status_code=201, dependencies=[KI, Depends(verify_token)])
 async def begriff_fuer_alle_anlegen(neu: BegriffNeu) -> BegriffEintrag:
     e = await begriffsliste.anlegen(None, neu)
     await _gebucht_und_angestossen()
     return e
 
 
-@router.patch("/api/begriffe/{bid}", response_model=BegriffEintrag, dependencies=[Depends(verify_token)])
+@router.patch("/api/begriffe/{bid}", response_model=BegriffEintrag, dependencies=[KI, Depends(verify_token)])
 async def begriff_aendern(bid: Nr, aenderung: BegriffAenderung) -> BegriffEintrag:
     try:
         e = await begriffsliste.aendern(bid, aenderung)
@@ -253,7 +260,7 @@ async def begriff_aendern(bid: Nr, aenderung: BegriffAenderung) -> BegriffEintra
     return e
 
 
-@router.delete("/api/begriffe/{bid}", dependencies=[Depends(verify_token)])
+@router.delete("/api/begriffe/{bid}", dependencies=[KI, Depends(verify_token)])
 async def begriff_loeschen(bid: Nr) -> dict:
     if not await begriffsliste.loeschen(bid):
         raise HTTPException(status_code=404, detail="Begriff nicht gefunden")

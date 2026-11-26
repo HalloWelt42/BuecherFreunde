@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from backend.app.ablage.wolke import Wolke, WolkeFehler
 from backend.app.core.config import settings
 from backend.app.services.storage import get_sidecar_path, get_storage_path, save_cover
-from tests.api.conftest import buch_erstellen, kategorie_erstellen
+from tests.api.conftest import buch_erstellen, kategorie_erstellen, verwaltung
 
 
 @pytest.fixture
@@ -35,13 +35,14 @@ def papierkorb(monkeypatch):
 
 async def _buch_mit_allem(test_db, in_der_wolke: bool = True) -> int:
     buch = await buch_erstellen(test_db, hash="loesch01", title="Der Prozeß", author="Franz Kafka", file_size=173000, file_format="epub")
+    profil = await verwaltung(test_db)
     for text in ("erste", "zweite"):
-        await test_db.execute("INSERT INTO book_notes (book_id, content) VALUES (?, ?)", (buch, text))
+        await test_db.execute("INSERT INTO book_notes (profil_id, book_id, content) VALUES (?, ?, ?)", (profil, buch, text))
     for n in range(3):
-        await test_db.execute("INSERT INTO book_highlights (book_id, cfi_range) VALUES (?, ?)", (buch, f"epubcfi(/6/{n})"))
-    await test_db.execute("INSERT INTO book_labels (book_id, name) VALUES (?, 'Merksatz')", (buch,))
-    await test_db.execute("INSERT INTO user_book_data (book_id, reading_position) VALUES (?, 'epubcfi(/6/4)')", (buch,))
-    await test_db.execute("INSERT INTO vorlesestelle (buch_id, einheit, zeichen) VALUES (?, 2, 10)", (buch,))
+        await test_db.execute("INSERT INTO book_highlights (profil_id, book_id, cfi_range) VALUES (?, ?, ?)", (profil, buch, f"epubcfi(/6/{n})"))
+    await test_db.execute("INSERT INTO book_labels (profil_id, book_id, name) VALUES (?, ?, 'Merksatz')", (profil, buch))
+    await test_db.execute("INSERT INTO user_book_data (profil_id, book_id, reading_position) VALUES (?, ?, 'epubcfi(/6/4)')", (profil, buch))
+    await test_db.execute("INSERT INTO vorlesestelle (profil_id, buch_id, einheit, zeichen) VALUES (?, ?, 2, 10)", (profil, buch))
     await test_db.execute("INSERT INTO book_categories (book_id, category_id) VALUES (?, ?)", (buch, await kategorie_erstellen(test_db, name="Klassiker")))
     ungeordnet = await kategorie_erstellen(test_db, name="Ungeordnet")          # vergibt die App selbst, zählt nicht als Regal
     await test_db.execute("INSERT INTO book_categories (book_id, category_id) VALUES (?, ?)", (buch, ungeordnet))

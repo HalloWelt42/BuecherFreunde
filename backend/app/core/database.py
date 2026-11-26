@@ -19,6 +19,7 @@ import aiosqlite
 
 from backend.app.core import suchindex
 from backend.app.core.config import settings
+from backend.app.familie import umbau as familie_umbau
 
 logger = logging.getLogger("buecherfreunde.db")
 
@@ -88,16 +89,8 @@ CREATE TABLE IF NOT EXISTS book_categories (
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 
--- Nutzerdaten pro Buch
-CREATE TABLE IF NOT EXISTS user_book_data (
-    book_id INTEGER PRIMARY KEY,
-    is_favorite INTEGER DEFAULT 0,
-    is_to_read INTEGER DEFAULT 0,
-    rating INTEGER DEFAULT 0,
-    reading_position TEXT DEFAULT '',
-    last_read_at TEXT DEFAULT NULL,
-    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
-);
+-- Persönliche Daten je Profil (Nutzerdaten, Notizen, Etiketten, Markierungen, Vorlesestelle, Lesestand der Fassungen):
+-- ihre Form steht in backend/app/familie/schema.py, angelegt und umgebaut von familie/umbau.py (BF-78)
 
 -- Sammlungen (Regale)
 CREATE TABLE IF NOT EXISTS collections (
@@ -110,51 +103,6 @@ CREATE TABLE IF NOT EXISTS collections (
 );
 
 CREATE INDEX IF NOT EXISTS idx_books_sammlung ON books(sammlung_id);
-
--- Notizen
-CREATE TABLE IF NOT EXISTS book_notes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    book_id INTEGER NOT NULL,
-    content TEXT NOT NULL,
-    page_reference INTEGER DEFAULT NULL,
-    cfi_reference TEXT DEFAULT '',
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_notes_book ON book_notes(book_id);
-
--- Labels / Lesezeichen
-CREATE TABLE IF NOT EXISTS book_labels (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    book_id INTEGER NOT NULL,
-    color TEXT NOT NULL DEFAULT '#4FC3F7',
-    name TEXT NOT NULL DEFAULT '',
-    note TEXT NOT NULL DEFAULT '',
-    page_reference TEXT DEFAULT '',
-    position_percent REAL DEFAULT 0,
-    cfi_reference TEXT DEFAULT '',
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_labels_book ON book_labels(book_id);
-
--- Textmarkierungen (Highlights) mit optionalen Label-Feldern
-CREATE TABLE IF NOT EXISTS book_highlights (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    book_id INTEGER NOT NULL,
-    cfi_range TEXT NOT NULL,
-    color TEXT NOT NULL DEFAULT '#FFEE58',
-    text_snippet TEXT NOT NULL DEFAULT '',
-    label_name TEXT NOT NULL DEFAULT '',
-    label_note TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_highlights_book ON book_highlights(book_id);
 
 -- Import-Aufgaben
 CREATE TABLE IF NOT EXISTS import_tasks (
@@ -420,21 +368,7 @@ CREATE TABLE IF NOT EXISTS begriff (                 -- Begriffsliste je Buch, b
     geaendert_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_begriff_eindeutig ON begriff(COALESCE(buch_id, 0), lower(englisch));
-CREATE TABLE IF NOT EXISTS fassung_lesestand (       -- wo man in einer Übersetzung liest (services/fassung_lesen.py); getrennt vom
-    fassung_id INTEGER PRIMARY KEY REFERENCES fassung(id) ON DELETE CASCADE,  -- Lesestand des Originals in user_book_data
-    position TEXT NOT NULL DEFAULT '',               -- wie reading_position, etwa epub:{"cfi": ...}
-    gelesen_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-);
-CREATE TABLE IF NOT EXISTS vorlesestelle (          -- wo das Vorlesen je Buch stehen blieb (api/user_data.py); gilt auf jedem Gerät
-    buch_id INTEGER PRIMARY KEY REFERENCES books(id) ON DELETE CASCADE,
-    einheit INTEGER NOT NULL,                        -- Seite, Abschnitt oder Stück der Lesequelle, ab 0
-    zeichen INTEGER NOT NULL,                        -- Anfang des Satzes in der Einheit
-    bis_einheit INTEGER,                             -- Ende des gewählten Umfangs (ausschließlich); leer: bis zum Ende des Buchs
-    bis_zeichen INTEGER,
-    umfang TEXT NOT NULL DEFAULT '',                 -- was gewählt war, etwa "Dieses Kapitel"
-    ort TEXT NOT NULL DEFAULT '',                    -- wie die Stelle heißt, etwa "Seite 12"
-    gemerkt_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-);
+-- fassung_lesestand und vorlesestelle sind persönlich: ihre Form steht in familie/schema.py (BF-78)
 CREATE TABLE IF NOT EXISTS sammlung_vorschlag (      -- gefundene Reihen (services/sammlungsfinder.py, BF-66)
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     schluessel TEXT NOT NULL UNIQUE,                 -- die Schlüssel der Regelfunde (Reihe|Autor, normiert), je Zeile einer
@@ -517,8 +451,10 @@ NEUBAU_SPALTEN: tuple[tuple[str, str, str], ...] = (
     ("categories", "herkunft", "TEXT NOT NULL DEFAULT ''"),        # standard, geteilt, neu, eigen
     ("categories", "arten", "TEXT NOT NULL DEFAULT '[\"\"]'"),      # Bereich: JSON, für welche Arten (books.typ) er gilt; "" Buch
     ("categories", "teil_von", "TEXT NOT NULL DEFAULT ''"),        # Kategorie: Schlüssel der großen, deren Teil sie ist
-    # Bücher übersetzen (BF-71): welche Fassung "Lesen" auf der Buchseite öffnet; leer das Original, sonst ihre Sprache
-    ("user_book_data", "fassung_wahl", "TEXT NOT NULL DEFAULT ''"),
+    # Familie (BF-78): Altersangabe aus den Quellen, überschreibbar; nur Hilfe beim Freigeben, nie eine Freigabe
+    ("books", "alter_von", "INTEGER DEFAULT NULL"),
+    ("books", "alter_bis", "INTEGER DEFAULT NULL"),
+    ("books", "alter_quelle", "TEXT NOT NULL DEFAULT ''"),        # Kennung der Quelle, hand: von Hand
     # Übersetzung (BF-71, services/fassungen.py)
     ("fassung", "anrede", "TEXT NOT NULL DEFAULT 'du'"),           # du, Sie: so spricht die Fassung den Leser an, durchgehend
     ("fassung", "geprueft_mit", "TEXT NOT NULL DEFAULT ''"),       # womit die Blöcke fest geprüft sind; weicht es ab: neu prüfen
@@ -569,6 +505,7 @@ class Database:
         await suchindex.anhaengen(self._connection, self.suche_dir)
         await self._connection.commit()
         await self._connection.close()
+        await asyncio.to_thread(familie_umbau.umbauen, self.db_path)   # Profile und Daten je Profil (BF-78), ohne andere Verbindung
         # die gemeinsame Verbindung: außerhalb einer Einheit gilt jede Anweisung für sich
         self._connection = await self._oeffnen(isolation_level=None)
         logger.info("Datenbank verbunden: %s", self.db_path)

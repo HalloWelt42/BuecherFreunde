@@ -206,3 +206,9 @@ async def sammlung_erstellen(test_db: Database, name: str = "Testsammlung",
     )
     await test_db.commit()
     return cursor.lastrowid
+
+
+async def verwaltung(test_db: Database) -> str:
+    """Das erste Profil Verwaltung: ohne Profilwahl gehören ihm alle persönlichen Daten (BF-78)."""
+    z = await test_db.fetch_one("SELECT id FROM profil WHERE rolle = 'verwaltung' ORDER BY sortierung, angelegt_am LIMIT 1")
+    return z["id"]

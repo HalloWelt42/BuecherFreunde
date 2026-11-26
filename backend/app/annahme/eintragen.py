@@ -50,9 +50,11 @@ async def eintragen(file_hash: str, dateiname: str, groesse: int, e: Ergebnis) -
     async with db.einheit():                                # Buch, Autoren und Regal gelten zusammen oder gar nicht
         c = await db.execute(
             "INSERT INTO books (hash, title, author, isbn, publisher, year, language, description, file_format, file_size, file_name, "
-            "storage_path, cover_path, page_count, fts_content) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "storage_path, cover_path, page_count, fts_content, alter_von, alter_bis, alter_quelle) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (file_hash, e.title, e.author or "", e.isbn or "", e.publisher or "", e.year, e.language or "", e.description or "", endung, groesse,
-             dateiname, str(get_storage_path(file_hash)), "cover.jpg" if e.cover_data else "", e.page_count, e.fulltext[:SUCHTEXT_ZEICHEN]))
+             dateiname, str(get_storage_path(file_hash)), "cover.jpg" if e.cover_data else "", e.page_count, e.fulltext[:SUCHTEXT_ZEICHEN],
+             e.alter_von, e.alter_bis, e.alter_quelle))
         buch = c.lastrowid
         await db.execute("UPDATE books SET fts_content = '' WHERE id = ?", (buch,))      # steht im Suchindex
         await autoren_verknuepfen(buch, e.author)

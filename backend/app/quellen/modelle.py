@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from backend.app.quellen.alter import Alter
+
 Fund = Literal["isbn", "doi", "titel", ""]
 
 
@@ -39,12 +41,13 @@ class Angaben(BaseModel):
     beschreibung: str = ""
     kategorien: list[str] = Field(default_factory=list)
     umschlag: str = ""                                 # Adresse eines Bildes
+    alter: Alter | None = None                         # Lese- oder Interessenalter (BF-78), nur Hilfe beim Freigeben
     personen: dict[str, str] = Field(default_factory=dict)      # Name -> Kennung in der Normdatei
     herkunft: dict[str, str] = Field(default_factory=dict)      # Feld -> Kennung der Quelle
     roh: dict[str, Any] = Field(default_factory=dict)
 
 
-FELDER = ("titel", "untertitel", "autoren", "verlag", "jahr", "seiten", "isbn", "doi", "sprache", "beschreibung", "kategorien", "umschlag")
+FELDER = ("titel", "untertitel", "autoren", "verlag", "jahr", "seiten", "isbn", "doi", "sprache", "beschreibung", "kategorien", "umschlag", "alter")
 
 
 class Werk(BaseModel):

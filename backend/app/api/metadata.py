@@ -3,11 +3,13 @@
 import logging
 import re
 
+from pydantic import ValidationError
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.app.services.seiten import buch_seiten
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import braucht, verify_token
 from backend.app.core.database import db
+from backend.app.quellen.alter import Alter
 from backend.app.quellen import auskunft, bilder, stand
 from backend.app.quellen.fehler import QuelleFehler
 from backend.app.quellen.regeln import REGELN
@@ -131,7 +133,7 @@ def _kein_fund(quelle: str | None, hinweise: list[str]) -> str:
     return "Keine Quelle kennt dieses Buch."
 
 
-@router.post("/buch/{book_id}/anreichern")
+@router.post("/buch/{book_id}/anreichern", dependencies=[Depends(braucht("bearbeiten"))])
 async def enrich_book(
     book_id: Nr,
     quelle: str | None = Query(None, description="Kennung einer Quelle oder \"alle\"; ohne Angabe die erste, die etwas weiß"),
@@ -186,7 +188,7 @@ async def _umschlag_holen(adresse: str) -> tuple[bytes | None, str]:
     return bild, "" if bild else "Dort liegt kein brauchbares Bild"
 
 
-@router.post("/buch/{book_id}/uebernehmen")
+@router.post("/buch/{book_id}/uebernehmen", dependencies=[Depends(braucht("bearbeiten"))])
 async def apply_metadata(
     book_id: Nr, felder: dict, _token: str = Depends(verify_token)
 ):
@@ -223,6 +225,14 @@ async def apply_metadata(
         db_key = field_map.get(key, key)
         if db_key in allowed and value:
             updates[db_key] = value
+
+    if felder.get("alter_von") is not None or felder.get("alter_bis") is not None:     # Altersangabe mit Herkunft (BF-78)
+        try:
+            alter = Alter.model_validate({"von": felder.get("alter_von"), "bis": felder.get("alter_bis")})
+        except ValidationError:
+            raise HTTPException(status_code=422, detail="Alter: zwischen 0 und 99") from None
+        herkunft = felder.get("herkunft") if isinstance(felder.get("herkunft"), dict) else {}
+        updates |= {"alter_von": alter.von, "alter_bis": alter.bis, "alter_quelle": str(herkunft.get("alter") or felder.get("quelle") or "")[:50]}
 
     if updates:
         set_clause = ", ".join(f"{k} = ?" for k in updates)
@@ -300,13 +310,13 @@ async def get_fulltext(
     }
 
 
-@router.get("/quellen")
+@router.get("/quellen", dependencies=[Depends(braucht("bearbeiten"))])
 async def quellen(_token: str = Depends(verify_token)) -> list[Quellenstand]:
     """Alle Quellen mit ihrem gemerkten Stand; gefragt wird dabei keine."""
     return await stand.alle()
 
 
-@router.post("/quellen/{kennung}/pruefen")
+@router.post("/quellen/{kennung}/pruefen", dependencies=[Depends(braucht("einstellungen"))])
 async def quelle_pruefen(kennung: str, _token: str = Depends(verify_token)) -> Quellenstand:
     """Eine echte Probe bei einer Quelle, höchstens einmal in der Minute; sonst der gemerkte Stand."""
     if kennung not in REGELN:
@@ -314,7 +324,7 @@ async def quelle_pruefen(kennung: str, _token: str = Depends(verify_token)) -> Q
     return await stand.pruefe(kennung)
 
 
-@router.get("/verbindungsstatus")
+@router.get("/verbindungsstatus", dependencies=[Depends(braucht("bearbeiten"))])
 async def connection_status(_token: str = Depends(verify_token)):
     """Der gemerkte Stand je Quelle in kurzer Form (erreichbar, Grund); gefragt wird dabei keine."""
     return {s.kennung: {"erreichbar": s.erreichbar, "grund": ("Deaktiviert" if not s.aktiv else s.grund or ("" if s.erreichbar else s.wort))} for s in await stand.alle()}

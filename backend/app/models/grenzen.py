@@ -48,6 +48,7 @@ BLOCKTEXT = 50_000                       # eine Übersetzung von Hand für einen
 
 # Bereiche
 SEITEN_HOECHSTENS = 100_000
+ALTER_BIS = 99                           # Lese- oder Interessenalter eines Buchs (BF-78)
 JAHR_AB = 1000                           # Erscheinungsjahr eines Buchs
 LEBENSJAHR_AB = -3000                    # Geburts- und Sterbejahr eines Autors
 JAHR_BIS = 9999                          # Obergrenze eines Filters nach Jahren
@@ -104,6 +105,7 @@ Index = Annotated[int, Ge(0), Le(GROESSTE_ZAHL)]           # zählt ab 0
 Jahr = Annotated[int, Ge(JAHR_AB), AfterValidator(_bis_naechstes_jahr)]
 Lebensjahr = Annotated[int, Ge(LEBENSJAHR_AB), AfterValidator(_bis_naechstes_jahr)]
 Seiten = Annotated[int, Ge(0), Le(SEITEN_HOECHSTENS)]
+Lesealter = Annotated[int, Ge(0), Le(ALTER_BIS)]
 Prozent = Annotated[float, Ge(0), Le(100)]
 Sicherheit = Annotated[int, Ge(0), Le(100)]
 Stapelgroesse = Annotated[int, Ge(1), Le(KATALOG_STAPEL_BIS)]

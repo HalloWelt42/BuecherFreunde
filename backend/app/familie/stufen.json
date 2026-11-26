@@ -1,0 +1,150 @@
+{
+  "fassung": 1,
+  "faehigkeiten": {
+    "lesen": "Bücher im eigenen Bestand lesen",
+    "vorlesen": "sich Bücher vorlesen lassen, die Vorlesestelle merken",
+    "lesezeichen": "Lesestand merken, Lesezeichen setzen",
+    "suche": "im eigenen Bestand suchen, auch im Text eines Buchs",
+    "favoriten": "Favoriten und Sterne",
+    "sammeln": "Bücher fürs Lesesofa vormerken",
+    "markierungen": "Textstellen markieren",
+    "notizen": "Notizen zu Büchern",
+    "etiketten": "Etiketten mit Namen und Notiz",
+    "privat": "Bücher als privat markieren, nur für sich",
+    "ausfuehren": "Code aus Büchern ausführen",
+    "nachschlagen": "Begriffe im Lexikon nachschlagen",
+    "katalog": "den Katalog mit Bereichen und Kategorien ansehen",
+    "hinzufuegen": "Bücher hinzufügen",
+    "bearbeiten": "Angaben, Altersangaben, Regale und Sammlungen der Bücher ändern",
+    "freigeben": "Bücher und Kategorien für Kinder freigeben, Einblick der Eltern",
+    "ki": "KI: Assistent, Suche nach Bedeutung, Vorschläge, Einordnen, Übersetzen",
+    "loeschen": "Bücher, Autoren, Sammlungen und Profile löschen",
+    "einstellungen": "Einstellungen, Sicherung, Wartung und Pflege des Katalogs",
+    "profile": "alle Profile verwalten, fremde PINs zurücksetzen"
+  },
+  "rollen": {
+    "verwaltung": {
+      "name": "Verwaltung",
+      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "sammeln", "markierungen", "notizen", "etiketten",
+                       "privat", "ausfuehren", "nachschlagen", "katalog", "hinzufuegen", "bearbeiten", "freigeben", "ki", "loeschen",
+                       "einstellungen", "profile"]
+    },
+    "erwachsen": {
+      "name": "Erwachsen",
+      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "sammeln", "markierungen", "notizen", "etiketten",
+                       "privat", "ausfuehren", "nachschlagen", "katalog", "hinzufuegen", "bearbeiten", "freigeben", "ki"]
+    },
+    "kind": {
+      "name": "Kind",
+      "faehigkeiten": []
+    }
+  },
+  "stufen": [
+    {
+      "schluessel": "vorlesen",
+      "name": "Vorlesen",
+      "alter": "bis 6 Jahre",
+      "ab_alter": 0,
+      "faehigkeiten": ["lesen", "vorlesen"],
+      "lesezeichen_je_buch": null,
+      "darstellung": {"schrift": "kinderschrift", "groesse_px": 32, "fett": true, "woerter_je_zeile": 4, "zeichen_je_zeile": null,
+                      "zeilenabstand": 1.5, "absatz": 2, "buchstabe": 0.12, "wort": 0.16, "tippflaeche_px": 76, "symbole": true},
+      "lesehilfen": {"mitlesen": true, "tempo": 0.8, "silben": false, "lesezeile": false, "schrift": "mittel",
+                     "hinweise_sprechen": true, "tasten_ansagen": true},
+      "einblick": ["titel", "lesezeit", "fortschritt"],
+      "katze_name": "vorschlaege"
+    },
+    {
+      "schluessel": "erstes_lesen",
+      "name": "Erstes Lesen",
+      "alter": "Klasse 1 und 2",
+      "ab_alter": 6,
+      "faehigkeiten": ["lesen", "vorlesen"],
+      "lesezeichen_je_buch": null,
+      "darstellung": {"schrift": "kinderschrift", "groesse_px": 28, "fett": true, "woerter_je_zeile": 6, "zeichen_je_zeile": null,
+                      "zeilenabstand": 1.5, "absatz": 2, "buchstabe": 0.12, "wort": 0.16, "tippflaeche_px": 76, "symbole": true},
+      "lesehilfen": {"mitlesen": true, "tempo": 0.9, "silben": false, "lesezeile": true, "schrift": "mittel",
+                     "hinweise_sprechen": true, "tasten_ansagen": true},
+      "einblick": ["titel", "lesezeit", "fortschritt"],
+      "katze_name": "tippen"
+    },
+    {
+      "schluessel": "lesen_lernen",
+      "name": "Lesen und Lernen",
+      "alter": "Klasse 3 und 4",
+      "ab_alter": 8,
+      "faehigkeiten": ["lesen", "vorlesen", "favoriten"],
+      "lesezeichen_je_buch": null,
+      "darstellung": {"schrift": "kinderschrift", "groesse_px": 24, "fett": false, "woerter_je_zeile": null, "zeichen_je_zeile": 60,
+                      "zeilenabstand": 1.5, "absatz": 2, "buchstabe": 0.12, "wort": 0.16, "tippflaeche_px": 56, "symbole": true},
+      "lesehilfen": {"mitlesen": true, "tempo": 1.0, "silben": false, "lesezeile": true, "schrift": "mittel",
+                     "hinweise_sprechen": true, "tasten_ansagen": true},
+      "einblick": ["titel", "lesezeit", "fortschritt"],
+      "katze_name": "tippen"
+    },
+    {
+      "schluessel": "schule",
+      "name": "Schule",
+      "alter": "ab 10 Jahren",
+      "ab_alter": 10,
+      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "markierungen", "notizen"],
+      "lesezeichen_je_buch": null,
+      "darstellung": {"schrift": "serifenlos", "groesse_px": 20, "fett": false, "woerter_je_zeile": null, "zeichen_je_zeile": 80,
+                      "zeilenabstand": 1.5, "absatz": 2, "buchstabe": 0.12, "wort": 0.16, "tippflaeche_px": 44, "symbole": false},
+      "lesehilfen": {"mitlesen": false, "tempo": 1.0, "silben": false, "lesezeile": false, "schrift": "mittel",
+                     "hinweise_sprechen": false, "tasten_ansagen": false},
+      "einblick": ["titel", "grober_fortschritt"],
+      "katze_name": "tippen"
+    },
+    {
+      "schluessel": "jugend",
+      "name": "Jugend",
+      "alter": "ab 14 Jahren",
+      "ab_alter": 14,
+      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "sammeln", "markierungen", "notizen", "etiketten",
+                       "privat", "ausfuehren"],
+      "lesezeichen_je_buch": null,
+      "darstellung": {"schrift": "serifenlos", "groesse_px": 18, "fett": false, "woerter_je_zeile": null, "zeichen_je_zeile": 80,
+                      "zeilenabstand": 1.5, "absatz": 2, "buchstabe": 0.12, "wort": 0.16, "tippflaeche_px": 44, "symbole": false},
+      "lesehilfen": {"mitlesen": false, "tempo": 1.0, "silben": false, "lesezeile": false, "schrift": "mittel",
+                     "hinweise_sprechen": false, "tasten_ansagen": false},
+      "einblick": ["titel", "grober_fortschritt", "geteiltes"],
+      "katze_name": "tippen"
+    }
+  ],
+  "lesezeit": {
+    "nach_alter": [
+      {"alter_von": 0, "alter_bis": 5, "minuten": 30, "an": true, "schlafen": "19:00"},
+      {"alter_von": 6, "alter_bis": 8, "minuten": 45, "an": true, "schlafen": "19:30"},
+      {"alter_von": 9, "alter_bis": 11, "minuten": 60, "an": true, "schlafen": "20:00"},
+      {"alter_von": 12, "alter_bis": null, "minuten": 90, "an": false, "schlafen": "21:00"}
+    ],
+    "ruhe_vor_schlafen_min": 60,
+    "aufstehen": "06:30",
+    "vorlesen_zaehlt": true,
+    "hinweis_vor_ende_min": 5,
+    "takt_hoechstens_s": 300
+  },
+  "zugang": {
+    "pin_stellen_von": 4,
+    "pin_stellen_bis": 8,
+    "bild_pin_anzahl": 3,
+    "bilder": ["apfel", "ball", "baum", "blume", "fisch", "haus", "herz", "katze", "mond", "sonne", "stern", "vogel"],
+    "fehlversuche_frei": 5,
+    "warten_ab_s": 30,
+    "warten_hoechstens_s": 900,
+    "geraet_offen_s": 600
+  },
+  "katze": {
+    "name_hoechstens": 30,
+    "vorschlaege": ["Mimi", "Minka", "Tiger", "Flocke", "Luna", "Momo", "Pfötchen", "Samtpfote"],
+    "nennung": "hallowelt42 / samtpfote"
+  },
+  "gestaltung": {
+    "kontrast_mindestens": 4.5,
+    "kontrast_text": 7,
+    "tippflaeche_mindestens_px": 44,
+    "fortschritt_grob_stufen": 4,
+    "schriftgroessen": {"klein": 0.85, "mittel": 1.0, "gross": 1.2}
+  }
+}

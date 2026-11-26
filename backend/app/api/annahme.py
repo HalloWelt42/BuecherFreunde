@@ -1,4 +1,5 @@
-"""Wege der Annahme (Hochladen), Vertrag in docs/neubau/SCHNITTSTELLE.md."""
+"""Wege der Annahme (Hochladen), Vertrag in docs/neubau/SCHNITTSTELLE.md. Nur mit der Fähigkeit `hinzufuegen`; Aufnahmen zu
+Büchern, die das Profil nicht sieht (privat eines anderen), fehlen in Liste und Ereignissen (BF-78)."""
 
 from __future__ import annotations
 
@@ -12,13 +13,17 @@ from pydantic import BaseModel, Field
 from backend.app.ablage.wolke import WolkeFehler
 from backend.app.annahme import eingangsordner
 from backend.app.annahme.dienst import QUELLEN, STAENDE, TEIL, Versatz, ZuViel, annahme
-from backend.app.core.auth import verify_token, verify_token_inhalt
+from backend.app.core.auth import braucht
+from backend.app.familie import sichtbar
+from backend.app.familie.modelle import Profil
+from backend.app.familie.sichtbar import Sicht
 from backend.app.models.grenzen import GROESSTE_ZAHL, Nr
 
 Quelle = Literal[QUELLEN]                         # type: ignore[valid-type]
 Stand = Literal[STAENDE]                          # type: ignore[valid-type]
 
 router = APIRouter(prefix="/api/annahme", tags=["Annahme"])
+HINZUFUEGEN = braucht("hinzufuegen")
 
 
 class Neu(BaseModel):
@@ -28,39 +33,46 @@ class Neu(BaseModel):
     anreichern: bool = False
 
 
-async def _da(nr: int) -> dict:
+async def _da(nr: int, p: Profil) -> dict:
     z = await annahme.einer(nr)
-    if z is None:
+    if z is None or (z["buch_id"] and not await sichtbar.sieht(Sicht.von(p), z["buch_id"])):
         raise HTTPException(404, "Diese Aufnahme gibt es nicht")
     return z
 
 
+async def _fuer(p: Profil, stand: dict) -> dict:
+    """Die Liste ohne Aufnahmen zu Büchern, die das Profil nicht sieht; die Zähler zählen Aufnahmen, keine Titel."""
+    buecher = [e["buch_id"] for e in stand["eintraege"] if e["buch_id"]]
+    sieht = set(await sichtbar.nur_sichtbare(Sicht.von(p), buecher))
+    return stand | {"eintraege": [e for e in stand["eintraege"] if not e["buch_id"] or e["buch_id"] in sieht]}
+
+
 @router.get("")
-async def alle(_=Depends(verify_token)):
-    return await annahme.alle()
+async def alle(p: Profil = Depends(HINZUFUEGEN)):
+    return await _fuer(p, await annahme.alle())
 
 
 @router.post("")
-async def anlegen(n: Neu, _=Depends(verify_token)):
+async def anlegen(n: Neu, _: Profil = Depends(HINZUFUEGEN)):
     return await annahme.anlegen(n.name, n.groesse, n.sha256, n.anreichern)
 
 
 @router.delete("")
-async def aufraeumen(quelle: Quelle | None = None, stand: list[Stand] | None = Query(None), _=Depends(verify_token)):
+async def aufraeumen(quelle: Quelle | None = None, stand: list[Stand] | None = Query(None), p: Profil = Depends(HINZUFUEGEN)):
     """Viele auf einmal entfernen, wie einzeln mit DELETE /{nr}: nach Quelle, nach Stand (mehrfach) oder beidem."""
     if quelle is None and not stand:
         raise HTTPException(422, "Quelle oder Stand: fehlt, ohne beides wäre es die ganze Liste")
-    return {"entfernt": await annahme.aufraeumen(quelle, stand), **await annahme.alle()}
+    return {"entfernt": await annahme.aufraeumen(quelle, stand), **await _fuer(p, await annahme.alle())}
 
 
 @router.post("/ausblenden")
-async def ausblenden(_=Depends(verify_token)):
+async def ausblenden(p: Profil = Depends(HINZUFUEGEN)):
     await annahme.ausblenden()
-    return await annahme.alle()
+    return await _fuer(p, await annahme.alle())
 
 
 @router.get("/eingangsordner")
-async def eingang(_=Depends(verify_token)):
+async def eingang(_: Profil = Depends(HINZUFUEGEN)):
     try:
         return await eingangsordner.inhalt()
     except WolkeFehler as f:
@@ -68,7 +80,7 @@ async def eingang(_=Depends(verify_token)):
 
 
 @router.post("/eingangsordner")
-async def eingang_aufnehmen(_=Depends(verify_token)):
+async def eingang_aufnehmen(_: Profil = Depends(HINZUFUEGEN)):
     try:
         return {"neu": await eingangsordner.aufnehmen()}
     except WolkeFehler as f:
@@ -76,21 +88,21 @@ async def eingang_aufnehmen(_=Depends(verify_token)):
 
 
 @router.get("/ereignisse")
-async def ereignisse(_=Depends(verify_token_inhalt)):
+async def ereignisse(p: Profil = Depends(braucht("hinzufuegen", inhalt=True))):
     async def strom():
         async for d in annahme.ereignisse():
-            yield f"data: {json.dumps(d, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps(await _fuer(p, d), ensure_ascii=False)}\n\n"
     return StreamingResponse(strom(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @router.get("/{nr}")
-async def einer(nr: Nr, _=Depends(verify_token)):
-    return await _da(nr)
+async def einer(nr: Nr, p: Profil = Depends(HINZUFUEGEN)):
+    return await _da(nr, p)
 
 
 @router.patch("/{nr}")
-async def teil(nr: Nr, request: Request, _=Depends(verify_token)):
-    await _da(nr)
+async def teil(nr: Nr, request: Request, p: Profil = Depends(HINZUFUEGEN)):
+    await _da(nr, p)
     try:
         versatz, laenge = int(request.headers.get("upload-offset", "")), int(request.headers.get("content-length", ""))
     except ValueError:
@@ -108,13 +120,13 @@ async def teil(nr: Nr, request: Request, _=Depends(verify_token)):
 
 
 @router.post("/{nr}/erneut")
-async def erneut(nr: Nr, _=Depends(verify_token)):
-    await _da(nr)
+async def erneut(nr: Nr, p: Profil = Depends(HINZUFUEGEN)):
+    await _da(nr, p)
     return await annahme.erneut(nr)
 
 
 @router.delete("/{nr}")
-async def entfernen(nr: Nr, _=Depends(verify_token)):
-    await _da(nr)
+async def entfernen(nr: Nr, p: Profil = Depends(HINZUFUEGEN)):
+    await _da(nr, p)
     await annahme.entfernen(nr)
     return {"entfernt": nr}

@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     umschlaege_dir: Path = Path("")
     zwischen_dir: Path = _project_root() / "zwischen"
     zwischen_mb: int = 900             # so viel dürfen Originale im Zwischenspeicher belegen
+    ansagen_mb: int = 20               # so viel dürfen gesprochene Ansagen im Zwischenspeicher belegen (BF-78)
     ablage_ordner: str = "Apps/BücherFreunde"
     # Eingangsordner auf dem Gerät (ohne Kellerwolke): was hier liegt, nimmt die App jede Minute auf und zieht es um
     eingangsordner_dir: Path = _project_root() / "eingangsordner"

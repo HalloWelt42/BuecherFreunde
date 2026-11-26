@@ -1,5 +1,6 @@
 """API-Endpunkte für Regale (`categories` mit `art` regal). Bereiche und Kategorien des Katalogs (BF-69) haben ihre Wege
-unter /api/katalog; Bücher hinein und hinaus geht für beide hier."""
+unter /api/katalog; Bücher hinein und hinaus geht für beide hier. Gezählt wird, was das Profil sieht (BF-78); ein Kind sieht nur
+Regale mit freigegebenen Büchern."""
 
 import re
 
@@ -9,8 +10,10 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.app.api import vorhanden
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import braucht, profil
 from backend.app.core.database import db
+from backend.app.familie.modelle import Profil
+from backend.app.familie.sichtbar import Sicht
 from backend.app.models.grenzen import AUSWAHL_HOECHSTENS, Farbe, Nr, Regalbeschreibung, Regalname, Sortierung, Symbol
 
 router = APIRouter(prefix="/api/categories", tags=["Kategorien"])
@@ -26,6 +29,7 @@ def _slugify(text: str) -> str:
 
 FEHLT = "Regal nicht gefunden"
 DOPPELT = "Ein Regal mit diesem Namen gibt es schon"
+BEARBEITEN = braucht("bearbeiten")
 
 
 class CategoryCreate(BaseModel):
@@ -65,23 +69,25 @@ async def _regal(nr: int) -> None:
 
 
 @router.get("")
-async def list_categories(_token: str = Depends(verify_token)):
-    """Alle Regale als flache Liste mit Buchanzahl (ohne Bereiche und Kategorien des Katalogs)."""
+async def list_categories(p: Profil = Depends(profil)):
+    """Alle Regale als flache Liste mit Buchanzahl (ohne Bereiche und Kategorien des Katalogs), gezählt, was das Profil sieht."""
+    bedingung, werte = Sicht.von(p).bedingung("bc.book_id")
     rows = await db.fetch_all(
-        """SELECT c.id, c.name, c.slug, c.description, c.color, c.icon,
+        f"""SELECT c.id, c.name, c.slug, c.description, c.color, c.icon,
                   c.sort_order, c.spezial,
                   COUNT(bc.book_id) as buch_anzahl
            FROM categories c
-           LEFT JOIN book_categories bc ON bc.category_id = c.id
+           LEFT JOIN book_categories bc ON bc.category_id = c.id AND {bedingung}
            WHERE c.art = 'regal'
            GROUP BY c.id
-           ORDER BY c.sort_order, c.name"""
+           {'HAVING COUNT(bc.book_id) > 0' if p.kind else ''}
+           ORDER BY c.sort_order, c.name""", werte
     )
     return [dict(row) for row in rows]
 
 
 @router.post("", status_code=201)
-async def create_category(data: CategoryCreate, _token: str = Depends(verify_token)):
+async def create_category(data: CategoryCreate, _p: Profil = Depends(BEARBEITEN)):
     """Erstellt eine neue Kategorie."""
     slug = await _freier_slug(data.name)
     cursor = await db.execute(
@@ -96,7 +102,7 @@ async def create_category(data: CategoryCreate, _token: str = Depends(verify_tok
 
 @router.patch("/{category_id}")
 async def update_category(
-    category_id: Nr, data: CategoryUpdate, _token: str = Depends(verify_token)
+    category_id: Nr, data: CategoryUpdate, _p: Profil = Depends(BEARBEITEN)
 ):
     """Aktualisiert ein Regal."""
     await _regal(category_id)
@@ -118,7 +124,7 @@ async def update_category(
 
 
 @router.delete("/{category_id}")
-async def delete_category(category_id: Nr, _token: str = Depends(verify_token)):
+async def delete_category(category_id: Nr, _p: Profil = Depends(braucht("loeschen"))):
     """Löscht ein Regal (Bücher bleiben erhalten)."""
     await _regal(category_id)
 
@@ -131,7 +137,7 @@ async def delete_category(category_id: Nr, _token: str = Depends(verify_token)):
 
 @router.post("/{book_id}/zuordnen")
 async def assign_categories(
-    book_id: Nr, kategorie_ids: Annotated[list[Nr], Body(max_length=AUSWAHL_HOECHSTENS)], _token: str = Depends(verify_token)
+    book_id: Nr, kategorie_ids: Annotated[list[Nr], Body(max_length=AUSWAHL_HOECHSTENS)], _p: Profil = Depends(BEARBEITEN)
 ):
     """Ordnet einem Buch Kategorien zu (ersetzt bestehende). Fehlt eines der Regale, ändert sich nichts (404)."""
     await vorhanden.buch(book_id)
@@ -153,7 +159,7 @@ async def assign_categories(
 
 @router.post("/{category_id}/books/{book_id}")
 async def add_book_to_category(
-    category_id: Nr, book_id: Nr, _token: str = Depends(verify_token)
+    category_id: Nr, book_id: Nr, _p: Profil = Depends(BEARBEITEN)
 ):
     """Fügt ein Buch zu einer Kategorie hinzu."""
     await vorhanden.buch(book_id)
@@ -169,7 +175,7 @@ async def add_book_to_category(
 
 @router.delete("/{category_id}/books/{book_id}")
 async def remove_book_from_category(
-    category_id: Nr, book_id: Nr, _token: str = Depends(verify_token)
+    category_id: Nr, book_id: Nr, _p: Profil = Depends(BEARBEITEN)
 ):
     """Entfernt ein Buch aus einer Kategorie."""
     c = await db.execute(

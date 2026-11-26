@@ -1,5 +1,6 @@
 """Katalog (BF-69, docs/neubau/KATALOG.md): Bereiche und Kategorien, Entwurf, Einordnen mit Regeln und KI, Vorschläge und
-die alten Regale. Die Arbeit tut das Paket backend/app/katalog; hier stehen nur die Wege."""
+die alten Regale. Die Arbeit tut das Paket backend/app/katalog; hier stehen nur die Wege. Ansehen darf den Katalog, wer die
+Fähigkeit `katalog` hat, pflegen nur, wer `einstellungen` hat; Zahlen und Bücher nur, wie das Profil sie sieht (BF-78)."""
 
 from __future__ import annotations
 
@@ -8,7 +9,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from backend.app.api.books import buecher_mit_nummern
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import braucht, profil, sicht
+from backend.app.familie.modelle import Profil
+from backend.app.familie.sichtbar import Sicht
 from backend.app.katalog import alt, datei, einstellungen, entwurf, kategorien, vorschlaege
 from backend.app.katalog.bestandslauf import bestandslauf
 from backend.app.katalog.einordnen import KeinKatalog, einordner
@@ -20,7 +23,8 @@ from backend.app.katalog.modelle import (
 from backend.app.models.book import BookListItem
 from backend.app.models.grenzen import LISTENSEITE, Nr
 
-router = APIRouter(prefix="/api/katalog", tags=["Katalog"], dependencies=[Depends(verify_token)])
+router = APIRouter(prefix="/api/katalog", tags=["Katalog"], dependencies=[Depends(braucht("katalog"))])
+EINSTELLUNGEN, KI = Depends(braucht("einstellungen")), Depends(braucht("ki"))
 KEIN_ENTWURF = "Es gibt keinen Entwurf"
 # Die Datei zum Sichern und Teilen: ohne Zahlen, die nur im Entwurf etwas bedeuten
 OHNE_ZAHLEN = {"bereiche": {"__all__": {"anzahl": True, "kategorien": {"__all__": {"anzahl": True}}}}}
@@ -65,17 +69,17 @@ FEHLER = (kategorien.Fehlt, kategorien.Vergeben, kategorien.HatKategorien, alt.F
 # -- Katalog ----------------------------------------------------------------------------------------------------------------
 
 @router.get("", response_model=KatalogAntwort)
-async def katalog_lesen() -> KatalogAntwort:
-    return await kategorien.katalog()
+async def katalog_lesen(s: Sicht = Depends(sicht)) -> KatalogAntwort:
+    return await kategorien.katalog(s)
 
 
-@router.get("/standard", response_model=Katalog)
+@router.get("/standard", response_model=Katalog, dependencies=[EINSTELLUNGEN])
 async def standard_lesen() -> Katalog:
     """Der Standard-Katalog als Entwurf: Herkunft standard, ohne Zahlen."""
     return entwurf.gezeigt(entwurf.aus_standard())
 
 
-@router.get("/datei")
+@router.get("/datei", dependencies=[EINSTELLUNGEN])
 async def datei_lesen() -> JSONResponse:
     """Der gültige Katalog als Datei im Format des Standards."""
     k = await kategorien.als_datei()
@@ -83,7 +87,7 @@ async def datei_lesen() -> JSONResponse:
                         headers={"Content-Disposition": 'attachment; filename="katalog.json"'})
 
 
-@router.post("/datei", response_model=EntwurfStand)
+@router.post("/datei", response_model=EntwurfStand, dependencies=[EINSTELLUNGEN])
 async def datei_laden(k: Katalog) -> EntwurfStand:
     """Eine Katalog-Datei wird zum Entwurf; geprüft wie jede Eingabe (422 mit Feld und Grund)."""
     await bestandslauf.ersetzen()
@@ -93,13 +97,13 @@ async def datei_laden(k: Katalog) -> EntwurfStand:
 
 # -- Entwurf ----------------------------------------------------------------------------------------------------------------
 
-@router.get("/entwurf", response_model=EntwurfStand)
+@router.get("/entwurf", response_model=EntwurfStand, dependencies=[EINSTELLUNGEN])
 async def entwurf_lesen() -> EntwurfStand:
     e = await entwurf.lesen()
     return EntwurfStand(entwurf=entwurf.gezeigt(e) if e else None, lauf=await bestandslauf.zum_entwurf(e is not None))
 
 
-@router.post("/entwurf", response_model=EntwurfStand)
+@router.post("/entwurf", response_model=EntwurfStand, dependencies=[EINSTELLUNGEN])
 async def entwurf_beginnen(w: EntwurfWeg) -> EntwurfStand:
     """Standard und leer gleich; "bestand" startet einen Lauf, der Entwurf kommt, wenn er fertig ist."""
     if w.weg == "bestand":
@@ -109,25 +113,25 @@ async def entwurf_beginnen(w: EntwurfWeg) -> EntwurfStand:
     return await entwurf_lesen()
 
 
-@router.put("/entwurf", response_model=EntwurfStand)
+@router.put("/entwurf", response_model=EntwurfStand, dependencies=[EINSTELLUNGEN])
 async def entwurf_aendern(k: Katalog) -> EntwurfStand:
     await bestandslauf.ersetzen()
     await entwurf.speichern(datei.herkunft_ergaenzen(k, zahlen_behalten=True))
     return await entwurf_lesen()
 
 
-@router.post("/entwurf/annehmen", response_model=KatalogAntwort)
-async def entwurf_annehmen() -> KatalogAntwort:
+@router.post("/entwurf/annehmen", response_model=KatalogAntwort, dependencies=[EINSTELLUNGEN])
+async def entwurf_annehmen(s: Sicht = Depends(sicht)) -> KatalogAntwort:
     """Schreibt den Katalog: gleicher Schlüssel ändert, sonst anlegen, gelöscht wird nichts. Danach gibt es keinen Entwurf."""
     e = await entwurf.lesen()
     if e is None:
         raise HTTPException(status_code=404, detail=KEIN_ENTWURF)
     await kategorien.annehmen(e)
     await entwurf.verwerfen()
-    return await kategorien.katalog()
+    return await kategorien.katalog(s)
 
 
-@router.delete("/entwurf", response_model=EntwurfStand)
+@router.delete("/entwurf", response_model=EntwurfStand, dependencies=[EINSTELLUNGEN])
 async def entwurf_verwerfen() -> EntwurfStand:
     await bestandslauf.ersetzen()
     await entwurf.verwerfen()
@@ -136,7 +140,7 @@ async def entwurf_verwerfen() -> EntwurfStand:
 
 # -- Bereiche und Kategorien ------------------------------------------------------------------------------------------------
 
-@router.post("/bereiche", response_model=Bereich, status_code=201)
+@router.post("/bereiche", response_model=Bereich, status_code=201, dependencies=[EINSTELLUNGEN])
 async def bereich_anlegen(e: BereichEingabe) -> Bereich:
     try:
         return await kategorien.bereich_anlegen(e)
@@ -144,7 +148,7 @@ async def bereich_anlegen(e: BereichEingabe) -> Bereich:
         raise _fehler(f) from None
 
 
-@router.patch("/bereiche/{nr}", response_model=Bereich)
+@router.patch("/bereiche/{nr}", response_model=Bereich, dependencies=[EINSTELLUNGEN])
 async def bereich_aendern(nr: Nr, a: BereichAenderung) -> Bereich:
     try:
         return await kategorien.bereich_aendern(nr, a)
@@ -152,7 +156,7 @@ async def bereich_aendern(nr: Nr, a: BereichAenderung) -> Bereich:
         raise _fehler(f) from None
 
 
-@router.get("/bereiche/{nr}/loeschfolgen", response_model=Loeschfolgen)
+@router.get("/bereiche/{nr}/loeschfolgen", response_model=Loeschfolgen, dependencies=[EINSTELLUNGEN])
 async def bereich_loeschfolgen(nr: Nr) -> Loeschfolgen:
     try:
         return await kategorien.loeschfolgen_bereich(nr)
@@ -160,7 +164,7 @@ async def bereich_loeschfolgen(nr: Nr) -> Loeschfolgen:
         raise _fehler(f) from None
 
 
-@router.delete("/bereiche/{nr}", response_model=Geloescht)
+@router.delete("/bereiche/{nr}", response_model=Geloescht, dependencies=[EINSTELLUNGEN])
 async def bereich_loeschen(nr: Nr) -> Geloescht:
     """Nur nach den Folgen und nur ohne Kategorien (409)."""
     try:
@@ -170,7 +174,7 @@ async def bereich_loeschen(nr: Nr) -> Geloescht:
     return Geloescht(id=nr)
 
 
-@router.post("/kategorien", response_model=Kategorie, status_code=201)
+@router.post("/kategorien", response_model=Kategorie, status_code=201, dependencies=[EINSTELLUNGEN])
 async def kategorie_anlegen(e: KategorieEingabe) -> Kategorie:
     try:
         return await kategorien.kategorie_anlegen(e)
@@ -178,7 +182,7 @@ async def kategorie_anlegen(e: KategorieEingabe) -> Kategorie:
         raise _fehler(f) from None
 
 
-@router.patch("/kategorien/{nr}", response_model=Kategorie)
+@router.patch("/kategorien/{nr}", response_model=Kategorie, dependencies=[EINSTELLUNGEN])
 async def kategorie_aendern(nr: Nr, a: KategorieAenderung) -> Kategorie:
     try:
         return await kategorien.kategorie_aendern(nr, a)
@@ -186,7 +190,7 @@ async def kategorie_aendern(nr: Nr, a: KategorieAenderung) -> Kategorie:
         raise _fehler(f) from None
 
 
-@router.get("/kategorien/{nr}/loeschfolgen", response_model=Loeschfolgen)
+@router.get("/kategorien/{nr}/loeschfolgen", response_model=Loeschfolgen, dependencies=[EINSTELLUNGEN])
 async def kategorie_loeschfolgen(nr: Nr) -> Loeschfolgen:
     try:
         return await kategorien.loeschfolgen_kategorie(nr)
@@ -194,7 +198,7 @@ async def kategorie_loeschfolgen(nr: Nr) -> Loeschfolgen:
         raise _fehler(f) from None
 
 
-@router.delete("/kategorien/{nr}", response_model=Geloescht)
+@router.delete("/kategorien/{nr}", response_model=Geloescht, dependencies=[EINSTELLUNGEN])
 async def kategorie_loeschen(nr: Nr) -> Geloescht:
     """Nur nach den Folgen: die Bücher verlieren die Zuordnung, die Vorschläge fallen weg, die Bücher bleiben."""
     try:
@@ -204,7 +208,7 @@ async def kategorie_loeschen(nr: Nr) -> Geloescht:
     return Geloescht(id=nr)
 
 
-@router.get("/kategorien/{nr}/treffer", response_model=Treffer)
+@router.get("/kategorien/{nr}/treffer", response_model=Treffer, dependencies=[EINSTELLUNGEN])
 async def kategorie_treffer(nr: Nr) -> Treffer:
     try:
         return await kategorien.treffer(nr)
@@ -214,21 +218,21 @@ async def kategorie_treffer(nr: Nr) -> Treffer:
 
 # -- alte Regale ------------------------------------------------------------------------------------------------------------
 
-@router.get("/alt", response_model=list[AltesRegal])
+@router.get("/alt", response_model=list[AltesRegal], dependencies=[EINSTELLUNGEN])
 async def alte_regale() -> list[AltesRegal]:
     return await alt.liste()
 
 
-@router.post("/alt/uebernehmen", response_model=Uebernommen)
-async def alte_uebernehmen(u: Uebernahme) -> Uebernommen:
-    """In eine Kategorie oder als Etikett an die Bücher; das alte Regal bleibt stehen."""
+@router.post("/alt/uebernehmen", response_model=Uebernommen, dependencies=[EINSTELLUNGEN])
+async def alte_uebernehmen(u: Uebernahme, p: Profil = Depends(profil)) -> Uebernommen:
+    """In eine Kategorie oder als Etikett an die Bücher (Etiketten des Profils); das alte Regal bleibt stehen."""
     try:
-        return Uebernommen(buecher=await alt.uebernehmen(u.ids, u.ziel))
+        return Uebernommen(buecher=await alt.uebernehmen(u.ids, u.ziel, p.id))
     except FEHLER as f:
         raise _fehler(f) from None
 
 
-@router.get("/alt/{nr}/loeschfolgen", response_model=AltLoeschfolgen)
+@router.get("/alt/{nr}/loeschfolgen", response_model=AltLoeschfolgen, dependencies=[EINSTELLUNGEN])
 async def altes_loeschfolgen(nr: Nr) -> AltLoeschfolgen:
     try:
         return await alt.loeschfolgen(nr)
@@ -236,7 +240,7 @@ async def altes_loeschfolgen(nr: Nr) -> AltLoeschfolgen:
         raise _fehler(f) from None
 
 
-@router.delete("/alt/{nr}", response_model=Entfernt)
+@router.delete("/alt/{nr}", response_model=Entfernt, dependencies=[EINSTELLUNGEN])
 async def altes_entfernen(nr: Nr) -> Entfernt:
     """Nur nach den Folgen: das Regal fort, die Bücher bleiben."""
     try:
@@ -247,7 +251,7 @@ async def altes_entfernen(nr: Nr) -> Entfernt:
 
 # -- Einordnen --------------------------------------------------------------------------------------------------------------
 
-@router.post("/einordnen", response_model=Laufstand)
+@router.post("/einordnen", response_model=Laufstand, dependencies=[EINSTELLUNGEN, KI])
 async def einordnen(start: EinordnenStart | None = None) -> Laufstand:
     """Startet den Lauf; läuft schon einer oder ist er pausiert, bleibt es bei ihm. Ohne Katalog: 409."""
     try:
@@ -256,31 +260,31 @@ async def einordnen(start: EinordnenStart | None = None) -> Laufstand:
         raise _fehler(f) from None
 
 
-@router.get("/einordnen/stand", response_model=Laufstand)
+@router.get("/einordnen/stand", response_model=Laufstand, dependencies=[EINSTELLUNGEN])
 async def einordnen_stand() -> Laufstand:
     return await einordner.stand()
 
 
-@router.post("/einordnen/pause", response_model=Laufstand)
+@router.post("/einordnen/pause", response_model=Laufstand, dependencies=[EINSTELLUNGEN, KI])
 async def einordnen_pause() -> Laufstand:
     return await einordner.pausieren()
 
 
-@router.post("/einordnen/fortsetzen", response_model=Laufstand)
+@router.post("/einordnen/fortsetzen", response_model=Laufstand, dependencies=[EINSTELLUNGEN, KI])
 async def einordnen_fortsetzen() -> Laufstand:
     return await einordner.fortsetzen()
 
 
 # -- Vorschläge -------------------------------------------------------------------------------------------------------------
 
-@router.get("/vorschlaege/uebersicht", response_model=list[OffeneJeKategorie])
+@router.get("/vorschlaege/uebersicht", response_model=list[OffeneJeKategorie], dependencies=[EINSTELLUNGEN])
 async def vorschlaege_uebersicht() -> list[OffeneJeKategorie]:
     return await vorschlaege.uebersicht()
 
 
-@router.get("/vorschlaege", response_model=Vorschlagsseite)
+@router.get("/vorschlaege", response_model=Vorschlagsseite, dependencies=[EINSTELLUNGEN])
 async def vorschlaege_lesen(kategorie: Nr | None = Query(None), seite: int = Query(1, ge=1, le=LISTENSEITE),
-                            pro_seite: int = Query(50, ge=1, le=100)) -> Vorschlagsseite:
+                            pro_seite: int = Query(50, ge=1, le=100), p: Profil = Depends(profil)) -> Vorschlagsseite:
     """Offene Vorschläge, die sichersten zuerst; mit `kategorie` nur die einer Kategorie (404, wenn es sie nicht gibt)."""
     if kategorie is not None:
         try:
@@ -288,17 +292,18 @@ async def vorschlaege_lesen(kategorie: Nr | None = Query(None), seite: int = Que
         except FEHLER as f:
             raise _fehler(f) from None
     gesamt, offen = await vorschlaege.seite(kategorie, seite, pro_seite, (await einstellungen.lesen()).sicher_ab)
-    buecher = await buecher_mit_nummern([v.buch_id for v in offen])
-    return Vorschlagsseite(gesamt=gesamt, vorschlaege=[Vorschlag(buch=buecher[v.buch_id], **v.model_dump(exclude={"buch_id"})) for v in offen])
+    buecher = await buecher_mit_nummern([v.buch_id for v in offen], p)            # was das Profil nicht sieht, fehlt
+    return Vorschlagsseite(gesamt=gesamt, vorschlaege=[Vorschlag(buch=buecher[v.buch_id], **v.model_dump(exclude={"buch_id"}))
+                                                       for v in offen if v.buch_id in buecher])
 
 
-@router.post("/vorschlaege/annehmen", response_model=Angenommen)
+@router.post("/vorschlaege/annehmen", response_model=Angenommen, dependencies=[EINSTELLUNGEN])
 async def vorschlaege_annehmen(a: Annehmen) -> Angenommen:
     """Die genannten offenen oder alle offenen einer Kategorie; schreibt book_categories."""
     return Angenommen(angenommen=await vorschlaege.annehmen(a.ids, a.kategorie))
 
 
-@router.post("/vorschlaege/ablehnen", response_model=Abgelehnt)
+@router.post("/vorschlaege/ablehnen", response_model=Abgelehnt, dependencies=[EINSTELLUNGEN])
 async def vorschlaege_ablehnen(a: Ablehnen) -> Abgelehnt:
     """Abgelehnte Vorschläge kommen nie wieder."""
     return Abgelehnt(abgelehnt=await vorschlaege.ablehnen(a.ids))
@@ -306,11 +311,11 @@ async def vorschlaege_ablehnen(a: Ablehnen) -> Abgelehnt:
 
 # -- Einstellungen ----------------------------------------------------------------------------------------------------------
 
-@router.get("/einstellungen", response_model=Katalogeinstellungen)
+@router.get("/einstellungen", response_model=Katalogeinstellungen, dependencies=[EINSTELLUNGEN])
 async def einstellungen_lesen() -> Katalogeinstellungen:
     return await einstellungen.lesen()
 
 
-@router.put("/einstellungen", response_model=Katalogeinstellungen)
+@router.put("/einstellungen", response_model=Katalogeinstellungen, dependencies=[EINSTELLUNGEN])
 async def einstellungen_schreiben(e: Katalogeinstellungen) -> Katalogeinstellungen:
     return await einstellungen.schreiben(e)

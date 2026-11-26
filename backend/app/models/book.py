@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, BeforeValidator, Field, computed_field
 
-from backend.app.models.grenzen import Autor, Band, Beschreibung, Isbn, Jahr, Nr, Seiten, Sprache, Titel, Verlag
+from backend.app.models.grenzen import Autor, Band, Beschreibung, Isbn, Jahr, Lesealter, Nr, Seiten, Sprache, Titel, Verlag
 from backend.app.services.storage import umschlag_stand
 
 # Feste Typen eines Buchs (nicht löschbar, nicht änderbar); leer: ein Buch
@@ -66,6 +66,8 @@ Einordnung = Literal["", "regel", "ki", "hand"]
 VON_HAND: Einordnung = "hand"
 FELDER_DER_EINORDNUNG = frozenset({"typ", "gattung"})     # wer eins davon setzt, hat von Hand eingeordnet
 DARSTELLUNG = frozenset({"umschlag_wahl"})                # Wahl der Darstellung: keine Bearbeitung der Angaben
+FELDER_DES_ALTERS = frozenset({"alter_von", "alter_bis"})  # wer eins davon setzt, überschreibt die Angabe der Quelle (BF-78)
+LEERBAR = frozenset({"year"}) | FELDER_DES_ALTERS          # diese Felder leert null; die übrigen bleiben dann, wie sie sind
 
 
 def umschlag_zeigen(wahl: UmschlagWahl, schlicht: bool) -> Umschlag:
@@ -121,6 +123,10 @@ class BookListItem(Umschlagangaben):
     last_read_at: str | None = None
     categories: list[dict] = Field(default_factory=list)
     sammlung: dict | None = None
+    privat: bool = False                            # das Profil hat es privat markiert (BF-78)
+    alter_von: int | None = None                    # Lese- oder Interessenalter, nur Hilfe beim Freigeben (BF-78)
+    alter_bis: int | None = None
+    alter_quelle: str = ""                          # Kennung der Quelle; hand: von Hand
     created_at: str = ""
     updated_at: str = ""
 
@@ -160,6 +166,10 @@ class BookResponse(Umschlagangaben):
     authors: list[dict] = Field(default_factory=list)
     einordnung: str = ""                            # wer die Art bestimmt hat: leer offen, regel, ki, hand
     einordnung_grund: str = ""                      # bei einer festen Regel: warum
+    privat: bool = False                            # das Profil hat es privat markiert (BF-78)
+    alter_von: int | None = None                    # Lese- oder Interessenalter, nur Hilfe beim Freigeben (BF-78)
+    alter_bis: int | None = None
+    alter_quelle: str = ""                          # Kennung der Quelle; hand: von Hand
     created_at: str = ""
     updated_at: str = ""
 
@@ -172,7 +182,8 @@ class BookResponse(Umschlagangaben):
 class BookUpdate(BaseModel):
     """Felder die bei einem Buch aktualisiert werden können. Das Jahr lässt sich mit null leeren, die übrigen Felder
     bleiben bei null, wie sie sind (die Sammlung löst DELETE /api/collections/{id}/buch/{buch}). Typ oder Gattung setzen
-    heißt von Hand eingeordnet (`FELDER_DER_EINORDNUNG`); die Wahl des Umschlags ist keine Bearbeitung (`DARSTELLUNG`)."""
+    heißt von Hand eingeordnet (`FELDER_DER_EINORDNUNG`); die Wahl des Umschlags ist keine Bearbeitung (`DARSTELLUNG`). Die
+    Altersangabe lässt sich mit null leeren; wer sie setzt, überschreibt die Quelle (`FELDER_DES_ALTERS`)."""
 
     title: Titel | None = None
     author: Autor | None = None
@@ -187,6 +198,8 @@ class BookUpdate(BaseModel):
     umschlag_wahl: UmschlagWahl | None = None
     sammlung_id: Nr | None = None
     band_nummer: Band | None = None
+    alter_von: Lesealter | None = None
+    alter_bis: Lesealter | None = None
 
 
 class Sammlungsstapel(BaseModel):

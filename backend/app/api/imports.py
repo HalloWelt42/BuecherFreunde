@@ -9,10 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.app.annahme import ordner
 from backend.app.annahme.dienst import annahme
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import braucht
 from backend.app.core.config import settings
 
-router = APIRouter(prefix="/api/import", tags=["Import"], dependencies=[Depends(verify_token)])
+router = APIRouter(prefix="/api/import", tags=["Import"], dependencies=[Depends(braucht("hinzufuegen"))])
 
 
 async def _einlesen(verzeichnis, quelle: str, anreichern: bool) -> dict:

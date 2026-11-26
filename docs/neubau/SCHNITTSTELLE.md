@@ -306,3 +306,79 @@ Plan, Begriffe und alle Wege unter `/api/katalog` stehen in [KATALOG.md](KATALOG
 - **Tabellen**: `katalog_lauf` dazu `nach_buch` (das letzte Buch des letzten fertigen Stapels; dahinter geht es nach einem
   Neustart weiter), `katalog_alt_vorschlag` (`regal_id`, `kategorie_id` leer für Schlagwort, `grund`, `geprueft_am`): was die
   KI je altem Regal vorschlägt.
+
+## Familie (BF-78)
+
+Plan und Grundform der Wege in `docs/neubau/FAMILIE.md` (Schnittstelle); hier, was dazukam oder genauer feststeht. Die Arbeit
+tut `backend/app/familie/`, die Wege stehen in `backend/app/api/familie.py`, Stufen und Rechte in `backend/app/familie/stufen.json`.
+
+- **Köpfe**: jede Anfrage trägt `X-Profil` (Profilschlüssel aus der Wahl) und `X-Geraet` (zufällige Kennung des Browsers, etwa
+  eine UUID; 8 bis 100 Zeichen aus Buchstaben, Ziffern, `-` und `_`). Bilder, Dateien und Ströme haben keinen Kopf: die Wahl
+  setzt dafür das Cookie `bf_profil` (HttpOnly, SameSite strict, Pfad `/api`), `POST /api/familie/verlassen` löscht es. Das
+  Inhalts-Cookie der Anmeldung (`POST /api/anmeldung/zugang`) bleibt, wie es ist; zusammen gelten Sichtbarkeit und Kinderschutz
+  auch für Umschläge, Dateien und Ereignisströme.
+- **Einzelbetrieb**: gibt es genau ein Profil (Verwaltung) ohne PIN, gilt es ohne `X-Profil`; `POST /api/familie/wahl` ohne PIN
+  geht trotzdem und gibt einen Schlüssel. Sonst antwortet jeder persönliche Weg ohne gültigen Schlüssel mit 401
+  `{"detail": "Bitte zuerst ein Profil wählen", "code": "profil_waehlen"}` und `WWW-Authenticate: Profil` (auch bei einem
+  Schlüssel, der nicht mehr gilt, oder einem Gerät, das fest auf ein anderes Profil gestellt ist). Das Konto bleibt angemeldet:
+  nur 401 ohne `code` heißt abmelden. Ohne Profil gehen nur `GET /api/familie`, `/stufen`, `POST /wahl`, `/verlassen`,
+  `/geraet`, `/profile/{id}/pin/vergessen`, `GET /api/config`, `/api/config/oberflaeche` und die Hintergründe der Gestaltung.
+- **PIN**: falsche PIN oder Bild-PIN 403 `"Die PIN stimmt nicht"`; nach fünf Fehlversuchen 429 mit `Retry-After` (Sekunden) und
+  `detail` (`"Zu viele Versuche, bitte N Sekunden warten"`), die Wartezeit verdoppelt sich bis 15 Minuten (`stufen.json`,
+  `zugang`). Eine Bild-PIN sind drei Bildschlüssel aus `zugang.bilder` in ihrer Folge. PIN und Bild-PIN schließen sich aus.
+  `POST /api/familie/profile/{id}/pin/vergessen` `{kennung, passwort}`: das Konto des Geräts meldet sich erneut an, dann fällt
+  die PIN eines Profils Verwaltung weg (andere PINs setzt die Verwaltung zurück). Setzt jemand eine fremde PIN, enden die
+  Sitzungen dieses Profils.
+- **Profil in Antworten** (`GET /api/familie`, Anlegen, Ändern, PIN): `{id, name, zeichen, farbe, rolle, stufe, hat_pin,
+  hat_bild_pin, geburtsjahr, einstellungen}`; Geburtsjahr und Einstellungen nur für die, die das Profil ändern dürfen, und für
+  das Profil selbst (sonst null). `einstellungen` (nur Kinder) ist, was wirkt: `{lesehilfen: {mitlesen, tempo, silben,
+  lesezeile, schrift, hinweise_sprechen, tasten_ansagen, stimme}, lesezeit: {an, minuten, ruhe_an, ruhe_von, ruhe_bis, vorlesen_zaehlt}, katze: {an, name, schnurren,
+  name_eingabe}}`; ohne Wahl der Eltern gelten die Lesehilfen der Stufe und die Lesezeit nach dem Alter. Beim Anlegen und Ändern
+  ersetzt jeder genannte Teil von `einstellungen` den gespeicherten, die übrigen bleiben. `schrift`: klein, mittel, gross (Anteil
+  an der Größe der Stufe, `gestaltung.schriftgroessen`). `GET /api/familie/profile/{id}` gibt ein Profil einzeln.
+- **GET /api/familie** dazu `aktiv` (das Profil des Schlüssels, wenn er gilt) und `geraet: {gebunden_an, fest_auf, offen}`:
+  `fest_auf` ist die Bindung, `gebunden_an` nur, solange sie wirkt (dann nur dieses Profil in `profile`).
+- **Gebundenes Gerät verlassen**: `POST /api/familie/verlassen {eltern_pin}` löst die Bindung nicht; die Profilwahl ist dann auf
+  diesem Gerät zehn Minuten offen (`zugang.geraet_offen_s`, `geraet.offen` true, `gebunden_an` null) für eine Wahl. Diese Sitzung
+  gilt auf dem Gerät, bis sie verlassen wird; danach öffnet es wieder das Kind. Lösen nur mit `DELETE /api/familie/geraet`
+  `{eltern_pin}` oder ohne PIN als Verwaltung (mit ihrem `X-Profil`).
+- **Fähigkeiten der Stufen** (`stufen.json`): Vorlesen und Erstes Lesen nur `lesen` und `vorlesen`; Lesen und Lernen dazu
+  `favoriten` (Lieblinge); ab Schule `lesezeichen`, `suche`, `markierungen`, `notizen`; Jugend dazu `sammeln`, `etiketten`,
+  `privat`, `ausfuehren`. Ohne Suche, Notizen, Markierungen und Lesezeichen merkt sich das Buch die Stelle von selbst: den
+  Lesestand (`PATCH /api/books/{id}/leseposition`, auch in einer Fassung) braucht nur `lesen`, die Vorlesestelle `vorlesen`.
+  Der Schnellfilter der Liste (`suche=`) und die Suche im Buch brauchen `suche`.
+- **Hinweise sprechen, Tasten ansagen**: `lesehilfen.hinweise_sprechen` und `lesehilfen.tasten_ansagen`, Vorgabe an bis Lesen und
+  Lernen, aus ab Schule; die Eltern ändern beides. `lesehilfen.stimme` ist die Vorlesestimme des Profils (aus
+  `GET /api/vorlesen/stimmen`, leer: die Vorgabe). `POST /api/vorlesen/ansage {text, stimme?}`: genau ein Satz, höchstens 300
+  Zeichen (422 sonst), Antwort der Ton als `audio/wav` mit `X-Ansage: neu` oder `gemerkt`. Die Stimme des Profils geht vor
+  `stimme`. Gemerkt wird im Zwischenspeicher (`zwischen/ansagen`, Schlüssel aus Stimme und Prüfsumme des Texts, höchstens
+  `ANSAGEN_MB`, Vorgabe 20; darüber gehen die, die am längsten keiner gehört hat). Ohne Sprechdienst 503 mit Grund, dann spricht
+  die Oberfläche mit der Stimme des Geräts. Jede Stufe darf ihn (`vorlesen`).
+- **GET /api/familie/ich**: `{profil, faehigkeiten, darstellung, lesehilfen, lesezeit, katze, einblick}`; für Erwachsene
+  `darstellung` `{}`, `lesehilfen` null, `lesezeit.an` false, `katze.an` false, `einblick` leer. `lesezeit`:
+  `{an, heute_s, grenze_s, rest_s, hinweis_ab_s, ruht, ruhe_bis}`. `PATCH /api/familie/ich/katze {name}` antwortet mit der Katze.
+- **GET /api/familie/stufen**: `{stufen: [{schluessel, name, alter, alter_von, alter_bis, faehigkeiten, einblick, darstellung,
+  lesezeichen_je_buch, vorgaben: {lesehilfen, lesezeit, katze}}], lesezeit: [{alter_von, alter_bis, minuten, an}], rollen,
+  faehigkeiten, zugang: {pin_stellen_von, pin_stellen_bis, bild_pin_anzahl, bilder}, katze_vorschlaege, katze_nennung}`;
+  `alter_bis` null: nach oben offen. Einblick-Arten: `titel`, `lesezeit`, `fortschritt`, `grober_fortschritt`, `zuletzt`,
+  `geteiltes` (nur, was das Kind teilt).
+- **Einblick**: `{sichtbar, lesezeit_heute_s, eintraege: [{buch: {id, title, author, typ, year, page_count, alter_von, alter_bis,
+  alter_quelle}, fortschritt, seite, seiten, zuletzt}]}`; die Lesezeit zählt je Tag, nicht je Buch. Sehen dürfen ihn das Kind
+  selbst und Erwachsene mit `freigeben`. `PUT /api/books/{id}/geteilt {geteilt}`: das Kind teilt ein Buch (ab Jugend sehen die
+  Eltern nur Geteiltes).
+- **Freigaben**: `{kategorien: [{id, name, zeichen, anzahl}], buecher: [Buch wie in der Liste]}`; `buecher` nur die einzeln
+  freigegebenen, `anzahl` zählt auch Unterkategorien. Eine freigegebene Kategorie gibt alles darunter frei. Freigeben kann nur,
+  wer das Buch sieht (sonst 404); ein privates Buch bleibt privat, auch wenn es freigegeben ist.
+- **Profil löschen**: `GET .../loeschfolgen` `{profil, notizen, markierungen, etiketten, lesestaende, vorlesestellen,
+  fassungen_gelesen, freigaben, private_buecher, lesezeit_tage, geraete, stand}`; `DELETE /api/familie/profile/{id}?stand=`
+  braucht den `stand` daraus (422 ohne, 409, wenn sich seither etwas geändert hat). Kein Buch wird gelöscht; die privaten Bücher
+  des Profils sind danach für alle sichtbar. Das letzte Profil Verwaltung bleibt (409).
+- **Am Buch**: `privat`, `alter_von`, `alter_bis`, `alter_quelle` in Liste und Buch. `PATCH /api/books/{id}` mit `alter_von` und
+  `alter_bis` (0 bis 99, null leert) setzt `alter_quelle` "hand". Aus den Quellen: MARC 21 (Deutsche Nationalbibliothek,
+  K10plus) Feld 521 (Zielgruppe, etwa "ab 8 J.") oder 008/22; die Herkunft steht in `vorschlag.herkunft.alter`, übernommen wird
+  mit `alter_von`, `alter_bis` in `POST /api/metadata/buch/{id}/uebernehmen`. `PUT /api/books/{id}/privat {privat}` braucht die
+  Fähigkeit `privat`.
+- **Rechte**: was ein Weg braucht, sagt `braucht("fähigkeit")` in `core/auth.py`; fehlt sie, 403 `"Das darf dieses Profil nicht:
+  ..."`. Ein Buch oder eine Fassung im Pfad, die das Profil nicht sieht, ist 404 wie ein fehlendes. Sammelaktionen behandeln
+  verborgene Bücher wie fehlende. Andere Apps (Fundus) sehen keine privaten Bücher; Lesestand und Notizen dort sind die des ersten
+  Profils Verwaltung.

@@ -13,7 +13,7 @@ import sqlite3
 from collections.abc import Sequence
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -124,7 +124,21 @@ async def _zu_gross(request: Request, f: Exception) -> JSONResponse:
     return JSONResponse({"detail": "Eine Zahl liegt außerhalb des gültigen Bereichs"}, status_code=422)
 
 
+class MitCode(HTTPException):
+    """Ein Fehler, den die Oberfläche an `code` erkennt; `detail` bleibt der deutsche Satz (BF-78: profil_waehlen)."""
+
+    def __init__(self, status_code: int, detail: str, code: str, headers: dict[str, str] | None = None) -> None:
+        super().__init__(status_code, detail, headers)
+        self.code = code
+
+
+async def _mit_code(_: Request, f: Exception) -> JSONResponse:
+    assert isinstance(f, MitCode)
+    return JSONResponse({"detail": f.detail, "code": f.code}, status_code=f.status_code, headers=f.headers)
+
+
 def einrichten(app: FastAPI) -> None:
+    app.add_exception_handler(MitCode, _mit_code)
     app.add_exception_handler(RequestValidationError, _ungueltig)
     app.add_exception_handler(sqlite3.IntegrityError, _abgelehnt)
     app.add_exception_handler(OverflowError, _zu_gross)

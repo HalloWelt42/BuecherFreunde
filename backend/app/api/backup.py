@@ -10,7 +10,7 @@ from tempfile import TemporaryDirectory
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-from backend.app.core.auth import verify_token, verify_token_inhalt
+from backend.app.core.auth import braucht, verify_token, verify_token_inhalt
 from backend.app.core.config import settings
 from backend.app.services import sicherung
 
@@ -25,7 +25,7 @@ def _backup_dir() -> Path:
     return d
 
 
-@router.post("/create")
+@router.post("/create", dependencies=[Depends(braucht("einstellungen"))])
 async def erstelle_backup(_: str = Depends(verify_token)):
     """Sichert von Hand nach der Sicherungsregel: sofort, aber nie ohne Änderung seit der jüngsten Sicherung."""
     lauf = await asyncio.to_thread(sicherung.sichern, sicherung.Anlass.HAND)
@@ -37,7 +37,7 @@ async def erstelle_backup(_: str = Depends(verify_token)):
     }
 
 
-@router.get("/list")
+@router.get("/list", dependencies=[Depends(braucht("einstellungen"))])
 async def liste_backups(_: str = Depends(verify_token)):
     """Alle vorhandenen Backups auflisten, jüngstes zuerst."""
     backups = []
@@ -52,7 +52,7 @@ async def liste_backups(_: str = Depends(verify_token)):
     return backups
 
 
-@router.get("/download")
+@router.get("/download", dependencies=[Depends(braucht("einstellungen", inhalt=True))])
 async def download_backup(
     filename: str = "", _: str = Depends(verify_token_inhalt)
 ):
@@ -79,7 +79,7 @@ async def download_backup(
     )
 
 
-@router.post("/restore")
+@router.post("/restore", dependencies=[Depends(braucht("einstellungen"))])
 async def restore_backup(
     file: UploadFile, _: str = Depends(verify_token)
 ):
@@ -132,7 +132,7 @@ async def restore_backup(
     return {"message": "Backup wiederhergestellt"}
 
 
-@router.get("/storage-info")
+@router.get("/storage-info", dependencies=[Depends(braucht("einstellungen"))])
 async def storage_info(_: str = Depends(verify_token)):
     """Informationen über das Buchmaterial-Verzeichnis."""
     storage = settings.storage_dir

@@ -7,6 +7,7 @@ import unicodedata
 import xml.etree.ElementTree as ET
 from collections.abc import Iterator
 
+from backend.app.quellen import alter as lesealter
 from backend.app.quellen import isbn as nummern
 from backend.app.quellen import sachgruppen
 from backend.app.quellen.abgleich import natuerlich
@@ -138,6 +139,15 @@ def _schlagworte(s: Satz) -> list[str]:
     return list(dict.fromkeys(aus))[:SCHLAGWORTE_HOECHSTENS]
 
 
+def _alter(s: Satz) -> lesealter.Alter | None:
+    """Lese- oder Interessenalter (BF-78): aus der Zielgruppe (521), sonst aus dem Kennbuchstaben der Zielgruppe (008/22)."""
+    for text in s.werte("521", "a"):
+        if a := lesealter.aus_text(text):
+            return a
+    feld = s.steuerfeld("008")
+    return lesealter.aus_zielgruppe(feld[22]) if len(feld) > 22 and ist_buch(s) else None
+
+
 def _beschreibung(s: Satz) -> str:
     """Die längste Inhaltsangabe, die kein Verzeichnis ist."""
     return max((t for t in s.werte("520", "a") if t.count(" -- ") < 3), key=len, default="")
@@ -165,7 +175,8 @@ def angaben(s: Satz, quelle: str) -> Angaben:
         roh["herausgeber"] = herausgeber
     return Angaben(quelle=quelle, titel=titel, untertitel=untertitel, autoren=autoren or herausgeber, verlag=verlag, jahr=jahr, seiten=_seiten(s), isbn=isbns[0] if isbns else "",
                    isbns=isbns, doi=next((s.eins(f, "a") for f in s.felder("024") if s.eins(f, "2") == "doi"), ""), sprache=sprachen[0] if sprachen else "",
-                   beschreibung=_beschreibung(s), kategorien=list(dict.fromkeys(_sachgruppen(s) + _schlagworte(s))), personen=kennungen, roh=roh)
+                   beschreibung=_beschreibung(s), kategorien=list(dict.fromkeys(_sachgruppen(s) + _schlagworte(s))), alter=_alter(s),
+                   personen=kennungen, roh=roh)
 
 
 def ist_buch(s: Satz) -> bool:

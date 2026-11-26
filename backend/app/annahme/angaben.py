@@ -38,6 +38,8 @@ def _uebernimm(e: Ergebnis, a: Angaben, fehlt: set[str]) -> None:
     e.year = e.year or a.jahr
     e.language = e.language or a.sprache
     e.description = e.description or bereinige_text(a.beschreibung)
+    if a.alter and e.alter_von is None and e.alter_bis is None:
+        e.alter_von, e.alter_bis, e.alter_quelle = a.alter.von, a.alter.bis, a.herkunft.get("alter", a.quelle)
 
 
 async def ergaenzen(e: Ergebnis, stamm: str) -> None:

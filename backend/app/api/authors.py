@@ -1,4 +1,5 @@
-"""API-Endpunkte für Autoren."""
+"""API-Endpunkte für Autoren. Ein Profil sieht Autoren mit Büchern, die es sieht, und zählt nur diese (BF-78); Autoren ohne
+Bücher sehen nur Erwachsene."""
 
 import json
 import math
@@ -7,8 +8,10 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
 
-from backend.app.core.auth import verify_token, verify_token_inhalt
+from backend.app.core.auth import braucht, profil, sicht_inhalt
 from backend.app.core.database import db
+from backend.app.familie.modelle import Profil
+from backend.app.familie.sichtbar import Sicht
 from backend.app.models.author import (
     AuthorListItem,
     AuthorListResponse,
@@ -28,11 +31,25 @@ from backend.app.api import vorhanden
 from backend.app.models.grenzen import LISTENSEITE, Nr
 
 router = APIRouter(prefix="/api/authors", tags=["Autoren"])
+EINSTELLUNGEN, BEARBEITEN = braucht("einstellungen"), braucht("bearbeiten")
+
+
+def sichtbar_fuer(s: Sicht, a: str = "a") -> tuple[str, tuple]:
+    """Bedingung über einen Autor: er hat ein Buch, das die Sicht sieht; Erwachsene sehen auch Autoren ganz ohne Bücher."""
+    bedingung, werte = s.bedingung("x.book_id")
+    ohne = "" if s.kind else f" OR NOT EXISTS (SELECT 1 FROM book_authors y WHERE y.author_id = {a}.id)"
+    return f"(EXISTS (SELECT 1 FROM book_authors x WHERE x.author_id = {a}.id AND {bedingung}){ohne})", werte
+
+
+async def _sichtbar(author_id: int, s: Sicht) -> None:
+    bedingung, werte = sichtbar_fuer(s)
+    if not await db.fetch_one(f"SELECT 1 FROM authors a WHERE a.id = ? AND {bedingung}", (author_id, *werte)):
+        raise HTTPException(status_code=404, detail="Autor nicht gefunden")
 
 
 @router.get("", response_model=AuthorListResponse)
 async def list_authors(
-    _token: str = Depends(verify_token),
+    p: Profil = Depends(profil),
     seite: int = Query(1, ge=1, le=LISTENSEITE),
     pro_seite: int = Query(24, ge=1, le=100),
     suche: str | None = Query(None, description="Namenssuche"),
@@ -41,9 +58,11 @@ async def list_authors(
     hat_foto: bool | None = Query(None, description="Nur mit/ohne Foto"),
     hat_bio: bool | None = Query(None, description="Nur mit/ohne Biografie"),
 ):
-    """Listet Autoren paginiert und filterbar auf."""
-    conditions = []
-    params: list = []
+    """Listet Autoren paginiert und filterbar auf, nur die, die das Profil sieht, mit der Zahl seiner sichtbaren Bücher."""
+    s = Sicht.von(p)
+    nur, nur_werte = sichtbar_fuer(s)
+    conditions = [nur]
+    params: list = [*nur_werte]
 
     if suche:
         conditions.append("a.name LIKE ?")
@@ -78,16 +97,17 @@ async def list_authors(
 
     # Abfrage mit Buchanzahl
     offset = (seite - 1) * pro_seite
+    zaehlt, zaehlt_werte = s.bedingung("ba.book_id")
     select_sql = f"""
         SELECT a.id, a.name, a.slug, a.photo_path, a.birth_year, a.death_year,
                a.nationality, a.created_at,
-               (SELECT COUNT(*) FROM book_authors ba WHERE ba.author_id = a.id) as book_count
+               (SELECT COUNT(*) FROM book_authors ba WHERE ba.author_id = a.id AND {zaehlt}) as book_count
         FROM authors a
         WHERE {where}
         ORDER BY {sort_col} {sort_dir}
         LIMIT ? OFFSET ?
     """
-    rows = await db.fetch_all(select_sql, tuple(params) + (pro_seite, offset))
+    rows = await db.fetch_all(select_sql, (*zaehlt_werte, *params, pro_seite, offset))
 
     autoren = [AuthorListItem(**row) for row in rows]
 
@@ -111,22 +131,19 @@ _abgleich = Anhalter()
 
 
 @router.get("/statistik/uebersicht")
-async def author_stats(_token: str = Depends(verify_token)):
-    """Gibt Statistiken über Autoren zurück."""
-    total = await db.fetch_one("SELECT COUNT(*) as total FROM authors")
-    mit_bio = await db.fetch_one(
-        "SELECT COUNT(*) as total FROM authors WHERE biography != ''"
-    )
-    mit_foto = await db.fetch_one(
-        "SELECT COUNT(*) as total FROM authors WHERE photo_path != ''"
-    )
-    mit_wikidata = await db.fetch_one(
-        "SELECT COUNT(*) as total FROM authors WHERE wikidata_id != ''"
-    )
-    mit_normdatei = await db.fetch_one(
-        "SELECT COUNT(*) as total FROM autor_verweis WHERE art = 'gnd'"
-    )
-    mit_eintrag = await db.fetch_one(f"SELECT COUNT(*) as total FROM authors a WHERE NOT ({OHNE_EINTRAG})")
+async def author_stats(p: Profil = Depends(profil)):
+    """Gibt Statistiken über die Autoren zurück, die das Profil sieht."""
+    nur, werte = sichtbar_fuer(Sicht.von(p))
+
+    async def zahl(bedingung: str = "1") -> dict | None:
+        return await db.fetch_one(f"SELECT COUNT(*) as total FROM authors a WHERE {nur} AND {bedingung}", werte)
+
+    total = await zahl()
+    mit_bio = await zahl("a.biography != ''")
+    mit_foto = await zahl("a.photo_path != ''")
+    mit_wikidata = await zahl("a.wikidata_id != ''")
+    mit_normdatei = await zahl("EXISTS (SELECT 1 FROM autor_verweis v WHERE v.author_id = a.id AND v.art = 'gnd')")
+    mit_eintrag = await zahl(f"NOT ({OHNE_EINTRAG})")
 
     return {
         "gesamt": total["total"] if total else 0,
@@ -139,7 +156,7 @@ async def author_stats(_token: str = Depends(verify_token)):
 
 
 @router.post("/resync")
-async def resync_authors(_token: str = Depends(verify_token)):
+async def resync_authors(_p: Profil = Depends(EINSTELLUNGEN)):
     """Synchronisiert die Autoren-Tabelle komplett neu aus books.author.
 
     Autoren mit Eintrag (Lexikon oder Normdatei, mit Biografie und Foto) werden beibehalten.
@@ -222,14 +239,14 @@ async def _offene(hoechstens: int | None = None, nur_ohne_eintrag: bool = True) 
 
 
 @router.post("/scanner/starten")
-async def scan_authors(_token: str = Depends(verify_token)):
+async def scan_authors(_p: Profil = Depends(EINSTELLUNGEN)):
     """Findet Autoren ohne angereicherte Daten und gibt sie als Liste zurück."""
     rows = await _offene(100)
     return {"offene_autoren": [{k: r[k] for k in ("id", "name", "book_count")} for r in rows], "anzahl": len(rows)}
 
 
 @router.post("/scanner/batch")
-async def start_batch_scan(_token: str = Depends(verify_token)):
+async def start_batch_scan(_p: Profil = Depends(EINSTELLUNGEN)):
     """Die Autoren, die der Batch-Scan bearbeiten würde."""
     if _batch_scan_status["laeuft"]:
         raise HTTPException(status_code=409, detail="Batch-Scan läuft bereits")
@@ -238,7 +255,7 @@ async def start_batch_scan(_token: str = Depends(verify_token)):
 
 
 @router.post("/scanner/abbrechen")
-async def cancel_batch_scan(_token: str = Depends(verify_token)):
+async def cancel_batch_scan(_p: Profil = Depends(EINSTELLUNGEN)):
     """Bricht den laufenden Batch-Scan ab, auch mitten im Warten auf eine Quelle."""
     if _batch_scan_status["laeuft"]:
         _abgleich.halte()
@@ -307,7 +324,7 @@ async def _abgleichen(autoren: list[dict], auto_uebernehmen: bool) -> AsyncItera
 
 @router.get("/scanner/events")
 async def batch_scan_events(
-    _token: str = Depends(verify_token_inhalt),
+    _p: Profil = Depends(braucht("einstellungen", inhalt=True)),
     nur_ohne_wikidata: bool = Query(True, description="Nur Autoren ohne Eintrag in Lexikon oder Normdatei"),
     auto_uebernehmen: bool = Query(False, description="Hohe Konfidenz automatisch übernehmen"),
 ):
@@ -337,7 +354,7 @@ async def batch_scan_events(
 
 
 @router.delete("/verwaist")
-async def delete_orphaned_authors(_token: str = Depends(verify_token)):
+async def delete_orphaned_authors(_p: Profil = Depends(braucht("loeschen"))):
     """Löscht alle Autoren ohne verknüpfte Bücher."""
     rows = await db.fetch_all("""
         SELECT a.id, a.name FROM authors a
@@ -362,8 +379,11 @@ async def delete_orphaned_authors(_token: str = Depends(verify_token)):
 # --- Dynamische Routen (/{author_id}) ---
 
 @router.get("/{author_id}", response_model=AuthorResponse)
-async def get_author(author_id: Nr, _token: str = Depends(verify_token)):
-    """Gibt die vollständigen Details eines Autors zurück."""
+async def get_author(author_id: Nr, p: Profil = Depends(profil)):
+    """Gibt die vollständigen Details eines Autors zurück, mit den Büchern, die das Profil sieht."""
+    s = Sicht.von(p)
+    await _sichtbar(author_id, s)
+    bedingung, werte = s.bedingung("b.id")
     author = await db.fetch_one(
         "SELECT * FROM authors WHERE id = ?", (author_id,)
     )
@@ -372,13 +392,13 @@ async def get_author(author_id: Nr, _token: str = Depends(verify_token)):
 
     # Bücher des Autors laden
     books = await db.fetch_all(
-        """SELECT b.id, b.title, b.year, b.file_format, b.cover_path, b.isbn,
+        f"""SELECT b.id, b.title, b.year, b.file_format, b.cover_path, b.isbn,
                   ba.role
            FROM books b
            JOIN book_authors ba ON ba.book_id = b.id
-           WHERE ba.author_id = ?
+           WHERE ba.author_id = ? AND {bedingung}
            ORDER BY b.year DESC NULLS LAST, b.title ASC""",
-        (author_id,),
+        (author_id, *werte),
     )
 
     # Werkeliste laden
@@ -389,6 +409,8 @@ async def get_author(author_id: Nr, _token: str = Depends(verify_token)):
            ORDER BY aw.titel""",
         (author_id,),
     )
+    da = {b["id"] for b in books}
+    werke = [w | {"book_id": w["book_id"] if w["book_id"] in da else None} for w in werke]      # ein Werk, das das Profil nicht sieht, steht ohne Buch
 
     angaben = await deckblattangaben.fuer([b["id"] for b in books])
     mit_deckblatt = [dict(b) | (angaben[b["id"]].model_dump() if b["id"] in angaben else {}) for b in books]
@@ -397,7 +419,7 @@ async def get_author(author_id: Nr, _token: str = Depends(verify_token)):
 
 @router.patch("/{author_id}")
 async def update_author(
-    author_id: Nr, data: AuthorUpdate, _token: str = Depends(verify_token)
+    author_id: Nr, data: AuthorUpdate, p: Profil = Depends(BEARBEITEN)
 ):
     """Aktualisiert einen Autor."""
     existing = await db.fetch_one(
@@ -424,11 +446,11 @@ async def update_author(
         )
         await db.commit()
 
-    return await get_author(author_id, _token)
+    return await get_author(author_id, p)
 
 
 @router.delete("/{author_id}")
-async def delete_author(author_id: Nr, _token: str = Depends(verify_token)):
+async def delete_author(author_id: Nr, _p: Profil = Depends(braucht("loeschen"))):
     """Löscht einen Autor."""
     existing = await db.fetch_one(
         "SELECT id FROM authors WHERE id = ?", (author_id,)
@@ -442,7 +464,7 @@ async def delete_author(author_id: Nr, _token: str = Depends(verify_token)):
 
 
 @router.post("")
-async def create_author(data: AuthorUpdate, _token: str = Depends(verify_token)):
+async def create_author(data: AuthorUpdate, p: Profil = Depends(BEARBEITEN)):
     """Erstellt einen neuen Autor."""
     name = data.name
     if not name:
@@ -468,7 +490,7 @@ async def create_author(data: AuthorUpdate, _token: str = Depends(verify_token))
     )
     await db.commit()
 
-    return await get_author(cursor.lastrowid, _token)
+    return await get_author(cursor.lastrowid, p)
 
 
 @router.post("/{author_id}/buecher/{book_id}")
@@ -476,7 +498,7 @@ async def link_book(
     author_id: Nr,
     book_id: Nr,
     role: str = Query("autor", min_length=1, max_length=50),
-    _token: str = Depends(verify_token),
+    _p: Profil = Depends(BEARBEITEN),
 ):
     """Verknüpft ein Buch mit einem Autor."""
     await vorhanden.eintrag("authors", author_id, "Autor nicht gefunden", "id")
@@ -491,7 +513,7 @@ async def link_book(
 
 @router.delete("/{author_id}/buecher/{book_id}")
 async def unlink_book(
-    author_id: Nr, book_id: Nr, _token: str = Depends(verify_token)
+    author_id: Nr, book_id: Nr, _p: Profil = Depends(BEARBEITEN)
 ):
     """Entfernt die Verknüpfung zwischen Buch und Autor."""
     c = await db.execute(
@@ -507,9 +529,10 @@ async def unlink_book(
 async def get_author_photo(
     author_id: Nr,
     groesse: str = Query("normal", description="normal, thumb, mini"),
-    _token: str = Depends(verify_token_inhalt),
+    s: Sicht = Depends(sicht_inhalt),
 ):
     """Gibt das Foto eines Autors in der gewünschten Größe zurück."""
+    await _sichtbar(author_id, s)
     from backend.app.core.config import settings
 
     author = await db.fetch_one(
@@ -544,7 +567,7 @@ async def get_author_photo(
 
 
 @router.post("/{author_id}/anreichern")
-async def enrich_author(author_id: Nr, _token: str = Depends(verify_token)):
+async def enrich_author(author_id: Nr, _p: Profil = Depends(BEARBEITEN)):
     """Sucht Angaben zu einem Autor in Normdatei und Lexikon (Wikidata, Wikipedia).
 
     Biografie, Lebensdaten, Foto, Werke und Verweise kommen als Vorschlag; die Bücher des Autors
@@ -586,7 +609,7 @@ async def enrich_author(author_id: Nr, _token: str = Depends(verify_token)):
 
 @router.post("/{author_id}/anreichern/uebernehmen")
 async def apply_author_enrichment(
-    author_id: Nr, felder: dict, _token: str = Depends(verify_token)
+    author_id: Nr, felder: dict, _p: Profil = Depends(BEARBEITEN)
 ):
     """Übernimmt die angereicherten Autorendaten."""
     author = await db.fetch_one("SELECT id FROM authors WHERE id = ?", (author_id,))

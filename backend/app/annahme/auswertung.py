@@ -27,6 +27,9 @@ class Ergebnis:
     fulltext: str = ""
     cover_data: bytes | None = None
     grund: str = ""                 # warum die Datei nicht lesbar ist; leer: lesbar
+    alter_von: int | None = None    # Lese- oder Interessenalter aus den Quellen (BF-78), nur Hilfe beim Freigeben
+    alter_bis: int | None = None
+    alter_quelle: str = ""
 
     @property
     def lesbar(self) -> bool:

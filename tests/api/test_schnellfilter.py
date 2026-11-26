@@ -4,7 +4,7 @@ import pytest
 from httpx import AsyncClient
 
 from backend.app.services.schnellfilter import bedingung, muster
-from tests.api.conftest import buch_erstellen, sammlung_erstellen
+from tests.api.conftest import buch_erstellen, sammlung_erstellen, verwaltung
 
 
 def test_muster_gross_und_klein_auch_mit_umlauten():
@@ -18,8 +18,8 @@ def test_muster_nimmt_globzeichen_woertlich():
 
 
 def test_ohne_woerter_keine_bedingung():
-    assert bedingung(None) == ("", [])
-    assert bedingung("   ") == ("", [])
+    assert bedingung(None, "p") == ("", [])
+    assert bedingung("   ", "p") == ("", [])
 
 
 async def _bestand(test_db) -> dict[str, int]:
@@ -29,8 +29,10 @@ async def _bestand(test_db) -> dict[str, int]:
         "ringe": await buch_erstellen(test_db, hash="sf3", title="Der Herr der Ringe", author="J. R. R. Tolkien", isbn="", file_format="epub"),
         "plus": await buch_erstellen(test_db, hash="sf4", title="C++ [Grundkurs]", author="Ada Muster", isbn=""),
     }
-    await test_db.execute("INSERT INTO book_labels (book_id, name) VALUES (?, ?)", (ids["ringe"], "Lieblingsstelle"))
-    await test_db.execute("INSERT INTO book_highlights (book_id, cfi_range, label_name) VALUES (?, ?, ?)", (ids["freiheit"], "epubcfi(/6/2)", "Prüfung"))
+    profil = await verwaltung(test_db)
+    await test_db.execute("INSERT INTO book_labels (profil_id, book_id, name) VALUES (?, ?, ?)", (profil, ids["ringe"], "Lieblingsstelle"))
+    await test_db.execute("INSERT INTO book_highlights (profil_id, book_id, cfi_range, label_name) VALUES (?, ?, ?, ?)",
+                          (profil, ids["freiheit"], "epubcfi(/6/2)", "Prüfung"))
     await test_db.commit()
     return ids
 

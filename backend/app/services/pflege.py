@@ -1,6 +1,6 @@
 """Pflege im Hintergrund: Wissensstand neuer Bücher, Codestellen der Bücher, die noch keine haben (je Runde nur wenige),
 Sicherung nach der Regel (auch in die Kellerwolke), Begleiter, deren Angaben sich geändert haben (Notizen, Markierungen,
-Lesestand, Titel), und abgelaufene Antworten der Quellen."""
+Lesestand, Titel; von jedem Profil, BF-78), und abgelaufene Antworten der Quellen."""
 
 from __future__ import annotations
 
@@ -24,8 +24,8 @@ NACHTS = range(3, 5)
 BEGLEITER_JE_NACHT = 300
 GEAENDERT = """
 SELECT b.id, b.hash, a.knoten FROM books b JOIN ablage_datei a ON a.hash = b.hash
-LEFT JOIN user_book_data u ON u.book_id = b.id
-WHERE b.updated_at > a.abgelegt_am OR COALESCE(u.last_read_at, '') > a.abgelegt_am
+WHERE b.updated_at > a.abgelegt_am
+   OR EXISTS (SELECT 1 FROM user_book_data u WHERE u.book_id = b.id AND COALESCE(u.last_read_at, '') > a.abgelegt_am)
    OR EXISTS (SELECT 1 FROM book_notes n WHERE n.book_id = b.id AND n.updated_at > a.abgelegt_am)
    OR EXISTS (SELECT 1 FROM book_highlights h WHERE h.book_id = b.id AND h.created_at > a.abgelegt_am)
 ORDER BY b.id LIMIT ?

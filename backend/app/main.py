@@ -21,6 +21,7 @@ from backend.app.api.books import router as books_router
 from backend.app.api.categories import router as categories_router
 from backend.app.api.config import router as config_router
 from backend.app.api.einordnung import router as einordnung_router
+from backend.app.api.familie import router as familie_router
 from backend.app.api.katalog import router as katalog_router
 from backend.app.api.gutenberg import router as gutenberg_router
 from backend.app.api.imports import router as imports_router
@@ -149,6 +150,7 @@ app.include_router(categories_router)
 app.include_router(collections_router)
 app.include_router(config_router)
 app.include_router(einordnung_router)
+app.include_router(familie_router)
 app.include_router(katalog_router)
 app.include_router(fundus_router)
 app.include_router(gutenberg_router)

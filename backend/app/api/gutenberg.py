@@ -5,14 +5,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from backend.app.annahme.dienst import annahme
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import braucht, verify_token
 from backend.app.models.grenzen import ADRESSE, AUSWAHL_HOECHSTENS, AUTOR, LISTENSEITE, TITEL, Nr
 from backend.app.quellen import stand
 from backend.app.quellen.fehler import QuelleFehler
 from backend.app.quellen.gutenberg import Fundliste, suche
 from backend.app.quellen.regeln import GUTENBERG
 
-router = APIRouter(prefix="/api/gutenberg", tags=["Gutenberg"])
+router = APIRouter(prefix="/api/gutenberg", tags=["Gutenberg"], dependencies=[Depends(braucht("hinzufuegen"))])
 
 
 @router.get("/status")

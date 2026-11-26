@@ -7,9 +7,11 @@ import httpx
 from fastapi import APIRouter, Depends, UploadFile, File
 from fastapi.responses import FileResponse
 
-from backend.app.core.auth import verify_token, verify_token_inhalt
+from backend.app.core.auth import braucht, profil, verify_konto, verify_konto_inhalt
 from backend.app.core.config import settings
 from backend.app.core.database import db
+from backend.app.familie.modelle import Profil
+from backend.app.familie.sichtbar import Sicht
 from backend.app.services import buchliste, schnellfilter
 
 logger = logging.getLogger("buecherfreunde")
@@ -19,11 +21,12 @@ GITHUB_VERSION_URL = (
 )
 
 router = APIRouter(prefix="/api/config", tags=["Konfiguration"])
+EINSTELLUNGEN = braucht("einstellungen")
 
 
 @router.get("")
-async def get_config(_token: str = Depends(verify_token)) -> dict:
-    """Gibt die öffentliche Konfiguration zurück (ohne sensible Daten)."""
+async def get_config(_konto=Depends(verify_konto)) -> dict:
+    """Gibt die öffentliche Konfiguration zurück (ohne sensible Daten); nichts Persönliches, darum auch vor der Profilwahl."""
     return settings.public_config()
 
 
@@ -34,7 +37,7 @@ async def get_version() -> dict:
 
 
 @router.get("/paths")
-async def get_paths(_token: str = Depends(verify_token)) -> dict:
+async def get_paths(_p: Profil = Depends(EINSTELLUNGEN)) -> dict:
     """Gibt die konfigurierten Verzeichnispfade zurück.
 
     Zeigt Host-Pfade wenn verfügbar (Docker), sonst die lokalen Pfade.
@@ -48,7 +51,7 @@ async def get_paths(_token: str = Depends(verify_token)) -> dict:
 
 
 @router.get("/update-check")
-async def check_for_updates(_token: str = Depends(verify_token)) -> dict:
+async def check_for_updates(_p: Profil = Depends(EINSTELLUNGEN)) -> dict:
     """Prüft ob eine neuere Version auf GitHub verfügbar ist."""
     lokale_version = settings.version
     try:
@@ -73,35 +76,28 @@ async def check_for_updates(_token: str = Depends(verify_token)) -> dict:
 
 
 @router.get("/stats")
-async def get_stats(_token: str = Depends(verify_token)) -> dict:
-    """Gibt Zähler für Sidebar und Dashboard zurück."""
-    total = await db.fetch_one("SELECT COUNT(*) as n FROM books")
-    favs = await db.fetch_one(
-        "SELECT COUNT(*) as n FROM user_book_data WHERE is_favorite = 1"
-    )
-    to_read = await db.fetch_one(
-        "SELECT COUNT(*) as n FROM user_book_data WHERE is_to_read = 1"
-    )
-    gelesen = await db.fetch_one(
-        "SELECT COUNT(*) as n FROM user_book_data WHERE last_read_at IS NOT NULL"
-    )
-    mit_isbn = await db.fetch_one(
-        "SELECT COUNT(*) as n FROM books WHERE isbn IS NOT NULL AND isbn != ''"
-    )
-    ohne_isbn = await db.fetch_one(
-        "SELECT COUNT(*) as n FROM books WHERE isbn IS NULL OR isbn = ''"
-    )
-    weiterlesen = await db.fetch_one(
-        """SELECT COUNT(*) as n FROM user_book_data
-           WHERE reading_position IS NOT NULL AND reading_position != ''
-           AND last_read_at IS NOT NULL"""
-    )
-    autoren = await db.fetch_one("SELECT COUNT(*) as n FROM authors")
-    mit_labels = await db.fetch_one(f"SELECT COUNT(*) as n FROM ({schnellfilter.MIT_ETIKETTEN})")
-    mit_highlights = await db.fetch_one(
-        "SELECT COUNT(DISTINCT book_id) as n FROM book_highlights"
-    )
-    je_art = {art: await db.fetch_one(f"SELECT COUNT(*) AS n FROM books b WHERE {bedingung}", werte)
+async def get_stats(p: Profil = Depends(profil)) -> dict:
+    """Gibt Zähler für Sidebar und Dashboard zurück: nur Bücher, die das Profil sieht, mit seinen Nutzerdaten (BF-78)."""
+    sicht, sw = Sicht.von(p).bedingung("b.id")
+
+    async def buecher(bedingung: str = "1", werte: tuple = ()) -> dict | None:
+        return await db.fetch_one(f"SELECT COUNT(*) as n FROM books b WHERE {sicht} AND {bedingung}", (*sw, *werte))
+
+    async def eigene(bedingung: str) -> dict | None:
+        return await buecher(f"b.id IN (SELECT book_id FROM user_book_data WHERE profil_id = ? AND {bedingung})", (p.id,))
+
+    total = await buecher()
+    favs = await eigene("is_favorite = 1")
+    to_read = await eigene("is_to_read = 1")
+    gelesen = await eigene("last_read_at IS NOT NULL")
+    mit_isbn = await buecher("b.isbn IS NOT NULL AND b.isbn != ''")
+    ohne_isbn = await buecher("(b.isbn IS NULL OR b.isbn = '')")
+    weiterlesen = await eigene("reading_position IS NOT NULL AND reading_position != '' AND last_read_at IS NOT NULL")
+    autoren = await db.fetch_one(f"""SELECT COUNT(*) as n FROM authors a WHERE EXISTS (SELECT 1 FROM book_authors x JOIN books b ON b.id = x.book_id
+                                     WHERE x.author_id = a.id AND {sicht}){'' if p.kind else ' OR NOT EXISTS (SELECT 1 FROM book_authors y WHERE y.author_id = a.id)'}""", sw)
+    mit_labels = await buecher(f"b.id IN ({schnellfilter.MIT_ETIKETTEN})", (p.id, p.id))
+    mit_highlights = await buecher("b.id IN (SELECT book_id FROM book_highlights WHERE profil_id = ?)", (p.id,))
+    je_art = {art: await buecher(bedingung, werte)
               for art, (bedingung, werte) in (("buch", buchliste.nach_art("buch")), ("besonderes", buchliste.nach_art("besonderes")))}
     total_n = total["n"] if total else 0
     gelesen_n = gelesen["n"] if gelesen else 0
@@ -156,7 +152,7 @@ def _bg_liste() -> list[dict]:
 
 
 @router.get("/design/hintergruende")
-async def list_bg_images(_token: str = Depends(verify_token)) -> dict:
+async def list_bg_images(_konto=Depends(verify_konto)) -> dict:
     """Listet alle Hintergrundbilder auf."""
     bilder = _bg_liste()
     return {"bilder": bilder, "anzahl": len(bilder)}
@@ -165,7 +161,7 @@ async def list_bg_images(_token: str = Depends(verify_token)) -> dict:
 @router.post("/design/hintergrund")
 async def upload_bg_image(
     datei: UploadFile = File(...),
-    _token: str = Depends(verify_token),
+    _p: Profil = Depends(EINSTELLUNGEN),
 ):
     """Laedt ein Hintergrundbild hoch."""
     from fastapi import HTTPException
@@ -197,7 +193,7 @@ async def upload_bg_image(
 
 
 @router.delete("/design/hintergrund/{dateiname}")
-async def delete_bg_image(dateiname: str, _token: str = Depends(verify_token)):
+async def delete_bg_image(dateiname: str, _p: Profil = Depends(EINSTELLUNGEN)):
     """Loescht ein Hintergrundbild."""
     from fastapi import HTTPException
 
@@ -209,7 +205,7 @@ async def delete_bg_image(dateiname: str, _token: str = Depends(verify_token)):
 
 
 @router.delete("/design/hintergrund")
-async def delete_all_bg_images(_token: str = Depends(verify_token)):
+async def delete_all_bg_images(_p: Profil = Depends(EINSTELLUNGEN)):
     """Loescht alle Hintergrundbilder."""
     d = _bg_dir()
     for p in d.iterdir():
@@ -219,7 +215,7 @@ async def delete_all_bg_images(_token: str = Depends(verify_token)):
 
 
 @router.get("/design/hintergrund/status")
-async def bg_image_status(_token: str = Depends(verify_token)):
+async def bg_image_status(_konto=Depends(verify_konto)):
     """Prueft ob Hintergrundbilder vorhanden sind."""
     bilder = _bg_liste()
     return {
@@ -230,7 +226,7 @@ async def bg_image_status(_token: str = Depends(verify_token)):
 
 
 @router.get("/design/hintergrund/{dateiname}")
-async def get_bg_image_by_name(dateiname: str, token: str = Depends(verify_token_inhalt)):
+async def get_bg_image_by_name(dateiname: str, _konto=Depends(verify_konto_inhalt)):
     """Liefert ein Hintergrundbild nach Dateiname."""
     from fastapi import HTTPException
 
@@ -243,7 +239,7 @@ async def get_bg_image_by_name(dateiname: str, token: str = Depends(verify_token
 
 
 @router.get("/design/hintergrund")
-async def get_bg_image(token: str = Depends(verify_token_inhalt)):
+async def get_bg_image(_konto=Depends(verify_konto_inhalt)):
     """Liefert das erste Hintergrundbild (Fallback)."""
     from fastapi import HTTPException
 

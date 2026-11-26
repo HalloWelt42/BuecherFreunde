@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from backend.app.core.anmeldung import anmeldung, eigener_zugang
 from backend.app.core.anschluesse import anschluesse
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import braucht, verify_token
 from backend.app.core.config import settings
 from backend.app.core.eigene_anmeldung import EigeneAnmeldung
 
@@ -67,7 +67,7 @@ async def einrichten(n: NeuesKonto) -> Angemeldet:
     return Angemeldet(token=token, konto=konto)
 
 
-@router.post("/kennwort", status_code=204)
+@router.post("/kennwort", status_code=204, dependencies=[Depends(braucht("einstellungen"))])
 async def kennwort(n: NeuesKennwort, konto: Konto = Depends(verify_token)) -> None:
     try:
         await _eigene().kennwort_aendern(konto, n.alt, n.neu)

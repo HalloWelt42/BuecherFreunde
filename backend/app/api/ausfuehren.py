@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from backend.app.codestellen.dienst import Stand, codestellen
 from backend.app.codestellen.modelle import Codestelle, Vorpruefung
 from backend.app.codestellen.vorpruefung import VorpruefungStand, ergebnisse, vorpruefer
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import braucht, verify_token
 from backend.app.services.ausfuehren import HOECHSTENS_ZEICHEN, Ausfuehrstand, Lauf, sandbox
 from backend.app.models.grenzen import SEITEN_HOECHSTENS, Nr
 
@@ -39,37 +39,37 @@ class CodestellenAntwort(BaseModel):
     stellen: list[StelleAntwort] = Field(default_factory=list)
 
 
-@router.get("/ausfuehren", response_model=Ausfuehrstand)
+@router.get("/ausfuehren", response_model=Ausfuehrstand, dependencies=[Depends(braucht("ausfuehren"))])
 async def stand() -> Ausfuehrstand:
     """Ob die Sandbox bereitsteht, welche Sprachen (bei PHP mit Fassungen) und ob aufgezeichnet wird; sonst der Grund."""
     return await sandbox.stand()
 
 
-@router.post("/ausfuehren", response_model=Lauf)
+@router.post("/ausfuehren", response_model=Lauf, dependencies=[Depends(braucht("ausfuehren"))])
 async def laufen(probe: Probe) -> Lauf:
     """Den Code in der Sandbox laufen lassen, mit Aufzeichnung für den Debugger, wo die Sprache sie hat. Geht es nicht,
     steht der Grund in `grund`."""
     return await sandbox.laufen(probe.code, probe.sprache, probe.fassung, probe.eingabe)
 
 
-@router.get("/ausfuehren/funktionen/php", response_model=dict[str, list[str]])
+@router.get("/ausfuehren/funktionen/php", response_model=dict[str, list[str]], dependencies=[Depends(braucht("ausfuehren"))])
 async def funktionen_php() -> dict[str, list[str]]:
     """Je PHP-Fassung die eingebauten Funktionen (klein geschrieben); leer, wenn die Codeschmiede nicht antwortet."""
     return await sandbox.funktionen_php()
 
 
-@router.get("/ausfuehren/vorpruefung", response_model=VorpruefungStand)
+@router.get("/ausfuehren/vorpruefung", response_model=VorpruefungStand, dependencies=[Depends(braucht("ausfuehren"))])
 async def vorpruefung_stand() -> VorpruefungStand:
     return await vorpruefer.stand()
 
 
-@router.post("/ausfuehren/vorpruefung/anhalten", response_model=VorpruefungStand)
+@router.post("/ausfuehren/vorpruefung/anhalten", response_model=VorpruefungStand, dependencies=[Depends(braucht("einstellungen"))])
 async def vorpruefung_anhalten() -> VorpruefungStand:
     vorpruefer.anhalten()
     return await vorpruefer.stand()
 
 
-@router.post("/ausfuehren/vorpruefung/fortsetzen", response_model=VorpruefungStand)
+@router.post("/ausfuehren/vorpruefung/fortsetzen", response_model=VorpruefungStand, dependencies=[Depends(braucht("einstellungen"))])
 async def vorpruefung_fortsetzen() -> VorpruefungStand:
     vorpruefer.fortsetzen()
     return await vorpruefer.stand()

@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 from fastapi.responses import StreamingResponse
 
-from backend.app.core.auth import KOPF, verify_token, verify_token_inhalt
+from backend.app.core.auth import KOPF, braucht, verify_token, verify_token_inhalt
 from backend.app.services import gespraech, nachschlagen
 from backend.app.services.hausdienst import DienstFehler
 
@@ -28,7 +28,7 @@ def _basis(request: Request) -> str:
     return f"{request.headers.get('x-forwarded-proto', request.url.scheme)}://{request.headers.get('host', request.url.netloc)}"
 
 
-@router.get("/nachschlag/suche", response_model=list[nachschlagen.Nachschlagtreffer])
+@router.get("/nachschlag/suche", response_model=list[nachschlagen.Nachschlagtreffer], dependencies=[Depends(braucht("nachschlagen"))])
 async def nachschlag_suche(request: Request, q: str = Query(min_length=1, max_length=400), nur_titel: bool = False, _=Depends(verify_token)):
     try:
         return await nachschlagen.suche(q, sitzung=_sitzung(request), nur_titel=nur_titel)
@@ -36,7 +36,7 @@ async def nachschlag_suche(request: Request, q: str = Query(min_length=1, max_le
         raise _http(f) from f
 
 
-@router.get("/nachschlag/artikel", response_model=nachschlagen.Nachschlagartikel)
+@router.get("/nachschlag/artikel", response_model=nachschlagen.Nachschlagartikel, dependencies=[Depends(braucht("nachschlagen"))])
 async def nachschlag_artikel(request: Request, buch: str = Query(max_length=200), pfad: str = Query(max_length=600), q: str = Query("", max_length=400),
                              anker: str = Query("", max_length=300), _=Depends(verify_token)):
     try:
@@ -45,16 +45,17 @@ async def nachschlag_artikel(request: Request, buch: str = Query(max_length=200)
         raise _http(f) from f
 
 
-@router.get("/nachschlag/bild/{buch}/{pfad:path}")
-async def nachschlag_bild(buch: str, pfad: str, _=Depends(verify_token_inhalt)):
+@router.get("/nachschlag/bild/{werk}/{pfad:path}", dependencies=[Depends(braucht("nachschlagen", inhalt=True))])
+async def nachschlag_bild(werk: str, pfad: str, _=Depends(verify_token_inhalt)):
+    """`werk` ist ein Buch des Lexikons, keins dieser App (Namen im Pfad wie buch prüft core/auth.py als Buch der App)."""
     try:
-        inhalt, art = await nachschlagen.bild(buch, pfad)
+        inhalt, art = await nachschlagen.bild(werk, pfad)
     except DienstFehler as f:
         raise _http(f) from f
     return Response(inhalt, media_type=art, headers={"Cache-Control": "private, max-age=604800", "X-Content-Type-Options": "nosniff"})
 
 
-@router.post("/gespraech", response_model=gespraech.Gestellt, status_code=201)
+@router.post("/gespraech", response_model=gespraech.Gestellt, status_code=201, dependencies=[Depends(braucht("ki"))])
 async def fragen(f: gespraech.Frage, request: Request, _=Depends(verify_token)):
     try:
         return await gespraech.fragen(f, _sitzung(request), _basis(request))
@@ -62,12 +63,12 @@ async def fragen(f: gespraech.Frage, request: Request, _=Depends(verify_token)):
         raise _http(e) from e
 
 
-@router.get("/gespraech/{chat}/{zug}", response_class=StreamingResponse)
+@router.get("/gespraech/{chat}/{zug}", response_class=StreamingResponse, dependencies=[Depends(braucht("ki"))])
 async def antwort(request: Request, chat: Kennung, zug: Kennung, _=Depends(verify_token)):
     return StreamingResponse(gespraech.antwort(chat, zug, _sitzung(request)), media_type="application/x-ndjson", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
-@router.post("/gespraech/zuege/{zug}/abbrechen", status_code=204)
+@router.post("/gespraech/zuege/{zug}/abbrechen", status_code=204, dependencies=[Depends(braucht("ki"))])
 async def abbrechen(request: Request, zug: Kennung, _=Depends(verify_token)):
     try:
         await gespraech.abbrechen(zug, _sitzung(request))

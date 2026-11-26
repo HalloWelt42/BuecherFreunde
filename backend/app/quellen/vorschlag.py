@@ -44,5 +44,6 @@ def vorschlag(a: Angaben, buch: Mapping[str, Any]) -> dict[str, Any]:
     return bereinige_metadaten({
         "titel": _titel(a, buch.get("title") or ""), "untertitel": a.untertitel, "autor": ", ".join(a.autoren), "isbn": a.isbn, "verlag": a.verlag, "jahr": a.jahr, "seiten": a.seiten,
         "beschreibung": a.beschreibung, "sprache": a.sprache, "kategorien": a.kategorien, "cover_url": a.umschlag, "doi": a.doi, "quelle": a.quelle, "fund": a.fund, "sicher": a.sicher,
+        "alter_von": a.alter.von if a.alter else None, "alter_bis": a.alter.bis if a.alter else None,
         "herkunft": {namen.get(f, f): q for f, q in a.herkunft.items()}, "raw": {k: w for k, w in roh.items() if w},
     })

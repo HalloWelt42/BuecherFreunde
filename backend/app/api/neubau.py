@@ -9,7 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from backend.app.ablage import originale, orte
 from backend.app.ablage.wolke import WolkeFehler, wolke
 from backend.app.core.anschluesse import anschluesse
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import braucht, sicht, verify_konto, verify_token
+from backend.app.familie import sichtbar
+from backend.app.familie.sichtbar import Sicht
 from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.services import bedeutung
@@ -21,9 +23,13 @@ from backend.app.models.grenzen import Nr
 router = APIRouter(prefix="/api", tags=["Neubau"])
 
 
-@router.get("/suche/bedeutung")
-async def suche_bedeutung(q: str = Query(min_length=1, max_length=1000), n: int = Query(20, ge=1, le=50), buch: Nr | None = None, _=Depends(verify_token)):
-    return await bedeutung.suchen(q, n, buch)
+@router.get("/suche/bedeutung", dependencies=[Depends(braucht("ki"))])
+async def suche_bedeutung(q: str = Query(min_length=1, max_length=1000), n: int = Query(20, ge=1, le=50), buch: Nr | None = None,
+                          s: Sicht = Depends(sicht)):
+    """Treffer nur in Büchern, die das Profil sieht (BF-78)."""
+    ergebnis = await bedeutung.suchen(q, n, buch)
+    sieht = set(await sichtbar.nur_sichtbare(s, [t["buch_id"] for t in ergebnis["treffer"]]))
+    return ergebnis | {"treffer": [t for t in ergebnis["treffer"] if t["buch_id"] in sieht]}
 
 
 async def _kellerwolke() -> dict:
@@ -55,7 +61,7 @@ async def _leitstelle() -> dict:
     return eintrag | {"stand": "schlecht", "text": s.grund}
 
 
-@router.get("/verbindungen")
+@router.get("/verbindungen", dependencies=[Depends(braucht("ki"))])
 async def verbindungen(_=Depends(verify_token)):
     """Nur, was angeschlossen ist."""
     a, aus = anschluesse(), []
@@ -72,18 +78,18 @@ async def verbindungen(_=Depends(verify_token)):
     return aus
 
 
-@router.get("/orte")
+@router.get("/orte", dependencies=[Depends(braucht("einstellungen"))])
 async def orte_stand(_=Depends(verify_token)):
     return await asyncio.to_thread(orte.stand)
 
 
 @router.get("/config/oberflaeche")
-async def oberflaeche(_=Depends(verify_token)):
+async def oberflaeche(_=Depends(verify_konto)):
     a = anschluesse()
     return {"assistent": a.assistent, "anschluesse": a}
 
 
-@router.get("/books/{buch}/ablage")
+@router.get("/books/{buch}/ablage", dependencies=[Depends(braucht("bearbeiten"))])
 async def ablage(buch: Nr, _=Depends(verify_token)):
     z = await db.fetch_one("SELECT hash, page_count, file_size FROM books WHERE id = ?", (buch,))
     if z is None:

@@ -84,9 +84,9 @@ async def _regale(ids: Sequence[int]) -> list[dict]:
     return zeilen
 
 
-async def uebernehmen(ids: Sequence[int], ziel: Uebernahmeziel) -> int:
-    """Die Bücher der Regale in die Kategorie, oder der Name jedes Regals als Etikett an seine Bücher; gibt zurück, wie
-    viele Bücher es betraf."""
+async def uebernehmen(ids: Sequence[int], ziel: Uebernahmeziel, profil_id: str) -> int:
+    """Die Bücher der Regale in die Kategorie, oder der Name jedes Regals als Etikett an seine Bücher (Etiketten sind
+    persönlich: die des übernehmenden Profils, BF-78); gibt zurück, wie viele Bücher es betraf."""
     regale = await _regale(ids)
     if ziel.kategorie_id is not None:
         await kategorien.kategorie(ziel.kategorie_id)              # wirft kategorien.Fehlt
@@ -99,17 +99,17 @@ async def uebernehmen(ids: Sequence[int], ziel: Uebernahmeziel) -> int:
                 await db.execute("""INSERT OR IGNORE INTO book_categories (book_id, category_id, quelle)
                                     SELECT book_id, ?, 'manuell' FROM book_categories WHERE category_id = ?""", (ziel.kategorie_id, r["id"]))
             else:
-                await _etiketten(r)
+                await _etiketten(r, profil_id)
     return buecher["n"]
 
 
-async def _etiketten(regal: dict) -> None:
-    """Der Name des Regals als Etikett an jedes seiner Bücher, das es noch nicht trägt."""
+async def _etiketten(regal: dict, profil_id: str) -> None:
+    """Der Name des Regals als Etikett des Profils an jedes seiner Bücher, das es noch nicht trägt."""
     name = regal["name"][:ETIKETT]
-    await db.execute("""INSERT INTO book_labels (book_id, color, name)
-                        SELECT x.book_id, ?, ? FROM book_categories x WHERE x.category_id = ?
-                        AND NOT EXISTS (SELECT 1 FROM book_labels l WHERE l.book_id = x.book_id AND l.name = ? COLLATE NOCASE)""",
-                     (regal["color"] if (regal["color"] or "").startswith("#") else ETIKETT_FARBE, name, regal["id"], name))
+    await db.execute("""INSERT INTO book_labels (profil_id, book_id, color, name)
+                        SELECT ?, x.book_id, ?, ? FROM book_categories x WHERE x.category_id = ?
+                        AND NOT EXISTS (SELECT 1 FROM book_labels l WHERE l.book_id = x.book_id AND l.profil_id = ? AND l.name = ? COLLATE NOCASE)""",
+                     (profil_id, regal["color"] if (regal["color"] or "").startswith("#") else ETIKETT_FARBE, name, regal["id"], profil_id, name))
 
 
 async def loeschfolgen(nr: int) -> AltLoeschfolgen:

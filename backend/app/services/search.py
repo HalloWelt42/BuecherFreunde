@@ -1,4 +1,4 @@
-"""FTS5 Volltextsuche - Indexverwaltung und Suchfunktionen."""
+"""FTS5 Volltextsuche - Indexverwaltung und Suchfunktionen. Gesucht wird nur in Büchern, die die Sicht sieht (BF-78)."""
 
 import html
 import logging
@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 
 from backend.app.core.database import db
+from backend.app.familie.sichtbar import Sicht
 from backend.app.services.query_parser import ParsedQuery, parse_query
 
 logger = logging.getLogger("buecherfreunde.search")
@@ -32,8 +33,8 @@ class SearchResult:
     relevance: float
 
 
-def _build_filter_conditions(parsed: ParsedQuery) -> tuple[list[str], list]:
-    """Baut WHERE-Bedingungen und Parameter fuer strukturierte Filter."""
+def _build_filter_conditions(parsed: ParsedQuery, sicht: Sicht) -> tuple[list[str], list]:
+    """Baut WHERE-Bedingungen und Parameter fuer strukturierte Filter, zuletzt die Sichtbarkeit."""
     conditions = []
     params = []
 
@@ -56,6 +57,9 @@ def _build_filter_conditions(parsed: ParsedQuery) -> tuple[list[str], list]:
             conditions.append("books.year <= ?")
             params.append(parsed.jahr_bis)
 
+    bedingung, werte = sicht.bedingung("books.id")
+    conditions.append(bedingung)
+    params.extend(werte)
     return conditions, params
 
 
@@ -63,6 +67,8 @@ async def search_books(
     query: str,
     limit: int = 20,
     offset: int = 0,
+    *,
+    sicht: Sicht,
 ) -> tuple[list[SearchResult], ParsedQuery]:
     """Durchsucht den FTS-Index und gibt Ergebnisse mit Snippets zurueck.
 
@@ -78,7 +84,7 @@ async def search_books(
     if not parsed.fts_query and not parsed.hat_filter:
         return [], parsed
 
-    filter_conds, filter_params = _build_filter_conditions(parsed)
+    filter_conds, filter_params = _build_filter_conditions(parsed, sicht)
 
     try:
         if parsed.fts_query:
@@ -142,7 +148,7 @@ async def search_books(
         return [], parsed
 
 
-async def search_count(query: str) -> int:
+async def search_count(query: str, *, sicht: Sicht) -> int:
     """Zaehlt die Gesamtanzahl der Treffer fuer eine Suchanfrage."""
     if not query or not query.strip():
         return 0
@@ -152,7 +158,7 @@ async def search_count(query: str) -> int:
     if not parsed.fts_query and not parsed.hat_filter:
         return 0
 
-    filter_conds, filter_params = _build_filter_conditions(parsed)
+    filter_conds, filter_params = _build_filter_conditions(parsed, sicht)
 
     try:
         if parsed.fts_query:
@@ -182,7 +188,7 @@ async def search_count(query: str) -> int:
         return 0
 
 
-async def suggest(query: str, limit: int = 5) -> list[dict]:
+async def suggest(query: str, limit: int = 5, *, sicht: Sicht) -> list[dict]:
     """Autovervollständigung für die Suchleiste.
 
     Sucht in Titeln und Autoren nach Präfixübereinstimmungen.
@@ -191,15 +197,16 @@ async def suggest(query: str, limit: int = 5) -> list[dict]:
         return []
 
     prefix = query.strip() + "*"
+    bedingung, werte = sicht.bedingung("books.id")
 
-    sql = """
+    sql = f"""
         SELECT
             books.id,
             highlight(buch_fts, 0, '<b>', '</b>') as title_hl,
             books.author
         FROM buch_fts
         JOIN books ON books.id = buch_fts.rowid
-        WHERE buch_fts MATCH ?
+        WHERE buch_fts MATCH ? AND {bedingung}
         ORDER BY rank
         LIMIT ?
     """
@@ -207,7 +214,7 @@ async def suggest(query: str, limit: int = 5) -> list[dict]:
     try:
         # Suche in Titel
         title_query = f"title:{prefix}"
-        rows = await db.fetch_all(sql, (title_query, limit))
+        rows = await db.fetch_all(sql, (title_query, *werte, limit))
         results = [
             {"id": row["id"], "titel": _sanitize_html(row["title_hl"]), "autor": _sanitize_html(row["author"]), "typ": "titel"}
             for row in rows
@@ -217,16 +224,16 @@ async def suggest(query: str, limit: int = 5) -> list[dict]:
         if len(results) < limit:
             remaining = limit - len(results)
             author_query = f"author:{prefix}"
-            sql_author = """
+            sql_author = f"""
                 SELECT DISTINCT books.id, books.title,
                     highlight(buch_fts, 1, '<b>', '</b>') as author_hl
                 FROM buch_fts
                 JOIN books ON books.id = buch_fts.rowid
-                WHERE buch_fts MATCH ?
+                WHERE buch_fts MATCH ? AND {bedingung}
                 ORDER BY rank
                 LIMIT ?
             """
-            author_rows = await db.fetch_all(sql_author, (author_query, remaining))
+            author_rows = await db.fetch_all(sql_author, (author_query, *werte, remaining))
             existing_ids = {r["id"] for r in results}
             for row in author_rows:
                 if row["id"] not in existing_ids:

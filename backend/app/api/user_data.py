@@ -1,11 +1,13 @@
-"""API-Endpunkte für Nutzerdaten (Favoriten, Lesestand, Bewertung)."""
+"""API-Endpunkte für Nutzerdaten (Favoriten, Lesestand, Bewertung), je Profil (BF-78): jedes Profil hat seine eigenen."""
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from backend.app.api import vorhanden
-from backend.app.core.auth import verify_token
+from backend.app.core.auth import braucht, profil
 from backend.app.core.database import db
+from backend.app.familie import sichtbar
+from backend.app.familie.modelle import Geteilt, Privat, Profil
 from backend.app.models.grenzen import GROESSTE_ZAHL, Leseposition, Nr
 
 router = APIRouter(prefix="/api/books", tags=["Nutzerdaten"])
@@ -34,15 +36,9 @@ class Vorlesestelle(VorlesestelleNeu):
     gemerkt_am: str
 
 
-async def _ensure_user_data(book_id: int) -> None:
-    """Stellt sicher, dass ein Eintrag in user_book_data existiert."""
-    existing = await db.fetch_one(
-        "SELECT book_id FROM user_book_data WHERE book_id = ?", (book_id,)
-    )
-    if not existing:
-        await db.execute(
-            "INSERT INTO user_book_data (book_id) VALUES (?)", (book_id,)
-        )
+async def _ensure_user_data(book_id: int, p: Profil) -> None:
+    """Stellt sicher, dass es für das Profil einen Eintrag in user_book_data gibt."""
+    await db.execute("INSERT OR IGNORE INTO user_book_data (profil_id, book_id) VALUES (?, ?)", (p.id, book_id))
 
 
 async def _check_book_exists(book_id: int) -> None:
@@ -50,140 +46,119 @@ async def _check_book_exists(book_id: int) -> None:
     await vorhanden.buch(book_id)
 
 
-@router.patch("/{book_id}/favorit")
-async def toggle_favorite(book_id: Nr, _token: str = Depends(verify_token)):
-    """Wechselt den Favoriten-Status eines Buches."""
+async def _umschalten(book_id: int, p: Profil, spalte: str) -> bool:
+    """Schaltet einen Schalter des Profils an diesem Buch um und gibt den neuen Wert."""
     await _check_book_exists(book_id)
-    await _ensure_user_data(book_id)
-
-    current = await db.fetch_one(
-        "SELECT is_favorite FROM user_book_data WHERE book_id = ?", (book_id,)
-    )
-    new_value = 0 if current and current["is_favorite"] else 1
-
-    await db.execute(
-        "UPDATE user_book_data SET is_favorite = ? WHERE book_id = ?",
-        (new_value, book_id),
-    )
+    await _ensure_user_data(book_id, p)
+    await db.execute(f"UPDATE user_book_data SET {spalte} = 1 - COALESCE({spalte}, 0) WHERE profil_id = ? AND book_id = ?", (p.id, book_id))
+    z = await db.fetch_one(f"SELECT {spalte} AS wert FROM user_book_data WHERE profil_id = ? AND book_id = ?", (p.id, book_id))
     await db.commit()
+    return bool(z["wert"])
 
-    return {"book_id": book_id, "ist_favorit": bool(new_value)}
+
+@router.patch("/{book_id}/favorit")
+async def toggle_favorite(book_id: Nr, p: Profil = Depends(braucht("favoriten"))):
+    """Wechselt den Favoriten-Status eines Buches."""
+    return {"book_id": book_id, "ist_favorit": await _umschalten(book_id, p, "is_favorite")}
 
 
 @router.patch("/{book_id}/zu-lesen")
-async def toggle_to_read(book_id: Nr, _token: str = Depends(verify_token)):
-    """Wechselt den Zum-Lesen-Status eines Buches."""
-    await _check_book_exists(book_id)
-    await _ensure_user_data(book_id)
-
-    current = await db.fetch_one(
-        "SELECT is_to_read FROM user_book_data WHERE book_id = ?", (book_id,)
-    )
-    new_value = 0 if current and current["is_to_read"] else 1
-
-    await db.execute(
-        "UPDATE user_book_data SET is_to_read = ? WHERE book_id = ?",
-        (new_value, book_id),
-    )
-    await db.commit()
-
-    return {"book_id": book_id, "zu_lesen": bool(new_value)}
+async def toggle_to_read(book_id: Nr, p: Profil = Depends(braucht("sammeln"))):
+    """Wechselt den Zum-Lesen-Status eines Buches (Lesesofa)."""
+    return {"book_id": book_id, "zu_lesen": await _umschalten(book_id, p, "is_to_read")}
 
 
 @router.patch("/{book_id}/gelesen")
-async def toggle_read(book_id: Nr, _token: str = Depends(verify_token)):
+async def toggle_read(book_id: Nr, p: Profil = Depends(braucht("lesezeichen"))):
     """Wechselt den Gelesen-Status eines Buches (setzt/löscht last_read_at)."""
     await _check_book_exists(book_id)
-    await _ensure_user_data(book_id)
-
-    current = await db.fetch_one(
-        "SELECT last_read_at FROM user_book_data WHERE book_id = ?", (book_id,)
-    )
-    is_read = current and current["last_read_at"] is not None
-
-    if is_read:
-        await db.execute(
-            "UPDATE user_book_data SET last_read_at = NULL WHERE book_id = ?",
-            (book_id,),
-        )
-    else:
-        await db.execute(
-            "UPDATE user_book_data SET last_read_at = datetime('now') WHERE book_id = ?",
-            (book_id,),
-        )
+    await _ensure_user_data(book_id, p)
+    current = await db.fetch_one("SELECT last_read_at FROM user_book_data WHERE profil_id = ? AND book_id = ?", (p.id, book_id))
+    is_read = current is not None and current["last_read_at"] is not None
+    await db.execute("UPDATE user_book_data SET last_read_at = CASE WHEN ? THEN NULL ELSE datetime('now') END WHERE profil_id = ? AND book_id = ?",
+                     (int(is_read), p.id, book_id))
     await db.commit()
-
     return {"book_id": book_id, "gelesen": not is_read}
 
 
 @router.patch("/{book_id}/bewertung")
-async def set_rating(
-    book_id: Nr, data: RatingUpdate, _token: str = Depends(verify_token)
-):
+async def set_rating(book_id: Nr, data: RatingUpdate, p: Profil = Depends(braucht("favoriten"))):
     """Setzt die Bewertung eines Buches (0-5 Sterne)."""
     await _check_book_exists(book_id)
-    await _ensure_user_data(book_id)
-
-    await db.execute(
-        "UPDATE user_book_data SET rating = ? WHERE book_id = ?",
-        (data.bewertung, book_id),
-    )
+    await _ensure_user_data(book_id, p)
+    await db.execute("UPDATE user_book_data SET rating = ? WHERE profil_id = ? AND book_id = ?", (data.bewertung, p.id, book_id))
     await db.commit()
-
     return {"book_id": book_id, "bewertung": data.bewertung}
 
 
 @router.patch("/{book_id}/leseposition")
-async def set_reading_position(
-    book_id: Nr, data: ReadingPositionUpdate, _token: str = Depends(verify_token)
-):
-    """Speichert die Leseposition (Seitenzahl, CFI oder Prozent)."""
+async def set_reading_position(book_id: Nr, data: ReadingPositionUpdate, p: Profil = Depends(braucht("lesen"))):
+    """Speichert die Leseposition (Seitenzahl, CFI oder Prozent); der Leser merkt sie von selbst, darum reicht Lesen (BF-78)."""
     await _check_book_exists(book_id)
-    await _ensure_user_data(book_id)
-
-    await db.execute(
-        "UPDATE user_book_data SET reading_position = ?, last_read_at = datetime('now') WHERE book_id = ?",
-        (data.position, book_id),
-    )
+    await _ensure_user_data(book_id, p)
+    await db.execute("UPDATE user_book_data SET reading_position = ?, last_read_at = datetime('now') WHERE profil_id = ? AND book_id = ?",
+                     (data.position, p.id, book_id))
     await db.commit()
-
     return {"book_id": book_id, "position": data.position}
 
 
-# Vorlesestelle (BF-37): Anhalten, Pause, Schlafuhr, Schließen und Abriss merken sie, damit es auf jedem Gerät an
-# demselben Satz weitergeht; ist der gewählte Umfang zu Ende gelesen, wird sie gelöscht.
-
-
-@router.get("/{book_id}/vorlesestelle", response_model=Vorlesestelle | None)
-async def lies_vorlesestelle(book_id: Nr, _token: str = Depends(verify_token)) -> Vorlesestelle | None:
-    """Wo das Vorlesen dieses Buchs stehen blieb; null, wenn nichts gemerkt ist."""
+@router.put("/{book_id}/privat", response_model=Privat)
+async def set_privat(book_id: Nr, data: Privat, p: Profil = Depends(braucht("privat"))) -> Privat:
+    """Privat: nur dieses Profil sieht das Buch; die anderen sehen es nicht mehr, auch nicht in Zählern (BF-78)."""
     await _check_book_exists(book_id)
-    zeile = await db.fetch_one(
-        "SELECT einheit, zeichen, bis_einheit, bis_zeichen, umfang, ort, gemerkt_am FROM vorlesestelle WHERE buch_id = ?", (book_id,)
-    )
+    await sichtbar.privat_setzen(p.id, book_id, data.privat)
+    await db.commit()
+    return data
+
+
+@router.put("/{book_id}/geteilt", response_model=Geteilt)
+async def set_geteilt(book_id: Nr, data: Geteilt, p: Profil = Depends(profil)) -> Geteilt:
+    """Das Kind teilt dieses Buch mit den Eltern; ab der Stufe Jugend sehen sie im Einblick nur Geteiltes (BF-78)."""
+    await _check_book_exists(book_id)
+    await _ensure_user_data(book_id, p)
+    await db.execute("UPDATE user_book_data SET geteilt = ? WHERE profil_id = ? AND book_id = ?", (int(data.geteilt), p.id, book_id))
+    await db.commit()
+    return data
+
+
+# Vorlesestelle (BF-37): Anhalten, Pause, Schlafuhr, Schließen und Abriss merken sie, damit es auf jedem Gerät an
+# demselben Satz weitergeht; ist der gewählte Umfang zu Ende gelesen, wird sie gelöscht. Je Profil (BF-78).
+
+
+async def _vorlesestelle(book_id: int, p: Profil) -> Vorlesestelle | None:
+    zeile = await db.fetch_one("SELECT einheit, zeichen, bis_einheit, bis_zeichen, umfang, ort, gemerkt_am FROM vorlesestelle "
+                               "WHERE profil_id = ? AND buch_id = ?", (p.id, book_id))
     return Vorlesestelle(**dict(zeile)) if zeile else None
 
 
+@router.get("/{book_id}/vorlesestelle", response_model=Vorlesestelle | None)
+async def lies_vorlesestelle(book_id: Nr, p: Profil = Depends(profil)) -> Vorlesestelle | None:
+    """Wo das Vorlesen dieses Buchs stehen blieb; null, wenn nichts gemerkt ist."""
+    await _check_book_exists(book_id)
+    return await _vorlesestelle(book_id, p)
+
+
 @router.put("/{book_id}/vorlesestelle", response_model=Vorlesestelle)
-async def merke_vorlesestelle(book_id: Nr, stelle: VorlesestelleNeu, _token: str = Depends(verify_token)) -> Vorlesestelle:
+async def merke_vorlesestelle(book_id: Nr, stelle: VorlesestelleNeu, p: Profil = Depends(braucht("vorlesen"))) -> Vorlesestelle:
     """Merkt die Stelle; eine frühere desselben Buchs wird ersetzt."""
     await _check_book_exists(book_id)
     await db.execute(
-        """INSERT INTO vorlesestelle (buch_id, einheit, zeichen, bis_einheit, bis_zeichen, umfang, ort, gemerkt_am)
-           VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-           ON CONFLICT(buch_id) DO UPDATE SET einheit = excluded.einheit, zeichen = excluded.zeichen, bis_einheit = excluded.bis_einheit,
-             bis_zeichen = excluded.bis_zeichen, umfang = excluded.umfang, ort = excluded.ort, gemerkt_am = excluded.gemerkt_am""",
-        (book_id, stelle.einheit, stelle.zeichen, stelle.bis_einheit, stelle.bis_zeichen, stelle.umfang, stelle.ort),
+        """INSERT INTO vorlesestelle (profil_id, buch_id, einheit, zeichen, bis_einheit, bis_zeichen, umfang, ort, gemerkt_am)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+           ON CONFLICT(profil_id, buch_id) DO UPDATE SET einheit = excluded.einheit, zeichen = excluded.zeichen,
+             bis_einheit = excluded.bis_einheit, bis_zeichen = excluded.bis_zeichen, umfang = excluded.umfang, ort = excluded.ort,
+             gemerkt_am = excluded.gemerkt_am""",
+        (p.id, book_id, stelle.einheit, stelle.zeichen, stelle.bis_einheit, stelle.bis_zeichen, stelle.umfang, stelle.ort),
     )
     await db.commit()
-    gemerkt = await lies_vorlesestelle(book_id, _token)
+    gemerkt = await _vorlesestelle(book_id, p)
     assert gemerkt is not None
     return gemerkt
 
 
 @router.delete("/{book_id}/vorlesestelle", status_code=204)
-async def vergiss_vorlesestelle(book_id: Nr, _token: str = Depends(verify_token)) -> None:
+async def vergiss_vorlesestelle(book_id: Nr, p: Profil = Depends(braucht("vorlesen"))) -> None:
     """Der gewählte Umfang ist zu Ende gelesen: nichts mehr zum Weiterlesen."""
     await _check_book_exists(book_id)
-    await db.execute("DELETE FROM vorlesestelle WHERE buch_id = ?", (book_id,))
+    await db.execute("DELETE FROM vorlesestelle WHERE profil_id = ? AND buch_id = ?", (p.id, book_id))
     await db.commit()

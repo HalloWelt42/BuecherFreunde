@@ -14,6 +14,7 @@ from collections import Counter
 from pydantic import ValidationError
 
 from backend.app.core.database import db
+from backend.app.familie.sichtbar import Sicht
 from backend.app.katalog import merkmale
 from backend.app.katalog.datei import freier_schluessel, herkunft, schluesselteil
 from backend.app.katalog.modelle import (
@@ -65,14 +66,22 @@ def arten_aus(text: str | None) -> list[str]:
 
 # -- lesen ------------------------------------------------------------------------------------------------------------------
 
-async def _zeilen() -> list[dict]:
-    return await db.fetch_all(f"""SELECT {SPALTEN}, (SELECT COUNT(*) FROM book_categories x WHERE x.category_id = c.id) AS anzahl
-                                  FROM categories c ORDER BY c.sort_order, c.name COLLATE NOCASE, c.id""")
+def _gezaehlt(sicht: Sicht | None, spalte: str) -> tuple[str, tuple]:
+    """Welche Bücher die Zahlen zählen: was die Sicht sieht (BF-78); ohne Sicht alle, für die Pflege des Katalogs."""
+    return sicht.bedingung(spalte) if sicht else ("1", ())
 
 
-async def _bereichszahlen() -> dict[int, int]:
-    zeilen = await db.fetch_all("""SELECT k.parent_id AS id, COUNT(DISTINCT x.book_id) AS n FROM categories k
-                                   JOIN book_categories x ON x.category_id = k.id WHERE k.art = 'kategorie' GROUP BY k.parent_id""")
+async def _zeilen(sicht: Sicht | None = None) -> list[dict]:
+    bedingung, werte = _gezaehlt(sicht, "x.book_id")
+    return await db.fetch_all(f"""SELECT {SPALTEN}, (SELECT COUNT(*) FROM book_categories x WHERE x.category_id = c.id AND {bedingung}) AS anzahl
+                                  FROM categories c ORDER BY c.sort_order, c.name COLLATE NOCASE, c.id""", werte)
+
+
+async def _bereichszahlen(sicht: Sicht | None = None) -> dict[int, int]:
+    bedingung, werte = _gezaehlt(sicht, "x.book_id")
+    zeilen = await db.fetch_all(f"""SELECT k.parent_id AS id, COUNT(DISTINCT x.book_id) AS n FROM categories k
+                                    JOIN book_categories x ON x.category_id = k.id WHERE k.art = 'kategorie' AND {bedingung}
+                                    GROUP BY k.parent_id""", werte)
     return {z["id"]: z["n"] for z in zeilen}
 
 
@@ -92,16 +101,18 @@ def _gliedern(zeilen: list[dict]) -> list[tuple[dict, list[dict]]]:
     return [(b, je[b["id"]]) for b in bereiche]
 
 
-async def katalog() -> KatalogAntwort:
-    zeilen = await _zeilen()
-    zahlen = await _bereichszahlen()
+async def katalog(sicht: Sicht | None = None) -> KatalogAntwort:
+    """Bereiche, Kategorien und Regale mit ihren Zahlen; mit `sicht` nur, was sie sieht (GET /api/katalog)."""
+    zeilen = await _zeilen(sicht)
+    zahlen = await _bereichszahlen(sicht)
     bereiche = [Bereich(id=b["id"], schluessel=b["schluessel"], name=b["name"], zeichen=zeichen(b["icon"]), farbe=b["color"] or "",
                         beschreibung=b["description"] or "", arten=arten_aus(b["arten"]), verborgen=bool(b["verborgen"]),
                         anzahl=zahlen.get(b["id"], 0), kategorien=[_kategorie(k, b["color"] or "") for k in ks])
                 for b, ks in _gliedern(zeilen)]
     regale = [Regal(id=z["id"], name=z["name"], zeichen=zeichen(z["icon"]), farbe=z["color"] or "", anzahl=z["anzahl"],
                     spezial=bool(z["spezial"])) for z in zeilen if z["art"] == "regal"]
-    ohne = await db.fetch_one(f"SELECT COUNT(*) AS n FROM books b WHERE NOT {merkmale.IN_KATEGORIE}")
+    bedingung, werte = _gezaehlt(sicht, "b.id")
+    ohne = await db.fetch_one(f"SELECT COUNT(*) AS n FROM books b WHERE NOT {merkmale.IN_KATEGORIE} AND {bedingung}", werte)
     return KatalogAntwort(bereiche=bereiche, regale=regale, ohne_kategorie=ohne["n"] if ohne else 0,
                           hat_katalog=any(z["art"] != "regal" for z in zeilen))
 

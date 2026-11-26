@@ -111,15 +111,29 @@ async def _sprechen(satz: str, stimme: str, arbeit: str) -> bytes:
     return antwort.content
 
 
-async def strom(text: str, stimme: str) -> AsyncIterator[bytes]:
-    """Zeilen `{art: satz, nr, text, ton}` (Ton als Base64-WAV), am Ende `{art: ende}`. Was vor dem ersten Satz scheitert,
-    ist ein `VorlesenFehler`; danach kommt eine Zeile `fehler`. `stimme`: leer für die Vorgabe des Dienstes, sonst eine
-    Stimme aus dem Katalog."""
+def _pruefen(stimme: str) -> str:
+    """Der Name der Stimme beim Sprechdienst; wirft, wenn es keinen Sprechdienst oder diese Stimme nicht gibt."""
     if not bereit():
         raise VorlesenFehler("Es ist kein Sprechdienst angeschlossen (Leitstelle)")
     if stimme and not stimme.startswith(KATALOG):
         raise VorlesenFehler("Diese Stimme gibt es über die Leitstelle nicht; bitte eine aus der Liste wählen", 400)
-    name = stimme.removeprefix(KATALOG)
+    return stimme.removeprefix(KATALOG)
+
+
+async def satz(text: str, stimme: str) -> bytes:
+    """Ein einzelner Satz als WAV, wie im Strom (für kurze Ansagen, services/ansage.py)."""
+    name = _pruefen(stimme)
+    try:
+        return await _sprechen(text, name, f"bf-ansage-{uuid.uuid4().hex[:12]}")
+    except LeitstellenFehler as f:
+        raise _grund(f) from f
+
+
+async def strom(text: str, stimme: str) -> AsyncIterator[bytes]:
+    """Zeilen `{art: satz, nr, text, ton}` (Ton als Base64-WAV), am Ende `{art: ende}`. Was vor dem ersten Satz scheitert,
+    ist ein `VorlesenFehler`; danach kommt eine Zeile `fehler`. `stimme`: leer für die Vorgabe des Dienstes, sonst eine
+    Stimme aus dem Katalog."""
+    name = _pruefen(stimme)
     teile = saetze(text)
     arbeit = f"bf-vorlesen-{uuid.uuid4().hex[:12]}"
     bestellt: dict[int, asyncio.Task[bytes]] = {}
