@@ -384,6 +384,8 @@ export interface Sammlungsvorschlag {
   /** Die KI hält es für keine Reihe; der Vorschlag bleibt, du entscheidest (steht am Ende der Liste) */
   ki_zweifel: boolean;
   buecher: Vorschlagsbuch[];
+  /** Lücken aus den eigenen Bandnummern, etwa "vorhanden 1 bis 5 und 8, es fehlen 6 und 7" (BF-75); leer ohne */
+  luecken?: string;
 }
 
 /** Stand des Suchlaufs (GET /api/collections/vorschlaege/stand, auch die Antwort auf suchen) */

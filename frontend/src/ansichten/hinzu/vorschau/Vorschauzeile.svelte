@@ -93,7 +93,7 @@
       {:else}
         <span class="vohne"></span>
       {/if}
-      {#each f.hinweise as hinweis (hinweis)}<span class="vwarnung marke-text warn"><Symbol name="triangle-exclamation" />{hinweis}</span>{/each}
+      {#each f.hinweise as hinweis (hinweis.text)}<span class="vwarnung marke-text warn"><Symbol name="triangle-exclamation" />{hinweis.text}<Herkunft herkunft={hinweis.herkunft} /></span>{/each}
       {#if !stand.offen && !wartet(zeile) && zeile.text}<span class="vwarnung leise">{zeile.text}</span>{/if}
     {/if}
   </span>

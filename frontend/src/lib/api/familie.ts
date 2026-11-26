@@ -9,7 +9,9 @@ export type Stufe = "vorlesen" | "erstes_lesen" | "lesen_lernen" | "schule" | "j
 /** Was ein Profil darf, aus Rolle und Stufe (stufen.json am Server, dort mit Beschreibung) */
 export type Faehigkeit =
   | "lesen" | "vorlesen" | "lesezeichen" | "suche" | "favoriten" | "sammeln" | "markierungen" | "notizen" | "etiketten" | "privat"
-  | "ausfuehren" | "nachschlagen" | "katalog" | "hinzufuegen" | "bearbeiten" | "freigeben" | "ki" | "loeschen" | "einstellungen" | "profile";
+  | "ausfuehren" | "nachschlagen" | "katalog" | "hinzufuegen" | "bearbeiten" | "freigeben" | "ki" | "loeschen" | "einstellungen" | "profile"
+  /** Lücken in Sammlungen (BF-75): nur Erwachsene */
+  | "luecken";
 
 /** Schrift des Kindes, ausgehend von der Größe seiner Stufe */
 export type Schriftgroesse = "klein" | "mittel" | "gross";

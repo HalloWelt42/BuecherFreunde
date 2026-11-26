@@ -19,6 +19,8 @@ export const ABRUFE = {
   annahme: "hinzufuegen",
   /** GET /api/fassungen: Übersetzungen in Arbeit */
   uebersetzungen: "ki",
+  /** GET /api/collections/{id}/luecken und /api/luecken/*: fehlende Bände in Sammlungen (BF-75); alles dazu erscheint nur damit */
+  luecken: "luecken",
 } as const satisfies Record<string, Faehigkeit>;
 
 export type Abruf = keyof typeof ABRUFE;

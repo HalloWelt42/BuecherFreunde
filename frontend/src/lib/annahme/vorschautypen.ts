@@ -32,6 +32,11 @@ export interface Ziel {
 /** Art in der Vorschau: "buch", eine Art unter Besonderes, "material"; leer heißt noch offen */
 export type Vorschauart = "" | "buch" | "dokument" | "heft" | "katalog" | "broschuere" | "anleitung" | "material";
 
+export interface Hinweis {
+  text: string;
+  herkunft: Herkunft | null;
+}
+
 export interface Zuordnung {
   art: Wert<string>;
   gattung: string | null;
@@ -44,7 +49,8 @@ export interface Zuordnung {
   ziel: Ziel | null;
   /** warum nicht übernommen; leer: wird übernommen */
   nicht: string;
-  hinweise: string[];
+  /** kurze Sätze und woher sie kommen, etwa "Die Datei ist englisch, die Lücke deutsch" (luecke, BF-75) */
+  hinweise: Hinweis[];
   bestaetigt: boolean;
   von_profil: string | null;
 }

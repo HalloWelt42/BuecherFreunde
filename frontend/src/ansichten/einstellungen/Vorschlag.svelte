@@ -1,6 +1,8 @@
 <script lang="ts">
   // Ein Vorschlag für eine Sammlung (BF-66): Name, Anzahl, Autor, Fundwege, Satz der KI, Umschläge, dann Anlegen, Anpassen, Verwerfen
   import { anzahl } from "../../lib/format";
+  import { darfAbrufen } from "../../lib/stand/abrufe";
+  import Symbol from "../../lib/teile/Symbol.svelte";
   import Chip from "../../lib/teile/Chip.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Umschlag from "../../lib/teile/Umschlag.svelte";
@@ -20,6 +22,8 @@
     {#each vorschlag.wege as weg, n (n)}<Chip text={weg} symbol={wegSymbol(weg)} />{/each}
     {#if ki}<Chip text={ki} symbol={vorschlag.ki_zweifel ? "circle-question" : "robot"} />{/if}
   </div>
+  <!-- Lücken aus den eigenen Bandnummern (BF-75), ohne Abfrage der Quellen -->
+  {#if vorschlag.luecken && darfAbrufen("luecken")}<p class="marke-text lueckenzeile"><Symbol name="puzzle-piece" />{vorschlag.luecken}</p>{/if}
   <div class="vorschlagsumschlaege">
     {#each reihe.gezeigt as buch (buch.id)}<Umschlag {buch} />{/each}
     {#if reihe.rest}<span class="vorschlagsrest zahl">+{reihe.rest}</span>{/if}

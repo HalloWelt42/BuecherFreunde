@@ -1,0 +1,46 @@
+/* Lücken in Sammlungen (BF-75), nach dem abgenommenen Entwurf "Hochladen und Zuordnen", Abschnitt 4 und 6 */
+
+/* Je Sprache eine Reihe, fehlende Bände als blasse Platzhalter mit ihrer Nummer */
+.sprachreihe { display: grid; gap: .125rem; }
+.sprachreihe .titelzeile { align-items: center; margin-bottom: .25rem; }
+.sprachreihe .flagge { flex: none; border-radius: 50%; box-shadow: 0 0 0 1.5px rgb(255 255 255 / .9), 0 0 0 2.5px var(--linie); }
+.lueckenzeile { color: var(--tinte-2); }
+.lueckenzeile > i { color: var(--messing); }
+.platzhalter { background: var(--vertieft); box-shadow: none; }
+.platzhalter > svg { opacity: .24; filter: grayscale(1); }
+.platzhalter::after { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; border: 2px dashed rgb(var(--kante) / .8); pointer-events: none; }
+.platzhalter .nummer { position: absolute; z-index: 3; left: 50%; top: 42%; transform: translate(-50%, -50%); min-width: 2.75rem; height: 2.75rem; padding: 0 .5rem; border-radius: 999px; display: grid; place-items: center; font-weight: 700; font-size: 1.25rem; color: var(--tinte); background: rgb(var(--glas) / .92); box-shadow: 0 0 0 1px var(--linie), 0 2px 6px rgb(var(--schatten) / .25); }
+.band.luecke .schild b { color: var(--tinte-3); font-weight: 500; }
+.band.luecke .bandnr { color: var(--messing); font-weight: 600; }
+.band.luecke > .flaeche[aria-expanded="true"] .platzhalter::after, .band.luecke.ueber .platzhalter::after { border: 2px solid var(--messing); }
+.band.luecke > .flaeche[aria-expanded="true"] .nummer, .band.luecke.ueber .nummer { background: var(--messing-flaeche); color: var(--auf-messing); }
+
+/* Das Feld zum fehlenden Band */
+.lueckenfeld { display: grid; gap: .625rem; }
+.feldtasten { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .375rem; }
+.feldtasten > .voll { grid-column: 1 / -1; }
+.feldtasten .knopf { min-width: 0; white-space: normal; height: auto; min-height: 2.25rem; padding-block: .25rem; text-align: center; line-height: 1.2; }
+.feldtasten .knopf.klein { min-height: 1.875rem; }
+.feldtrenner { border-top: 1px solid var(--linie); }
+
+/* Sammlung bearbeiten: Platzhalter, Bände je Sprache, Ausgeblendetes */
+.lueckenteil { display: grid; gap: .625rem; padding-top: .75rem; border-top: 1px solid var(--linie); }
+.lueckenteil h3 { font-size: .9375rem; display: flex; align-items: center; gap: .5rem; }
+.lueckenteil h3 > i { color: var(--messing); }
+.lueckenteil .zeile2 { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; align-items: center; font-size: .9375rem; color: var(--tinte); }
+.lueckenteil .zeile2 small { display: block; color: var(--tinte-3); font-size: .8125rem; }
+.gesamtzeile { display: grid; grid-template-columns: auto minmax(0, 1fr) 5rem minmax(0, 11rem); gap: .5rem; align-items: center; color: var(--tinte); font-size: .9375rem; }
+.gesamtzeile .eingabe { text-align: right; }
+.gesamtzeile > :last-child { min-width: 0; display: flex; align-items: center; gap: .25rem; }
+.gesamtzeile .flagge { flex: none; border-radius: 50%; box-shadow: 0 0 0 1.5px rgb(255 255 255 / .9), 0 0 0 2.5px var(--linie); }
+
+/* Einstellungen, Karte Fehlende Bände: Suchadresse mit Platzhaltern und Probe */
+.platzhalterwahl { display: grid; gap: .375rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.platzhalterwahl .chip { width: 100%; justify-content: center; font-family: var(--codeschrift); font-size: .8125rem; }
+.suchvorlage { font-family: var(--codeschrift); font-size: .875rem; }
+.suchprobe { display: grid; gap: .375rem; padding: .5rem .625rem; justify-items: start; }
+
+@container app (max-width: 720px) {
+  .gesamtzeile { grid-template-columns: auto minmax(0, 1fr) 5rem; }
+  .gesamtzeile > :last-child { grid-column: 2 / -1; }
+}

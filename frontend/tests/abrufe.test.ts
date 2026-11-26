@@ -13,7 +13,7 @@ import { werkarten } from "../src/lib/stand/werkarten.svelte";
 import Kopf from "../src/lib/schale/Kopf.svelte";
 
 const JUGEND: Faehigkeit[] = ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "sammeln", "markierungen", "notizen", "etiketten", "privat", "ausfuehren"];
-const VERWALTUNG: Faehigkeit[] = [...JUGEND, "nachschlagen", "katalog", "hinzufuegen", "bearbeiten", "freigeben", "ki", "loeschen", "einstellungen", "profile"];
+const VERWALTUNG: Faehigkeit[] = [...JUGEND, "nachschlagen", "katalog", "hinzufuegen", "bearbeiten", "freigeben", "ki", "loeschen", "einstellungen", "profile", "luecken"];
 /** Die Wege, die die Stufe Jugend bisher mit 403 beantwortet bekam */
 const VERBOTEN = ["/api/katalog", "/api/verbindungen", "/api/config/update-check", "/api/einordnung/stand", "/api/books/rescan/status", "/api/annahme", "/api/fassungen"];
 

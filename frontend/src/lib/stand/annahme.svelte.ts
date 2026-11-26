@@ -6,6 +6,7 @@ import { hochladenZaehlen } from "../api/client";
 import { Hochlader } from "../annahme/hochlader";
 import { pruefsumme } from "../annahme/pruefsumme";
 import type { AnnahmeEintrag, AnnahmeListe, Annahmequelle, AnnahmeZaehler, Hochladung, Quellenzahlen, Vorschaukurz } from "../annahme/typen";
+import type { Vorgabe } from "../annahme/vorschautypen";
 import { anzahl } from "../format";
 import { EINLESEN, EINZELN, GEMEINFREI, gehoertZu, sammle } from "../annahme/sammlung";
 import { fuegeZusammen, laeuftVonSelbst, type Annahmezeile } from "../annahme/zeilen";
@@ -89,11 +90,12 @@ class Annahme {
 
   /**
    * Hochladen im Browser läuft immer über eine Vorschau (BF-80): erst die leere Vorschau, dann die Dateien in sie. Liefert
-   * ihre Kennung, damit die Ansicht gleich dorthin geht, während Prüfsummen und Teile noch laufen.
+   * ihre Kennung, damit die Ansicht gleich dorthin geht, während Prüfsummen und Teile noch laufen. Mit Vorgabe in eine
+   * Sammlung oder eine Lücke (BF-75).
    */
-  async nimmAn(dateien: readonly File[], anreichern: boolean): Promise<string> {
+  async nimmAn(dateien: readonly File[], anreichern: boolean, vorgabe?: Partial<Vorgabe>): Promise<string> {
     void this.starte();
-    const v = await legeVorschauAn(dateien.length === 1 ? dateien[0].name : anzahl(dateien.length, "Datei", "Dateien"));
+    const v = await legeVorschauAn(dateien.length === 1 ? dateien[0].name : anzahl(dateien.length, "Datei", "Dateien"), vorgabe);
     this.vorschauen = [v, ...this.vorschauen.filter((x) => x.id !== v.id)];
     this.#hochlader.fuegeHinzu(dateien, { art: "vorschau", vorschau: v.id, anreichern });
     return v.id;

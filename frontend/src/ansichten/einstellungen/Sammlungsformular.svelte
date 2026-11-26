@@ -1,5 +1,8 @@
 <script lang="ts">
   import { aktualisiereSammlung, erstelleSammlung } from "../../lib/api/collections";
+  import { aendereLuecken } from "../../lib/api/luecken";
+  import { darfAbrufen } from "../../lib/stand/abrufe";
+  import Lueckenteil from "./Lueckenteil.svelte";
   import { bestand } from "../../lib/stand/bestand.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
   import Farbwahl from "../../lib/teile/Farbwahl.svelte";
@@ -13,15 +16,19 @@
   let angaben = $state(untrack(() => ({ name: sammlung?.name ?? "", description: sammlung?.description ?? "", color: sammlung?.color || "#1f9a82" })));
   let laeuft = $state(false);
   let fehler = $state("");
+  let lueckenteil: Lueckenteil | undefined = $state();
 
   async function speichere(e: SubmitEvent) {
     e.preventDefault();
     laeuft = true;
     fehler = "";
     try {
+      // Erst prüfen, was sich an den Lücken ändert (BF-75): eine Zahl, die nicht geht, hält alles an
+      const luecken = lueckenteil?.aenderung() ?? null;
       const daten = { ...angaben, name: angaben.name.trim() };
       if (sammlung) await aktualisiereSammlung(sammlung.id, daten);
       else await erstelleSammlung(daten);
+      if (sammlung && luecken) await aendereLuecken(sammlung.id, luecken);
       bestand.geaendert();
       melde.gut(sammlung ? "Sammlung geändert" : "Sammlung angelegt");
       onschliessen();
@@ -40,6 +47,7 @@
     {#if fehler}<p class="marke-text schlecht" role="alert">{fehler}</p>{/if}
     <label class="feld">Beschreibung<textarea class="eingabe" rows="3" bind:value={angaben.description}></textarea></label>
     <div class="feld">Farbe<Farbwahl wert={angaben.color} onwahl={(f) => (angaben.color = f)} /></div>
+    {#if sammlung && darfAbrufen("luecken")}<Lueckenteil sammlung={sammlung.id} bind:this={lueckenteil} />{/if}
   </form>
   {#snippet fuss()}
     <span class="schiebt reihe">

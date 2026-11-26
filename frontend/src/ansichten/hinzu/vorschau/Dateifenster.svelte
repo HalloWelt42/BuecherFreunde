@@ -126,7 +126,7 @@
       {#if f.doppel.grund}<span class="leise">{f.doppel.grund}</span>{/if}
     {/if}
   </div>
-  {#each f.hinweise as hinweis (hinweis)}<p class="marke-text warn"><Symbol name="triangle-exclamation" />{hinweis}</p>{/each}
+  {#each f.hinweise as hinweis (hinweis.text)}<p class="marke-text warn"><Symbol name="triangle-exclamation" />{hinweis.text}<Herkunft herkunft={hinweis.herkunft} mitText /></p>{/each}
   {#if zeile.ablage}<dl class="angaben"><dt>Ablage</dt><dd class="pfad">{ablagetext(zeile.ablage)}</dd></dl>{/if}
 
   {#snippet fuss()}

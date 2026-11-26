@@ -1,11 +1,14 @@
 <script lang="ts">
   // Reiter Hinzufügen (BF-80): je Weg "erst bestätigen" und die Grenzen für ZIP. Hochladen im Browser läuft immer über die
   // Vorschau, der Schalter steht fest; Eingangsordner und Ordner auf dem Gerät laufen ohne ihn wie bisher von selbst ins Regal.
+  // Dazu die Suchadresse für fehlende Bände (BF-75).
   // Jede Änderung gilt sofort; was der Server nicht nimmt, steht danach wieder wie zuvor.
   import { ladeEingangsordner, ladeHinzufuegeeinstellungen, speichereHinzufuegeeinstellungen } from "../../lib/api/annahme";
   import type { Hinzufuegeeinstellungen } from "../../lib/annahme/vorschautypen";
   import { ladePfade } from "../../lib/api/config";
+  import { darfAbrufen } from "../../lib/stand/abrufe";
   import { ich } from "../../lib/stand/ich.svelte";
+  import Fehlendebaende from "./Fehlendebaende.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
   import Karte from "../../lib/teile/Karte.svelte";
   import Schalter from "../../lib/teile/Schalter.svelte";
@@ -87,7 +90,8 @@
       </div>
       <p class="leise">Aus: von selbst ins Regal, wie bisher.</p>
     </Karte>
-    <!-- Hier folgt die Karte "Fehlende Bände" mit der Suchadresse (BF-75), wie im Entwurf rechts neben "Erst bestätigen" -->
+    <!-- Die Suchadresse für fehlende Bände (BF-75), wie im Entwurf rechts neben "Erst bestätigen"; nur mit Lücken -->
+    {#if darfAbrufen("luecken")}<Fehlendebaende />{/if}
     <Karte titel="Grenzen für ZIP" symbol="file-zipper">
       <div class="zweifeld">
         {#each GRENZEN as [feld, name, von, bis] (feld)}
