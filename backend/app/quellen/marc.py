@@ -17,6 +17,7 @@ _NS = {"s": "http://www.loc.gov/zing/srw/", "m": "http://www.loc.gov/MARC21/slim
 _STEUER = re.compile("[\x80-\x9f  ]")        # Sortierzeichen um führende Artikel
 _SEITEN = re.compile(r"(\d{1,5})\s*(?:S\b|Seiten|p\b|pages|Bl\b|Blätter)", re.IGNORECASE)
 _VORSATZ = re.compile(r"^\([^)]*\)")                   # "(Produktform)Paperback": Handelsangabe, kein Schlagwort
+_AUSLASSUNG = re.compile(r"^\[\s*(?:\.{2,}|…)\s*\]$")   # "[...]": Bandnummer unbekannt, keine Angabe
 _AUFBEREITUNG = ("Fiktionale Darstellung", "Belletristische Darstellung")
 SCHLAGWORTE_HOECHSTENS = 8
 AUTOR, HERAUSGEBER = {"aut", "cre"}, {"edt"}
@@ -94,7 +95,7 @@ def _titel(s: Satz) -> tuple[str, str]:
     haupt = s.eins(f, "a").strip(" /:;=")
     band, teil = (s.eins(f, c).strip(" /:;.=") for c in "np")
     unter = "" if s.eins(f, "b").startswith("=") else s.eins(f, "b").strip(" /:;.=")      # "=": Titel in anderer Sprache
-    band = re.sub(r"^(?:Bd\.?|Band|Teil)?\s*(\d+)$", r"Band \1", band)
+    band = re.sub(r"^(?:Bd\.?|Band|Teil)?\s*(\d+)$", r"Band \1", _AUSLASSUNG.sub("", band))
     return f"{haupt}, {band}" if band else haupt, " - ".join(t for t in (teil, unter) if t)
 
 

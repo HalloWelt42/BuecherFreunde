@@ -1,7 +1,8 @@
 """Das Deckblatt eines Buchs: ein Weg für Aufnahme, "Umschlag neu" und "Bibliothek ergänzen".
 
 PDF: die erste Seite. EPUB: das Bild, das das Buch selbst als Umschlag nennt (Kennzeichen im Verzeichnis, Verweis "cover",
-Umschlagseite), nie ein beliebiges großes Bild aus dem Inneren; nennt es keins, wird die erste Seite gezeichnet. Immer JPEG."""
+Umschlagseite), nie ein beliebiges großes Bild aus dem Inneren; nennt es keins, wird die erste Seite gezeichnet. Eine leere
+Fläche ist nie ein Deckblatt, dann bleibt der gezeichnete Ersatz. Immer JPEG."""
 
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ from pathlib import Path
 from urllib.parse import unquote
 
 from bs4 import BeautifulSoup
-from PIL import Image
+from PIL import Image, ImageStat
 
 logger = logging.getLogger("buecherfreunde.deckblatt")
 BREITE, HOEHE = 800, 1200
@@ -24,6 +25,7 @@ HOCH_MINDESTENS, BREIT_MINDESTENS = 200, 140
 VERHAELTNIS = (0.4, 1.35)              # Breite zu Höhe; breiter ist es ein Bild aus dem Buch, kein Umschlag
 BILD = (".jpg", ".jpeg", ".png", ".gif", ".webp")
 SEITE = (420, 600)                     # so groß wird eine gezeichnete erste Seite gesetzt
+LEER_STREUUNG = 2.0                    # streut die Helligkeit weniger, ist die Fläche leer
 
 
 def von_datei(datei: Path, format_: str = "") -> bytes | None:
@@ -50,7 +52,8 @@ def erste_seite(datei: Path) -> bytes | None:
         if not len(doc):
             return None
         bild = doc[0].get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
-    return _jpeg(Image.frombytes("RGB", (bild.width, bild.height), bild.samples))
+    seite = Image.frombytes("RGB", (bild.width, bild.height), bild.samples)
+    return None if leer(seite) else _jpeg(seite)
 
 
 def _jpeg(bild: Image.Image) -> bytes:
@@ -61,15 +64,20 @@ def _jpeg(bild: Image.Image) -> bytes:
     return puffer.getvalue()
 
 
+def leer(bild: Image.Image) -> bool:
+    """Eine Fläche fast ohne Inhalt, etwa eine gezeichnete Seite, deren Bild in der Datei fehlt (BF-17)."""
+    return ImageStat.Stat(bild.convert("L")).stddev[0] < LEER_STREUUNG
+
+
 def taugt(daten: bytes) -> Image.Image | None:
-    """Das Bild, wenn es nach Größe und Form ein Umschlag sein kann."""
+    """Das Bild, wenn es nach Größe, Form und Inhalt ein Umschlag sein kann."""
     try:
         bild = Image.open(io.BytesIO(daten))
         bild.load()
     except Exception:                                       # noqa: BLE001 - kein lesbares Bild
         return None
     passt = bild.height >= HOCH_MINDESTENS and bild.width >= BREIT_MINDESTENS and VERHAELTNIS[0] <= bild.width / bild.height <= VERHAELTNIS[1]
-    return bild if passt else None
+    return bild if passt and not leer(bild) else None
 
 
 def _aus_epub(datei: Path) -> bytes | None:

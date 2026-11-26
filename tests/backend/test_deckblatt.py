@@ -5,16 +5,23 @@ import zipfile
 
 import fitz
 import pytest
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from backend.app.services import deckblatt
 
 ROT, BLAU, GRUEN = (200, 20, 20), (20, 20, 200), (20, 160, 20)
 
 
+def einfarbig(farbe, breite=300, hoehe=450) -> Image.Image:
+    return Image.new("RGB", (breite, hoehe), farbe)
+
+
 def bild(farbe, breite=300, hoehe=450, art="PNG") -> bytes:
+    """Eine Fläche in der Farbe mit einem schmalen schwarzen Balken, damit sie nicht leer ist."""
+    b = einfarbig(farbe, breite, hoehe)
+    ImageDraw.Draw(b).rectangle((0, 0, breite, hoehe // 25), fill=(0, 0, 0))
     p = io.BytesIO()
-    Image.new("RGB", (breite, hoehe), farbe).save(p, format=art)
+    b.save(p, format=art)
     return p.getvalue()
 
 
@@ -68,7 +75,9 @@ def test_ohne_genannten_umschlag_die_erste_seite(tmp_path):
 
 def test_pdf_zeigt_die_erste_seite(tmp_path):
     d = fitz.open()
-    d.new_page(width=300, height=450).draw_rect(fitz.Rect(0, 0, 300, 450), fill=(0.8, 0.1, 0.1), color=None)
+    seite = d.new_page(width=300, height=450)
+    seite.draw_rect(fitz.Rect(0, 0, 300, 450), fill=(0.8, 0.1, 0.1), color=None)
+    seite.insert_text((30, 60), "Titel", fontsize=24, color=(1, 1, 1))
     d.new_page()
     (tmp_path / "b.pdf").write_bytes(d.tobytes())
     r, g, b = farbe(deckblatt.von_datei(tmp_path / "b.pdf"))
@@ -78,3 +87,15 @@ def test_pdf_zeigt_die_erste_seite(tmp_path):
 def test_kaputte_datei_ohne_deckblatt(tmp_path):
     (tmp_path / "b.epub").write_bytes(b"kein zip")
     assert deckblatt.von_datei(tmp_path / "b.epub") is None
+
+
+def test_leere_flaeche_ist_kein_deckblatt(tmp_path):
+    # BF-17: das genannte Bild fehlt in der Datei, die gezeichnete erste Seite bleibt leer
+    f = epub(tmp_path, '<package version="2.0"><metadata><meta name="cover" content="c"/></metadata><manifest><item id="c" href="img/fehlt.jpg"/>'
+             '<item id="u" href="u.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="u"/></spine></package>',
+             {"u.xhtml": "<html xmlns='http://www.w3.org/1999/xhtml'><head><style>body { margin: 0; background-color: rgb(0, 0, 7) }</style></head>"
+                         "<body><div><img alt='Umschlag' src='img/fehlt.jpg' style='height: 100%'/></div></body></html>"})
+    assert deckblatt.von_datei(f) is None
+    leer = io.BytesIO()
+    einfarbig((5, 5, 10)).save(leer, format="JPEG")
+    assert deckblatt.taugt(leer.getvalue()) is None

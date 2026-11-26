@@ -1,11 +1,12 @@
 """Die Anschlüsse der Buchquellen gegen Mitschnitte: Zuordnung der Felder, ISBN, Titelsuche, Fehlerwege (BF-23)."""
 
 import json
+import xml.etree.ElementTree as ET
 
 import pytest
 
 from backend.app.core.config import settings
-from backend.app.quellen import auskunft, gutenberg, isbn
+from backend.app.quellen import auskunft, gutenberg, isbn, marc
 from backend.app.quellen.abgleich import autor_passt, bester, namen_gleich, norm, suchbar, titel_naehe
 from backend.app.quellen.auskunft import QUELLEN, ergaenze, suche, zusammenfuehren
 from backend.app.quellen.crossref import doi_aus_text
@@ -95,6 +96,14 @@ async def test_dnb_umlaute_zusammengesetzt_band_und_auflage(netz):
     netz.setze(DNB, antwort(mitschnitt("dnb_isbn10.xml")))
     assert (await QUELLEN["dnb"].nach_isbn("3257228007")).autoren == ["Patrick Süskind"]
 
+
+def test_dnb_auslassung_statt_bandnummer_kommt_nicht_in_den_titel():
+    # BF-17: fehlt die Nummer des Bandes, schreibt die Normdatei "[...]"
+    satz = ('<record xmlns="http://www.loc.gov/MARC21/slim"><datafield tag="245" ind1="1" ind2="0"><subfield code="a">Nordlicht</subfield>'
+            '<subfield code="n">{band}</subfield><subfield code="p">Die Glutwächter</subfield></datafield></record>')
+    for band, titel in (("[...]", "Nordlicht"), ("[…]", "Nordlicht"), ("2", "Nordlicht, Band 2"), ("Bd. 2", "Nordlicht, Band 2")):
+        a = marc.angaben(marc.Satz(ET.fromstring(satz.format(band=band))), "dnb")
+        assert (a.titel, a.untertitel) == (titel, "Die Glutwächter")
 
 async def test_dnb_nichts_und_krumme_anfrage(netz):
     netz.setze(DNB, antwort(mitschnitt("dnb_leer.xml")))
