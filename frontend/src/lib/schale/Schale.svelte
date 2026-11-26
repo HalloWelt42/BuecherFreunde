@@ -7,6 +7,7 @@
   import { schale } from "../stand/schale.svelte";
   import { verbindungen } from "../stand/verbindungen.svelte";
   import { werkarten } from "../stand/werkarten.svelte";
+  import { uebersetzungen } from "../stand/uebersetzungen.svelte";
   import Auftraege from "./Auftraege.svelte";
   import Darstellungswahl from "./Darstellungswahl.svelte";
   import Konto from "./Konto.svelte";
@@ -33,11 +34,13 @@
     void annahme.starte();
     auftraege.starte();
     werkarten.starte();
+    uebersetzungen.starte();
     verbindungen.starte();
     return () => {
       annahme.halte();
       auftraege.halte();
       werkarten.halte();
+      uebersetzungen.halte();
       verbindungen.halte();
     };
   });

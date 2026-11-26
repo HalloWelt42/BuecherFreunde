@@ -1,8 +1,10 @@
 <script lang="ts">
-  // Einstieg des Lesers: Buch laden, Leser des Formats holen (pdf.js und die übrigen erst hier)
+  // Einstieg des Lesers: Buch und Fassung laden (das Original, oder unter /read/de die Übersetzung, BF-71), Leser des Formats
+  // holen (pdf.js und die übrigen erst hier)
   import type { Component } from "svelte";
   import { holeBuch } from "../../lib/api/books";
   import { formatName } from "../../lib/format";
+  import { ladeLesefassung, type Lesefassung } from "../../lib/leser/lesefassung";
   import { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { leseziel, type Leseziel } from "../../lib/leser/ziel";
   import { navigate, route } from "../../lib/router.svelte";
@@ -23,19 +25,23 @@
 
   let id = $derived(Number(params.id));
   let buch = $state<BuchEinzeln | null>(null);
+  let fassung = $state<Lesefassung | null>(null);
   let fehler = $state("");
-  let sitzung = $derived(buch ? new Lesesitzung(buch) : null);
-  async function lade(nummer: number) {
+  let sitzung = $derived(buch && fassung ? new Lesesitzung(buch, fassung) : null);
+  async function lade(nummer: number, sprache: string | undefined) {
     fehler = "";
     buch = null;
+    fassung = null;
     try {
-      buch = await holeBuch(nummer);
+      const b = await holeBuch(nummer);
+      fassung = await ladeLesefassung(b, sprache);
+      buch = b;
     } catch (e) {
       fehler = e instanceof Error ? e.message : String(e);
     }
   }
 
-  $effect(() => void lade(id));
+  $effect(() => void lade(id, params.sprache));
 
   $effect(() => {
     void sitzung?.laden();
@@ -56,12 +62,12 @@
 
 {#if fehler}
   <div class="inhalt rollen">
-    <Zustand art="fehler" text={fehler} onerneut={() => void lade(id)}><Knopf text="Zur Buchseite" symbol="arrow-left" klein href="/book/{id}" /></Zustand>
+    <Zustand art="fehler" text={fehler} onerneut={() => void lade(id, params.sprache)}><Knopf text="Zur Buchseite" symbol="arrow-left" klein href="/book/{id}" /></Zustand>
   </div>
 {:else if buch && sitzung}
-  {@const hole = leser[buch.file_format]}
+  {@const hole = leser[sitzung.fassung.format]}
   {#if hole}
-    {#key `${buch.id}?${route.qs}`}
+    {#key `${route.path}?${route.qs}`}
       {#await hole()}
         <div class="lesehinweis"><Zustand art="laedt" text="Leser wird geladen" /></div>
       {:then { default: Format }}

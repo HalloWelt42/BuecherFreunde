@@ -2,7 +2,6 @@
   // EPUB und MOBI: umbrochene Kapitel, eigene Schrift und Farben
   import { ladefehler, type Ladefehler } from "../../lib/leser/ladefehler";
   import { onDestroy, onMount, untrack } from "svelte";
-  import { dateiUrl } from "../../lib/api/books";
   import { blaettertaste } from "../../lib/leser/blaettertasten";
   import { nimmAuswahl } from "../../lib/leser/auswahl";
   import { blattrand } from "../../lib/leser/blattrand.svelte";
@@ -38,8 +37,10 @@
   let { buch, ziel, sitzung, onzurueck }: { buch: BuchEinzeln; ziel: Leseziel; sitzung: Lesesitzung; onzurueck: () => void } = $props();
 
   const start = untrack(() => ziel);
-  const alt: Lesewerte = untrack(() => gemerkt(ziel, lesewerte(buch.reading_position)));
-  const speicher = new Positionsspeicher(untrack(() => buch.id), "epub");
+  // Original oder Übersetzung (BF-71): Datei, Lesestand und ob Stellen hierher gehören
+  const fassung = untrack(() => sitzung.fassung);
+  const alt: Lesewerte = untrack(() => gemerkt(ziel, lesewerte(fassung.position)));
+  const speicher = new Positionsspeicher(fassung.ort, "epub");
 
   // Eigene Farben nur, wenn sie je gewählt wurden; sonst folgt das Buch der App
   let eigeneFarben = $state(!!(alt.fgColor && alt.bgColor));
@@ -63,8 +64,8 @@
   let anzeige: EpubAnzeige | null = null;
 
   // Codestellen mit Taste, nur mit der Sandbox (BF-29): die Codeblöcke in den gezeigten Kapiteln; der Rückweg führt an die
-  // Stelle, an der man beim Öffnen las
-  const codestellen = untrack(() => anschluesse.jetzt.ausfuehren) ? new Codestellenstand(untrack(() => buch.id), false) : null;
+  // Stelle, an der man beim Öffnen las. Sie hängen am Original, nicht an einer Übersetzung.
+  const codestellen = untrack(() => anschluesse.jetzt.ausfuehren) && fassung.mitStellen ? new Codestellenstand(untrack(() => buch.id), false) : null;
   $effect(() => {
     if (!codestellen || !bereit) return;
     codestellen.lade();
@@ -90,7 +91,7 @@
       const cfi = nenntStelle(start) ? start.cfi : (alt.cfi ?? "");
       const gedacht = nenntStelle(start) ? start.prozent : cfi ? 0 : (alt.percent ?? 0);
       const mitte = gedacht / 100 || (start.seite > 0 && buch.page_count > 0 ? (start.seite - 1) / buch.page_count : 0);
-      await anzeige.oeffne(buch.id, cfi);
+      await anzeige.oeffne(fassung.datei, cfi);
       sitzung.kapitel = anzeige.kapitel;
       const a = anzeige;
       quelle?.zerstoere();
@@ -136,7 +137,7 @@
       void anzeige.zeichne(sitzung.markierungen);
       if (start.wort) await suche(start.wort, mitte);
     } catch {
-      fehler = await ladefehler(buch.id);
+      fehler = await ladefehler(fassung.datei);
     }
   }
 
@@ -259,7 +260,7 @@
 
 <Leserahmen {sitzung} {art} onart={(a) => leseart.buch.setze(a)} grund={d.bg} tinte={d.fg} {bereit} {onzurueck} onabwahl={abwahl} treffer={treffer ? trefferleiste : undefined}>
   <div class="epubflaeche" class:ohne-grund={d.randTransparent && d.blattTransparent} style:--lesebreite="{breite(d, art, blattbreite.wert)}px" style:background={randfarbe(d)} bind:this={flaeche}></div>
-  {#if !bereit}<Ladehinweis {fehler} adresse={dateiUrl(buch.id)} name={buch.file_name || buch.title} onerneut={() => void lade()} />{/if}
+  {#if !bereit}<Ladehinweis {fehler} adresse={fassung.datei} name={buch.file_name || buch.title} onerneut={() => void lade()} />{/if}
 
   {#snippet darstellung()}<EpubDarstellung {d} {art} onwahl={setze} />{/snippet}
 

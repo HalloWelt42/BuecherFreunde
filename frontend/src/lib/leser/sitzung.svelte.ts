@@ -19,6 +19,7 @@ import type { Randeintrag } from "./randmarken";
 import type { Kasten } from "./fokus";
 import type { Leseart } from "./fluss/fluss";
 import { VORGABE_STIFT } from "./farben";
+import { originalfassung, type Lesefassung } from "./lesefassung";
 import type { Feldname, Kapitel, Textauswahl } from "./typen";
 import { Verzoegert } from "./verzoegert";
 
@@ -115,9 +116,20 @@ export class Lesesitzung {
   randtreffer: ((x: number, y: number) => boolean) | null = null;
   #spaeter = new Verzoegert();
 
-  constructor(public buch: BuchEinzeln) {}
+  /** Was gelesen wird: das Original oder eine Übersetzung (BF-71); an einer Übersetzung hängen keine Stellen */
+  readonly fassung: Lesefassung;
+
+  constructor(public buch: BuchEinzeln, fassung?: Lesefassung) {
+    this.fassung = fassung ?? originalfassung(buch);
+  }
+
+  /** Notizen, Markierungen und Etiketten gehören zum Original */
+  get mitStellen(): boolean {
+    return this.fassung.mitStellen;
+  }
 
   async laden(): Promise<void> {
+    if (!this.mitStellen) return;
     const [m, n, e] = await Promise.allSettled([highlightsFuerBuch(this.buch.id), notizenFuerBuch(this.buch.id), labelsFuerBuch(this.buch.id)]);
     if (m.status === "fulfilled") this.markierungen = m.value;
     if (n.status === "fulfilled") this.notizen = n.value;
@@ -127,7 +139,7 @@ export class Lesesitzung {
 
   /** Etiketten gibt es in Text und Markdown; wo schon welche hängen, auch dort */
   get mitEtiketten(): boolean {
-    return ["md", "txt"].includes(this.buch.file_format) || this.etiketten.length > 0;
+    return this.mitStellen && (["md", "txt"].includes(this.buch.file_format) || this.etiketten.length > 0);
   }
 
   /** Etikett an der Stelle, an der man liest: das Feld Notizen mit offener Eingabe */
@@ -190,6 +202,7 @@ export class Lesesitzung {
   // Markierungen
 
   async markiere(a: Textauswahl, farbe: string): Promise<void> {
+    if (!this.mitStellen) return;
     this.stiftfarbe = farbe;
     await this.#versuche(async () => {
       const neu = await erstelleHighlight(this.buch.id, { cfi_range: a.cfi, color: farbe, text_snippet: a.text.slice(0, 500) });
@@ -222,6 +235,7 @@ export class Lesesitzung {
   // Buchnotizen
 
   async neueNotiz(text: string, ort?: string): Promise<boolean> {
+    if (!this.mitStellen) return false;
     return this.#versuche(async () => {
       const neu = await erstelleNotiz(this.buch.id, { content: text, page_reference: ort ?? this.griffe?.hier().ort ?? "" });
       this.notizen = [neu, ...this.notizen];
@@ -252,6 +266,7 @@ export class Lesesitzung {
   // Etiketten (Textbücher)
 
   async neuesEtikett(name: string, note: string, farbe: string): Promise<boolean> {
+    if (!this.mitStellen) return false;
     const hier = this.griffe?.hier() ?? { ort: "", prozent: 0, cfi: "" };
     return this.#versuche(async () => {
       const neu = await erstelleLabel(this.buch.id, { color: farbe, name: name.slice(0, 50), note, page_reference: hier.ort, position_percent: hier.prozent, cfi_reference: hier.cfi });

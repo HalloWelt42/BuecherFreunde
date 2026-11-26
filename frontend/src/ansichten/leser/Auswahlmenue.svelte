@@ -57,13 +57,13 @@
 <!-- Ein Druck auf das Menü darf die Auswahl im Text nicht aufheben -->
 <div class="auswahlmenue glas dicht" role="dialog" tabindex="-1" aria-label="Auswahl" bind:this={menue} bind:offsetWidth={breite} bind:offsetHeight={hoehe} style:left="{ort.links}px" style:top="{ort.oben}px" style:visibility={breite ? "visible" : "hidden"} onmousedown={(e) => e.preventDefault()}>
   {#if schritt === "tun"}
-    {#if a.cfi}<Farbreihe name="Markieren" wert={sitzung.stift ? sitzung.stiftfarbe : ""} onwahl={(f) => void tun(() => sitzung.markiere(a, f))} />{/if}
+    {#if a.cfi && sitzung.mitStellen}<Farbreihe name="Markieren" wert={sitzung.stift ? sitzung.stiftfarbe : ""} onwahl={(f) => void tun(() => sitzung.markiere(a, f))} />{/if}
     <div class="reihe knoepfe">
       <Knopf text="Kopieren" symbol="copy" klein frei onclick={() => void tun(() => kopiere(a.text))} />
       <Knopf text="Vorlesen" symbol="volume-low" klein frei onclick={lies} />
       <Knopf text="Schnellnotiz" symbol="note-sticky" klein frei titel="An die Schnellnotiz anhängen" onclick={() => void tun(() => sitzung.anSchnellnotiz(alsZitat(a)))} />
       <Knopf text="Schnellnotiz ersetzen" symbol="right-left" nur klein frei onclick={() => void tun(() => sitzung.ersetzeSchnellnotiz(alsZitat(a)))} />
-      <Knopf text="Buchnotiz" symbol="pen" klein frei onclick={() => (schritt = "notiz")} />
+      {#if sitzung.mitStellen}<Knopf text="Buchnotiz" symbol="pen" klein frei onclick={() => (schritt = "notiz")} />{/if}
       {#if anschluesse.jetzt.nachschlag}<Knopf text="Nachschlagen" symbol="book-atlas" klein frei onclick={() => void tun(() => nachschlag.oeffne(a.text))} />{/if}
       {#if anschluesse.jetzt.assistent}<Knopf text="Assistent" symbol="comments" klein frei onclick={() => void tun(() => gespraech.oeffne(bezugAus(sitzung, a.text)))} />{/if}
     </div>

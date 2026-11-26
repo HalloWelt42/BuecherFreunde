@@ -1,0 +1,93 @@
+/* Bücher übersetzen (BF-71, Entwurf "Bücher übersetzen"): Flaggenlabels, Rückfrage, Auftrag, Prüfbericht, Begriffsliste */
+
+/* Flaggenlabels: abgerundet, Flagge als Kreis, Name und Stand */
+.fassungen { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fill, minmax(min(11.5rem, 100%), 1fr)); max-width: 40rem; }
+.flaggenlabel { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .625rem; padding: .375rem .875rem .375rem .375rem; border: 0; border-radius: 999px; background: var(--platte); box-shadow: 0 0 0 1px var(--linie), 0 1px 2px rgb(var(--schatten) / .18); text-align: left; color: var(--tinte); font: inherit; cursor: pointer; }
+.flaggenlabel:hover:not([aria-pressed="true"]) { box-shadow: 0 0 0 1px rgb(var(--kante) / .7), 0 1px 2px rgb(var(--schatten) / .18); }
+.flaggenlabel:disabled { cursor: default; }
+.flaggenlabel .flagge { flex: none; border-radius: 50%; box-shadow: 0 0 0 1.5px rgb(255 255 255 / .9), 0 0 0 2.5px var(--linie); }
+.flaggenlabel b { display: block; font-weight: 600; font-size: .9375rem; overflow-wrap: anywhere; }
+.flaggenlabel small { display: block; color: var(--tinte-3); font-size: .75rem; line-height: 1.3; overflow-wrap: anywhere; }
+.flaggenlabel[aria-pressed="true"] { background: var(--messing-hauch); box-shadow: 0 0 0 2px var(--messing), 0 1px 2px rgb(var(--schatten) / .18); }
+.flaggenlabel.laeuft small::before { content: ""; display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; margin-right: .375rem; background: var(--led-gut); vertical-align: middle; }
+.flaggenlabel.neu { background: transparent; box-shadow: 0 0 0 1.5px var(--linie); }
+.flaggenlabel.neu .flagge { opacity: .55; filter: grayscale(.4); }
+
+/* Rückfrage vor dem Start */
+.uebersetzungsfrage { font-size: .875rem; }
+
+/* Auftrag: Zeiten, Fortschritt, sechs Stationen im Raster, Tempo, Kapitel */
+.laufkarte { padding: .875rem; display: grid; gap: .625rem; grid-template-columns: minmax(0, 1fr); align-content: start; }
+.laufkopf b { overflow-wrap: anywhere; }
+.laufzeiten { display: grid; gap: .5rem; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.laufzeit { display: grid; gap: .125rem; min-width: 0; }
+.laufzeit small { color: var(--tinte-3); font-size: .75rem; }
+.laufzeit b { font-size: 1.0625rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.laufstationen { display: grid; gap: .375rem; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.laufstation { display: grid; gap: .125rem; align-content: start; padding: .5rem .625rem; border-radius: var(--r2); background: var(--vertieft); box-shadow: inset 0 0 0 1px var(--linie); font-size: .8125rem; min-width: 0; }
+.laufstation b { display: flex; align-items: center; gap: .375rem; font-size: .875rem; min-width: 0; overflow-wrap: break-word; hyphens: auto; }
+.laufstation small { color: var(--tinte-3); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.laufstation.fertig b i { color: var(--gut); }
+.laufstation.laeuft { background: var(--messing-hauch); box-shadow: inset 0 0 0 1.5px var(--messing); }
+.laufstation.laeuft b i { color: var(--messing); }
+.laufstation.wartet { opacity: .6; }
+.kapitelliste { display: grid; gap: .25rem; align-content: start; }
+.kapitelzeile { display: grid; grid-template-columns: 1.25rem minmax(0, 1fr) 7.5rem 9.5rem 3.5rem 4.25rem 3.5rem; gap: .625rem; align-items: center; font-size: .875rem; padding: .3125rem .5rem; border-radius: var(--r1); background: var(--platte); box-shadow: 0 0 0 1px var(--linie); }
+.kapitelzeile.kopf { background: transparent; box-shadow: none; color: var(--tinte-3); font-size: .75rem; padding-block: 0; }
+.kapitelzeile.rest { opacity: .7; }
+.kapitelzeile .zahl { text-align: right; }
+.kapitelzeile .titel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kapitelzeile .offen { color: var(--warn); }
+.kapitelzeile > i { text-align: center; }
+.kapitelzeile .fertig { color: var(--gut); } .kapitelzeile .laeuft { color: var(--info); }
+
+/* Prüfbericht: Original und Deutsch nebeneinander, Befund, Tasten */
+.berichtsliste { display: grid; gap: .75rem; align-content: start; }
+.offenestelle { padding: .75rem; display: grid; gap: .5rem; grid-template-columns: minmax(0, 1fr); }
+.stellenpaar { display: grid; gap: .75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.stellenpaar > div { padding: .5rem .625rem; border-radius: var(--r2); background: var(--vertieft); font-size: .9375rem; line-height: 1.5; overflow-wrap: anywhere; min-width: 0; }
+.stellenpaar small { display: block; color: var(--tinte-3); font-size: .75rem; margin-bottom: .125rem; }
+.stellenpaar textarea.eingabe { min-height: 7rem; font: 400 .9375rem/1.5 var(--codeschrift); }
+.markentext mark { background: color-mix(in srgb, var(--warn) 28%, transparent); color: inherit; border-radius: 2px; padding: 0 1px; box-shadow: none; }
+.markentext .platz { display: inline-grid; place-items: center; min-width: 1.375rem; padding: 0 .25rem; border-radius: var(--r1); background: var(--vertieft-2); color: var(--tinte-3); font-size: .75rem; vertical-align: .0625rem; }
+.befundzeile { display: flex; gap: .5rem; align-items: baseline; font-size: .875rem; }
+.befundzeile > i { color: var(--tinte-3); }
+
+/* Begriffsliste */
+.begriffsliste { display: grid; gap: .25rem; align-content: start; }
+.begriffzeile { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 12rem) 6.5rem 3.5rem minmax(0, 1fr) auto; gap: .625rem; align-items: center; font-size: .875rem; padding: .3125rem .5rem; border-radius: var(--r1); background: var(--platte); box-shadow: 0 0 0 1px var(--linie); }
+.begriffzeile.kopf { background: transparent; box-shadow: none; color: var(--tinte-3); font-size: .75rem; padding-block: 0; }
+.begriffzeile code { font: 500 .8125rem/1.3 var(--codeschrift); overflow-wrap: break-word; min-width: 0; }
+.begriffzeile .grund { color: var(--tinte-3); min-width: 0; overflow-wrap: anywhere; }
+.begriffzeile .zahl { text-align: right; }
+.begriffzeile .reihe { gap: .25rem; flex-wrap: nowrap; }
+.begriffsuche { flex: 1 1 14rem; max-width: 20rem; }
+.begriffsformular { display: grid; gap: .75rem; grid-template-columns: minmax(0, 1fr); }
+.begriffsformular .segment, .uebersetzungsfrage .segment { justify-self: start; }
+
+/* Füllende Ansicht: Kopf und Tasten stehen, nur die Liste rollt; ist der Schirm zu niedrig, rollt die Seite */
+.inhalt:has(> .fuellt) { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
+.fuellt { display: flex; flex-direction: column; gap: .625rem; min-height: min(70vh, 44rem); }
+.fuellt > .rollen { flex: 1 1 0; min-height: min(50vh, 30rem); overflow: auto; padding-right: .25rem; }
+
+@container app (max-width: 720px) {
+  /* Gleichartige Tasten am Telefon in gleich breiten Spalten statt umbrochen */
+  .gleichtasten { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  .gleichtasten > .knopf { min-width: 0; }
+  .laufzeiten { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* zwei Spalten, bei großer Schrift eine: die Breite hängt an der Schrift */
+  .laufstationen { grid-template-columns: repeat(auto-fill, minmax(min(9.5rem, 100%), 1fr)); }
+  .kapitelzeile { grid-template-columns: 1.25rem minmax(0, 1fr) 5.5rem 3rem; }
+  .kapitelzeile > :nth-child(3), .kapitelzeile > :nth-child(6), .kapitelzeile > :nth-child(7) { display: none; }
+  .stellenpaar { grid-template-columns: minmax(0, 1fr); }
+  .begriffzeile { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+  .begriffzeile > :nth-child(3), .begriffzeile > :nth-child(4) { display: none; }
+  .begriffzeile .grund { grid-column: 1 / -1; grid-row: 2; }
+  .begriffzeile.kopf { display: none; }
+  .begriffsuche { max-width: none; }
+  /* Große Schrift am Telefon: Englisch und Deutsch untereinander, damit kein Begriff mitten im Wort bricht */
+  :root:is([data-schrift="gross"], [data-schrift="riesig"]) .begriffzeile { grid-template-columns: minmax(0, 1fr) auto; }
+  :root:is([data-schrift="gross"], [data-schrift="riesig"]) .begriffzeile > :nth-child(2) { grid-column: 1; grid-row: 2; }
+  :root:is([data-schrift="gross"], [data-schrift="riesig"]) .begriffzeile > :nth-child(6) { grid-column: 2; grid-row: 1 / span 2; }
+  :root:is([data-schrift="gross"], [data-schrift="riesig"]) .begriffzeile .grund { grid-row: 3; }
+}

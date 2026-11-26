@@ -25,9 +25,12 @@
   let schlafwert = $derived(vorlesen.schlaf.art === "minuten" ? String(vorlesen.schlaf.minuten) : vorlesen.schlaf.art);
 
   $effect(() => vorlesen.pruefe());
-  // Wo das Vorlesen zuletzt stehen blieb, auch auf einem anderen Gerät (BF-37)
-  $effect(() => void vorlesen.ladeStelle(sitzung.buch.id));
-  let gemerkt = $derived(vorlesen.gemerkt?.buch === sitzung.buch.id ? vorlesen.gemerkt.stelle : null);
+  // Wo das Vorlesen zuletzt stehen blieb, auch auf einem anderen Gerät (BF-37); die Stelle gehört zum Original, in einer
+  // Übersetzung stünde sie woanders (BF-71)
+  $effect(() => {
+    if (sitzung.mitStellen) void vorlesen.ladeStelle(sitzung.buch.id);
+  });
+  let gemerkt = $derived(sitzung.mitStellen && vorlesen.gemerkt?.buch === sitzung.buch.id ? vorlesen.gemerkt.stelle : null);
 
   async function starte(u: Umfang | "weiter", name: string) {
     // Im Tippen selbst, sonst bleibt das Telefon stumm

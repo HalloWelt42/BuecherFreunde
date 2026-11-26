@@ -3,7 +3,7 @@ vi.mock("../src/lib/api/client", () => ({ anfrage }));
 vi.mock("../src/lib/stand/buecher.svelte", () => ({ buecher: { aktualisiere: vi.fn() } }));
 vi.mock("../src/lib/stand/wahl.svelte", () => ({ wahl: { aktualisiere: vi.fn() } }));
 
-import { Positionsspeicher } from "../src/lib/leser/position";
+import { buchort, Positionsspeicher } from "../src/lib/leser/position";
 import { Verzoegert } from "../src/lib/leser/verzoegert";
 
 describe("Lesestelle merken", () => {
@@ -15,7 +15,7 @@ describe("Lesestelle merken", () => {
   afterEach(() => vi.useRealTimers());
 
   it("schickt nach der Ruhe genau einmal, mit der letzten Stelle", () => {
-    const s = new Positionsspeicher(4, "pdf");
+    const s = new Positionsspeicher(buchort(4), "pdf");
     s.merke({ page: 2 }, { page: 2 });
     s.merke({ page: 3 }, { page: 3 });
     expect(location.search).toBe("?page=3");
@@ -25,7 +25,7 @@ describe("Lesestelle merken", () => {
   });
 
   it("schickt beim Verlassen sofort und danach nichts doppelt", () => {
-    const s = new Positionsspeicher(4, "txt");
+    const s = new Positionsspeicher(buchort(4), "txt");
     const ende = s.starte();
     s.merke({ scrollPct: 12 });
     ende();
@@ -35,7 +35,7 @@ describe("Lesestelle merken", () => {
   });
 
   it("schickt beim Schließen der Seite", () => {
-    const s = new Positionsspeicher(4, "epub");
+    const s = new Positionsspeicher(buchort(4), "epub");
     s.starte();
     s.merke({ cfi: "epubcfi(/6)" });
     dispatchEvent(new Event("pagehide"));
@@ -44,7 +44,7 @@ describe("Lesestelle merken", () => {
 
   it("führt die Adresse nur im eigenen Leser nach", () => {
     history.replaceState(null, "", "/book/4");
-    new Positionsspeicher(4, "pdf").merke({ page: 9 }, { page: 9 });
+    new Positionsspeicher(buchort(4), "pdf").merke({ page: 9 }, { page: 9 });
     expect(location.pathname + location.search).toBe("/book/4");
   });
 });

@@ -45,7 +45,7 @@
   const alt: Lesewerte = untrack(() => gemerkt(ziel, lesewerte(buch.reading_position)));
   const meine = telefon ? (alt.telefon ?? {}) : alt;
   const start = untrack(() => ziel);
-  const speicher = new Positionsspeicher(untrack(() => buch.id), "pdf");
+  const speicher = new Positionsspeicher(untrack(() => sitzung.fassung.ort), "pdf");
   const gedruckt = new Gedruckt(untrack(() => buch.id));
   const ersteAnsicht = ansichtOder(start.ansicht || meine.ansicht, ansichtFuer(leseart.blatt.art, telefon));
 
@@ -111,7 +111,7 @@
       sitzung.farbwahl = { jetzt: () => farben, setze: setzeFarben };
       sitzung.kapitel = await verzeichnis(geladen.doc);
     } catch {
-      fehler = await ladefehler(buch.id);
+      fehler = await ladefehler(dateiUrl(buch.id));
     }
   }
 

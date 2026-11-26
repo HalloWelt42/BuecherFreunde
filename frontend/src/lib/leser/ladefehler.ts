@@ -1,7 +1,6 @@
 // Warum sich ein Buch nicht laden ließ, in den Worten des Servers. Die Meldung der Lesebibliothek kommt nie auf den Schirm:
 // sie ist englisch und nennt Adressen.
 import { anfrage, ApiError } from "../api/client";
-import { dateiUrl } from "../api/books";
 
 export interface Ladefehler {
   text: string;
@@ -9,9 +8,10 @@ export interface Ladefehler {
   dateiDa: boolean;
 }
 
-export async function ladefehler(buch: number): Promise<Ladefehler> {
+/** adresse: die Datei, die sich nicht laden ließ (Original oder Übersetzung) */
+export async function ladefehler(adresse: string): Promise<Ladefehler> {
   try {
-    const antwort = await anfrage(dateiUrl(buch), { headers: { Range: "bytes=0-0" } });
+    const antwort = await anfrage(adresse, { headers: { Range: "bytes=0-0" } });
     await antwort.body?.cancel();
     return { text: "Die Datei ließ sich nicht lesen", dateiDa: true };
   } catch (grund) {

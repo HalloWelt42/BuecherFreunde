@@ -13,6 +13,7 @@
   import BuchBearbeiten from "./BuchBearbeiten.svelte";
   import Buchkopf from "./Buchkopf.svelte";
   import Buchsuche from "./Buchsuche.svelte";
+  import { Buchfassungen } from "./fassungen.svelte";
   import Stellen from "./Stellen.svelte";
   import Verwandte from "./Verwandte.svelte";
 
@@ -42,6 +43,14 @@
     void laden();
   });
 
+  // Original und Übersetzungen als Flaggenlabels (BF-71); läuft eine, kommt ihr Stand nach
+  let fassungen = $derived(new Buchfassungen(id));
+  $effect(() => {
+    const f = fassungen;
+    void f.laden();
+    return () => f.beende();
+  });
+
   // Namen für Art und Gattung in Angaben, Chips und Bearbeiten (BF-59)
   $effect(() => void arten.laden());
 </script>
@@ -63,7 +72,7 @@
     {#if bearbeitet}
       <BuchBearbeiten {buch} onabbruch={() => (bearbeitet = false)} onfertig={() => { bearbeitet = false; void laden(); }} />
     {:else}
-      <Buchkopf {buch} onneu={(neu) => buch && (buch = { ...buch, ...neu })} ongeaendert={() => void laden()} />
+      <Buchkopf {buch} {fassungen} onneu={(neu) => buch && (buch = { ...buch, ...neu })} ongeaendert={() => void laden()} />
     {/if}
     <div class="raster">
       <Ablageorte {buch} />

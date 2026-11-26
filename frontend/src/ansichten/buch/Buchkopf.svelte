@@ -1,6 +1,6 @@
 <script lang="ts">
   import { datum, formatName, groesse, sprache, tagWort, zahl } from "../../lib/format";
-  import { leseAdresse, leseKnopf, lesestand, leseweise, schriftprobe, standText } from "../../lib/lesestand";
+  import { leseKnopf, lesestand, leseweise, schriftprobe, standText } from "../../lib/lesestand";
   import { arten } from "../../lib/stand/arten.svelte";
   import { merkmale } from "../../lib/stand/merkmale.svelte";
   import Balken from "../../lib/teile/Balken.svelte";
@@ -10,15 +10,23 @@
   import Sterne from "../../lib/teile/Sterne.svelte";
   import Umschlag from "../../lib/teile/Umschlag.svelte";
   import type { BuchEinzeln, Umschlagart } from "../../lib/typen";
+  import Fassungslabels from "./Fassungslabels.svelte";
+  import { fassungsAdresse, type Buchfassungen } from "./fassungen.svelte";
   import Kategoriechips from "./Kategoriechips.svelte";
   import Regalchips from "./Regalchips.svelte";
   import { buchLoeschen } from "./loeschen";
 
-  let { buch, onneu, ongeaendert }: { buch: BuchEinzeln; onneu: (neu: Partial<BuchEinzeln>) => void; ongeaendert: () => void } = $props();
+  let { buch, fassungen, onneu, ongeaendert }: { buch: BuchEinzeln; fassungen: Buchfassungen; onneu: (neu: Partial<BuchEinzeln>) => void; ongeaendert: () => void } = $props();
 
-  let stand = $derived(lesestand(buch));
-  let probe = $derived(schriftprobe(buch.reading_position));
-  let standzeile = $derived([standText(buch), buch.last_read_at ? `zuletzt ${tagWort(buch.last_read_at)}` : "", ...leseweise(buch.reading_position)].filter(Boolean).join(", "));
+  // "Lesen" öffnet die gewählte Fassung (BF-71); eine Übersetzung hat ihren eigenen Lesestand
+  let uebersetzung = $derived(fassungen.uebersetzung);
+  let gelesen = $derived(uebersetzung ? { reading_position: fassungen.lesestand?.position ?? "", page_count: 0, last_read_at: fassungen.lesestand?.gelesen_am ?? null } : buch);
+  let stand = $derived(lesestand(gelesen));
+  let probe = $derived(schriftprobe(gelesen.reading_position));
+  let standzeile = $derived([standText(gelesen), gelesen.last_read_at ? `zuletzt ${tagWort(gelesen.last_read_at)}` : "", ...leseweise(gelesen.reading_position)].filter(Boolean).join(", "));
+  let lesesprache = $derived(uebersetzung?.sprache ?? null);
+  // Vor dem Zerlegen gibt es noch nichts zu lesen
+  let lesbar = $derived(!uebersetzung || !!uebersetzung.kapitel_gesamt);
 
   const UMSCHLAEGE: [Umschlagart, string][] = [["gestaltet", "Gestaltet"], ["titelseite", "Titelseite"]];
   let waehlt = $state(false);
@@ -70,10 +78,19 @@
         <Sterne wert={buch.rating} onwahl={(n) => void bewerte(n)} /><Merkmalsknoepfe {buch} {onneu} />
         <span class="loeschen"><Knopf text="Buch löschen" symbol="trash" nur onclick={() => void buchLoeschen(buch.id)} /></span>
       </div>
+      <Fassungslabels {buch} {fassungen} />
       <div class="reihe">
-        <Knopf text={leseKnopf(buch)} symbol="book-open" haupt href={leseAdresse(buch.id)} />
-        <Knopf text="Von vorn" symbol="backward-step" href={leseAdresse(buch.id, { restart: 1 })} />
+        <Knopf text={leseKnopf(gelesen)} symbol="book-open" haupt href={fassungsAdresse(buch.id, lesesprache)} gesperrt={!lesbar} titel={lesbar ? undefined : "Gleich gibt es die ersten Kapitel"} />
+        <Knopf text="Von vorn" symbol="backward-step" href={fassungsAdresse(buch.id, lesesprache, { restart: 1 })} gesperrt={!lesbar} />
       </div>
+      {#if uebersetzung}
+        <!-- Was zur Übersetzung gehört; der Auftrag, solange sie nicht fertig ist -->
+        <div class="reihe gleichtasten">
+          {#if uebersetzung.stand !== "fertig"}<Knopf text="Auftrag" symbol="language" href="/book/{buch.id}/uebersetzung" />{/if}
+          <Knopf text="Prüfbericht" symbol="list-check" href="/book/{buch.id}/pruefbericht" />
+          <Knopf text="Begriffe" symbol="spell-check" href="/book/{buch.id}/begriffe" />
+        </div>
+      {/if}
       {#if stand.angefangen}
         <div class="stand-zeile">
           <Balken anteil={stand.anteil} name="Lesestand" />

@@ -1,6 +1,5 @@
 <script lang="ts">
   // Unten im Darstellungsfeld: was für jedes Format gilt und am Telefon nicht in die Leiste passt
-  import { dateiUrl, ladeUrl } from "../../lib/api/books";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
   import { randmarken } from "../../lib/leser/randschalter.svelte";
@@ -10,13 +9,13 @@
   let { sitzung }: { sitzung: Lesesitzung } = $props();
 </script>
 
-<div class="feld">Rand<Haekchen text="Marken für Notizen und Markierungen" an={randmarken.an} onwahl={(an) => (randmarken.an = an)} /></div>
+{#if sitzung.mitStellen}<div class="feld">Rand<Haekchen text="Marken für Notizen und Markierungen" an={randmarken.an} onwahl={(an) => (randmarken.an = an)} /></div>{/if}
 <div class="feld werkzeuge">
   Werkzeuge
   <div class="tastenraster">
     <Knopf klasse="kachel" text="Vollbild" symbol="expand" onclick={() => void schale.vollbildUmschalten()} />
-    <Knopf klasse="kachel" text="Herunterladen" symbol="download" href={ladeUrl(sitzung.buch.id)} download={sitzung.buch.file_name || sitzung.buch.title} />
-    <Knopf klasse="kachel" text="Im Browser" titel="Im Browser öffnen" symbol="up-right-from-square" extern href={dateiUrl(sitzung.buch.id)} />
+    <Knopf klasse="kachel" text="Herunterladen" symbol="download" href={sitzung.fassung.anhang} download={sitzung.fassung.dateiname} />
+    <Knopf klasse="kachel" text="Im Browser" titel="Im Browser öffnen" symbol="up-right-from-square" extern href={sitzung.fassung.datei} />
   </div>
 </div>
 {#if schale.telefon}<div class="feld werkzeuge">Vorlesen<Vorlesen {sitzung} /></div>{/if}

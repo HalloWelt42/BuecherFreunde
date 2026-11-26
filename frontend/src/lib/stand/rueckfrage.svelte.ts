@@ -5,6 +5,8 @@ export interface Frage {
   text?: string;
   folgen?: string[];
   ja: string;
+  /** Wie die Taste heißt, die nichts tut; Vorgabe "Abbrechen" */
+  nein?: string;
   symbol?: string;
   /** false: nichts geht verloren, der Knopf bleibt ruhig */
   gefahr?: boolean;

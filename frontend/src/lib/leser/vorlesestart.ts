@@ -1,5 +1,6 @@
 // Vorlesen aus dem offenen Buch starten, eine Stelle für das Feld Vorlesen und das Kontextmenü im Leser: welcher Umfang,
-// ab wo, und das Werk für die Anzeige der Medien. Liest es aus dem Buch, merkt der Server die Stelle (BF-37).
+// ab wo, und das Werk für die Anzeige der Medien. Liest es aus dem Buch, merkt der Server die Stelle (BF-37); aus einer
+// Übersetzung nicht, die Stelle gehört zum Original (BF-71).
 import { coverUrl } from "../api/books";
 import { melde } from "../stand/meldungen.svelte";
 import { vorlesen } from "../stand/vorlesen.svelte";
@@ -19,7 +20,7 @@ export function liesAus(sitzung: Lesesitzung, s: Strecke | null, name: string): 
   const quelle = sitzung.quelle;
   if (!s || !quelle) return void melde.info("Hier gibt es nichts zum Vorlesen");
   const b = sitzung.buch;
-  vorlesen.liesBuch(quelle, s, name, { titel: b.title, autor: b.authors.map((a) => a.name).join(", "), bild: coverUrl(b.id) }, b.id);
+  vorlesen.liesBuch(quelle, s, name, { titel: b.title, autor: b.authors.map((a) => a.name).join(", "), bild: coverUrl(b.id) }, sitzung.mitStellen ? b.id : null);
 }
 
 /** Ab der Stelle, an der man gerade liest */

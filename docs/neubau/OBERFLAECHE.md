@@ -11,7 +11,7 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 
 | Funktion | Neu | Geprüft |
 |---|---|---|
-| Adressen /, /book/:id, /book/:id/read, /authors, /author/:id, /search, /collection/:id, /zuordnen/:art/:id (BF-67), /import, /settings, /settings/* | `App.svelte`, dazu /danke und eine Seite für Unbekanntes | ja |
+| Adressen /, /book/:id, /book/:id/read, /book/:id/read/de, /book/:id/uebersetzung, /book/:id/pruefbericht, /book/:id/begriffe (BF-71), /authors, /author/:id, /search, /collection/:id, /zuordnen/:art/:id (BF-67), /import, /settings, /settings/* | `App.svelte`, dazu /danke und eine Seite für Unbekanntes | ja |
 | Alte Parameter der Bibliothek, der Suche und des Lesers | `stand/filter`, `stand/suche`, `leser/ziel` | ja |
 | Verweise ohne Neuladen, Cmd, Strg, Umschalt, Alt, Mittelklick wie im Browser | `lib/router` | ja (Test) |
 | Zurück und Vor, Rollhöhe bleibt | `lib/rollstand` | ja |
@@ -332,6 +332,27 @@ Nach dem Entwurf Runde 2 (privat an der Karte) und der Schnittstelle in `docs/ne
 Geprüft am Probe-Server mit erfundenen Daten und am echten Server im Testbetrieb (eigene Datenbank, erfundene Werke, ohne KI):
 Entwurf aus dem Bestand, Annehmen, Ändern und Verschieben im Entwurf, neuer Bereich mit Arten, alte Regale, Einordnen nach
 Regeln mit "auch", Einstellungen.
+
+## 23 Bücher übersetzen (BF-71, Stufe 1: EPUB)
+
+Nach dem Entwurf "Bücher übersetzen" Runde 1 (privat) und der Schnittstelle in `docs/neubau/UEBERSETZUNG.md`. Typen, Texte, Zeiten
+und Marken ohne Oberfläche in `lib/uebersetzung`, Schnittstelle in `lib/api/uebersetzung.ts`, die Ansichten in
+`ansichten/uebersetzung` (Auftrag, Prüfbericht, Begriffsliste), die Labels in `ansichten/buch`.
+
+| Funktion | Neu | Geprüft |
+|---|---|---|
+| Flaggenlabels je Fassung: Original mit der Flagge seiner Sprache und Seiten, Deutsch mit Stand (laufend mit grünem Punkt, "x von y Kapiteln, fertig gegen hh:mm" in Ortszeit); das gewählte bestimmt "Lesen" und "Von vorn", die Wahl steht am Server | `Fassungslabels`, `fassungen.svelte.ts`, `teile/Flagge` | Testbetrieb, Tests |
+| "Ins Deutsche übersetzen" nur bei englischen EPUB ohne deutsche Fassung und mit KI; Rückfrage mit Umfang, Dauer und Uhrzeit, Ablauf, Rechner, Begriffen, Abbildungen, Ablage und Anrede (du oder Sie); geht es nicht, der Grund statt der Taste | `Uebersetzungsfrage` | Testbetrieb, Tests |
+| Übersetzung gewählt: Weiterlesen mit ihrem eigenen Lesestand, dazu Prüfbericht und Begriffe, Auftrag solange sie nicht fertig ist | `Buchkopf` | Testbetrieb, Tests |
+| Unter Aufträge: jede Fassung in Arbeit mit Anteil, Pause und Fortsetzen, nach dem Ende einmal das Ergebnis | `stand/uebersetzungen` | Testbetrieb, Tests |
+| Auftrag (/book/:id/uebersetzung): Begonnen, Bisher, Noch etwa, Fertig gegen, Fortschritt, sechs Stationen, Tempo, Kapitel mit Dauer, geprüft, nachgearbeitet, offen; Pause, Fortsetzen, Abbrechen nach Rückfrage; Stand alle 2,5 Sekunden, solange er läuft; Kopf steht, die Kapitel rollen | `uebersetzung/Lauf` | Testbetrieb 1280 und 375, hell und dunkel, "Sehr groß" |
+| Prüfbericht (/book/:id/pruefbericht): Zahlen, je offener Stelle Englisch und Deutsch mit markierter Stelle und Befund; Neu übersetzen, Bearbeiten (die festen Prüfungen entscheiden, Befunde bei 422), So annehmen | `uebersetzung/Pruefbericht`, `Offenestelle`, `Markentext` | Testbetrieb, Tests |
+| Begriffsliste (/book/:id/begriffe): Suche, Neu, Bearbeiten, Entfernen nach Rückfrage mit Folgen; Suche und Neu stehen, die Liste rollt | `uebersetzung/Begriffsliste`, `Begriffsformular` | Testbetrieb |
+| Lesen der Übersetzung (/book/:id/read/de): Datei der Fassung, eigener Lesestand am Server; Lesestand, Vorlesestelle, Notizen, Markierungen, Etiketten und Codestellen des Originals bleiben unberührt und werden dort nicht angeboten | `leser/lesefassung`, `Lesesitzung`, `Leser`, `EpubLeser` | Testbetrieb, Tests |
+
+Geprüft am echten Server im Testbetrieb (eigene Daten, erfundene Bücher, Attrappe der Leitstelle): Start mit Rückfrage, Lauf mit
+Pause, Fortsetzen und Abbrechen, Prüfbericht mit allen drei Tasten, Begriffe neu, ändern, entfernen, Lesen beider Fassungen
+mit getrenntem Lesestand.
 
 ## Prüfstand
 

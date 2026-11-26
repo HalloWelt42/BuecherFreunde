@@ -2,6 +2,7 @@
 // das Blatt oder das Bild je nach Angabe des Servers. Dazu die Grenzfälle aus BF-51 (lange Wörter, volle Breite, leer).
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import Buchkopf from "../src/ansichten/buch/Buchkopf.svelte";
+import { Buchfassungen } from "../src/ansichten/buch/fassungen.svelte";
 import { arten } from "../src/lib/stand/arten.svelte";
 import Umschlag from "../src/lib/teile/Umschlag.svelte";
 import type { BuchEinzeln } from "../src/lib/typen";
@@ -241,14 +242,14 @@ describe("Buchkopf", () => {
   });
 
   it("nennt Art und Gattung bei den Angaben", () => {
-    render(Buchkopf, { props: { buch, onneu: () => {}, ongeaendert: () => {} } });
+    render(Buchkopf, { props: { buch, fassungen: new Buchfassungen(buch.id), onneu: () => {}, ongeaendert: () => {} } });
     const angaben = [...document.querySelectorAll(".angaben dt")].map((dt) => `${dt.textContent}: ${dt.nextElementSibling?.textContent}`);
     expect(angaben).toContain("Art: Buch");
     expect(angaben).toContain("Gattung: Krimi");
   });
 
   it("die Wahl des Umschlags gibt es nur bei fast weißer Titelseite oder eigener Wahl", () => {
-    render(Buchkopf, { props: { buch: { ...buch, umschlag_schlicht: false, umschlag: "titelseite" }, onneu: () => {}, ongeaendert: () => {} } });
+    render(Buchkopf, { props: { buch: { ...buch, umschlag_schlicht: false, umschlag: "titelseite" }, fassungen: new Buchfassungen(buch.id), onneu: () => {}, ongeaendert: () => {} } });
     expect(screen.queryByRole("group", { name: "Umschlag" })).toBeNull();
   });
 
@@ -259,7 +260,7 @@ describe("Buchkopf", () => {
       return Promise.resolve(new Response(JSON.stringify({ ...buch, umschlag: "titelseite", umschlag_wahl: "titelseite" })));
     }) as unknown as typeof fetch;
     const onneu = vi.fn();
-    render(Buchkopf, { props: { buch, onneu, ongeaendert: () => {} } });
+    render(Buchkopf, { props: { buch, fassungen: new Buchfassungen(buch.id), onneu, ongeaendert: () => {} } });
     const gruppe = screen.getByRole("group", { name: "Umschlag" });
     expect(gruppe.querySelector("[aria-pressed=true]")?.textContent?.trim()).toBe("Gestaltet");
     await fireEvent.click(screen.getByRole("button", { name: "Titelseite" }));

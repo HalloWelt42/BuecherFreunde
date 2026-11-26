@@ -25,6 +25,9 @@
   import Suche from "./ansichten/suche/Suche.svelte";
   import Unbekannt from "./ansichten/Unbekannt.svelte";
   import Zuordnen from "./ansichten/zuordnen/Zuordnen.svelte";
+  import Begriffsliste from "./ansichten/uebersetzung/Begriffsliste.svelte";
+  import Lauf from "./ansichten/uebersetzung/Lauf.svelte";
+  import Pruefbericht from "./ansichten/uebersetzung/Pruefbericht.svelte";
 
   interface Ziel {
     muster: string;
@@ -37,6 +40,10 @@
   const ziele: Ziel[] = [
     { muster: "/", ansicht: Bibliothek, vorschau: true },
     { muster: "/book/:id/read", ansicht: Leser, ohneLeiste: true },
+    { muster: "/book/:id/read/:sprache", ansicht: Leser, ohneLeiste: true },
+    { muster: "/book/:id/uebersetzung", ansicht: Lauf },
+    { muster: "/book/:id/pruefbericht", ansicht: Pruefbericht },
+    { muster: "/book/:id/begriffe", ansicht: Begriffsliste },
     { muster: "/book/:id", ansicht: Buchseite },
     { muster: "/authors", ansicht: Autoren },
     { muster: "/author/:id", ansicht: Autorenseite },

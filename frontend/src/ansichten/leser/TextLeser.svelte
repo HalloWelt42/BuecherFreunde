@@ -50,7 +50,7 @@
   const ZEICHEN_JE_SEITE = 2000;
   const start = untrack(() => ziel);
   const alt: Lesewerte = untrack(() => gemerkt(ziel, lesewerte(buch.reading_position)));
-  const speicher = new Positionsspeicher(untrack(() => buch.id), "txt");
+  const speicher = new Positionsspeicher(untrack(() => sitzung.fassung.ort), "txt");
   const istMarkdown = untrack(() => buch.file_format === "md");
 
   let eigeneFarben = $state(!!(alt.fgColor && alt.bgColor));
@@ -97,7 +97,7 @@
     try {
       inhalt = await (await anfrage(dateiUrl(buch.id))).text();
     } catch {
-      fehler = await ladefehler(buch.id);
+      fehler = await ladefehler(dateiUrl(buch.id));
     }
   }
 

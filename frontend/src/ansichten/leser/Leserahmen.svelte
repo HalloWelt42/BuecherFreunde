@@ -115,7 +115,7 @@
 <div class="leser" onpointermove={(e) => sitzung.regt(e)} onclickcapture={tippeRand} class:mit-treffer={!!treffer && !schale.vollbild} class:randlos={schale.vollbild} class:ruhig={sitzung.ruhig} class:feld-daneben={raum.feldDaneben} style={hilfen} data-papier={papier} style:--randgrund={grund} style:--randtinte={tinte} style:--blattrand="{blattrand.wert}px" style:--blattrand-oben="{blattrand.oben(schale.vollbild)}px" style:--raum-rechts="{raum.rechts}px" style:--lesebreite="{blattbreite.wert}px" bind:this={rahmen} bind:clientWidth={raumbreite} use:kontext={imBuch}>
   {@render children()}
   {#if bereit && rahmen && sitzung.code}<Codetastenebene {sitzung} {rahmen} />{/if}
-  {#if bereit && rahmen && randmarken.an}<Randmarken {sitzung} {rahmen} {raum} feld={raum.feldDaneben ? feldflaeche : undefined} />{/if}
+  {#if bereit && rahmen && randmarken.an && sitzung.mitStellen}<Randmarken {sitzung} {rahmen} {raum} feld={raum.feldDaneben ? feldflaeche : undefined} />{/if}
   {#if bereit && rahmen}<Hilfensteuerung {sitzung} {rahmen} offen={vorlesenOffen} />{/if}
 
   {#if schale.vollbild}
@@ -126,7 +126,8 @@
       <Knopf text="Zurück" symbol="arrow-left" nur frei klein onclick={onzurueck} />
       <b title={sitzung.buch.title}>{sitzung.buch.title}</b>
       <Knopf text="Inhaltsverzeichnis" symbol="list" nur frei klein gesperrt={!sitzung.kapitel.length} titel={sitzung.kapitel.length ? "Inhaltsverzeichnis" : "Dieses Buch hat kein Inhaltsverzeichnis"} gedrueckt={sitzung.feld === "inhalt"} onclick={() => sitzung.schalteFeld("inhalt")} />
-      <Knopf text="Notizen und Markierungen" symbol="highlighter" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "stellen"} onclick={() => sitzung.schalteFeld("stellen")} />
+      <!-- Notizen und Markierungen hängen am Original; in einer Übersetzung gibt es sie noch nicht (BF-71) -->
+      {#if sitzung.mitStellen}<Knopf text="Notizen und Markierungen" symbol="highlighter" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "stellen"} onclick={() => sitzung.schalteFeld("stellen")} />{/if}
       <!-- Am Telefon steht das Vorlesen im Feld; liest es gerade, auch hier -->
       <span class="reihe" class:nur-breit={!liestHier}><Knopf text="Vorlesen" symbol={liestHier ? zustand : "volume-high"} nur frei klein gesperrt={!bereit} gedrueckt={liestHier} aufgeklappt={vorlesenOffen} bind:element={vorleseKnopf} onclick={() => (vorlesenOffen = !vorlesenOffen)} /></span>
       <span class="nur-breit reihe">

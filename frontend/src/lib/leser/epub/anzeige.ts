@@ -1,6 +1,5 @@
 // Hülle um die EPUB-Bibliothek: öffnen, blättern, springen, Stile, Markierungen, Suche, Auswahl
 import type { FoliateKapitel, FoliateStand, View } from "foliate-js/view.js";
-import { dateiUrl } from "../../api/books";
 import { anfrage } from "../../api/client";
 import { beobachteDokument } from "../../flucht";
 import { beobachteKontext } from "../../stand/kontextmenue.svelte";
@@ -78,8 +77,9 @@ export class EpubAnzeige {
     this.#groesse.observe(flaeche);
   }
 
-  async oeffne(id: number, cfi: string): Promise<void> {
-    const [{ View }, { Overlayer }, antwort] = await Promise.all([import("foliate-js/view.js"), import("foliate-js/overlayer.js"), anfrage(dateiUrl(id))]);
+  /** adresse: die Datei, das Original oder eine Übersetzung (BF-71) */
+  async oeffne(adresse: string, cfi: string): Promise<void> {
+    const [{ View }, { Overlayer }, antwort] = await Promise.all([import("foliate-js/view.js"), import("foliate-js/overlayer.js"), anfrage(adresse)]);
     const datei = new File([await antwort.blob()], "buch.epub", { type: "application/epub+zip" });
     const view = new View();
     this.#view = view;
