@@ -3,6 +3,7 @@
   // einmal in der Schale; der Kopf öffnet es für das eigene Profil, der Elternbereich für jedes, das man ändern darf.
   // Löschen zeigt vorher, was mit dem Profil verloren geht.
   import { untrack } from "svelte";
+  import { ApiError } from "../api/client";
   import { aendereProfil, legeProfilAn, loescheProfil, profilfolgen, type Profil, type Profilangaben, type Profilfolgen, type Rolle } from "../api/familie";
   import { ROLLEN, stufeVorschlag } from "../familie";
   import { anzahl } from "../format";
@@ -36,7 +37,8 @@
   let fehler = $state("");
 
   let selbst = $derived(!!profil && ich.istSelbst(profil));
-  let mitRolle = $derived(!profil || ich.darfRolle(profil));
+  /** Neu anlegen mit freier Rolle nur als Verwaltung; Erwachsene legen Kinder an */
+  let mitRolle = $derived(profil ? ich.darfRolle(profil) : ich.darf("profile"));
   let jahr = $derived(/^\d{4}$/.test(angaben.geburtsjahr) ? Number(angaben.geburtsjahr) : null);
   let vorschlag = $derived(stufeVorschlag(jahr, familie.stufen.stufen));
   let titel = $derived(!profil ? "Neues Profil" : selbst ? "Mein Profil" : `Profil ${profil.name}`);
@@ -92,43 +94,57 @@
     void familie.laden();
   }
 
-  /** Was mit dem Profil verloren geht, in Sätzen; null zählt nicht */
+  /** Was mit dem Profil verloren geht und was bleibt, in Sätzen; was es nicht gibt, steht nicht da */
   function folgenText(f: Profilfolgen): string[] {
     const teile = [
       f.notizen && anzahl(f.notizen, "Notiz", "Notizen"),
       f.markierungen && anzahl(f.markierungen, "Markierung", "Markierungen"),
       f.etiketten && anzahl(f.etiketten, "Etikett", "Etiketten"),
       f.lesestaende && anzahl(f.lesestaende, "Lesestand", "Lesestände"),
+      f.vorlesestellen && anzahl(f.vorlesestellen, "Vorlesestelle", "Vorlesestellen"),
+      f.fassungen_gelesen && anzahl(f.fassungen_gelesen, "Lesestand in Übersetzungen", "Lesestände in Übersetzungen"),
       f.freigaben && anzahl(f.freigaben, "Freigabe", "Freigaben"),
+      f.lesezeit_tage && anzahl(f.lesezeit_tage, "Tag Lesezeit", "Tage Lesezeit"),
     ].filter(Boolean) as string[];
     return [
-      teile.length ? `Es gehen verloren: ${teile.join(", ")}.` : "Notizen, Markierungen, Etiketten, Lesestände und Freigaben hat das Profil keine.",
-      ...(f.private_buecher ? [`${anzahl(f.private_buecher, "Buch verliert", "Bücher verlieren")} "Nur für mich" und ${f.private_buecher === 1 ? "ist" : "sind"} danach für alle sichtbar; die Bücher selbst bleiben.`] : []),
+      teile.length ? `Es gehen verloren: ${teile.join(", ")}.` : "Notizen, Markierungen, Lesestände und Freigaben hat das Profil keine.",
+      ...(f.private_buecher ? [`${anzahl(f.private_buecher, "Buch", "Bücher")} mit "Nur für mich" ${f.private_buecher === 1 ? "ist" : "sind"} danach für alle sichtbar; kein Buch wird gelöscht.`] : []),
+      ...(f.geraete ? [`${anzahl(f.geraete, "Gerät ist", "Geräte sind")} fest auf dieses Profil gestellt und ${f.geraete === 1 ? "wird" : "werden"} gelöst.`] : []),
       "Name, Bild und PIN des Profils gehen verloren.",
     ];
   }
 
+  /** Erst die Folgen, dann die Rückfrage; haben sie sich seither geändert (409), kommen sie neu und es wird erneut gefragt */
   async function loesche() {
     if (!profil) return;
     const p = profil;
-    let folgen: Profilfolgen;
-    try {
-      folgen = await profilfolgen(p.id);
-    } catch (e) {
-      melde.schlecht(e, "Folgen nicht geladen, nichts gelöscht");
-      return;
-    }
-    const ja = await frage({ titel: `Profil ${p.name} löschen?`, folgen: folgenText(folgen), ja: "Profil löschen" });
-    if (!ja) return;
-    try {
-      await loescheProfil(p.id);
+    for (;;) {
+      let folgen: Profilfolgen;
+      try {
+        folgen = await profilfolgen(p.id);
+      } catch (e) {
+        melde.schlecht(e, "Folgen nicht geladen, nichts gelöscht");
+        return;
+      }
+      const ja = await frage({ titel: `Profil ${p.name} löschen?`, folgen: folgenText(folgen), ja: "Profil löschen" });
+      if (!ja) return;
+      try {
+        await loescheProfil(p.id, folgen.stand);
+      } catch (e) {
+        // 409 heißt auch "das letzte Profil Verwaltung bleibt": neu gefragt wird nur, wenn sich die Folgen wirklich änderten
+        if (e instanceof ApiError && e.status === 409 && (await profilfolgen(p.id).catch(() => folgen)).stand !== folgen.stand) {
+          melde.info("Seither hat sich etwas geändert, hier die neuen Folgen");
+          continue;
+        }
+        melde.schlecht(e, "Nicht gelöscht");
+        return;
+      }
       await familie.laden();
       // Stand das gelöschte Profil in der Adresse des Elternbereichs, zeigt er wieder sein erstes
       if (route.path.split("/").includes(p.id)) navigate("/settings/familie", true);
       melde.gut(`Profil ${p.name} gelöscht`);
       schliesse();
-    } catch (e) {
-      melde.schlecht(e, "Nicht gelöscht");
+      return;
     }
   }
 </script>

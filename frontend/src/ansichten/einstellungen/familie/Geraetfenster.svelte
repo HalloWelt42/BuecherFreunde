@@ -1,28 +1,38 @@
 <script lang="ts">
-  // Dieses Gerät fest auf ein Kind stellen (BF-78): mit der eigenen PIN bestätigt; danach öffnet das Gerät nur noch dieses
-  // Profil, hinaus geht es nur mit der PIN eines Elternteils. Ohne eigene PIN gibt es das nicht, sonst käme jeder hinaus.
+  // Dieses Gerät fest auf ein Kind stellen oder wieder lösen (BF-78), mit der PIN eines Elternteils. Fest gestellt öffnet das
+  // Gerät nur noch dieses Profil; mit der PIN der Eltern ist die Wahl dort eine Weile offen, fest bleibt es, bis es hier gelöst
+  // wird. Ohne die PIN eines Erwachsenen gibt es das nicht, sonst käme jeder hinaus. Die Verwaltung löst ohne PIN (Profilansicht).
   import type { Profil } from "../../../lib/api/familie";
-  import { PIN_HOECHSTENS, pinGueltig } from "../../../lib/familie";
+  import { pinGueltig } from "../../../lib/familie";
   import { familie } from "../../../lib/stand/familie.svelte";
   import { ich } from "../../../lib/stand/ich.svelte";
+  import { melde } from "../../../lib/stand/meldungen.svelte";
   import { profilformular } from "../../../lib/stand/profilformular.svelte";
   import Fenster from "../../../lib/teile/Fenster.svelte";
   import Knopf from "../../../lib/teile/Knopf.svelte";
 
-  let { kind, onschliessen }: { kind: Profil; onschliessen: () => void } = $props();
+  let { kind, art, onschliessen }: { kind: Profil; art: "binden" | "loesen"; onschliessen: () => void } = $props();
 
   let pin = $state("");
   let laeuft = $state(false);
   let fehler = $state("");
-  let ohnePin = $derived(!ich.profil?.hat_pin);
+  /** Hat kein Erwachsener eine PIN, ließe sich das Gerät nicht wieder lösen */
+  let ohnePin = $derived(!familie.profile.some((p) => p.rolle !== "kind" && p.hat_pin));
+  let titel = $derived(art === "binden" ? `Dieses Gerät fest auf ${kind.name}` : "Dieses Gerät lösen");
 
-  async function binde(e: SubmitEvent) {
+  async function sende(e: SubmitEvent) {
     e.preventDefault();
-    if (!pinGueltig(pin)) return;
+    if (!pinGueltig(pin, familie.zugang)) return;
     laeuft = true;
     fehler = "";
     try {
-      await familie.binde(kind.id, pin);
+      if (art === "binden") {
+        await familie.binde(kind.id, pin);
+        return;
+      }
+      await familie.loese(pin);
+      melde.gut("Gerät gelöst");
+      onschliessen();
     } catch (err) {
       fehler = err instanceof Error ? err.message : String(err);
       laeuft = false;
@@ -35,23 +45,27 @@
   }
 </script>
 
-<Fenster titel="Dieses Gerät fest auf {kind.name}" breite="28rem" {onschliessen}>
-  <p>Das Gerät öffnet danach immer den Bereich von {kind.name}, gleich beim Start. Hinaus geht es nur mit der PIN eines Elternteils, dann ist das Gerät wieder frei.</p>
-  {#if ohnePin}
-    <p class="marke-text warn">Erst eine eigene PIN setzen, sonst könnte jeder das Gerät wieder lösen.</p>
+<Fenster {titel} breite="28rem" {onschliessen}>
+  {#if art === "binden"}
+    <p>Das Gerät öffnet danach beim Start immer den Bereich von {kind.name}. Mit der PIN eines Elternteils ist die Wahl dort eine Weile offen; fest bleibt das Gerät, bis es hier gelöst wird.</p>
   {:else}
-    <form id="geraetbindung" class="formular" onsubmit={binde}>
-      <label class="feld">Deine PIN<input class="eingabe" type="password" inputmode="numeric" autocomplete="current-password" maxlength={PIN_HOECHSTENS} data-fokus bind:value={pin} disabled={laeuft} /></label>
+    <p>Beim Start öffnet das Gerät dann nicht mehr von selbst {kind.name}, sondern zeigt alle Profile zur Wahl.</p>
+  {/if}
+  {#if ohnePin && art === "binden"}
+    <p class="marke-text warn">Erst braucht ein Erwachsener eine PIN, sonst ließe sich das Gerät nicht wieder lösen.</p>
+  {:else}
+    <form id="geraetbindung" class="formular" onsubmit={sende}>
+      <label class="feld">PIN eines Elternteils<input class="eingabe" type="password" inputmode="numeric" autocomplete="current-password" maxlength={familie.zugang.pin_stellen_bis} data-fokus bind:value={pin} disabled={laeuft} /></label>
       {#if fehler}<p class="marke-text schlecht" role="alert">{fehler}</p>{/if}
     </form>
   {/if}
   {#snippet fuss()}
     <span class="schiebt reihe">
       <Knopf text="Abbrechen" onclick={onschliessen} />
-      {#if ohnePin}
+      {#if ohnePin && art === "binden"}
         <Knopf text="Eigene PIN setzen" symbol="lock" haupt onclick={eigenePin} />
       {:else}
-        <button class="knopf haupt" type="submit" form="geraetbindung" disabled={laeuft || !pinGueltig(pin)}>Fest auf {kind.name}</button>
+        <button class="knopf haupt" type="submit" form="geraetbindung" disabled={laeuft || !pinGueltig(pin, familie.zugang)}>{art === "binden" ? `Fest auf ${kind.name}` : "Lösen"}</button>
       {/if}
     </span>
   {/snippet}

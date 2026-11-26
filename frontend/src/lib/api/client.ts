@@ -35,6 +35,16 @@ export function onAuthError(callback: () => void): void {
   onAuthRequired = callback;
 }
 
+/** 401 mit diesem `code` (und WWW-Authenticate: Profil): das Gerät bleibt angemeldet, es fehlt nur ein gültiges Profil (BF-78) */
+export const PROFIL_WAEHLEN = "profil_waehlen";
+
+let onProfilRequired: (() => void) | null = null;
+
+/** Registriert, was geschieht, wenn der Server ein Profil verlangt: zur Profilwahl, nie abmelden */
+export function onProfilFehlt(callback: () => void): void {
+  onProfilRequired = callback;
+}
+
 /**
  * Prüft ob ein Token gespeichert ist.
  */
@@ -190,7 +200,12 @@ export class ApiError extends Error {
 /**
  * Basis-Fetch mit Auth-Header und Fehlerbehandlung.
  */
-export async function anfrage(path: string, options: RequestInit = {}): Promise<Response> {
+/** Wie eine Anfrage mit 401 umgeht: wer selbst Name und Kennwort prüfen lässt (PIN vergessen), meldet das Gerät nicht ab */
+export interface Anfrageart {
+  anmeldungGeprueft?: boolean;
+}
+
+export async function anfrage(path: string, options: RequestInit = {}, art: Anfrageart = {}): Promise<Response> {
   const headers: Record<string, string> = { ...(options.headers as Record<string, string>) };
 
   const token = getToken();
@@ -228,8 +243,11 @@ export async function anfrage(path: string, options: RequestInit = {}): Promise<
       // Response ohne JSON-Body
     }
 
-    // Nur eine abgewiesene Anmeldung (401) führt zur Anmeldung; 403 heißt "nicht erlaubt" und meldet nie ab
-    if (response.status === 401 && onAuthRequired) {
+    // Nur eine abgewiesene Anmeldung (401) führt zur Anmeldung; 403 heißt "nicht erlaubt" und meldet nie ab. Fehlt nur das
+    // Profil, bleibt das Gerät angemeldet und es geht zur Profilwahl.
+    const profilFehlt = response.status === 401 && (data?.code === PROFIL_WAEHLEN || /\bProfil\b/.test(response.headers?.get?.("WWW-Authenticate") ?? ""));
+    if (profilFehlt) onProfilRequired?.();
+    else if (response.status === 401 && onAuthRequired && !art.anmeldungGeprueft) {
       onAuthRequired();
     }
 
@@ -238,6 +256,12 @@ export async function anfrage(path: string, options: RequestInit = {}): Promise<
   }
 
   return response;
+}
+
+/** Der Inhalt einer Antwort; 204 und ausdrücklich leere Antworten haben keinen */
+function inhalt<T>(response: Response): Promise<T> {
+  if (response.status === 204 || response.headers?.get?.("Content-Length") === "0") return Promise.resolve(undefined as T);
+  return response.json();
 }
 
 /**
@@ -259,18 +283,18 @@ export async function get<T = any>(path: string, params?: Parameter): Promise<T>
     }
   }
   const response = await anfrage(path);
-  return response.json();
+  return inhalt(response);
 }
 
 /**
  * POST-Request mit JSON-Body.
  */
-export async function post<T = any>(path: string, body?: unknown): Promise<T> {
+export async function post<T = any>(path: string, body?: unknown, art: Anfrageart = {}): Promise<T> {
   const response = await anfrage(path, {
     method: "POST",
     body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  return response.json();
+  }, art);
+  return inhalt(response);
 }
 
 /**
@@ -281,7 +305,7 @@ export async function patch<T = any>(path: string, body?: unknown): Promise<T> {
     method: "PATCH",
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  return response.json();
+  return inhalt(response);
 }
 
 /**
@@ -292,7 +316,7 @@ export async function put<T = any>(path: string, body?: unknown): Promise<T> {
     method: "PUT",
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  return response.json();
+  return inhalt(response);
 }
 
 /**
@@ -300,7 +324,7 @@ export async function put<T = any>(path: string, body?: unknown): Promise<T> {
  */
 export async function del<T = any>(path: string, body?: unknown): Promise<T> {
   const response = await anfrage(path, { method: "DELETE", body: body !== undefined ? JSON.stringify(body) : undefined });
-  return response.json();
+  return inhalt(response);
 }
 
 /**

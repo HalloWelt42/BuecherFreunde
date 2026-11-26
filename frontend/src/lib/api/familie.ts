@@ -6,10 +6,10 @@ import type { Buch } from "../typen";
 export type Rolle = "verwaltung" | "erwachsen" | "kind";
 export type Stufe = "vorlesen" | "erstes_lesen" | "lesen_lernen" | "schule" | "jugend";
 
-/** Was ein Profil darf, aus Rolle und Stufe (stufen.json am Server) */
+/** Was ein Profil darf, aus Rolle und Stufe (stufen.json am Server, dort mit Beschreibung) */
 export type Faehigkeit =
-  | "lesen" | "vorlesen" | "lesezeichen" | "suche" | "favoriten" | "markierungen" | "notizen" | "etiketten" | "sammeln"
-  | "hinzufuegen" | "bearbeiten" | "loeschen" | "einstellungen" | "profile" | "freigeben" | "ki";
+  | "lesen" | "vorlesen" | "lesezeichen" | "suche" | "favoriten" | "sammeln" | "markierungen" | "notizen" | "etiketten" | "privat"
+  | "ausfuehren" | "nachschlagen" | "katalog" | "hinzufuegen" | "bearbeiten" | "freigeben" | "ki" | "loeschen" | "einstellungen" | "profile";
 
 /** Schrift des Kindes, ausgehend von der Größe seiner Stufe */
 export type Schriftgroesse = "klein" | "mittel" | "gross";
@@ -23,6 +23,12 @@ export interface Lesehilfen {
   silben: boolean;
   lesezeile: boolean;
   schrift: Schriftgroesse;
+  /** Hinweise werden gesprochen: Lesezeit, Ruhezeit, Bild-PIN und alles, was sonst nur dasteht */
+  hinweise_sprechen: boolean;
+  /** Eine gedrückte Taste sagt, was sie tut */
+  tasten_ansagen: boolean;
+  /** Vorlesestimme des Profils; leer: die Vorgabe */
+  stimme?: string;
 }
 
 export interface Lesezeitregel {
@@ -41,6 +47,8 @@ export interface Katze {
   an: boolean;
   name: string;
   schnurren: boolean;
+  /** Im Vorlesealter wählt das Kind den Namen aus vorgelesenen Vorschlägen, sonst tippt es ihn */
+  name_eingabe?: "vorschlaege" | "tippen";
 }
 
 export interface Profileinstellungen {
@@ -62,22 +70,38 @@ export interface Profil {
   stufe: Stufe | null;
   hat_pin: boolean;
   hat_bild_pin: boolean;
-  /** Nur für die, die das Profil ändern dürfen */
+  /** Nur für die, die das Profil ändern dürfen, und für das Profil selbst; sonst null */
   geburtsjahr?: number | null;
-  einstellungen?: Partial<Profileinstellungen>;
+  /** Was wirkt (eigene Wahl vor den Vorgaben der Stufe und des Alters); nur bei Kindern */
+  einstellungen?: Partial<Profileinstellungen> | null;
+}
+
+/** Ein Gerät, das fest auf ein Kind gestellt ist */
+export interface Geraetestand {
+  /** Das Gerät öffnet nur dieses Profil; leer auch, solange die Wahl nach der PIN der Eltern offen ist */
+  gebunden_an: string | null;
+  /** Worauf es fest gestellt ist, auch während es offen ist */
+  fest_auf: string | null;
+  /** Nach der PIN der Eltern darf hier eine Weile jemand anders wählen */
+  offen: boolean;
 }
 
 /** GET /api/familie */
 export interface Familie {
   profile: Profil[];
-  /** Ohne gültigen Profilschlüssel und mit mehr als einem Profil oder einer PIN: erst wählen */
+  /** Es gibt mehr als ein Profil oder eine PIN: ohne Wahl geht es nicht */
   braucht_wahl: boolean;
-  geraet: { gebunden_an: string | null };
+  /** Das Profil des mitgeschickten Schlüssels, wenn er gilt */
+  aktiv: string | null;
+  geraet: Geraetestand;
 }
 
 export interface Lesezeitstand {
+  /** Es gilt eine Grenze oder eine Ruhezeit */
+  an: boolean;
   heute_s: number;
   /** null: ohne Grenze */
+  grenze_s: number | null;
   rest_s: number | null;
   ruht: boolean;
   /** Bis wann die Ruhezeit gilt, "07:00" */
@@ -86,7 +110,7 @@ export interface Lesezeitstand {
   hinweis_ab_s: number | null;
 }
 
-/** Darstellung des Kinderbereichs nach Stufe und Lesehilfen */
+/** Darstellung des Kinderbereichs nach Stufe und Schriftwahl (Kinder; Erwachsene leer). Der Kinderbereich liest sie selbst. */
 export interface Kinddarstellung {
   schrift?: string;
   groesse_px?: number;
@@ -99,37 +123,58 @@ export interface Ich {
   profil: Profil;
   faehigkeiten: Faehigkeit[];
   darstellung: Kinddarstellung;
+  /** Kinder: was wirkt; Erwachsene: null */
+  lesehilfen: Lesehilfen | null;
   lesezeit: Lesezeitstand;
   katze: Katze;
+  /** Was die Eltern sehen, für das Kind sichtbar; leer bei Erwachsenen */
+  einblick: Einblickart[];
 }
 
 /** Was die Eltern im Einblick sehen */
-export type Einblickart = "titel" | "lesezeit" | "fortschritt" | "grober_fortschritt" | "geteiltes";
+export type Einblickart = "titel" | "lesezeit" | "fortschritt" | "grober_fortschritt" | "zuletzt" | "geteiltes";
 
 /** Eine Stufe aus stufen.json */
 export interface Stufenangabe {
   schluessel: Stufe;
   name: string;
+  /** Für Menschen, etwa "Klasse 1 und 2" */
+  alter?: string;
   /** Alter in Jahren, für den Vorschlag aus dem Geburtsjahr */
   alter_von: number;
   /** null: nach oben offen */
   alter_bis: number | null;
   faehigkeiten: Faehigkeit[];
   einblick: Einblickart[];
+  /** Lesehilfen der Stufe, Lesezeit für das Alter, ab dem sie gilt, Katze */
   vorgaben?: Partial<Profileinstellungen>;
 }
 
-/** Vorgabe der Lesezeit am Tag nach Alter */
+/** Vorgabe der Lesezeit am Tag nach Alter; an false: ohne Grenze */
 export interface Lesezeitvorgabe {
   alter_von: number;
   alter_bis: number | null;
   minuten: number;
+  an: boolean;
+}
+
+/** Wie sich ein Profil ausweist: PIN aus so vielen Ziffern, Bild-PIN aus so vielen dieser Bilder in ihrer Folge */
+export interface Zugang {
+  pin_stellen_von: number;
+  pin_stellen_bis: number;
+  bild_pin_anzahl: number;
+  bilder: string[];
 }
 
 /** GET /api/familie/stufen */
 export interface Stufen {
   stufen: Stufenangabe[];
   lesezeit: Lesezeitvorgabe[];
+  /** Fähigkeit -> was sie erlaubt */
+  faehigkeiten?: Partial<Record<Faehigkeit, string>>;
+  zugang?: Zugang;
+  katze_vorschlaege?: string[];
+  katze_nennung?: string;
 }
 
 /** Antwort auf die Wahl: der Schlüssel für X-Profil und das Profil samt Rechten */
@@ -138,14 +183,24 @@ export interface Wahl {
   profil: Ich;
 }
 
-/** Was mit einem Profil verloren geht */
+/** Was mit einem Profil verloren geht; `stand` geht mit dem Löschen zurück, ändert sich seither etwas, gilt er nicht mehr */
 export interface Profilfolgen {
+  profil?: Profil;
   notizen: number;
   markierungen: number;
   etiketten: number;
+  /** Bücher mit Lesestand, Favorit, Sternen oder Lesesofa */
   lesestaende: number;
+  vorlesestellen: number;
+  /** Lesestände in Übersetzungen */
+  fassungen_gelesen: number;
   freigaben: number;
+  /** Kein Buch wird gelöscht; sie sind danach für alle sichtbar */
   private_buecher: number;
+  lesezeit_tage: number;
+  /** Fest auf dieses Profil gestellte Geräte, sie werden gelöst */
+  geraete: number;
+  stand: string;
 }
 
 export interface Freigabekategorie {
@@ -165,17 +220,19 @@ export type Freigabeart = "buch" | "kategorie";
 
 export interface Einblickeintrag {
   buch: Pick<Buch, "id" | "title"> & Partial<Buch>;
-  /** Anteil 0 bis 1; ab Schule nur grob */
-  fortschritt: number;
-  seite?: number;
-  seiten?: number;
-  lesezeit_heute_s?: number;
+  /** Anteil 0 bis 1, ab Schule nur grob; null: sieht man nicht */
+  fortschritt: number | null;
+  /** Nur mit genauem Fortschritt */
+  seite?: number | null;
+  seiten?: number | null;
   zuletzt?: string | null;
 }
 
 export interface Einblick {
-  eintraege: Einblickeintrag[];
   sichtbar: Einblickart[];
+  /** Je Kind und Tag, nicht je Buch; null: sieht man nicht */
+  lesezeit_heute_s?: number | null;
+  eintraege: Einblickeintrag[];
 }
 
 /** Womit sich jemand ausweist: PIN aus Ziffern oder drei Bildschlüssel */
@@ -199,7 +256,12 @@ export const legeProfilAn = (angaben: Profilangaben): Promise<Profil> => post(`$
 export const aendereProfil = (id: string, angaben: Profilangaben): Promise<Profil> => patch(profilweg(id), angaben);
 export const setzePin = (id: string, wert: { pin: string } | { bild_pin: string[] } | { entfernen: true }): Promise<Profil> => put(`${profilweg(id)}/pin`, wert);
 export const profilfolgen = (id: string): Promise<Profilfolgen> => get(`${profilweg(id)}/loeschfolgen`);
-export const loescheProfil = (id: string): Promise<unknown> => del(profilweg(id));
+/** Nur mit dem `stand` der Löschfolgen; 409, wenn sich seither etwas geändert hat */
+export const loescheProfil = (id: string, stand: string): Promise<unknown> => del(`${profilweg(id)}?${new URLSearchParams({ stand })}`);
+/** Die PIN der Verwaltung fällt weg, wenn sich das Konto des Geräts erneut anmeldet */
+export const vergissPin = (id: string, kennung: string, passwort: string): Promise<Familie> =>
+  // Ein falsches Kennwort hier heißt nicht, dass das Gerät abgemeldet ist
+  post(`${profilweg(id)}/pin/vergessen`, { kennung, passwort }, { anmeldungGeprueft: true });
 
 export const ladeFreigaben = (id: string): Promise<Freigaben> => get(`${profilweg(id)}/freigaben`);
 export const gibFrei = (id: string, art: Freigabeart, ziel_ids: number[]): Promise<unknown> => post(`${profilweg(id)}/freigaben`, { art, ziel_ids });
@@ -207,4 +269,7 @@ export const nimmFreigabe = (id: string, art: Freigabeart, ziel_ids: number[]): 
 export const ladeEinblick = (id: string): Promise<Einblick> => get(`${profilweg(id)}/einblick`);
 
 export const bindeGeraet = (profil_id: string, eltern_pin: string): Promise<unknown> => post(`${WEG}/geraet`, { profil_id, eltern_pin });
-export const loeseGeraet = (eltern_pin: string): Promise<unknown> => del(`${WEG}/geraet`, { eltern_pin });
+/** Mit der PIN der Eltern; als Verwaltung ohne sie */
+export const loeseGeraet = (eltern_pin?: string): Promise<unknown> => del(`${WEG}/geraet`, eltern_pin ? { eltern_pin } : {});
+/** Das Kind teilt ein Buch mit den Eltern (ab Jugend sehen sie nur Geteiltes) */
+export const teileBuch = (buch: number, geteilt: boolean): Promise<{ geteilt: boolean }> => put(`/api/books/${buch}/geteilt`, { geteilt });

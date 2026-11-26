@@ -1,6 +1,7 @@
 <script lang="ts">
-  // Lesehilfen je Kind: Vorlesen mit Mitlesen samt Tempo, farbige Silben, Lesezeile, Größe der Kinderschrift. Silben und
-  // Lesezeile schaltet das Kind danach selbst an und aus; hier steht, ob es sie hat.
+  // Lesehilfen je Kind (Entwurf kinder-4 Abschnitt 5): Vorlesen mit Mitlesen samt Tempo, farbige Silben, Lesezeile, Hinweise
+  // vorsprechen, Tasten ansagen, Größe der Kinderschrift. Silben und Lesezeile schaltet das Kind danach selbst an und aus;
+  // hier steht, ob es sie hat. Ohne Wahl der Eltern gilt die Vorgabe der Stufe.
   import type { Profil } from "../../../lib/api/familie";
   import { SCHRIFTEN, TEMPI, einstellungenVon, schriftText, tempoText } from "../../../lib/familie";
   import { familie } from "../../../lib/stand/familie.svelte";
@@ -34,6 +35,14 @@
   <div class="elternzeile">
     <span>Lesezeile</span>
     <Schalter an={hilfen.lesezeile} name="Lesezeile" gesperrt={!aendert} onwahl={(lesezeile) => void setze(profil, "lesehilfen", { lesezeile })} />
+  </div>
+  <div class="elternzeile">
+    <span>Hinweise vorsprechen<small>Lesezeit, Ruhezeit, Bild-PIN und alles, was sonst nur da steht</small></span>
+    <Schalter an={hilfen.hinweise_sprechen} name="Hinweise vorsprechen" gesperrt={!aendert} onwahl={(hinweise_sprechen) => void setze(profil, "lesehilfen", { hinweise_sprechen })} />
+  </div>
+  <div class="elternzeile">
+    <span>Tasten ansagen<small>sagt, was gerade gedrückt wurde</small></span>
+    <Schalter an={hilfen.tasten_ansagen} name="Tasten ansagen" gesperrt={!aendert} onwahl={(tasten_ansagen) => void setze(profil, "lesehilfen", { tasten_ansagen })} />
   </div>
   <div class="elternzeile">
     <span>Schrift<small>Kinderschrift, {schriftText(hilfen.schrift)}</small></span>

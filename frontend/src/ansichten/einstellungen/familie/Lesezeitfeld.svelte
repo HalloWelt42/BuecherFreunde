@@ -43,7 +43,7 @@
       <div class="elternzeile"><span>Grenze am Tag</span><Schalter an={regel.an} name="Grenze am Tag" onwahl={(an) => void setze(profil, "lesezeit", { an, minuten })} /></div>
       {#if regel.an}
         <Regler name="Minuten" wert={minuten} von={VON} bis={BIS} schritt={SCHRITT} anzeige={minutenText(minuten)} onwahl={ziehe} />
-        {#if vorgabe && vorgabe.minuten !== regel.minuten}<Knopf text="Vorgabe: {minutenText(vorgabe.minuten)}" symbol="rotate-left" klein onclick={() => void setze(profil, "lesezeit", { minuten: vorgabe.minuten })} />{/if}
+        {#if vorgabe && vorgabe.minuten !== regel.minuten}<Knopf text="Vorgabe: {minutenText(vorgabe.minuten)}" symbol="rotate-left" klein onclick={() => void setze(profil, "lesezeit", { an: vorgabe.an, minuten: vorgabe.minuten })} />{/if}
       {/if}
     </Wertchip>
   </div>

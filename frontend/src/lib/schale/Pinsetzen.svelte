@@ -2,7 +2,8 @@
   // PIN eines Profils setzen, ändern oder entfernen (BF-78): Erwachsene eine PIN aus Ziffern, zweimal eingegeben; Kinder eine
   // Bild-PIN aus drei Bildern. Entfernen erst nach der Rückfrage, denn danach öffnet jeder das Profil.
   import { setzePin, type Profil } from "../api/familie";
-  import { PIN_HOECHSTENS, PIN_MINDESTENS, bildName, pinGueltig } from "../familie";
+  import { bildName, pinGueltig } from "../familie";
+  import { familie } from "../stand/familie.svelte";
   import { melde } from "../stand/meldungen.svelte";
   import { frage } from "../stand/rueckfrage.svelte";
   import Knopf from "../teile/Knopf.svelte";
@@ -19,7 +20,7 @@
   let laeuft = $state(false);
   let feld: { leere: () => void } | undefined = $state();
 
-  let bereit = $derived(kind ? bilder.length > 0 : pinGueltig(pin) && pin === nochmal);
+  let bereit = $derived(kind ? bilder.length > 0 : pinGueltig(pin, familie.zugang) && pin === nochmal);
   let hinweis = $derived(!kind && pin && nochmal && pin !== nochmal ? "Die beiden Eingaben stimmen nicht überein." : "");
 
   async function tun(wert: Parameters<typeof setzePin>[1], gut: string) {
@@ -58,13 +59,13 @@
   <p class="leise">{gesetzt ? `${art} gesetzt. Eine neue ersetzt sie.` : `Noch keine ${art}.`}</p>
   {#if kind}
     <div class="bildpinklein">
-      <Bildpinfeld bind:this={feld} name="Neue Bild-PIN" gesperrt={laeuft} onvoll={(b) => (bilder = b)} />
+      <Bildpinfeld bind:this={feld} zugang={familie.zugang} name="Neue Bild-PIN" gesperrt={laeuft} onvoll={(b) => (bilder = b)} />
     </div>
     {#if bilder.length}<p class="leise">Neu: {bilder.map(bildName).join(", ")}</p>{/if}
   {:else}
     <div class="zwei">
-      <label class="feld">Neue PIN, {PIN_MINDESTENS} bis {PIN_HOECHSTENS} Ziffern<input class="eingabe" type="password" inputmode="numeric" autocomplete="new-password" maxlength={PIN_HOECHSTENS} bind:value={pin} disabled={laeuft} /></label>
-      <label class="feld">PIN wiederholen<input class="eingabe" type="password" inputmode="numeric" autocomplete="new-password" maxlength={PIN_HOECHSTENS} bind:value={nochmal} disabled={laeuft} /></label>
+      <label class="feld">Neue PIN, {familie.zugang.pin_stellen_von} bis {familie.zugang.pin_stellen_bis} Ziffern<input class="eingabe" type="password" inputmode="numeric" autocomplete="new-password" maxlength={familie.zugang.pin_stellen_bis} bind:value={pin} disabled={laeuft} /></label>
+      <label class="feld">PIN wiederholen<input class="eingabe" type="password" inputmode="numeric" autocomplete="new-password" maxlength={familie.zugang.pin_stellen_bis} bind:value={nochmal} disabled={laeuft} /></label>
     </div>
     {#if hinweis}<p class="marke-text warn" role="alert">{hinweis}</p>{/if}
   {/if}

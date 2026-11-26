@@ -1,15 +1,19 @@
 <script lang="ts">
   // PIN aus Ziffern (BF-78) als großes Zahlenfeld: 1 bis 9, Zurück, 0, Fertig. Die Tastatur geht ebenso (Ziffern, Rücktaste,
   // Eingabe). Ein neuer `versuch` (etwa nach einer falschen PIN) leert die Stellen und schüttelt sie kurz.
-  import { PIN_HOECHSTENS, PIN_MINDESTENS, pinGueltig } from "../familie";
+  import type { Zugang } from "../api/familie";
+  import { pinGueltig } from "../familie";
   import { untrack } from "svelte";
   import Symbol from "./Symbol.svelte";
 
-  let { onfertig, gesperrt = false, versuch = 0, name = "PIN" }: { onfertig: (pin: string) => void; gesperrt?: boolean; versuch?: number; name?: string } = $props();
+  let { zugang, onfertig, gesperrt = false, versuch = 0, name = "PIN" }: { zugang: Zugang; onfertig: (pin: string) => void; gesperrt?: boolean; versuch?: number; name?: string } = $props();
+  let von = $derived(zugang.pin_stellen_von);
+  let bis = $derived(zugang.pin_stellen_bis);
 
   let pin = $state("");
   let schuettelt = $state(false);
-  let stellen = $derived(Math.max(PIN_MINDESTENS, Math.min(PIN_HOECHSTENS, pin.length + (pin.length >= PIN_MINDESTENS && pin.length < PIN_HOECHSTENS ? 1 : 0))));
+  /** Mindestens so viele Stellen wie nötig; ab da eine freie mehr, bis die längste PIN erreicht ist */
+  let stellen = $derived(Math.max(von, Math.min(bis, pin.length + (pin.length >= von && pin.length < bis ? 1 : 0))));
 
   // Nur ein neuer Versuch zählt, nicht der, mit dem das Feld erscheint
   let gezaehlt = untrack(() => versuch);
@@ -23,7 +27,7 @@
   });
 
   function ziffer(z: string) {
-    if (!gesperrt && pin.length < PIN_HOECHSTENS) pin += z;
+    if (!gesperrt && pin.length < bis) pin += z;
   }
 
   function weg() {
@@ -31,11 +35,13 @@
   }
 
   function fertig() {
-    if (!gesperrt && pinGueltig(pin)) onfertig(pin);
+    if (!gesperrt && pinGueltig(pin, zugang)) onfertig(pin);
   }
 
   function taste(e: KeyboardEvent) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    // Wer in ein Feld oder ein Fenster tippt (etwa PIN vergessen), meint nicht das Zahlenfeld
+    if (e.target instanceof Element && e.target.closest("input, textarea, select, [contenteditable], dialog")) return;
     if (/^\d$/.test(e.key)) ziffer(e.key);
     else if (e.key === "Backspace") weg();
     else if (e.key === "Enter") fertig();
@@ -47,7 +53,7 @@
 <svelte:window onkeydown={taste} />
 
 <div class="zahlenpin" role="group" aria-label={name}>
-  <div class="plaetze" class:schuettelt aria-live="polite" aria-label="{pin.length} von mindestens {PIN_MINDESTENS} Ziffern">
+  <div class="plaetze" class:schuettelt aria-live="polite" aria-label="{pin.length} von mindestens {von} Ziffern">
     {#each { length: stellen } as _, n (n)}<span class="platz" class:voll={n < pin.length}></span>{/each}
   </div>
   <div class="tastenfeld">
@@ -56,7 +62,7 @@
     {/each}
     <button type="button" class="taste" aria-label="Letzte Ziffer löschen" title="Letzte Ziffer löschen" disabled={gesperrt || !pin} onclick={weg}><Symbol name="delete-left" /></button>
     <button type="button" class="taste" disabled={gesperrt} onclick={() => ziffer("0")}>0</button>
-    <button type="button" class="taste haupt" aria-label="Fertig" title="Fertig" disabled={gesperrt || !pinGueltig(pin)} onclick={fertig}><Symbol name="check" /></button>
+    <button type="button" class="taste haupt" aria-label="Fertig" title="Fertig" disabled={gesperrt || !pinGueltig(pin, zugang)} onclick={fertig}><Symbol name="check" /></button>
   </div>
 </div>
 

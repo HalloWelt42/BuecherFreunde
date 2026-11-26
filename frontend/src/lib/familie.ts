@@ -3,31 +3,38 @@
 import { tagWort } from "./format";
 import type { Buch } from "./typen";
 import type {
-  Einblickart, Einblickeintrag, Lesezeitregel, Lesezeitvorgabe, Profil, Profileinstellungen, Rolle, Schriftgroesse, Stufe, Stufenangabe,
+  Einblickart, Einblickeintrag, Lesezeitregel, Lesezeitvorgabe, Profil, Profileinstellungen, Rolle, Schriftgroesse, Stufe, Stufenangabe, Zugang,
 } from "./api/familie";
 
-/** Die neun Bilder der Bild-PIN: Schlüssel für den Server, Symbol, Name zum Vorlesen */
-export const BILDER: readonly (readonly [string, string, string])[] = [
-  ["sonne", "sun", "Sonne"],
-  ["fisch", "fish", "Fisch"],
-  ["baum", "tree", "Baum"],
-  ["stern", "star", "Stern"],
-  ["apfel", "apple-whole", "Apfel"],
-  ["mond", "moon", "Mond"],
-  ["auto", "car", "Auto"],
-  ["herz", "heart", "Herz"],
-  ["wolke", "cloud", "Wolke"],
-];
+/**
+ * Wie die Bilder der Bild-PIN aussehen und heißen. Welche es gibt und in welcher Folge, sagt der Server
+ * (`zugang.bilder` in GET /api/familie/stufen); hier steht nur ihr Zeichen und ihr Name zum Vorlesen.
+ */
+const BILDZEICHEN: Record<string, [string, string]> = {
+  apfel: ["apple-whole", "Apfel"],
+  auto: ["car", "Auto"],
+  ball: ["futbol", "Ball"],
+  baum: ["tree", "Baum"],
+  blume: ["spa", "Blume"],
+  fisch: ["fish", "Fisch"],
+  haus: ["house", "Haus"],
+  herz: ["heart", "Herz"],
+  katze: ["cat", "Katze"],
+  mond: ["moon", "Mond"],
+  sonne: ["sun", "Sonne"],
+  stern: ["star", "Stern"],
+  vogel: ["dove", "Vogel"],
+  wolke: ["cloud", "Wolke"],
+};
 
-/** Drei Bilder antippen */
-export const BILDPIN_LAENGE = 3;
-export const PIN_MINDESTENS = 4;
-export const PIN_HOECHSTENS = 8;
+export const bildSymbol = (schluessel: string): string => BILDZEICHEN[schluessel]?.[0] ?? "circle-question";
+export const bildName = (schluessel: string): string => BILDZEICHEN[schluessel]?.[1] ?? schluessel;
 
-export const pinGueltig = (pin: string): boolean => new RegExp(`^\\d{${PIN_MINDESTENS},${PIN_HOECHSTENS}}$`).test(pin);
+/** Solange GET /api/familie/stufen nicht geantwortet hat: PIN von 4 bis 8 Ziffern, drei Bilder, noch keine zur Wahl */
+export const OHNE_ZUGANG: Zugang = { pin_stellen_von: 4, pin_stellen_bis: 8, bild_pin_anzahl: 3, bilder: [] };
 
-export const bildSymbol = (schluessel: string): string => BILDER.find(([s]) => s === schluessel)?.[1] ?? "question";
-export const bildName = (schluessel: string): string => BILDER.find(([s]) => s === schluessel)?.[2] ?? schluessel;
+export const pinGueltig = (pin: string, z: Zugang = OHNE_ZUGANG): boolean =>
+  /^\d+$/.test(pin) && pin.length >= z.pin_stellen_von && pin.length <= z.pin_stellen_bis;
 
 export const ROLLEN: [Rolle, string][] = [
   ["verwaltung", "Verwaltung"],
@@ -101,8 +108,9 @@ function alterSpanne(von: number, bis: number | null): string {
   return bis === null ? `ab ${von} Jahren` : `${von} bis ${bis} Jahre`;
 }
 
-/** "Vorgabe für 6 bis 9 Jahre: 45 Minuten" */
-export const vorgabeText = (v: Lesezeitvorgabe): string => `Vorgabe für ${alterSpanne(v.alter_von, v.alter_bis)}: ${minutenText(v.minuten)}`;
+/** "Vorgabe für 6 bis 8 Jahre: 45 Minuten", "Vorgabe ab 12 Jahren: ohne Grenze" */
+export const vorgabeText = (v: Lesezeitvorgabe): string =>
+  `Vorgabe ${v.alter_bis === null ? "" : "für "}${alterSpanne(v.alter_von, v.alter_bis)}: ${v.an ? minutenText(v.minuten) : "ohne Grenze"}`;
 
 /** "07:30" wird "7:30" */
 const uhrzeit = (wert: string): string => wert.replace(/^0(\d)/, "$1");
@@ -136,7 +144,8 @@ const EINBLICK: Record<Einblickart, [string, string]> = {
   lesezeit: ["Lesezeit", "Lesezeit"],
   fortschritt: ["Fortschritt", "Fortschritt"],
   grober_fortschritt: ["groben Fortschritt", "grober Fortschritt"],
-  geteiltes: ["nur Geteiltes", "nur Geteiltes"],
+  zuletzt: ["den letzten Lesetag", "der letzte Lesetag"],
+  geteiltes: ["", ""],
 };
 
 /** "A", "A und B", "A, B und C" */
@@ -145,15 +154,24 @@ export function aufzaehlung(teile: string[]): string {
   return `${teile.slice(0, -1).join(", ")} und ${teile[teile.length - 1]}`;
 }
 
+/** Was die Eltern sehen, in Worten; mit geteiltes nur von den Büchern, die das Kind teilt. fall 0: nach "dass du", 1: für sich */
+function einblickWas(name: string, arten: readonly Einblickart[], fall: 0 | 1): { teile: string; nurGeteiltes: boolean } {
+  const teile = aufzaehlung(arten.filter((a) => a !== "geteiltes").map((a) => EINBLICK[a]?.[fall] ?? a));
+  const geteilt = arten.includes("geteiltes");
+  return { teile: geteilt && teile ? `${teile} der Bücher, die ${name} teilt` : teile, nurGeteiltes: geteilt && !teile };
+}
+
 /** Der Hinweis, dass das Kind den Einblick sieht, und was sich mit der nächsten Stufe ändert */
 export function einblickHinweis(name: string, sichtbar: readonly Einblickart[], stufe: Stufe | null, stufen: readonly Stufenangabe[]): string {
-  const jetzt = `${name} sieht im eigenen Bereich, dass du ${aufzaehlung(sichtbar.map((s) => EINBLICK[s]?.[0] ?? s))} siehst.`;
+  const jetzt = einblickWas(name, sichtbar, 0);
+  const satz = `${name} sieht im eigenen Bereich, dass du ${jetzt.nurGeteiltes ? `nur siehst, was ${name} teilt` : `${jetzt.teile} siehst`}.`;
   const hier = stufen.findIndex((s) => s.schluessel === stufe);
   const gleich = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x) => b.includes(x));
   const naechste = hier < 0 ? undefined : stufen.slice(hier + 1).find((s) => !gleich(s.einblick, sichtbar));
-  if (!naechste) return jetzt;
-  const was = aufzaehlung(naechste.einblick.map((s) => EINBLICK[s]?.[1] ?? s));
-  return `${jetzt} ${alterSpanne(naechste.alter_von, null).replace(/^ab/, "Ab")} nur noch ${was.replace(/^nur /, "")}.`;
+  if (!naechste) return satz;
+  const dann = einblickWas(name, naechste.einblick, 1);
+  const ab = alterSpanne(naechste.alter_von, null).replace(/^ab/, "Ab");
+  return `${satz} ${ab} nur noch ${dann.nurGeteiltes ? `, was ${name} teilt` : dann.teile}.`.replace(" ,", ",");
 }
 
 /** "heute", "vor 3 Tagen", "am 02.11.2026" */
@@ -162,17 +180,19 @@ function wann(zeit: string | null | undefined): string {
   return /^\d/.test(wort) ? `am ${wort}` : wort;
 }
 
-/** Zweite Zeile eines Eintrags im Einblick: "Seite 12 von 40, heute 20 Minuten" oder "gelesen gestern" */
+/** Zweite Zeile eines Eintrags im Einblick: "Seite 12 von 40", "50 Prozent" oder "gelesen gestern"; was die Stufe nicht zeigt, fehlt */
 export function einblickZeile(e: Einblickeintrag): string {
+  if (e.fortschritt === null) return e.zuletzt ? `zuletzt ${wann(e.zuletzt)}` : "";
   if (e.fortschritt >= 1) return ["gelesen", wann(e.zuletzt)].filter(Boolean).join(" ");
-  const stand = e.seite && e.seiten ? `Seite ${e.seite} von ${e.seiten}` : `${Math.round(e.fortschritt * 100)} Prozent`;
-  const heute = e.lesezeit_heute_s ? `heute ${minutenText(Math.round(e.lesezeit_heute_s / 60))}` : "";
-  return [stand, heute].filter(Boolean).join(", ");
+  return e.seite && e.seiten ? `Seite ${e.seite} von ${e.seiten}` : `${Math.round(e.fortschritt * 100)} Prozent`;
 }
+
+/** Gelesen ist, was die Stufe als ganz gelesen zeigt */
+export const ganzGelesen = (e: Einblickeintrag): boolean => (e.fortschritt ?? 0) >= 1;
 
 /** Leer, solange weder das Profil noch seine Stufe etwas vorgeben */
 const OHNE: Profileinstellungen = {
-  lesehilfen: { mitlesen: false, tempo: 1, silben: false, lesezeile: false, schrift: "mittel" },
+  lesehilfen: { mitlesen: false, tempo: 1, silben: false, lesezeile: false, schrift: "mittel", hinweise_sprechen: false, tasten_ansagen: false },
   lesezeit: { an: false, minuten: 0, ruhe_an: false, ruhe_von: "", ruhe_bis: "", vorlesen_zaehlt: false },
   katze: { an: false, name: "", schnurren: false },
 };

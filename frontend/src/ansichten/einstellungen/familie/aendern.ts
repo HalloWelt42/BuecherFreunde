@@ -1,6 +1,6 @@
 // Ein Profil im Elternbereich ändern (BF-78): die Änderung steht sofort da, kommt danach vom Server; geht sie schief, gilt
-// wieder der alte Stand. Einstellungen gehen immer ganz an den Server (eigene Werte vor den Vorgaben der Stufe), damit er
-// nichts zusammenfügen muss.
+// wieder der alte Stand. Von den Einstellungen geht nur der geänderte Teil (Lesehilfen, Lesezeit oder Katze) an den Server,
+// dieser aber ganz, so wie er gerade wirkt: der Server ersetzt jeden genannten Teil, die übrigen bleiben.
 import { aendereProfil, type Profil, type Profilangaben, type Profileinstellungen } from "../../../lib/api/familie";
 import { einstellungenVon } from "../../../lib/familie";
 import { familie } from "../../../lib/stand/familie.svelte";
@@ -20,6 +20,8 @@ export async function aendere(p: Profil, angaben: Profilangaben): Promise<void> 
 
 /** Ein Teil der Einstellungen eines Kindes, etwa die Lesezeit */
 export function setze<B extends keyof Profileinstellungen>(p: Profil, bereich: B, teil: Partial<Profileinstellungen[B]>): Promise<void> {
-  const jetzt = einstellungenVon(p, familie.stufen.stufen);
-  return aendere(p, { einstellungen: { ...jetzt, [bereich]: { ...jetzt[bereich], ...teil } } });
+  const neu: Record<string, unknown> = { ...einstellungenVon(p, familie.stufen.stufen)[bereich], ...teil };
+  // Wie das Kind den Namen der Katze gibt, folgt der Stufe und ist keine Wahl der Eltern
+  delete neu.name_eingabe;
+  return aendere(p, { einstellungen: { [bereich]: neu } });
 }

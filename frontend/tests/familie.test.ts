@@ -1,8 +1,8 @@
 // Familie mit Profilen (BF-78): Profilschlüssel im Kopf, Start mit und ohne Wahl, Rechte an einer Stelle, Reiter, Freigaben,
 // Texte des Elternbereichs, Bild-PIN. Nur erfundene Namen und Titel.
 import { fireEvent, render, screen } from "@testing-library/svelte";
-import { get, del, geraetKennung, getProfil, setProfil } from "../src/lib/api/client";
-import type { Familie, Ich, Profil, Stufenangabe } from "../src/lib/api/familie";
+import { ApiError, get, del, geraetKennung, getProfil, onAuthError, onProfilFehlt, post, setProfil } from "../src/lib/api/client";
+import type { Familie, Ich, Profil, Stufenangabe, Zugang } from "../src/lib/api/familie";
 import {
   alterHinweis, alterText, einblickHinweis, einblickZeile, einstellungenVon, lesezeitVorgabe, pinGueltig, pinText, profilZeile, rollenText, stufeVorschlag,
   tempoText, vorgabeText,
@@ -11,6 +11,7 @@ import { anschluesse } from "../src/lib/stand/anschluesse.svelte";
 import { familie } from "../src/lib/stand/familie.svelte";
 import { ich } from "../src/lib/stand/ich.svelte";
 import { reiterAus, sichtbareReiter } from "../src/ansichten/einstellungen/reiter";
+import { setze } from "../src/ansichten/einstellungen/familie/aendern";
 import { freigabeziel, zielAus } from "../src/ansichten/zuordnen/ziel";
 import { Zuordnung } from "../src/ansichten/zuordnen/zuordnung.svelte";
 import Bildpinfeld from "../src/lib/teile/Bildpinfeld.svelte";
@@ -20,16 +21,20 @@ const STUFEN: Stufenangabe[] = [
   { schluessel: "vorlesen", name: "Vorlesen", alter_von: 0, alter_bis: 6, faehigkeiten: ["lesen"], einblick: ["titel", "lesezeit", "fortschritt"] },
   { schluessel: "erstes_lesen", name: "Erstes Lesen", alter_von: 7, alter_bis: 7, faehigkeiten: ["lesen"], einblick: ["titel", "lesezeit", "fortschritt"] },
   { schluessel: "lesen_lernen", name: "Lesen und Lernen", alter_von: 8, alter_bis: 9, faehigkeiten: ["lesen"], einblick: ["titel", "lesezeit", "fortschritt"],
-    vorgaben: { lesehilfen: { mitlesen: true, tempo: 1, silben: true, lesezeile: true, schrift: "gross" } } },
+    vorgaben: { lesehilfen: { mitlesen: true, tempo: 1, silben: true, lesezeile: true, schrift: "gross", hinweise_sprechen: true, tasten_ansagen: true } } },
   { schluessel: "schule", name: "Schule", alter_von: 10, alter_bis: 13, faehigkeiten: ["lesen"], einblick: ["titel", "grober_fortschritt"] },
-  { schluessel: "jugend", name: "Jugend", alter_von: 14, alter_bis: null, faehigkeiten: ["lesen"], einblick: ["geteiltes"] },
+  { schluessel: "jugend", name: "Jugend", alter_von: 14, alter_bis: null, faehigkeiten: ["lesen"], einblick: ["titel", "grober_fortschritt", "geteiltes"] },
 ];
+const ZUGANG: Zugang = { pin_stellen_von: 4, pin_stellen_bis: 8, bild_pin_anzahl: 3, bilder: ["apfel", "ball", "baum", "mond", "sonne", "stern"] };
 
 const profil = (mehr: Partial<Profil> = {}): Profil => ({ id: "p-1", name: "Wiebke", zeichen: "feather", farbe: "#6366f1", rolle: "verwaltung", stufe: null, hat_pin: true, hat_bild_pin: false, ...mehr });
 const KIND = profil({ id: "k-1", name: "Joris", rolle: "kind", stufe: "lesen_lernen", hat_pin: false, hat_bild_pin: true, geburtsjahr: 2017 });
 
 function ichAls(p: Profil, faehigkeiten: Ich["faehigkeiten"]): Ich {
-  return { profil: p, faehigkeiten, darstellung: {}, lesezeit: { heute_s: 0, rest_s: null, ruht: false, ruhe_bis: null, hinweis_ab_s: null }, katze: { an: false, name: "", schnurren: false } };
+  return {
+    profil: p, faehigkeiten, darstellung: {}, lesehilfen: null, einblick: [], katze: { an: false, name: "", schnurren: false },
+    lesezeit: { an: false, heute_s: 0, grenze_s: null, rest_s: null, ruht: false, ruhe_bis: null, hinweis_ab_s: null },
+  };
 }
 
 function buch(id: number, title: string, mehr: Partial<Buch> = {}): Buch {
@@ -42,7 +47,11 @@ function buch(id: number, title: string, mehr: Partial<Buch> = {}): Buch {
 
 /** Antworten je Weg; was fehlt, ist leer */
 function server(wege: Record<string, unknown>) {
-  const f = vi.fn((weg: string) => Promise.resolve(new Response(JSON.stringify(wege[weg.split("?")[0]] ?? {}), { status: 200 })));
+  const f = vi.fn((weg: string) => {
+    const pfad = weg.split("?")[0];
+    if (pfad === "/api/familie/stufen" && !(pfad in wege)) return Promise.resolve(new Response(JSON.stringify({ stufen: STUFEN, lesezeit: [], zugang: ZUGANG })));
+    return Promise.resolve(new Response(JSON.stringify(wege[pfad] ?? {}), { status: 200 }));
+  });
   globalThis.fetch = f as unknown as typeof fetch;
   return f;
 }
@@ -73,6 +82,30 @@ describe("Profilschlüssel im Kopf", () => {
     expect(kopf(f, 0)["X-Profil"]).toBeUndefined();
   });
 
+  it("führt bei 401 profil_waehlen zur Profilwahl und meldet das Gerät nicht ab", async () => {
+    const abmelden = vi.fn();
+    const waehlen = vi.fn();
+    onAuthError(abmelden);
+    onProfilFehlt(waehlen);
+    const antwort = (status: number, daten: unknown, kopf: Record<string, string> = {}) =>
+      (globalThis.fetch = vi.fn(() => Promise.resolve(new Response(JSON.stringify(daten), { status, headers: kopf }))) as unknown as typeof fetch);
+    antwort(401, { detail: "Bitte zuerst ein Profil wählen", code: "profil_waehlen" }, { "WWW-Authenticate": "Profil" });
+    await expect(get("/api/books")).rejects.toBeInstanceOf(ApiError);
+    expect(waehlen).toHaveBeenCalledTimes(1);
+    expect(abmelden).not.toHaveBeenCalled();
+    antwort(401, { detail: "Anmeldung erforderlich" }, { "WWW-Authenticate": "Bearer" });
+    await expect(get("/api/books")).rejects.toBeInstanceOf(ApiError);
+    expect(abmelden).toHaveBeenCalledTimes(1);
+    antwort(401, { detail: "Name oder Kennwort stimmt nicht" });
+    await expect(post("/api/familie/profile/x/pin/vergessen", {}, { anmeldungGeprueft: true })).rejects.toBeInstanceOf(ApiError);
+    expect(abmelden).toHaveBeenCalledTimes(1);
+  });
+
+  it("nimmt Antworten ohne Inhalt (204) an", async () => {
+    globalThis.fetch = vi.fn(() => Promise.resolve(new Response(null, { status: 204 }))) as unknown as typeof fetch;
+    await expect(post("/api/familie/verlassen")).resolves.toBeUndefined();
+  });
+
   it("sendet beim Zurücknehmen die Angaben mit", async () => {
     const f = server({ "/api/weg": {} });
     await del("/api/weg", { art: "buch", ziel_ids: [3] });
@@ -83,7 +116,17 @@ describe("Profilschlüssel im Kopf", () => {
 });
 
 describe("Start mit Profilen", () => {
-  const familieMit = (mehr: Partial<Familie>): Familie => ({ profile: [profil()], braucht_wahl: false, geraet: { gebunden_an: null }, ...mehr });
+  const OHNE_GERAET = { gebunden_an: null, fest_auf: null, offen: false };
+  const familieMit = (mehr: Partial<Familie>): Familie => ({ profile: [profil()], braucht_wahl: false, aktiv: null, geraet: OHNE_GERAET, ...mehr });
+
+  it("geht mit einem gültigen gemerkten Schlüssel gleich weiter", async () => {
+    setProfil("gilt-noch");
+    const f = server({ "/api/familie": familieMit({ braucht_wahl: true, aktiv: "p-1", profile: [profil(), KIND] }), "/api/familie/ich": ichAls(profil(), ["lesen"]) });
+    await familie.starte();
+    expect(familie.phase).toBe("bereit");
+    expect(getProfil()).toBe("gilt-noch");
+    expect(f.mock.calls.some(([w]) => w === "/api/familie/wahl")).toBe(false);
+  });
 
   it("holt mit nur einem Profil ohne PIN trotzdem einen Schlüssel und geht weiter", async () => {
     const einzig = profil({ hat_pin: false });
@@ -92,7 +135,8 @@ describe("Start mit Profilen", () => {
     expect(familie.phase).toBe("bereit");
     expect(getProfil()).toBe("neu-1");
     expect(ich.profil?.name).toBe("Wiebke");
-    expect(f.mock.calls.some(([w]) => w === "/api/anmeldung/zugang")).toBe(true);
+    // Das Cookie für Bilder und Ströme setzt die Wahl selbst
+    expect(f.mock.calls.some(([w]) => w === "/api/anmeldung/zugang")).toBe(false);
   });
 
   it("zeigt die Wahl, wenn der Server sie verlangt, und vergisst den alten Schlüssel", async () => {
@@ -104,15 +148,27 @@ describe("Start mit Profilen", () => {
     expect(familie.waehlbar.map((p) => p.name)).toEqual(["Wiebke", "Joris"]);
   });
 
-  it("öffnet auf einem gebundenen Gerät gleich das Kind", async () => {
-    server({
-      "/api/familie": familieMit({ braucht_wahl: true, profile: [profil(), KIND], geraet: { gebunden_an: "k-1" } }),
-      "/api/familie/wahl": { schluessel: "kind-1", profil: ichAls(KIND, ["lesen"]) },
-    });
+  it("öffnet auf einem gebundenen Gerät gleich das Kind, mit Bild-PIN nur dieses zur Wahl", async () => {
+    const ohneBild = { ...KIND, hat_bild_pin: false };
+    const gebunden = { gebunden_an: "k-1", fest_auf: "k-1", offen: false };
+    server({ "/api/familie": familieMit({ braucht_wahl: true, profile: [ohneBild], geraet: gebunden }), "/api/familie/wahl": { schluessel: "kind-1", profil: ichAls(ohneBild, ["lesen"]) } });
     await familie.starte();
     expect(familie.phase).toBe("bereit");
     expect(ich.istKind).toBe(true);
+    const f = server({ "/api/familie": familieMit({ braucht_wahl: true, profile: [KIND], geraet: gebunden }) });
+    await familie.starte();
+    expect(familie.phase).toBe("wahl");
     expect(familie.waehlbar.map((p) => p.name)).toEqual(["Joris"]);
+    // Ohne Bild-PIN zu wählen kostete einen Fehlversuch
+    expect(f.mock.calls.some(([w]) => w === "/api/familie/wahl")).toBe(false);
+  });
+
+  it("zeigt nach der PIN der Eltern auf dem gebundenen Gerät alle, die Bindung bleibt", async () => {
+    server({ "/api/familie": familieMit({ braucht_wahl: true, profile: [profil(), KIND], geraet: { gebunden_an: null, fest_auf: "k-1", offen: true } }) });
+    await familie.starte();
+    expect(familie.phase).toBe("wahl");
+    expect(familie.waehlbar).toHaveLength(2);
+    expect([familie.festAuf, familie.offen]).toEqual(["k-1", true]);
   });
 
   it("meldet einen Fehler des Servers, statt die Bibliothek zu zeigen", async () => {
@@ -204,8 +260,11 @@ describe("Texte des Elternbereichs", () => {
     expect(stufeVorschlag(2017, STUFEN, 2026)?.name).toBe("Lesen und Lernen");
     expect(stufeVorschlag(2010, STUFEN, 2026)?.name).toBe("Jugend");
     expect(stufeVorschlag(null, STUFEN, 2026)).toBeNull();
-    const vorgabe = lesezeitVorgabe(2019, [{ alter_von: 6, alter_bis: 8, minuten: 45 }], 2026);
+    const vorgaben = [{ alter_von: 6, alter_bis: 8, minuten: 45, an: true }, { alter_von: 12, alter_bis: null, minuten: 90, an: false }];
+    const vorgabe = lesezeitVorgabe(2019, vorgaben, 2026);
     expect(vorgabe && vorgabeText(vorgabe)).toBe("Vorgabe für 6 bis 8 Jahre: 45 Minuten");
+    const gross = lesezeitVorgabe(2012, vorgaben, 2026);
+    expect(gross && vorgabeText(gross)).toBe("Vorgabe ab 12 Jahren: ohne Grenze");
   });
 
   it("beschreibt Rolle, Stufe und PIN", () => {
@@ -226,31 +285,46 @@ describe("Texte des Elternbereichs", () => {
     expect(einblickHinweis("Joris", ["titel", "lesezeit", "fortschritt"], "lesen_lernen", STUFEN)).toBe(
       "Joris sieht im eigenen Bereich, dass du Titel, Lesezeit und Fortschritt siehst. Ab 10 Jahren nur noch Titel und grober Fortschritt.",
     );
-    expect(einblickHinweis("Joris", ["geteiltes"], "jugend", STUFEN)).toBe("Joris sieht im eigenen Bereich, dass du nur Geteiltes siehst.");
-    expect(einblickZeile({ buch: { id: 1, title: "x" }, fortschritt: 0.3, seite: 12, seiten: 40, lesezeit_heute_s: 1200 })).toBe("Seite 12 von 40, heute 20 Minuten");
+    expect(einblickHinweis("Joris", ["titel", "grober_fortschritt"], "schule", STUFEN)).toBe(
+      "Joris sieht im eigenen Bereich, dass du Titel und groben Fortschritt siehst. Ab 14 Jahren nur noch Titel und grober Fortschritt der Bücher, die Joris teilt.",
+    );
+    expect(einblickHinweis("Joris", ["geteiltes"], "jugend", STUFEN)).toBe("Joris sieht im eigenen Bereich, dass du nur siehst, was Joris teilt.");
+    expect(einblickZeile({ buch: { id: 1, title: "x" }, fortschritt: 0.3, seite: 12, seiten: 40 })).toBe("Seite 12 von 40");
     expect(einblickZeile({ buch: { id: 1, title: "x" }, fortschritt: 0.5 })).toBe("50 Prozent");
+    expect(einblickZeile({ buch: { id: 1, title: "x" }, fortschritt: null })).toBe("");
   });
 
   it("füllt Einstellungen aus den Vorgaben der Stufe, eigene gehen vor", () => {
     const e = einstellungenVon({ stufe: "lesen_lernen", einstellungen: { lesehilfen: { silben: false } as never } }, STUFEN);
-    expect(e.lesehilfen).toEqual({ mitlesen: true, tempo: 1, silben: false, lesezeile: true, schrift: "gross" });
+    expect(e.lesehilfen).toEqual({ mitlesen: true, tempo: 1, silben: false, lesezeile: true, schrift: "gross", hinweise_sprechen: true, tasten_ansagen: true });
     expect(e.katze.an).toBe(false);
     expect(tempoText(0.85)).toBe("langsam");
-    expect(pinGueltig("1234")).toBe(true);
-    expect(pinGueltig("12a4")).toBe(false);
-    expect(pinGueltig("123")).toBe(false);
+    expect(pinGueltig("1234", ZUGANG)).toBe(true);
+    expect(pinGueltig("12a4", ZUGANG)).toBe(false);
+    expect(pinGueltig("123", ZUGANG)).toBe(false);
+    expect(pinGueltig("123456789", ZUGANG)).toBe(false);
+  });
+
+  it("schickt von den Einstellungen nur den geänderten Teil, so wie er wirkt", async () => {
+    const f = server({ "/api/familie/profile/k-1": KIND });
+    const kind = { ...KIND, einstellungen: { katze: { an: true, name: "Pünktchen", schnurren: false, name_eingabe: "tippen" as const } } };
+    await setze(kind, "katze", { schnurren: true });
+    const [weg, optionen] = f.mock.calls[0] as unknown as [string, RequestInit];
+    expect([weg, optionen.method]).toEqual(["/api/familie/profile/k-1", "PATCH"]);
+    expect(JSON.parse(String(optionen.body))).toEqual({ einstellungen: { katze: { an: true, name: "Pünktchen", schnurren: true } } });
   });
 });
 
 describe("Bild-PIN", () => {
   it("gibt nach drei Bildern die Folge weiter und nimmt eine Stelle zurück", async () => {
     const onvoll = vi.fn();
-    render(Bildpinfeld, { props: { onvoll } });
+    render(Bildpinfeld, { props: { zugang: ZUGANG, onvoll } });
+    expect(screen.getAllByRole("button")).toHaveLength(ZUGANG.bilder.length);
     await fireEvent.click(screen.getByRole("button", { name: "Sonne" }));
-    await fireEvent.click(screen.getByRole("button", { name: "Fisch" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Ball" }));
     await fireEvent.click(screen.getByRole("button", { name: "1. Bild: Sonne, zurücknehmen" }));
     expect(screen.queryByRole("button", { name: /2\. Bild/ })).toBeNull();
-    for (const bild of ["Mond", "Herz", "Wolke"]) await fireEvent.click(screen.getByRole("button", { name: bild }));
-    expect(onvoll).toHaveBeenCalledWith(["mond", "herz", "wolke"]);
+    for (const bild of ["Mond", "Stern", "Apfel"]) await fireEvent.click(screen.getByRole("button", { name: bild }));
+    expect(onvoll).toHaveBeenCalledWith(["mond", "stern", "apfel"]);
   });
 });

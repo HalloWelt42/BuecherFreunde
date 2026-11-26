@@ -82,8 +82,8 @@
       </div>
       <div class="reihe">
         <Sterne wert={buch.rating} onwahl={(n) => void bewerte(n)} /><Merkmalsknoepfe {buch} {onneu} />
-        <!-- Nur für das aktive Erwachsenenprofil (BF-78); mit einem einzigen Profil sähe es ohnehin niemand sonst -->
-        {#if ich.erwachsen && familie.mehrere}<Knopf text="Nur für mich" symbol="lock" nur gedrueckt={!!buch.privat} onclick={() => void privat()} />{/if}
+        <!-- Nur mit der Fähigkeit privat (BF-78); mit einem einzigen Profil sähe es ohnehin niemand sonst -->
+        {#if ich.darf("privat") && familie.mehrere}<Knopf text="Nur für mich" symbol="lock" nur gedrueckt={!!buch.privat} onclick={() => void privat()} />{/if}
         {#if ich.darf("loeschen")}<span class="loeschen"><Knopf text="Buch löschen" symbol="trash" nur onclick={() => void buchLoeschen(buch.id)} /></span>{/if}
       </div>
       <Fassungslabels {buch} {fassungen} />

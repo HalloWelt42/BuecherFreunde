@@ -21,8 +21,23 @@ const OHNE: Anschluesse = { ablage: "geraet", anmeldung: "kellerwolke", bedeutun
 
 class Anschlussstand {
   #roh = $state<Anschluesse>(OHNE);
-  /** Ein Profil ohne KI (BF-78) sieht die KI nicht, auch wenn sie angeschlossen ist; bis das Profil feststeht, gilt der Server */
-  #sichtbar = $derived(ich.jetzt && !ich.darf("ki") ? { ...this.#roh, ki: false, assistent: "", bedeutung: false } : this.#roh);
+  /**
+   * Was das Profil nicht darf (BF-78), sieht es nicht, auch wenn es angeschlossen ist: KI, Nachschlagen, Ausführen. Bis das
+   * Profil feststeht, gilt der Server.
+   */
+  #sichtbar = $derived.by((): Anschluesse => {
+    const r = this.#roh;
+    if (!ich.jetzt) return r;
+    const ki = ich.darf("ki");
+    return {
+      ...r,
+      ki: r.ki && ki,
+      assistent: ki ? r.assistent : "",
+      bedeutung: r.bedeutung && ki,
+      nachschlag: ich.darf("nachschlagen") ? r.nachschlag : "",
+      ausfuehren: r.ausfuehren && ich.darf("ausfuehren"),
+    };
+  });
   geladen = $state(false);
 
   get jetzt(): Anschluesse {

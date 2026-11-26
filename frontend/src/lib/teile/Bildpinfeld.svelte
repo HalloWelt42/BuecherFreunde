@@ -1,12 +1,14 @@
 <script lang="ts">
-  // Bild-PIN (BF-78): drei von neun Bildern antippen. Oben die drei Stellen, ein Tipp auf eine volle Stelle nimmt sie und
+  // Bild-PIN (BF-78): einige Bilder in ihrer Folge antippen; welche es gibt und wie viele, sagt der Server (`zugang`). Oben die Stellen, ein Tipp auf eine volle Stelle nimmt sie und
   // alle danach zurück. Sind drei gewählt, geht die Folge an `onvoll`. Ein neuer `versuch` (etwa nach einer falschen
   // Bild-PIN) leert die Stellen und schüttelt sie kurz: Fehler zeigen statt schreiben.
-  import { BILDER, BILDPIN_LAENGE, bildName, bildSymbol } from "../familie";
+  import type { Zugang } from "../api/familie";
+  import { bildName, bildSymbol } from "../familie";
   import { untrack } from "svelte";
   import Symbol from "./Symbol.svelte";
 
-  let { onvoll, gesperrt = false, versuch = 0, name = "Bild-PIN" }: { onvoll: (bilder: string[]) => void; gesperrt?: boolean; versuch?: number; name?: string } = $props();
+  let { zugang, onvoll, gesperrt = false, versuch = 0, name = "Bild-PIN" }: { zugang: Zugang; onvoll: (bilder: string[]) => void; gesperrt?: boolean; versuch?: number; name?: string } = $props();
+  let laenge = $derived(zugang.bild_pin_anzahl);
 
   let bilder = $state<string[]>([]);
   let schuettelt = $state(false);
@@ -23,9 +25,9 @@
   });
 
   function tippe(schluessel: string) {
-    if (gesperrt || bilder.length >= BILDPIN_LAENGE) return;
+    if (gesperrt || bilder.length >= laenge) return;
     bilder = [...bilder, schluessel];
-    if (bilder.length === BILDPIN_LAENGE) onvoll([...bilder]);
+    if (bilder.length === laenge) onvoll([...bilder]);
   }
 
   /** Eine Stelle zurück, samt allen danach */
@@ -41,7 +43,7 @@
 
 <div class="bildpin" role="group" aria-label={name}>
   <div class="plaetze" class:schuettelt aria-live="polite">
-    {#each { length: BILDPIN_LAENGE } as _, n (n)}
+    {#each { length: laenge } as _, n (n)}
       {@const b = bilder[n]}
       {#if b}
         <button type="button" class="platz voll" aria-label="{n + 1}. Bild: {bildName(b)}, zurücknehmen" disabled={gesperrt} onclick={() => zurueck(n)}><Symbol name={bildSymbol(b)} /></button>
@@ -51,8 +53,8 @@
     {/each}
   </div>
   <div class="tastenfeld">
-    {#each BILDER as [schluessel, symbol, wort] (schluessel)}
-      <button type="button" class="taste" aria-label={wort} title={wort} disabled={gesperrt || bilder.length >= BILDPIN_LAENGE} onclick={() => tippe(schluessel)}><Symbol name={symbol} /></button>
+    {#each zugang.bilder as schluessel (schluessel)}
+      <button type="button" class="taste" aria-label={bildName(schluessel)} title={bildName(schluessel)} disabled={gesperrt || bilder.length >= laenge} onclick={() => tippe(schluessel)}><Symbol name={bildSymbol(schluessel)} /></button>
     {/each}
   </div>
 </div>

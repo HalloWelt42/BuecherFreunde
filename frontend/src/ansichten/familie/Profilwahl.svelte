@@ -1,12 +1,14 @@
 <script lang="ts">
-  // "Wer liest?" (BF-78, Entwurf kinder-1 Abschnitt 1): große Bilder statt Namenslisten. Ein Tipp wählt; Erwachsene geben
-  // danach ihre PIN im Zahlenfeld ein, Kinder ihre Bild-PIN, ein Profil ohne PIN öffnet sofort. Auf einem gebundenen Gerät
-  // steht nur das Kind da.
+  // "Wer liest?" (BF-78, Entwurf kinder-4 Abschnitt 1): große Bilder statt Namenslisten, unten die Katze auf ihrem eigenen
+  // Platz. Ein Tipp wählt; Erwachsene geben danach ihre PIN im Zahlenfeld ein, Kinder ihre Bild-PIN, ein Profil ohne PIN
+  // öffnet sofort. Auf einem gebundenen Gerät steht nur das Kind da, bis die Eltern es mit ihrer PIN öffnen. Die Verwaltung
+  // kommt über das Konto des Geräts auch ohne ihre PIN hinein.
   import "@fontsource/andika/400.css";
   import "@fontsource/andika/700.css";
   import { untrack } from "svelte";
   import { ApiError } from "../../lib/api/client";
-  import type { Nachweis, Profil } from "../../lib/api/familie";
+  import type { Familie, Nachweis, Profil } from "../../lib/api/familie";
+  import Katze from "../../lib/kind/Katze.svelte";
   import { darstellung, wahlen } from "../../lib/stand/darstellung.svelte";
   import { familie } from "../../lib/stand/familie.svelte";
   import Profilbild from "../../lib/teile/Profilbild.svelte";
@@ -14,9 +16,16 @@
   import Symbol from "../../lib/teile/Symbol.svelte";
   import Bildpinfeld from "../../lib/teile/Bildpinfeld.svelte";
   import Zahlenfeld from "../../lib/teile/Zahlenfeld.svelte";
+  import PinVergessen from "./PinVergessen.svelte";
 
   let profile = $derived(familie.waehlbar);
   let gewaehlt = $state<Profil | null>(untrack(() => (familie.waehlbar.length === 1 ? familie.waehlbar[0] : null)));
+  /** Bleibt nur ein Profil zur Wahl (die offene Wahl eines gebundenen Geräts lief ab), steht es gleich da */
+  $effect(() => {
+    if (profile.length === 1 && !untrack(() => gewaehlt)) gewaehlt = profile[0];
+  });
+  let vergessen = $state(false);
+  let mitKatze = $derived(profile.some((p) => p.rolle === "kind"));
   let laeuft = $state(false);
   let versuch = $state(0);
   let fehler = $state("");
@@ -41,6 +50,8 @@
       fehler = e instanceof Error ? e.message : String(e);
       wartet = e instanceof ApiError && e.status === 429;
       versuch += 1;
+      // Etwa die offene Wahl eines gebundenen Geräts ist vorbei: was zur Wahl steht, kommt neu
+      void familie.laden().catch(() => undefined);
     } finally {
       laeuft = false;
     }
@@ -50,6 +61,13 @@
     gewaehlt = null;
     fehler = "";
     wartet = false;
+  }
+
+  /** Ohne PIN öffnet das Profil sofort */
+  async function ohnePin(p: Profil, f: Familie) {
+    vergessen = false;
+    await familie.laden(f);
+    await pruefe(p, {});
   }
 </script>
 
@@ -87,17 +105,29 @@
         </div>
       {:else if gewaehlt.hat_bild_pin}
         {@const p = gewaehlt}
-        <Bildpinfeld name="Bild-PIN von {p.name}" gesperrt={laeuft || wartet} {versuch} onvoll={(bild_pin) => void pruefe(p, { bild_pin })} />
+        <Bildpinfeld zugang={familie.zugang} name="Bild-PIN von {p.name}" gesperrt={laeuft || wartet} {versuch} onvoll={(bild_pin) => void pruefe(p, { bild_pin })} />
       {:else}
         {@const p = gewaehlt}
-        <Zahlenfeld name="PIN von {p.name}" gesperrt={laeuft || wartet} {versuch} onfertig={(pin) => void pruefe(p, { pin })} />
+        <Zahlenfeld zugang={familie.zugang} name="PIN von {p.name}" gesperrt={laeuft || wartet} {versuch} onfertig={(pin) => void pruefe(p, { pin })} />
       {/if}
       {#if fehler && (wartet || gewaehlt?.rolle !== "kind")}
         <p class="fehlerzeile" role="alert"><Symbol name={wartet ? "hourglass-half" : "circle-xmark"} />{fehler}</p>
       {/if}
     </div>
   </div>
+
+  {#if !gewaehlt && mitKatze}
+    <!-- Die Katze hat ihren eigenen Platz unten rechts, ihre Nennung steht darunter (Entwurf Runde 4) -->
+    <footer class="fuss katzenplatz"><Katze name="" groesse="7.5rem" /></footer>
+  {:else if gewaehlt?.rolle === "verwaltung" && gewaehlt.hat_pin}
+    <footer class="fuss"><button type="button" class="leise-taste" onclick={() => (vergessen = true)}>PIN vergessen</button></footer>
+  {/if}
 </main>
+
+{#if vergessen && gewaehlt}
+  {@const p = gewaehlt}
+  <PinVergessen profil={p} onfertig={(f) => void ohnePin(p, f)} onschliessen={() => (vergessen = false)} />
+{/if}
 
 <style>
   /* Farben und Schrift wie der Kinderbereich im Entwurf: warmes Papier, große Flächen, Kinderschrift */
@@ -193,7 +223,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 1rem 1.5rem calc(2rem + env(safe-area-inset-bottom, 0px));
+    padding: 1rem 1.5rem;
   }
   .innen {
     margin-block: auto;
@@ -240,6 +270,28 @@
     gap: 0.375rem;
     font-size: 1rem;
     color: var(--k-leise);
+  }
+  .fuss {
+    display: flex;
+    justify-content: center;
+    padding: 0 max(1.5rem, env(safe-area-inset-right, 0px)) calc(1rem + env(safe-area-inset-bottom, 0px)) max(1.5rem, env(safe-area-inset-left, 0px));
+  }
+  .fuss.katzenplatz {
+    justify-content: flex-end;
+  }
+  .leise-taste {
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    border-radius: 99px;
+    color: var(--k-leise);
+    font-family: var(--schrift);
+    font-size: 1rem;
+    text-decoration: underline;
+    text-decoration-color: var(--k-linie);
+    text-underline-offset: 4px;
+  }
+  .leise-taste:hover {
+    color: var(--k-tinte);
   }
   .fehlerzeile {
     display: flex;

@@ -25,7 +25,7 @@
 </script>
 
 <div class="eltern">
-  <Profilliste gewaehlt={gewaehlt?.id ?? ""} onneu={ich.darf("profile") ? neu : undefined} />
+  <Profilliste gewaehlt={gewaehlt?.id ?? ""} onneu={ich.darfAnlegen("kind") ? neu : undefined} />
   {#if gewaehlt}
     {#key gewaehlt.id}<Profilansicht profil={gewaehlt} />{/key}
   {:else}

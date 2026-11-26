@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Component } from "svelte";
   import { route, matchRoute, handleLinkClick } from "./lib/router.svelte";
-  import { hasToken, oeffneInhalte, onAuthError, beiTokenWechsel, beiProfilWechsel } from "./lib/api/client";
+  import { hasToken, oeffneInhalte, onAuthError, onProfilFehlt, beiTokenWechsel, beiProfilWechsel } from "./lib/api/client";
   import { fassungVerfolgen, vielleichtNeuLaden } from "./lib/fassung.svelte";
   import { anschluesse } from "./lib/stand/anschluesse.svelte";
   import { familie } from "./lib/stand/familie.svelte";
@@ -83,6 +83,8 @@
   filter.stelleWiederHer();
 
   onAuthError(() => (angemeldet = false));
+  // Fehlt nur das Profil (abgelaufen, gelöscht, Gerät fest auf ein anderes), bleibt das Gerät angemeldet: neu wählen
+  onProfilFehlt(() => familie.profilFehlt());
 
   // Nach der Anmeldung lädt die Seite an derselben Adresse neu: ein Verweis (etwa /book/12/read?page=38&q=Begriff)
   // öffnet danach genau diese Stelle
