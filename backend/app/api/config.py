@@ -89,7 +89,7 @@ async def get_stats(p: Profil = Depends(profil)) -> dict:
     total = await buecher()
     favs = await eigene("is_favorite = 1")
     to_read = await eigene("is_to_read = 1")
-    gelesen = await eigene("last_read_at IS NOT NULL")
+    gelesen = await eigene("fertig_am IS NOT NULL")                      # fertig gelesen (familie/lesestand.py)
     mit_isbn = await buecher("b.isbn IS NOT NULL AND b.isbn != ''")
     ohne_isbn = await buecher("(b.isbn IS NULL OR b.isbn = '')")
     weiterlesen = await eigene("reading_position IS NOT NULL AND reading_position != '' AND last_read_at IS NOT NULL")

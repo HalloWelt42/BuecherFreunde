@@ -102,7 +102,10 @@ async def test_faehigkeiten_wachsen_mit_der_stufe(client, test_db):
     assert (await client.patch(f"{weg}/zu-lesen", headers=f.kopf["emil"])).status_code == 200
     ich = (await client.get("/api/familie/ich", headers=f.kopf["clara"])).json()
     assert ich["faehigkeiten"] == ["lesen", "vorlesen"] and ich["darstellung"]["woerter_je_zeile"] == 4
-    assert (await client.get("/api/familie/ich", headers=f.kopf["lena"])).json()["faehigkeiten"] == ["favoriten", "lesen", "vorlesen"]
+    assert (await client.get("/api/familie/ich", headers=f.kopf["lena"])).json()["faehigkeiten"] == ["favoriten", "gelesen", "lesen", "vorlesen"]
+    for kind, status in (("clara", 403), ("lena", 200)):                                   # Rückblick Gelesen ab Lesen und Lernen
+        assert (await client.get("/api/books", params={"gelesen": True}, headers=f.kopf[kind])).status_code == status
+        assert (await client.patch(f"{weg}/gelesen", headers=f.kopf[kind])).status_code == status
     assert "ki" not in (await client.get("/api/familie/ich", headers=f.kopf["emil"])).json()["faehigkeiten"]
 
 
@@ -236,3 +239,29 @@ async def test_schnellfilter_ist_suche(client, test_db):
     f = await familie_anlegen(client, test_db)
     assert (await client.get("/api/books", params={"suche": "Mond"}, headers=f.kopf["clara"])).status_code == 403
     assert (await client.get("/api/books", params={"suche": "Mond"}, headers=f.kopf["dora"])).json()["gesamt"] == 1
+
+
+async def test_fertig_gelesen_nach_einer_regel(client, test_db):
+    """Fertig ist ein Buch ab 99 % (oder am Ende) oder als gelesen markiert, und bleibt es; das gilt für den Filter, die Zähler
+    und den Einblick."""
+    f = await familie_anlegen(client, test_db)
+    await test_db.execute("UPDATE books SET page_count = 50 WHERE id = ?", (f.buch["mond"],))
+    await test_db.commit()
+    weg, dora = f"/api/books/{f.buch['mond']}", f.kopf["dora"]
+
+    async def fertig() -> bool:
+        return (await client.get(weg, headers=dora)).json()["fertig_am"] is not None
+
+    for stand, erwartet in (("page:49", False), ("percent:98.9", False), ("page:50", True), ("percent:10", True)):   # bleibt fertig
+        await client.patch(f"{weg}/leseposition", json={"position": stand}, headers=dora)
+        assert await fertig() is erwartet, stand
+    gelesen = await client.get("/api/books", params={"gelesen": True}, headers=dora)
+    assert [b["id"] for b in gelesen.json()["buecher"]] == [f.buch["mond"]]
+    zahlen = (await client.get("/api/config/stats", headers=dora)).json()
+    assert (zahlen["gelesen"], zahlen["ungelesen"]) == (1, 1)
+    eintrag = (await client.get(f"/api/familie/profile/{f.ids['dora']}/einblick", headers=f.kopf["ada"])).json()["eintraege"][0]
+    assert eintrag["fertig"] is True and eintrag["fortschritt"] == 1.0
+    assert (await client.patch(f"{weg}/gelesen", headers=dora)).json()["gelesen"] is False      # zurückgenommen
+    assert await fertig() is False and (await client.get(weg, headers=dora)).json()["reading_position"] == "percent:10"
+    await client.patch(f"/api/books/{f.buch['stern']}/leseposition", json={"position": 'epub:{"cfi":"x","percent":99.5}'}, headers=dora)
+    assert (await client.get(f"/api/books/{f.buch['stern']}", headers=dora)).json()["fertig_am"] is not None

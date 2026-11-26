@@ -6,6 +6,7 @@
     "lesezeichen": "Lesestand merken, Lesezeichen setzen",
     "suche": "im eigenen Bestand suchen, auch im Text eines Buchs",
     "favoriten": "Favoriten und Sterne",
+    "gelesen": "Rückblick auf fertig gelesene Bücher, als gelesen markieren",
     "sammeln": "Bücher fürs Lesesofa vormerken",
     "markierungen": "Textstellen markieren",
     "notizen": "Notizen zu Büchern",
@@ -25,13 +26,13 @@
   "rollen": {
     "verwaltung": {
       "name": "Verwaltung",
-      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "sammeln", "markierungen", "notizen", "etiketten",
+      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "gelesen", "sammeln", "markierungen", "notizen", "etiketten",
                        "privat", "ausfuehren", "nachschlagen", "katalog", "hinzufuegen", "bearbeiten", "freigeben", "ki", "loeschen",
                        "einstellungen", "profile"]
     },
     "erwachsen": {
       "name": "Erwachsen",
-      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "sammeln", "markierungen", "notizen", "etiketten",
+      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "gelesen", "sammeln", "markierungen", "notizen", "etiketten",
                        "privat", "ausfuehren", "nachschlagen", "katalog", "hinzufuegen", "bearbeiten", "freigeben", "ki"]
     },
     "kind": {
@@ -73,7 +74,7 @@
       "name": "Lesen und Lernen",
       "alter": "Klasse 3 und 4",
       "ab_alter": 8,
-      "faehigkeiten": ["lesen", "vorlesen", "favoriten"],
+      "faehigkeiten": ["lesen", "vorlesen", "favoriten", "gelesen"],
       "lesezeichen_je_buch": null,
       "darstellung": {"schrift": "kinderschrift", "groesse_px": 24, "fett": false, "woerter_je_zeile": null, "zeichen_je_zeile": 60,
                       "zeilenabstand": 1.5, "absatz": 2, "buchstabe": 0.12, "wort": 0.16, "tippflaeche_px": 56, "symbole": true},
@@ -87,7 +88,7 @@
       "name": "Schule",
       "alter": "ab 10 Jahren",
       "ab_alter": 10,
-      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "markierungen", "notizen"],
+      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "gelesen", "markierungen", "notizen"],
       "lesezeichen_je_buch": null,
       "darstellung": {"schrift": "serifenlos", "groesse_px": 20, "fett": false, "woerter_je_zeile": null, "zeichen_je_zeile": 80,
                       "zeilenabstand": 1.5, "absatz": 2, "buchstabe": 0.12, "wort": 0.16, "tippflaeche_px": 44, "symbole": false},
@@ -101,7 +102,7 @@
       "name": "Jugend",
       "alter": "ab 14 Jahren",
       "ab_alter": 14,
-      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "sammeln", "markierungen", "notizen", "etiketten",
+      "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "gelesen", "sammeln", "markierungen", "notizen", "etiketten",
                        "privat", "ausfuehren"],
       "lesezeichen_je_buch": null,
       "darstellung": {"schrift": "serifenlos", "groesse_px": 18, "fett": false, "woerter_je_zeile": null, "zeichen_je_zeile": 80,
@@ -112,6 +113,9 @@
       "katze_name": "tippen"
     }
   ],
+  "lesestand": {
+    "fertig_ab": 0.99
+  },
   "lesezeit": {
     "nach_alter": [
       {"alter_von": 0, "alter_bis": 5, "minuten": 30, "an": true, "schlafen": "19:00"},
@@ -129,7 +133,7 @@
     "pin_stellen_von": 4,
     "pin_stellen_bis": 8,
     "bild_pin_anzahl": 3,
-    "bilder": ["apfel", "ball", "baum", "blume", "fisch", "haus", "herz", "katze", "mond", "sonne", "stern", "vogel"],
+    "bilder": ["sonne", "fisch", "baum", "stern", "apfel", "mond", "auto", "herz", "wolke"],
     "fehlversuche_frei": 5,
     "warten_ab_s": 30,
     "warten_hoechstens_s": 900,

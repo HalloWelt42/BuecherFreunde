@@ -45,6 +45,8 @@ def _bilder(bilder: list[str]) -> list[str]:
 
 
 Profilname = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
+# eine Stimme aus dem Katalog des Sprechdienstes (katalog:<name>), die des Geräts (geraet) oder keine (leer)
+Stimmwahl = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200, pattern=r"^(katalog:.{1,150}|geraet)?$")]
 Zeichen = Annotated[str, StringConstraints(strip_whitespace=True, max_length=50, pattern=r"^[a-z0-9-]*$")]
 Stufenname = Annotated[str, AfterValidator(_stufe_gibt_es)]
 Geburtsjahr = Annotated[int, AfterValidator(_geburtsjahr)]
@@ -67,7 +69,7 @@ class LesehilfenWahl(BaseModel):
     schrift: Schriftwahl | None = None
     hinweise_sprechen: bool | None = None
     tasten_ansagen: bool | None = None
-    stimme: Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None = None
+    stimme: Stimmwahl | None = None                          # leer: die Vorlesestimme der Familie
 
 
 class Lesezeitregel(BaseModel):
@@ -172,6 +174,7 @@ class Familie(BaseModel):
     braucht_wahl: bool                                       # ohne Wahl geht es nicht (mehrere Profile oder eine PIN)
     aktiv: str | None = None                                 # das Profil des mitgeschickten Schlüssels, wenn er gilt
     geraet: Geraetestand
+    stimme: str = ""                                         # Vorlesestimme der Familie für die Ansagen; leer: keine
 
 
 class Lesezeitstand(BaseModel):
@@ -374,6 +377,7 @@ class Einblickseintrag(BaseModel):
     fortschritt: float | None = None                         # 0 bis 1; grob in Schritten, je nach Stufe
     seite: int | None = None                                 # nur mit genauem Fortschritt
     seiten: int | None = None
+    fertig: bool = False                                     # fertig gelesen (familie/lesestand.py)
     zuletzt: str | None = None
 
 
@@ -381,3 +385,36 @@ class Einblicksantwort(BaseModel):
     sichtbar: list[Einblickart]
     lesezeit_heute_s: int | None = None                      # je Kind und Tag, nicht je Buch
     eintraege: list[Einblickseintrag]
+
+
+# -- Ansagen (familie/ansagen.py) ----------------------------------------------------------------------------------------------
+
+class Stimmeingabe(BaseModel):
+    stimme: Stimmwahl
+
+
+class Ansageeintrag(BaseModel):
+    text: str
+    url: str | None                                          # leer: die Stimme des Geräts spricht den Text
+
+
+class Ansagen(BaseModel):
+    stimme: str                                              # leer: keine Stimme gewählt, die Ansagen schweigen
+    fertig: int
+    gesamt: int
+    laeuft: bool                                             # der Auftrag "Ansagen erstellen" spricht gerade für diese Stimme
+    eintraege: dict[str, Ansageeintrag]                      # nur fertige
+
+
+class Ansagestand(BaseModel):
+    """Der Auftrag "Ansagen erstellen" je Stimme, wie die übrigen Läufe der App: was, wie weit, seit wann."""
+
+    was: str = "Ansagen erstellen"
+    stimme: str
+    stand: Literal["wartet", "laeuft", "fertig", "fehler"]
+    gesamt: int
+    fertig: int
+    grund: str = ""
+    begonnen: str | None = None
+    geaendert: str | None = None
+    fertig_am: str | None = None

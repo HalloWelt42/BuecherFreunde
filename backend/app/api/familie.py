@@ -5,17 +5,21 @@ andere ein Profil."""
 from __future__ import annotations
 
 from appkern.anmeldung import AnmeldungsFehler, Konto
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response, status
+from fastapi.responses import FileResponse
 
 from backend.app.api.books import buecher_mit_nummern
 from backend.app.core import auth
-from backend.app.core.auth import braucht, profil, verify_konto
-from backend.app.familie import einblick, freigaben, geraet, ich, lesezeit, profile, rechte, sitzung
+from backend.app.core.auth import braucht, profil, verify_konto, verify_konto_inhalt
+from backend.app.core.database import db
+from backend.app.familie import ansagen, einblick, freigaben, geraet, ich, lesezeit, profile, rechte, sitzung
+from backend.app.familie.ansagelauf import ablegen, ansagelauf, laeuft, staende
+from backend.app.services import vorlesen
 from backend.app.familie.fehler import Familienfehler, ZuVieleVersuche
 from backend.app.familie.modelle import (
     Einblicksantwort, Familie, Freigabeauftrag, Freigaben, Geraetestand, GeraetBinden, GeraetLoesen, Gewaehlt, Ich, Katze, KatzeName,
     Lesezeitmeldung, Lesezeitstand, Loeschfolgen, PinSetzen, PinVergessen, Profil, ProfilAenderung, ProfilEintrag, ProfilNeu,
-    Stufenansicht, Verlassen, Wahl,
+    Stufenansicht, Verlassen, Wahl, Ansageeintrag, Ansagen, Ansagestand, Stimmeingabe,
 )
 
 router = APIRouter(prefix="/api/familie", tags=["Familie"])
@@ -54,6 +58,12 @@ async def _kind_zum_freigeben(pid: str, von: Profil) -> Profil:
     return ziel
 
 
+async def _angestossen() -> None:
+    """Erst buchen, dann anstoßen: der Auftrag "Ansagen erstellen" liest über seine eigene Verbindung."""
+    await db.commit()
+    ansagelauf.anstossen()
+
+
 async def _betrachter(s: sitzung.Sitzung | None) -> Profil | None:
     """Wer fragt, ohne dass ein Profil sein muss: das des Schlüssels, sonst im Einzelbetrieb das einzige."""
     if s is not None:
@@ -75,7 +85,8 @@ async def familie(request: Request, _konto: Konto = Depends(verify_konto)) -> Fa
     alle = [p for p in await profile.alle() if gebunden is None or p.id == gebunden]
     return Familie(profile=[ich.eintrag_fuer(p, betrachter) for p in alle], braucht_wahl=await profile.braucht_wahl(),
                    aktiv=s.profil.id if s and (gebunden is None or s.profil.id == gebunden) else None,
-                   geraet=Geraetestand(gebunden_an=gebunden, fest_auf=b.profil_id if b else None, offen=bool(b and b.offen)))
+                   geraet=Geraetestand(gebunden_an=gebunden, fest_auf=b.profil_id if b else None, offen=bool(b and b.offen)),
+                   stimme=await ansagen.familienstimme())
 
 
 @router.get("/stufen", response_model=Stufenansicht)
@@ -132,8 +143,8 @@ async def pin_vergessen(pid: str, v: PinVergessen, request: Request, konto: Kont
     """Die PIN der Verwaltung fällt weg, wenn sich das Konto des Geräts erneut anmeldet (Kennung und Passwort)."""
     try:
         token, neu = await auth.anmeldung.anmelden(v.kennung, v.passwort)
-    except AnmeldungsFehler as f:
-        raise HTTPException(f.status, f.meldung) from f
+    except AnmeldungsFehler as f:                   # 401 hieße in der Oberfläche "abmelden"; das Gerät bleibt angemeldet
+        raise HTTPException(status.HTTP_403_FORBIDDEN if f.status == 401 else f.status, f.meldung) from f
     await auth.anmeldung.abmelden(token)
     if neu.id != konto.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Das ist nicht das Konto, mit dem dieses Gerät angemeldet ist")
@@ -154,7 +165,9 @@ async def ich_lesen(p: Profil = Depends(profil)) -> Ich:
 @router.patch("/ich/katze", response_model=Katze)
 async def katze_benennen(k: KatzeName, p: Profil = Depends(profil)) -> Katze:
     """Das Kind gibt seiner Katze einen Namen."""
-    return ich.katze(await profile.katze_benennen(p, k.name))
+    katze = ich.katze(await profile.katze_benennen(p, k.name))
+    await _angestossen()
+    return katze
 
 
 @router.post("/lesezeit", response_model=Lesezeitstand)
@@ -168,9 +181,11 @@ async def lesezeit_melden(m: Lesezeitmeldung, p: Profil = Depends(profil)) -> Le
 @router.post("/profile", response_model=ProfilEintrag, status_code=201)
 async def profil_anlegen(neu: ProfilNeu, p: Profil = Depends(profil)) -> ProfilEintrag:
     try:
-        return ich.eintrag(await profile.anlegen(neu, p), mit_angaben=True)
+        neues = ich.eintrag(await profile.anlegen(neu, p), mit_angaben=True)
     except Familienfehler as f:
         raise _http(f) from f
+    await _angestossen()
+    return neues
 
 
 @router.get("/profile/{pid}", response_model=ProfilEintrag)
@@ -184,9 +199,11 @@ async def profil_lesen(pid: str, p: Profil = Depends(profil)) -> ProfilEintrag:
 @router.patch("/profile/{pid}", response_model=ProfilEintrag)
 async def profil_aendern(pid: str, a: ProfilAenderung, p: Profil = Depends(profil)) -> ProfilEintrag:
     try:
-        return ich.eintrag(await profile.aendern(pid, a, p), mit_angaben=True)
+        geaendert = ich.eintrag(await profile.aendern(pid, a, p), mit_angaben=True)
     except Familienfehler as f:
         raise _http(f) from f
+    await _angestossen()                            # Stimme, Katze, Ruhezeit oder Name können neue Ansagen brauchen
+    return geaendert
 
 
 @router.put("/profile/{pid}/pin", response_model=ProfilEintrag)
@@ -213,6 +230,7 @@ async def profil_loeschen(pid: str, stand: str = Query(max_length=64), p: Profil
         await profile.loeschen(pid, stand, p)
     except Familienfehler as f:
         raise _http(f) from f
+    await _angestossen()
 
 
 # -- Freigaben und Einblick ----------------------------------------------------------------------------------------------------
@@ -236,6 +254,7 @@ async def freigeben(pid: str, auftrag: Freigabeauftrag, p: Profil = Depends(prof
         await freigaben.hinzufuegen(kind, auftrag, p)
     except Familienfehler as f:
         raise _http(f) from f
+    await _angestossen()                            # die Titel der freigegebenen Bücher
     return await _freigaben(kind, p)
 
 
@@ -243,6 +262,7 @@ async def freigeben(pid: str, auftrag: Freigabeauftrag, p: Profil = Depends(prof
 async def freigabe_zuruecknehmen(pid: str, auftrag: Freigabeauftrag, p: Profil = Depends(profil)) -> Freigaben:
     kind = await _kind_zum_freigeben(pid, p)
     await freigaben.entfernen(kind, auftrag)
+    await _angestossen()
     return await _freigaben(kind, p)
 
 
@@ -252,3 +272,81 @@ async def einblick_lesen(pid: str, p: Profil = Depends(profil)) -> Einblicksantw
     if not ziel.kind:
         raise HTTPException(422, "Einblick gibt es nur in Kinderprofile")
     return await einblick.einblick(ziel)
+
+
+# -- Ansagen (familie/ansagen.py, familie/ansagelauf.py) -------------------------------------------------------------------------
+
+Ordner = Path(pattern=r"^[a-z0-9-]{1,60}$")
+Tondatei = Path(pattern=r"^[a-z0-9-]{1,120}-[0-9a-f]{16}\.wav$")
+TON_GILT_S = 365 * 24 * 60 * 60                    # der Name trägt die Prüfsumme des Texts: ein Ton ändert sich nie
+
+
+def _darf_vorhoeren(p: Profil) -> None:
+    if not (rechte.darf(p, "profile") or rechte.darf(p, "freigeben")):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Stimmen wählen und vorhören die Eltern")
+
+
+@router.put("/stimme", response_model=Stimmeingabe)
+async def familienstimme_waehlen(s: Stimmeingabe, _p: Profil = Depends(braucht("profile"))) -> Stimmeingabe:
+    """Die Vorlesestimme der Familie: Vorgabe für die Ansagen jedes Kindes ohne eigene Wahl und für die Profilwahl."""
+    await ansagen.familienstimme_setzen(s.stimme)
+    await _angestossen()
+    return s
+
+
+@router.get("/ansagen", response_model=Ansagen)
+async def ansagen_lesen(request: Request, _konto: Konto = Depends(verify_konto)) -> Ansagen:
+    """Die fertigen Ansagen für das aktive Profil, ohne Profil die der Profilwahl ("Wer liest?" und die Namen). Mit der Stimme
+    des Geräts alle Texte ohne Ton; ohne Stimme keine (der Elternbereich zeigt dann "Stimme wählen")."""
+    betrachter = await _betrachter(await sitzung.zum_schluessel(sitzung.schluessel_aus(request, inhalt=True)))
+    stimme, eintraege = await ansagen.fuer(betrachter)
+    if stimme == ansagen.GERAET:
+        fertige = {e.schluessel: Ansageeintrag(text=e.text, url=None) for e in eintraege}
+    elif ansagen.gesprochen(stimme):
+        ort = ansagen.pfad(stimme)
+        fertige = {e.schluessel: Ansageeintrag(text=e.text, url=ansagen.adresse(stimme, e)) for e in eintraege if (ort / e.datei).exists()}
+    else:
+        fertige = {}
+    return Ansagen(stimme=stimme, fertig=len(fertige), gesamt=len(eintraege), laeuft=await laeuft(stimme), eintraege=fertige)
+
+
+@router.get("/ansagen/ton/{ordner}/{datei}", response_class=FileResponse, responses={200: {"content": {"audio/wav": {}}}})
+async def ansage_ton(request: Request, ordner: str = Ordner, datei: str = Tondatei, _konto: Konto = Depends(verify_konto_inhalt)) -> Response:
+    """Ein Ton mit langer Zeit im Speicher des Browsers und ETag. Ein Kind hört nur seine Stimme, die Profilwahl nur die der
+    Familie; Erwachsene jede (Probe)."""
+    betrachter = await _betrachter(await sitzung.zum_schluessel(sitzung.schluessel_aus(request, inhalt=True)))
+    if (betrachter is None or betrachter.kind) and ordner != ansagen.ordner(await ansagen.stimme_fuer(betrachter)):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Diese Stimme gehört nicht zu diesem Profil")
+    kopf = {"ETag": f'"{datei}"', "Cache-Control": f"private, max-age={TON_GILT_S}, immutable"}
+    if request.headers.get("if-none-match") == kopf["ETag"]:
+        return Response(status_code=304, headers=kopf)
+    pfad = ansagen.pfad_im_ordner(ordner, datei)
+    if not pfad.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Diese Ansage gibt es nicht")
+    return FileResponse(pfad, media_type="audio/wav", headers=kopf)
+
+
+@router.post("/ansagen/probe", response_model=Ansageeintrag)
+async def ansage_probe(s: Stimmeingabe, p: Profil = Depends(profil)) -> Ansageeintrag:
+    """Ein fester Probesatz in dieser Stimme, abgelegt wie die Ansagen; mit der Stimme des Geräts nur der Text."""
+    _darf_vorhoeren(p)
+    e = ansagen.probe()
+    if not ansagen.gesprochen(s.stimme):
+        if s.stimme != ansagen.GERAET:
+            raise HTTPException(422, "Stimme: eine aus dem Katalog oder die des Geräts")
+        return Ansageeintrag(text=e.text, url=None)
+    datei = ansagen.pfad(s.stimme, e)
+    if not datei.is_file():
+        try:
+            ton = await vorlesen.satz(e.text, s.stimme)
+        except vorlesen.VorlesenFehler as f:
+            raise HTTPException(f.status, f.meldung) from f
+        ablegen(datei, ton)
+    return Ansageeintrag(text=e.text, url=ansagen.adresse(s.stimme, e))
+
+
+@router.get("/ansagen/stand", response_model=list[Ansagestand])
+async def ansagen_stand(stimme: str | None = Query(None, max_length=200), p: Profil = Depends(profil)) -> list[Ansagestand]:
+    """Der Auftrag "Ansagen erstellen" je Stimme (was, Fortschritt, Zeiten); mit `stimme` nur diese."""
+    _darf_vorhoeren(p)
+    return await staende(stimme)

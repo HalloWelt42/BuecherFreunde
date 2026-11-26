@@ -13,7 +13,7 @@ from backend.app.familie import pin
 from tests.api.conftest import buch_erstellen, kategorie_erstellen, verwaltung
 
 GERAET = "probe-geraet-0001"
-BILDER = ["sonne", "katze", "mond"]
+BILDER = ["sonne", "fisch", "mond"]
 PIN_BERT = "4711"
 
 

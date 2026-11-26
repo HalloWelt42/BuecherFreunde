@@ -19,6 +19,7 @@ from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.core.fehlerantworten import BEZUG_FEHLT
 from backend.app.familie import rechte, sichtbar
+from backend.app.familie.ansagelauf import ansagelauf
 from backend.app.familie.stufen import stufenbuch
 from backend.app.familie.modelle import Profil
 from backend.app.familie.sichtbar import Sicht
@@ -113,6 +114,7 @@ async def _enrich_book_list_item(book: dict, p: Profil) -> BookListItem:
         rating=ud.get("rating", 0),
         reading_position=ud.get("reading_position", ""),
         last_read_at=ud.get("last_read_at"),
+        fertig_am=ud.get("fertig_am"),
         categories=cats,
         sammlung=sammlung,
         privat=bool(await sichtbar.private(p.id, [book["id"]])),
@@ -177,6 +179,7 @@ async def listenbuecher(rows: list[dict], p: Profil) -> list[BookListItem]:
             rating=ud.get("rating", 0),
             reading_position=ud.get("reading_position", ""),
             last_read_at=ud.get("last_read_at"),
+            fertig_am=ud.get("fertig_am"),
             categories=cats,
             sammlung=sammlung,
             privat=bid in privat,
@@ -200,7 +203,7 @@ async def list_books(
     zu_lesen: bool | None = Query(None, description="Nur Zum-Lesen"),
     bewertung_min: int | None = Query(None, ge=0, le=5, description="Mindestbewertung"),
     format: str | None = Query(None, description="Dateiformat (.pdf, .epub, ...)"),
-    gelesen: bool | None = Query(None, description="Nur gelesene Bücher"),
+    gelesen: bool | None = Query(None, description="Nur fertig gelesene Bücher (familie/lesestand.py)"),
     hat_isbn: bool | None = Query(None, description="True=mit ISBN, False=ohne ISBN"),
     weiterlesen: bool | None = Query(None, description="Bücher mit Leseposition"),
     hat_labels: bool | None = Query(None, description="Bücher mit Labels"),
@@ -273,7 +276,9 @@ async def list_books(
         params.append(bewertung_min)
 
     if gelesen is not None:
-        conditions.append(ob(gelesen, eigene("last_read_at IS NOT NULL")))
+        if not rechte.darf(p, "gelesen"):
+            raise HTTPException(status_code=403, detail=f"Das darf dieses Profil nicht: {stufenbuch().faehigkeiten['gelesen']}")
+        conditions.append(ob(gelesen, eigene("fertig_am IS NOT NULL")))
 
     if weiterlesen is not None:
         conditions.append(ob(weiterlesen, eigene("reading_position IS NOT NULL AND reading_position != '' AND last_read_at IS NOT NULL")))
@@ -510,6 +515,7 @@ async def get_book(book_id: Nr, p: Profil = Depends(profil)):
         rating=ud.get("rating", 0),
         reading_position=ud.get("reading_position", ""),
         last_read_at=ud.get("last_read_at"),
+        fertig_am=ud.get("fertig_am"),
         categories=cats,
         sammlung=sammlung,
         authors=authors,
@@ -541,6 +547,8 @@ async def update_book(
     if "author" in updates:
         await autoren_verknuepfen(book_id, updates["author"])
     await db.commit()                 # der Suchindex zieht Titel und Autor selbst nach (core/suchindex.py)
+    if "title" in updates:
+        ansagelauf.anstossen()        # der Titel als Ansage für die Kinder, die das Buch sehen (BF-78)
     return await get_book(book_id, p)
 
 

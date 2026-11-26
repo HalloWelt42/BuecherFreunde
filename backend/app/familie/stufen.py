@@ -42,9 +42,9 @@ class Lesehilfen(BaseModel):
     silben: bool                                    # farbige Silben
     lesezeile: bool
     schrift: Schriftwahl
-    hinweise_sprechen: bool                         # Hinweise werden gesprochen (POST /api/vorlesen/ansage)
+    hinweise_sprechen: bool                         # Hinweise werden gesprochen (feste Ansagen, familie/ansagen.py)
     tasten_ansagen: bool                            # eine gewählte Taste sagt, was sie tut
-    stimme: str = ""                                # Vorlesestimme des Profils (Katalog des Sprechdienstes); leer: die Vorgabe
+    stimme: str = ""                                # katalog:<name> oder geraet; leer: die Vorlesestimme der Familie (familie/ansagen.py)
 
 
 class Stufe(BaseModel):
@@ -63,6 +63,10 @@ class Stufe(BaseModel):
 class Rolle(BaseModel):
     name: str
     faehigkeiten: list[str]
+
+
+class Lesestandregel(BaseModel):
+    fertig_ab: float = Field(gt=0, le=1)            # ab diesem Anteil ist ein Buch fertig gelesen (familie/lesestand.py)
 
 
 class LesezeitNachAlter(BaseModel):
@@ -112,6 +116,7 @@ class Stufenbuch(BaseModel):
     faehigkeiten: dict[str, str]                    # Schlüssel -> was sie erlaubt
     rollen: dict[Rollenname, Rolle]
     stufen: list[Stufe]
+    lesestand: Lesestandregel
     lesezeit: LesezeitVorgaben
     zugang: Zugang
     katze: KatzeVorgaben

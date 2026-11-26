@@ -45,7 +45,8 @@ def _alte_datenbank(pfad: Path) -> None:
             v.execute("INSERT INTO books (id, hash, title, file_format, storage_path) VALUES (?, ?, ?, 'epub', '')", (nr, f"alt{nr}", f"Altes Buch {nr}"))
         v.execute("INSERT INTO fassung (id, buch_id, sprache, aus_sprache, stand) VALUES (5, 1, 'de', 'en', 'fertig')")
         v.executemany("INSERT INTO user_book_data (book_id, is_favorite, rating, reading_position, last_read_at, fassung_wahl) VALUES (?, ?, ?, ?, ?, ?)",
-                      [(1, 1, 4, "percent:30", "2026-11-01 10:00:00", "de"), (2, 0, 0, "page:12", None, "")])
+                      [(1, 1, 4, "percent:30", "2026-11-01 10:00:00", "de"), (2, 0, 0, "page:12", None, ""),
+                       (3, 0, 0, "", "2026-10-02 08:00:00", "")])                  # als gelesen markiert, ohne Lesestand
         v.executemany("INSERT INTO book_notes (id, book_id, content) VALUES (?, ?, ?)", [(7, 1, "Gedanke eins"), (9, 2, "Gedanke zwei")])
         v.execute("DELETE FROM book_notes WHERE id = 9")                     # die Folge der Nummern steht danach auf 9
         v.executemany("INSERT INTO book_highlights (book_id, cfi_range, label_id, label_name) VALUES (?, ?, ?, ?)",
@@ -80,6 +81,8 @@ async def test_alte_datenbank_wird_uebernommen_und_nichts_geht_verloren(tmp_path
         assert await d.fetch_one("SELECT is_favorite, rating, reading_position, fassung_wahl FROM user_book_data WHERE book_id = 1") == {
             "is_favorite": 1, "rating": 4, "reading_position": "percent:30", "fassung_wahl": "de"}
         assert (await d.fetch_one("SELECT id, content FROM book_notes")) == {"id": 7, "content": "Gedanke eins"}       # Nummern bleiben
+        fertig = {z["book_id"]: z["fertig_am"] for z in await d.fetch_all("SELECT book_id, fertig_am FROM user_book_data")}
+        assert fertig == {1: None, 2: None, 3: "2026-10-02 08:00:00"}                 # die Markierung Gelesen von früher bleibt
         assert (await d.fetch_one("SELECT label_id, label_name FROM book_highlights WHERE book_id = 1")) == {"label_id": 3, "label_name": "Wichtig"}
         assert (await d.fetch_one("SELECT umfang, ort FROM vorlesestelle")) == {"umfang": "Dieses Kapitel", "ort": "Seite 9"}
         assert (await d.fetch_one("SELECT position FROM fassung_lesestand"))["position"] == 'epub:{"cfi":"x"}'
@@ -135,3 +138,21 @@ async def test_neue_datenbank_ohne_sicherung_mit_platzhalter_fuer_den_namen(tmp_
     finally:
         await d.disconnect()
     assert _sicherungen(tmp_path / "neu.db") == []
+
+
+async def test_spaeter_dazugekommene_spalte_wird_nachgezogen(tmp_path):
+    """Eine Form bekommt eine Spalte (fertig_am): schon umgebaute Tabellen bekommen sie beim Start, mit nachgetragenem Stand."""
+    pfad = tmp_path / "neu.db"
+    d = Database(db_path=pfad)
+    await d.connect()
+    await d.disconnect()
+    with closing(sqlite3.connect(pfad)) as v:
+        profil = v.execute("SELECT id FROM profil").fetchone()[0]
+        v.execute("ALTER TABLE user_book_data DROP COLUMN fertig_am")
+        v.execute("INSERT INTO books (id, hash, title, file_format, storage_path, page_count) VALUES (1, 'n1', 'Probe', 'pdf', '', 40)")
+        v.execute("INSERT INTO user_book_data (profil_id, book_id, reading_position, last_read_at) VALUES (?, 1, 'page:40', '2026-11-20 09:00:00')",
+                  (profil,))
+        v.commit()
+    assert umbau.umbauen(pfad) is None                                       # kein Umbau, nur nachgezogen
+    with closing(sqlite3.connect(pfad)) as v:
+        assert v.execute("SELECT fertig_am FROM user_book_data").fetchone()[0] == "2026-11-20 09:00:00"

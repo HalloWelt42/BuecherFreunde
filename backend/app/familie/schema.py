@@ -58,6 +58,16 @@ CREATE TRIGGER IF NOT EXISTS freigabe_buch_fort AFTER DELETE ON books
 BEGIN DELETE FROM freigabe WHERE art = 'buch' AND ziel_id = OLD.id; END;
 CREATE TRIGGER IF NOT EXISTS freigabe_kategorie_fort AFTER DELETE ON categories
 BEGIN DELETE FROM freigabe WHERE art = 'kategorie' AND ziel_id = OLD.id; END;
+CREATE TABLE IF NOT EXISTS ansage_auftrag (          -- der Auftrag "Ansagen erstellen" je Stimme (familie/ansagelauf.py)
+    stimme TEXT PRIMARY KEY,                         -- katalog:<name>
+    stand TEXT NOT NULL DEFAULT 'wartet',            -- wartet, laeuft, fertig, fehler
+    gesamt INTEGER NOT NULL DEFAULT 0,
+    fertig INTEGER NOT NULL DEFAULT 0,
+    grund TEXT NOT NULL DEFAULT '',
+    begonnen TEXT DEFAULT NULL,
+    geaendert TEXT NOT NULL DEFAULT {JETZT},
+    fertig_am TEXT DEFAULT NULL
+);
 CREATE TABLE IF NOT EXISTS lesezeit (                -- je Kind und Tag, gezählt im Takt des Lesers
     profil_id TEXT NOT NULL REFERENCES profil(id) ON DELETE CASCADE,
     tag TEXT NOT NULL,                               -- JJJJ-MM-TT, Ortszeit
@@ -99,6 +109,7 @@ PERSOENLICH: tuple[Form, ...] = (
         "last_read_at TEXT DEFAULT NULL",
         "fassung_wahl TEXT NOT NULL DEFAULT ''",     # BF-71: welche Fassung "Lesen" öffnet; leer das Original
         "geteilt INTEGER NOT NULL DEFAULT 0",        # BF-78: das Kind teilt dieses Buch mit den Eltern (Einblick ab Jugend)
+        "fertig_am TEXT DEFAULT NULL",               # BF-78: fertig gelesen (familie/lesestand.py); bleibt beim Zurückblättern
     ), "profil_id, book_id", ("CREATE INDEX IF NOT EXISTS idx_user_book_data_buch ON user_book_data(book_id)",)),
     Form("book_notes", (
         "id INTEGER PRIMARY KEY AUTOINCREMENT",

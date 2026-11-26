@@ -325,10 +325,11 @@ tut `backend/app/familie/`, die Wege stehen in `backend/app/api/familie.py`, Stu
   `/geraet`, `/profile/{id}/pin/vergessen`, `GET /api/config`, `/api/config/oberflaeche` und die Hintergründe der Gestaltung.
 - **PIN**: falsche PIN oder Bild-PIN 403 `"Die PIN stimmt nicht"`; nach fünf Fehlversuchen 429 mit `Retry-After` (Sekunden) und
   `detail` (`"Zu viele Versuche, bitte N Sekunden warten"`), die Wartezeit verdoppelt sich bis 15 Minuten (`stufen.json`,
-  `zugang`). Eine Bild-PIN sind drei Bildschlüssel aus `zugang.bilder` in ihrer Folge. PIN und Bild-PIN schließen sich aus.
+  `zugang`). Eine Bild-PIN sind drei Bildschlüssel aus `zugang.bilder` in ihrer Folge; die neun Bilder des Entwurfs in der Folge
+  des Rasters 3 x 3: sonne, fisch, baum, stern, apfel, mond, auto, herz, wolke. PIN und Bild-PIN schließen sich aus.
   `POST /api/familie/profile/{id}/pin/vergessen` `{kennung, passwort}`: das Konto des Geräts meldet sich erneut an, dann fällt
-  die PIN eines Profils Verwaltung weg (andere PINs setzt die Verwaltung zurück). Setzt jemand eine fremde PIN, enden die
-  Sitzungen dieses Profils.
+  die PIN eines Profils Verwaltung weg (andere PINs setzt die Verwaltung zurück); stimmen Kennung oder Passwort nicht, 403 mit
+  Grund (nie 401, das hieße abmelden). Setzt jemand eine fremde PIN, enden die Sitzungen dieses Profils.
 - **Profil in Antworten** (`GET /api/familie`, Anlegen, Ändern, PIN): `{id, name, zeichen, farbe, rolle, stufe, hat_pin,
   hat_bild_pin, geburtsjahr, einstellungen}`; Geburtsjahr und Einstellungen nur für die, die das Profil ändern dürfen, und für
   das Profil selbst (sonst null). `einstellungen` (nur Kinder) ist, was wirkt: `{lesehilfen: {mitlesen, tempo, silben,
@@ -336,24 +337,63 @@ tut `backend/app/familie/`, die Wege stehen in `backend/app/api/familie.py`, Stu
   name_eingabe}}`; ohne Wahl der Eltern gelten die Lesehilfen der Stufe und die Lesezeit nach dem Alter. Beim Anlegen und Ändern
   ersetzt jeder genannte Teil von `einstellungen` den gespeicherten, die übrigen bleiben. `schrift`: klein, mittel, gross (Anteil
   an der Größe der Stufe, `gestaltung.schriftgroessen`). `GET /api/familie/profile/{id}` gibt ein Profil einzeln.
-- **GET /api/familie** dazu `aktiv` (das Profil des Schlüssels, wenn er gilt) und `geraet: {gebunden_an, fest_auf, offen}`:
-  `fest_auf` ist die Bindung, `gebunden_an` nur, solange sie wirkt (dann nur dieses Profil in `profile`).
+- **GET /api/familie** dazu `aktiv` (das Profil des Schlüssels, wenn er gilt), `geraet: {gebunden_an, fest_auf, offen}`
+  (`fest_auf` ist die Bindung, `gebunden_an` nur, solange sie wirkt, dann nur dieses Profil in `profile`) und `stimme`, die
+  Vorlesestimme der Familie (leer: keine). `PUT /api/familie/stimme {stimme}` setzt sie (Fähigkeit `profile`).
 - **Gebundenes Gerät verlassen**: `POST /api/familie/verlassen {eltern_pin}` löst die Bindung nicht; die Profilwahl ist dann auf
   diesem Gerät zehn Minuten offen (`zugang.geraet_offen_s`, `geraet.offen` true, `gebunden_an` null) für eine Wahl. Diese Sitzung
   gilt auf dem Gerät, bis sie verlassen wird; danach öffnet es wieder das Kind. Lösen nur mit `DELETE /api/familie/geraet`
   `{eltern_pin}` oder ohne PIN als Verwaltung (mit ihrem `X-Profil`).
 - **Fähigkeiten der Stufen** (`stufen.json`): Vorlesen und Erstes Lesen nur `lesen` und `vorlesen`; Lesen und Lernen dazu
-  `favoriten` (Lieblinge); ab Schule `lesezeichen`, `suche`, `markierungen`, `notizen`; Jugend dazu `sammeln`, `etiketten`,
-  `privat`, `ausfuehren`. Ohne Suche, Notizen, Markierungen und Lesezeichen merkt sich das Buch die Stelle von selbst: den
+  `favoriten` (Lieblinge) und `gelesen` (Rückblick auf fertig gelesene Bücher); ab Schule `lesezeichen`, `suche`,
+  `markierungen`, `notizen`; Jugend dazu `sammeln`, `etiketten`, `privat`, `ausfuehren`. `GET /api/books?gelesen=` und
+  `PATCH /api/books/{id}/gelesen` brauchen `gelesen`. Ohne Suche, Notizen, Markierungen und Lesezeichen merkt sich das Buch die Stelle von selbst: den
   Lesestand (`PATCH /api/books/{id}/leseposition`, auch in einer Fassung) braucht nur `lesen`, die Vorlesestelle `vorlesen`.
   Der Schnellfilter der Liste (`suche=`) und die Suche im Buch brauchen `suche`.
+- **Fertig gelesen** (eine Regel, `familie/lesestand.py`): ein Buch ist fertig, sobald sein Lesestand das Ende erreicht oder
+  `lesestand.fertig_ab` aus `stufen.json` (0,99), oder wenn es mit `PATCH /api/books/{id}/gelesen` markiert ist; es bleibt
+  fertig, auch wenn man zurückblättert, bis die Markierung zurückgenommen wird. Gelesen wird der Anteil wie in der Oberfläche
+  (Seite durch Seiten, sonst Prozent, sonst Anteil des Rollens; eine Stelle nur mit CFI sagt nichts). Am Buch steht
+  `fertig_am` (leer: noch nicht); es gilt für den Filter `gelesen`, den Zähler `gelesen` in `GET /api/config/stats`, den
+  Rückblick des Kindes und den Einblick der Eltern (`fertig`, dann Fortschritt 1). `last_read_at` bleibt der Zeitpunkt des
+  letzten Lesens. Beim Start bekam jeder bisherige Lesestand `fertig_am` nach der Regel; als gelesen markiert galt dabei ein
+  Buch mit Zeitpunkt ohne Lesestand.
 - **Hinweise sprechen, Tasten ansagen**: `lesehilfen.hinweise_sprechen` und `lesehilfen.tasten_ansagen`, Vorgabe an bis Lesen und
-  Lernen, aus ab Schule; die Eltern ändern beides. `lesehilfen.stimme` ist die Vorlesestimme des Profils (aus
-  `GET /api/vorlesen/stimmen`, leer: die Vorgabe). `POST /api/vorlesen/ansage {text, stimme?}`: genau ein Satz, höchstens 300
-  Zeichen (422 sonst), Antwort der Ton als `audio/wav` mit `X-Ansage: neu` oder `gemerkt`. Die Stimme des Profils geht vor
-  `stimme`. Gemerkt wird im Zwischenspeicher (`zwischen/ansagen`, Schlüssel aus Stimme und Prüfsumme des Texts, höchstens
-  `ANSAGEN_MB`, Vorgabe 20; darüber gehen die, die am längsten keiner gehört hat). Ohne Sprechdienst 503 mit Grund, dann spricht
-  die Oberfläche mit der Stimme des Geräts. Jede Stufe darf ihn (`vorlesen`).
+  Lernen, aus ab Schule; die Eltern ändern beides. `lesehilfen.stimme`: eine Stimme aus dem Katalog des Sprechdienstes
+  (`katalog:<name>`, aus `GET /api/vorlesen/stimmen`), `geraet` für die Stimme des Geräts (nur für Installationen ohne
+  Sprechdienst, immer eine ausdrückliche Wahl, nie ein stiller Rückfall) oder leer: die Vorlesestimme der Familie. Gibt es keine,
+  schweigen die Ansagen und der Elternbereich zeigt "Stimme wählen".
+- **Feste Ansagen** (`familie/ansagen.json`, `familie/ansagen.py`): vorab gesprochen mit der eingebauten Stimme und dauerhaft im
+  Ort texte unter `ansagen/<ordner der stimme>/<schluessel>-<pruefsumme>.wav` (Prüfsumme aus Fassung und Text: ein geänderter
+  Text gibt einen neuen Ton). Die Schlüssel heißen `gruppe.name`:
+  - `tasten.<name>`: weiter, zurueck, pause, vorlesen, silben_an, silben_aus, zeile_an, zeile_aus, mein_regal, lieblinge,
+    gelesen, schloss, zum_regal, stift_an, stift_aus, gemerkt, lesezeichen_weg, notiz, lieblingsbuch, kein_lieblingsbuch, fertig;
+  - `hinweise.<name>`: lesezeit_gleich_um, lesezeit_um, bild_pin ("Tippe drei Bilder an.", die Zahl aus `zugang`),
+    bild_pin_falsch, katze_benennen, frag_eltern, wer_liest, buch_fertig, regal_leer, lieblinge_leer, gelesen_leer, suche_leer;
+  - Bausteine der Uhr, Zahlen als deutsche Wörter: `uhr.1` bis `uhr.12` ("Es ist vier Uhr"), `minute.1` bis `minute.59`
+    ("fünfunddreißig"), `noch.1` bis `noch.120` ("Noch eine Minute", "Noch fünfundzwanzig Minuten"), `heute.1` bis
+    `heute.120`; die Uhrzeit setzt die Oberfläche daraus zusammen;
+  - aus den Dingen: `titel.<buch>` für jedes Buch, das das Kind sieht (erst nach der Freigabe), `katze` (der Name seiner Katze),
+    `katze.<vorschlag>` im Vorlesealter (die Vorschläge aus `stufen.json`, `katze.vorschlaege`), `ruhezeit` ("Jetzt ist
+    Ruhezeit. Ab sechs Uhr dreißig kannst du wieder lesen.", mit dem Ende seiner Ruhezeit), `profil.<profil>` (die Namen für
+    "Wer liest?", in der Stimme der Familie); `probe` ist der Probesatz.
+- **Ansagen erstellen** (`familie/ansagelauf.py`): ein Auftrag im Hintergrund (Vorrang "hintergrund" bei der Leitstelle), je
+  Stimme nur, was fehlt; angestoßen nach der Wahl einer Stimme, nach Freigaben, dem Namen der Katze, Anlegen, Ändern und
+  Löschen von Profilen und einem neuen Titel, beim Start und im Takt `ANSAGEN_TAKT_S` (600). Nach einem Neustart geht er mit dem
+  weiter, was fehlt. Alte Töne einer Stimme räumt er erst weg, wenn die neuen fertig sind; die Probe bleibt; eine Stimme, die
+  niemand mehr hört, verliert ihre Töne. Ohne Sprechdienst steht der Grund am Auftrag.
+- **Wege der Ansagen**:
+  - `GET /api/familie/ansagen`: `{stimme, fertig, gesamt, laeuft, eintraege: {schluessel: {text, url}}}` für das aktive
+    Profil, ohne Profil für die Profilwahl (Hinweise, Tasten, Uhr, `profil.<id>`); nur fertige Einträge. Mit der Stimme des
+    Geräts alle Texte mit `url` null, ohne Stimme keine.
+  - `GET /api/familie/ansagen/ton/{ordner}/{datei}`: der Ton (`audio/wav`, `Cache-Control` ein Jahr, `immutable`, `ETag`, 304
+    auf `If-None-Match`), ohne Kopf über die Cookies der Anmeldung und der Wahl. Ein Kind nur für seine Stimme, die Profilwahl
+    nur für die der Familie, Erwachsene jede (403 sonst).
+  - `POST /api/familie/ansagen/probe {stimme}` für Erwachsene mit `profile` oder `freigeben`: `{text, url}` des Probesatzes
+    ("Hallo, ich lese dir vor. Tippe auf ein Buch."), abgelegt wie die Ansagen; mit `geraet` nur der Text; ohne Sprechdienst
+    503 mit Grund.
+  - `GET /api/familie/ansagen/stand?stimme=`: `[{was: "Ansagen erstellen", stimme, stand (wartet, laeuft, fertig, fehler),
+    gesamt, fertig, grund, begonnen, geaendert, fertig_am}]`, ebenso nur für Erwachsene mit `profile` oder `freigeben`.
 - **GET /api/familie/ich**: `{profil, faehigkeiten, darstellung, lesehilfen, lesezeit, katze, einblick}`; für Erwachsene
   `darstellung` `{}`, `lesehilfen` null, `lesezeit.an` false, `katze.an` false, `einblick` leer. `lesezeit`:
   `{an, heute_s, grenze_s, rest_s, hinweis_ab_s, ruht, ruhe_bis}`. `PATCH /api/familie/ich/katze {name}` antwortet mit der Katze.

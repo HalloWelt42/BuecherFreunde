@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from backend.app.api import vorhanden
 from backend.app.core.auth import braucht, profil
 from backend.app.core.database import db
-from backend.app.familie import sichtbar
+from backend.app.familie import lesestand, sichtbar
 from backend.app.familie.modelle import Geteilt, Privat, Profil
 from backend.app.models.grenzen import GROESSTE_ZAHL, Leseposition, Nr
 
@@ -69,13 +69,15 @@ async def toggle_to_read(book_id: Nr, p: Profil = Depends(braucht("sammeln"))):
 
 
 @router.patch("/{book_id}/gelesen")
-async def toggle_read(book_id: Nr, p: Profil = Depends(braucht("lesezeichen"))):
-    """Wechselt den Gelesen-Status eines Buches (setzt/löscht last_read_at)."""
+async def toggle_read(book_id: Nr, p: Profil = Depends(braucht("gelesen"))):
+    """Markiert ein Buch als fertig gelesen oder nimmt das zurück (`fertig_am`, familie/lesestand.py); `last_read_at` bleibt
+    der Zeitpunkt des letzten Lesens."""
     await _check_book_exists(book_id)
     await _ensure_user_data(book_id, p)
-    current = await db.fetch_one("SELECT last_read_at FROM user_book_data WHERE profil_id = ? AND book_id = ?", (p.id, book_id))
-    is_read = current is not None and current["last_read_at"] is not None
-    await db.execute("UPDATE user_book_data SET last_read_at = CASE WHEN ? THEN NULL ELSE datetime('now') END WHERE profil_id = ? AND book_id = ?",
+    current = await db.fetch_one("SELECT fertig_am FROM user_book_data WHERE profil_id = ? AND book_id = ?", (p.id, book_id))
+    is_read = current is not None and current["fertig_am"] is not None
+    await db.execute("""UPDATE user_book_data SET fertig_am = CASE WHEN ? THEN NULL ELSE datetime('now') END,
+                        last_read_at = COALESCE(last_read_at, datetime('now')) WHERE profil_id = ? AND book_id = ?""",
                      (int(is_read), p.id, book_id))
     await db.commit()
     return {"book_id": book_id, "gelesen": not is_read}
@@ -93,11 +95,14 @@ async def set_rating(book_id: Nr, data: RatingUpdate, p: Profil = Depends(brauch
 
 @router.patch("/{book_id}/leseposition")
 async def set_reading_position(book_id: Nr, data: ReadingPositionUpdate, p: Profil = Depends(braucht("lesen"))):
-    """Speichert die Leseposition (Seitenzahl, CFI oder Prozent); der Leser merkt sie von selbst, darum reicht Lesen (BF-78)."""
-    await _check_book_exists(book_id)
+    """Speichert die Leseposition (Seitenzahl, CFI oder Prozent); der Leser merkt sie von selbst, darum reicht Lesen (BF-78).
+    Erreicht sie das Ende (familie/lesestand.py), ist das Buch fertig gelesen und bleibt es."""
+    buch = await vorhanden.buch(book_id, "id, page_count")
     await _ensure_user_data(book_id, p)
-    await db.execute("UPDATE user_book_data SET reading_position = ?, last_read_at = datetime('now') WHERE profil_id = ? AND book_id = ?",
-                     (data.position, p.id, book_id))
+    fertig = lesestand.fertig(data.position, buch["page_count"] or 0)
+    await db.execute("""UPDATE user_book_data SET reading_position = ?, last_read_at = datetime('now'),
+                        fertig_am = CASE WHEN ? THEN COALESCE(fertig_am, datetime('now')) ELSE fertig_am END
+                        WHERE profil_id = ? AND book_id = ?""", (data.position, int(fertig), p.id, book_id))
     await db.commit()
     return {"book_id": book_id, "position": data.position}
 

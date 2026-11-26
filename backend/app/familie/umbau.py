@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from backend.app.familie import lesestand
 from backend.app.familie.schema import FAMILIE_SQL, PERSOENLICH, Form
 from backend.app.familie.stufen import stufenbuch
 
@@ -148,6 +149,30 @@ def _umbauen(v: sqlite3.Connection, form: Form, profil_id: str) -> Tabellenstand
     return Tabellenstand(form.tabelle, "umgebaut", vorher, _zahl(v, form.tabelle))
 
 
+def _spalten_nachziehen(v: sqlite3.Connection) -> set[tuple[str, str]]:
+    """Spalten, die eine Form später dazubekam, kommen an die schon umgebauten Tabellen (nur mit fester Vorgabe)."""
+    dazu = set()
+    for form in PERSOENLICH:
+        if not _gibt_es(v, form.tabelle):
+            continue
+        da = {s[1] for s in _spalten(v, form.tabelle)}
+        for spalte in form.spalten:
+            if (name := spalte.split()[0]) not in da:
+                v.execute(f"ALTER TABLE {form.tabelle} ADD COLUMN {spalte}")
+                dazu.add((form.tabelle, name))
+    return dazu
+
+
+def _fertig_nachtragen(v: sqlite3.Connection) -> int:
+    """Fertig gelesen nach der Regel (familie/lesestand.py) für alle bisherigen Lesestände; als gelesen markiert war bis dahin
+    ein Buch mit Zeitpunkt ohne Lesestand (der Schalter Gelesen setzte nur ihn)."""
+    zeilen = v.execute("""SELECT u.rowid, u.reading_position, u.last_read_at, COALESCE(b.page_count, 0) FROM user_book_data u
+                          JOIN books b ON b.id = u.book_id WHERE u.fertig_am IS NULL AND u.last_read_at IS NOT NULL""").fetchall()
+    fertige = [(z[2], z[0]) for z in zeilen if not (z[1] or "") or lesestand.fertig(z[1], z[3])]
+    v.executemany("UPDATE user_book_data SET fertig_am = ? WHERE rowid = ?", fertige)
+    return len(fertige)
+
+
 def _in_einer_einheit(v: sqlite3.Connection, bericht: Bericht) -> None:
     v.execute("BEGIN IMMEDIATE")
     try:
@@ -163,6 +188,7 @@ def _in_einer_einheit(v: sqlite3.Connection, bericht: Bericht) -> None:
                 bericht.tabellen.append(Tabellenstand(form.tabelle, "angelegt", 0, 0))
             for index in form.indizes:
                 v.execute(index)
+        _fertig_nachtragen(v)
         v.execute("COMMIT")
     except BaseException:
         v.execute("ROLLBACK")
@@ -174,8 +200,16 @@ def umbauen(pfad: Path) -> Bericht | None:
     with closing(sqlite3.connect(pfad, isolation_level=None)) as v:
         v.execute("PRAGMA busy_timeout=5000")
         if not noetig(v):
-            for a in anweisungen(FAMILIE_SQL):          # was eine spätere Fassung dazu bringt, ohne Umbau
-                v.execute(a)
+            v.execute("BEGIN IMMEDIATE")                 # was eine spätere Fassung dazu bringt, ohne Umbau, in einer Einheit
+            try:
+                for a in anweisungen(FAMILIE_SQL):
+                    v.execute(a)
+                if ("user_book_data", "fertig_am") in _spalten_nachziehen(v):
+                    logger.info("Familie: %d Bücher fertig gelesen nachgetragen", _fertig_nachtragen(v))
+                v.execute("COMMIT")
+            except BaseException:
+                v.execute("ROLLBACK")
+                raise
             return None
         beginn = time.monotonic()
         bericht = Bericht(profil_id="", profil_neu=False)

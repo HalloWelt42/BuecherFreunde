@@ -100,11 +100,11 @@ def _zeile(daten: dict) -> bytes:
     return json.dumps(daten, ensure_ascii=False).encode() + b"\n"
 
 
-async def _sprechen(satz: str, stimme: str, arbeit: str) -> bytes:
+async def _sprechen(satz: str, stimme: str, arbeit: str, titel: str = "Vorlesen", prioritaet: str = "hoch") -> bytes:
     marke = LAUFENDE_ARBEIT.set(arbeit)
     try:
         antwort = await ki.leitstelle().dienst(settings.sprechdienst).anfrage(
-            "POST", "/v1/audio/speech", titel="Vorlesen", prioritaet="hoch",
+            "POST", "/v1/audio/speech", titel=titel, prioritaet=prioritaet,
             json={"input": satz, "response_format": "wav", **({"voice": stimme} if stimme else {})})
     finally:
         LAUFENDE_ARBEIT.reset(marke)
@@ -120,11 +120,12 @@ def _pruefen(stimme: str) -> str:
     return stimme.removeprefix(KATALOG)
 
 
-async def satz(text: str, stimme: str) -> bytes:
-    """Ein einzelner Satz als WAV, wie im Strom (für kurze Ansagen, services/ansage.py)."""
+async def satz(text: str, stimme: str, prioritaet: str = "hoch") -> bytes:
+    """Ein kurzer Text als ein WAV, wie ein Satz im Strom (feste Ansagen, familie/ansagelauf.py; im Hintergrund mit
+    `prioritaet` "hintergrund")."""
     name = _pruefen(stimme)
     try:
-        return await _sprechen(text, name, f"bf-ansage-{uuid.uuid4().hex[:12]}")
+        return await _sprechen(text, name, f"bf-ansage-{uuid.uuid4().hex[:12]}", titel="Ansagen", prioritaet=prioritaet)
     except LeitstellenFehler as f:
         raise _grund(f) from f
 

@@ -121,6 +121,7 @@ class BookListItem(Umschlagangaben):
     rating: int = 0
     reading_position: str = ""
     last_read_at: str | None = None
+    fertig_am: str | None = None                    # fertig gelesen (familie/lesestand.py, BF-78); leer: noch nicht
     categories: list[dict] = Field(default_factory=list)
     sammlung: dict | None = None
     privat: bool = False                            # das Profil hat es privat markiert (BF-78)
@@ -161,6 +162,7 @@ class BookResponse(Umschlagangaben):
     rating: int = 0
     reading_position: str = ""
     last_read_at: str | None = None
+    fertig_am: str | None = None                    # fertig gelesen (familie/lesestand.py, BF-78); leer: noch nicht
     categories: list[dict] = Field(default_factory=list)
     sammlung: dict | None = None
     authors: list[dict] = Field(default_factory=list)

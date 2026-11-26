@@ -140,7 +140,8 @@ async def test_pin_vergessen_mit_erneuter_anmeldung(client, test_db, monkeypatch
     schein = Anmeldung()
     monkeypatch.setattr(auth, "anmeldung", schein)
     weg = f"/api/familie/profile/{f.ids['ada']}/pin/vergessen"
-    assert (await client.post(weg, json={"kennung": "admin", "passwort": "falsch"})).status_code == 401
+    r = await client.post(weg, json={"kennung": "admin", "passwort": "falsch"})
+    assert r.status_code == 403 and r.json() == {"detail": "Name oder Kennwort stimmt nicht"}    # nie 401: das hieße abmelden
     r = await client.post(weg, json={"kennung": "admin", "passwort": "richtig"})
     assert r.status_code == 200 and schein.abgemeldet == ["frisch"]
     assert next(p for p in r.json()["profile"] if p["id"] == f.ids["ada"])["hat_pin"] is False

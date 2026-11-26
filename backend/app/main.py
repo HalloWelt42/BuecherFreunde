@@ -43,6 +43,7 @@ from backend.app.core.config import settings
 from backend.app.core import fehlerantworten
 from backend.app.core.einheiten import Einheiten
 from backend.app.core.database import db
+from backend.app.familie.ansagelauf import ansagelauf
 from backend.app.codestellen.dienst import codestellen
 from backend.app.codestellen.vorpruefung import vorpruefer
 from backend.app.services import bedeutung, gespraech, nachschlagen, pflege
@@ -104,6 +105,7 @@ async def lifespan(app: FastAPI):
     await bestandslauf.nach_neustart()
     await vorgaben_einspielen()
     uebersetzungslauf.starten()
+    ansagelauf.starten()                              # Ansagen erstellen: was fehlt, auch nach einem Neustart (BF-78)
     im_hintergrund = [asyncio.create_task(pflege.laufen()), asyncio.create_task(eingangsordner.laufen()), asyncio.create_task(nachschlagen.vorwaermen())]
     yield
     for lauf in im_hintergrund:
@@ -114,6 +116,7 @@ async def lifespan(app: FastAPI):
     await katalog_einordner.stoppen()
     await bestandslauf.stoppen()
     await uebersetzungslauf.stoppen()
+    await ansagelauf.stoppen()
     await sammlungsfinder.stoppen()
     await umschlagpruefung.stoppen()
     await codestellen.stoppen()

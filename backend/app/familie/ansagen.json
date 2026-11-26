@@ -1,0 +1,64 @@
+{
+  "fassung": 1,
+  "probe": "Hallo, ich lese dir vor. Tippe auf ein Buch.",
+  "tasten": {
+    "weiter": "Weiter",
+    "zurueck": "Zurück",
+    "pause": "Pause",
+    "vorlesen": "Vorlesen",
+    "silben_an": "Silben an",
+    "silben_aus": "Silben aus",
+    "zeile_an": "Zeile an",
+    "zeile_aus": "Zeile aus",
+    "mein_regal": "Mein Regal",
+    "lieblinge": "Lieblinge",
+    "gelesen": "Gelesen",
+    "schloss": "Schloss",
+    "zum_regal": "Zum Regal",
+    "stift_an": "Stift an",
+    "stift_aus": "Stift aus",
+    "gemerkt": "Gemerkt",
+    "lesezeichen_weg": "Lesezeichen weg",
+    "notiz": "Notiz",
+    "lieblingsbuch": "Lieblingsbuch",
+    "kein_lieblingsbuch": "Kein Lieblingsbuch mehr",
+    "fertig": "Fertig"
+  },
+  "hinweise": {
+    "lesezeit_gleich_um": "Deine Lesezeit ist gleich um.",
+    "lesezeit_um": "Deine Lesezeit für heute ist um.",
+    "bild_pin": "Tippe {anzahl} Bilder an.",
+    "bild_pin_falsch": "Das war nicht richtig, versuch es noch einmal.",
+    "katze_benennen": "Wie soll deine Katze heißen?",
+    "frag_eltern": "Frag Mama oder Papa.",
+    "wer_liest": "Wer liest?",
+    "buch_fertig": "Du hast das Buch fertig gelesen.",
+    "regal_leer": "Hier steht noch kein Buch. Frag Mama oder Papa.",
+    "lieblinge_leer": "Du hast noch kein Lieblingsbuch.",
+    "gelesen_leer": "Hier stehen bald die Bücher, die du fertig gelesen hast.",
+    "suche_leer": "Dazu habe ich kein Buch gefunden."
+  },
+  "bausteine": [
+    {"gruppe": "uhr", "text": "Es ist {n} Uhr", "von": 1, "bis": 12, "form": "vor"},
+    {"gruppe": "minute", "text": "{n}", "von": 1, "bis": 59, "form": "zahl"},
+    {"gruppe": "noch", "text": "Noch {n} Minuten", "einzahl": "Noch {n} Minute", "von": 1, "bis": 120, "form": "weiblich"},
+    {"gruppe": "heute", "text": "Heute {n} Minuten", "einzahl": "Heute {n} Minute", "von": 1, "bis": 120, "form": "weiblich"}
+  ],
+  "dinge": {
+    "titel": "{titel}",
+    "katze": "{name}",
+    "katzenvorschlag": "{name}",
+    "profil": "{name}",
+    "ruhezeit": "Jetzt ist Ruhezeit. Ab {uhrzeit} kannst du wieder lesen."
+  },
+  "zahlen": {
+    "null": "null",
+    "eins": {"zahl": "eins", "vor": "ein", "weiblich": "eine"},
+    "einer": ["", "ein", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun"],
+    "zehn_bis_neunzehn": ["zehn", "elf", "zwölf", "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn", "neunzehn"],
+    "zehner": ["", "", "zwanzig", "dreißig", "vierzig", "fünfzig", "sechzig", "siebzig", "achtzig", "neunzig"],
+    "und": "und",
+    "hundert": "hundert",
+    "uhr": "Uhr"
+  }
+}
