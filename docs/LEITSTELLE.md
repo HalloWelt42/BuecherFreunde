@@ -24,8 +24,10 @@ Die Zertifikatsstelle des Hauses gilt wie für die Kellerwolke (`KELLERWOLKE_CA`
 
 Welches Modell gilt: die Wahl aus den Einstellungen, solange die Leitstelle sie anbietet (Kennung, Name ohne Anbieter oder
 Anzeigename aus `GET /v1/models`), sonst `KI_MODELL`; der Grund steht dann in `GET /api/ai/status` und unter Verbindungen
-(gelbe LED). Eine Modellwahl der früheren direkten Anbindung (`lm_studio_model`) wird nur übernommen, wenn die Leitstelle
-den Namen anbietet. Keine Wahl wird gelöscht.
+(gelbe LED). Eine Modellwahl der früheren direkten Anbindung (`lm_studio_model`) zählt nur, solange die Leitstelle den Namen
+anbietet, auch wenn eine ältere Fassung sie schon als `ki_modell` übernommen hatte (BF-91): Kennungen älterer Ausgaben des
+Modellläufers gibt es dort nicht mehr, das Modell selbst steht unter seinem heutigen Namen im Angebot. Dann gilt ohne
+Warnung die Vorgabe. Keine Wahl wird gelöscht.
 
 ## Ein Ort für KI
 

@@ -8,7 +8,8 @@ Mensch gefragt ist (`abgelehnt`, nie in einer Schleife wiederholt) oder nur dies
 Ohne Adresse oder Schlüssel ist `bereit` falsch, und die App arbeitet ohne KI.
 
 Welches Modell gilt: die Wahl aus den Einstellungen, solange die Leitstelle sie anbietet, sonst die Vorgabe `KI_MODELL`;
-warum, steht im Grund des Stands (`/api/ai/status`, Verbindungen). Gelöscht wird dabei keine Wahl."""
+warum, steht im Grund des Stands (`/api/ai/status`, Verbindungen). Die Wahl der früheren direkten Anbindung zählt nur, solange
+die Leitstelle ihren Namen anbietet (BF-91). Gelöscht wird dabei keine Wahl."""
 
 from __future__ import annotations
 
@@ -51,7 +52,7 @@ class KiStand(BaseModel):
     erreichbar: bool = False                          # die Leitstelle antwortet
     nutzbar: bool = False                             # und bietet das Modell an, das gilt
     modell: str = ""                                  # das Modell, das gilt: die Wahl, wenn angeboten, sonst KI_MODELL
-    gewaehlt: str = ""                                # die Wahl aus den Einstellungen (leer: keine)
+    gewaehlt: str = ""                                # die Wahl, die zählt (leer: keine, auch eine frühere, nicht angebotene)
     modelle: list[str] = Field(default_factory=list)
     grund: str = ""
 
@@ -97,9 +98,15 @@ def bietet(modelle: list[Modell], name: str) -> bool:
 class Ki:
     def __init__(self) -> None:
         self._zugang: tuple[tuple[str, str], Leitstelle, httpx.AsyncClient] | None = None
+        self.vergessen()
+
+    def vergessen(self) -> None:
+        """Vergisst Gemerktes (Wahl, Angebot, was galt), nicht den Zugang; danach liest `gilt` alles neu."""
         self._wahl: str | None = None                                  # aus den Einstellungen; None: noch nicht gelesen
         self._angebot: tuple[float, list[Modell]] | None = None
         self._gilt = ""                                                # zuletzt bestimmtes Modell, das gilt
+        self._zaehlt = ""                                              # die Wahl, die zuletzt zählte (leer: keine)
+        self._frueher_gemeldet = False                                 # nicht angebotene frühere Wahl einmal ins Protokoll
 
     @staticmethod
     def _schluessel() -> str:
@@ -136,31 +143,45 @@ class Ki:
             self._angebot = (time.monotonic(), await self.leitstelle().modelle())
         return self._angebot[1]
 
-    async def _fruehere_wahl(self, modelle: list[Modell]) -> str:
-        """Die Modellwahl der früheren direkten Anbindung (`lm_studio_model`) gilt als Wahl, aber nur, wenn die Leitstelle
-        den Namen anbietet; dann wird sie übernommen. Der alte Wert bleibt stehen."""
+    async def _fruehere_wahl(self) -> str:
+        """Die Modellwahl der früheren direkten Anbindung (`lm_studio_model`), leer ohne."""
         z = await db.fetch_one("SELECT value FROM app_settings WHERE key = 'lm_studio_model'")
-        alt = (z["value"] or "").strip() if z else ""
-        if not alt or not bietet(modelle, alt):
+        return (z["value"] or "").strip() if z else ""
+
+    async def _zaehlende_wahl(self, modelle: list[Modell]) -> str:
+        """Die Wahl, die zählt. Eine in dieser Fassung getroffene Wahl zählt immer (bietet die Leitstelle sie nicht an, sagt
+        `gilt` das mit Grund). Die Wahl der früheren direkten Anbindung zählt nur, solange die Leitstelle ihren Namen anbietet,
+        auch wenn eine ältere Fassung sie schon nach `ki_modell` übernommen hat (BF-91): Kennungen älterer Ausgaben des
+        Modellläufers gibt es dort nicht mehr, das Modell selbst steht unter seinem heutigen Namen im Angebot. Dann gilt
+        ohne Warnung die Vorgabe. Es wird nichts gelöscht; die frühere Wahl wird übernommen, sobald sie angeboten wird."""
+        if self._wahl is None:
+            await self.wahl_laden()
+        frueher = await self._fruehere_wahl()
+        if self._wahl and self._wahl != frueher:
+            return self._wahl
+        if not frueher or not bietet(modelle, frueher):
+            if frueher and not self._frueher_gemeldet:
+                logger.info("Die frühere Modellwahl %s bietet die Leitstelle nicht an; sie zählt nicht, es gilt die Vorgabe", frueher)
+                self._frueher_gemeldet = True
             return ""
-        await db.execute("INSERT OR IGNORE INTO app_settings(key, value) VALUES (?, ?)", (WAHL, alt))
-        await db.commit()
-        self._wahl = alt
-        return alt
+        if not self._wahl:
+            await db.execute("INSERT OR IGNORE INTO app_settings(key, value) VALUES (?, ?)", (WAHL, frueher))
+            await db.commit()
+            self._wahl = frueher
+        return frueher
 
     async def gilt(self, frisch: bool = False) -> tuple[str, str]:
         """Das Modell, das gilt, und warum es nicht das gewählte ist: die Wahl, wenn die Leitstelle sie anbietet, sonst die
         Vorgabe `KI_MODELL`. Fragt die Leitstelle (wirft LeitstellenFehler)."""
         modelle = await self.angebot(frisch)
-        if self._wahl is None:
-            await self.wahl_laden()
-        wahl = self._wahl or await self._fruehere_wahl(modelle)
+        wahl = self._zaehlt = await self._zaehlende_wahl(modelle)
         vorgabe, gruende = settings.ki_modell, []
         if wahl and bietet(modelle, wahl):
             self._gilt = wahl
             return wahl, ""
         if wahl:
-            gruende.append(f"Das gewählte Modell {wahl} bietet die Leitstelle nicht an; es gilt die Vorgabe {vorgabe}")
+            gruende.append(f"Das gewählte Modell {wahl} bietet die Leitstelle nicht mehr an; es gilt {vorgabe}, bis ein anderes "
+                           "gewählt ist")
         if not bietet(modelle, vorgabe):
             gruende.append(f"Die Leitstelle bietet das Modell {vorgabe} nicht an (KI_MODELL)")
         self._gilt = vorgabe
@@ -188,9 +209,9 @@ class Ki:
         try:
             modell, grund = await self.gilt(frisch=True)
         except LeitstellenFehler as f:
-            return KiStand(bereit=True, modell=self.modell(), gewaehlt=self._wahl or "", grund=fehler(f, self.modell()).grund)
+            return KiStand(bereit=True, modell=self.modell(), gewaehlt=self._zaehlt, grund=fehler(f, self.modell()).grund)
         modelle = await self.angebot()
-        return KiStand(bereit=True, erreichbar=True, nutzbar=bietet(modelle, modell), modell=modell, gewaehlt=self._wahl or "",
+        return KiStand(bereit=True, erreichbar=True, nutzbar=bietet(modelle, modell), modell=modell, gewaehlt=self._zaehlt,
                        modelle=[m.id for m in modelle], grund=grund)
 
     async def fuer(self, wunsch: str = "") -> str:

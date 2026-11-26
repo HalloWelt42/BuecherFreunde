@@ -90,9 +90,10 @@ def leitstelle(monkeypatch, tmp_path):
     attrappe = Attrappe(antwort)
     client = httpx.AsyncClient(transport=httpx.MockTransport(attrappe))
     ki._zugang = ((LEITSTELLE, "ls_app_test"), Leitstelle(LEITSTELLE, "ls_app_test", APP, client=client), client)
-    ki._wahl, ki._angebot, ki._gilt = None, None, ""
+    ki.vergessen()
     yield attrappe
-    ki._zugang, ki._wahl, ki._angebot, ki._gilt = None, None, None, ""
+    ki._zugang = None
+    ki.vergessen()
 
 
 @pytest.fixture
