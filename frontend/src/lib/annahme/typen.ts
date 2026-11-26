@@ -2,6 +2,9 @@
 
 export type Annahmestand = "wartet" | "laedt" | "angehalten" | "liest" | "angaben" | "regal" | "wissen" | "fertig" | "ohne_text" | "da" | "format" | "kaputt" | "fehler";
 
+/** Woher die Datei kommt: Browser, Eingangsordner der Kellerwolke, Einlese-Ordner, externe Sammlung, gemeinfreie Bücher */
+export type Annahmequelle = "hochladen" | "eingangsordner" | "ordner" | "extern" | "gemeinfrei";
+
 export interface AnnahmeEintrag {
   id: number;
   name: string;
@@ -14,6 +17,7 @@ export interface AnnahmeEintrag {
   anteil: number;
   text: string;
   buch_id: number | null;
+  quelle: Annahmequelle;
   angelegt_am: string;
   geaendert_am: string;
 }

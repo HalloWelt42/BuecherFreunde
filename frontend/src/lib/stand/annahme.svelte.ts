@@ -1,15 +1,19 @@
-// Die Annahme in der Oberfläche: Einträge des Servers (Ereignisstrom) zusammen mit dem, was dieser Browser hochlädt
+// Die Annahme in der Oberfläche: Einträge des Servers (Ereignisstrom) zusammen mit dem, was dieser Browser hochlädt. Eine
+// Liste für alle Quellen; einzeln gezeigt wird, was jemand hochlädt oder ablegt, Ordner und gemeinfreie Bücher als ein Auftrag.
 import { annahmeDienst, annahmeEreignisse, annahmeErneut, blendeAnnahmenAus, entferneAnnahme, ladeAnnahmen } from "../api/annahme";
 import { hochladenZaehlen } from "../api/client";
 import { Hochlader } from "../annahme/hochlader";
 import { pruefsumme } from "../annahme/pruefsumme";
 import type { AnnahmeEintrag, AnnahmeListe, AnnahmeZaehler, Hochladung } from "../annahme/typen";
+import { EINLESEN, EINZELN, GEMEINFREI, gehoertZu, sammle } from "../annahme/sammlung";
 import { fuegeZusammen, laeuftVonSelbst, type Annahmezeile } from "../annahme/zeilen";
 import { bestand } from "./bestand.svelte";
 
 const IM_REGAL = ["wissen", "fertig", "ohne_text"];
 const LEER: AnnahmeZaehler = { alle: 0, laeuft: 0, klaeren: 0, da: 0, fertig: 0 };
 const AUFFRISCHEN_MS = 800;
+/** So viele Einträge zugleich entfernen, wenn ein ganzer Auftrag aufgeräumt wird */
+const ZUGLEICH = 6;
 
 class Annahme {
   eintraege = $state<AnnahmeEintrag[]>([]);
@@ -19,7 +23,11 @@ class Annahme {
   grund = $state("");
   geladen = $state(false);
 
-  zeilen = $derived<Annahmezeile[]>(fuegeZusammen(this.eintraege, this.hochladungen));
+  zeilen = $derived<Annahmezeile[]>(fuegeZusammen(this.eintraege.filter((e) => gehoertZu(e, EINZELN)), this.hochladungen));
+  /** Einlesen aus dem Einlese-Ordner und der externen Sammlung */
+  einlesen = $derived(sammle(this.eintraege, EINLESEN));
+  /** Gemeinfreie Bücher holen */
+  gemeinfrei = $derived(sammle(this.eintraege, GEMEINFREI));
   laufend = $derived(this.zeilen.filter((z) => z.gruppe === "laeuft"));
   vonSelbst = $derived(this.laufend.filter(laeuftVonSelbst).length);
   angehalten = $derived(this.laufend.length - this.vonSelbst);
@@ -97,6 +105,15 @@ class Annahme {
 
   async blendeAus(): Promise<void> {
     await blendeAnnahmenAus();
+    await this.auffrischen();
+  }
+
+  /** Mehrere Einträge entfernen (ein Auftrag räumt auf); eingetragene Bücher bleiben */
+  async entferneAlle(eintraege: readonly AnnahmeEintrag[]): Promise<void> {
+    const offen = eintraege.map((e) => e.id);
+    await Promise.all(Array.from({ length: Math.min(ZUGLEICH, offen.length) }, async () => {
+      for (let id = offen.shift(); id !== undefined; id = offen.shift()) await entferneAnnahme(id);
+    }));
     await this.auffrischen();
   }
 }

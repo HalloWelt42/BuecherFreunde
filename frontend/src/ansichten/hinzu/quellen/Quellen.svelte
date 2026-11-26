@@ -2,7 +2,7 @@
   // Andere Quellen: Eingangsordner, alte Sammlung, gemeinfreie Bücher
   import { gutenberg } from "../../../lib/stand/gutenberg.svelte";
   import { ladeEingangsordner, type Eingangsordner as Ordnerstand } from "../../../lib/api/annahme";
-  import { auftraege } from "../../../lib/stand/auftraege.svelte";
+  import { annahme } from "../../../lib/stand/annahme.svelte";
   import Symbol from "../../../lib/teile/Symbol.svelte";
   import Eingangsordner from "./Eingangsordner.svelte";
   import Einleseliste from "./Einleseliste.svelte";
@@ -22,7 +22,6 @@
 
   let offen = $state<Quelle | "">(gutenberg.gesucht || gutenberg.laeuft ? "gutenberg" : "");
 
-  $effect(() => void gutenberg.pruefe());
   $effect(() => {
     ladeEingangsordner().then((o) => (wolke = o)).catch(() => {});
   });
@@ -40,7 +39,7 @@
 </section>
 
 {#if offen === "gutenberg"}<Gemeinfreie />{:else if offen === "import" && wolke?.bereit}<Eingangsordner ordner={wolke} onstand={(o) => (wolke = o)} />{:else if offen}{#key offen}<Ordner quelle={offen} />{/key}{/if}
-{#if auftraege.aufgaben.length}<Einleseliste />{/if}
+{#if annahme.einlesen.gesamt}<Einleseliste />{/if}
 
 <style>
   .offen {

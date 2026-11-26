@@ -1,5 +1,5 @@
-// Einlesen von Ordnern und Ergänzen der Bibliothek
-import { del, get, post } from "./client";
+// Einlesen von Ordnern und Ergänzen der Bibliothek; Stand und Fortschritt des Einlesens führt die Annahme (/api/annahme)
+import { get, post } from "./client";
 
 export type Ergaenzungsart = "cover" | "isbn" | "metadaten" | "volltext";
 
@@ -39,8 +39,6 @@ export interface Ergaenzungsregal {
 export const scanneImportVerzeichnis = (anreichern = false): Promise<Einlesestart> => post(`/api/import/scan?anreichern=${anreichern}`);
 export const scanneExternesVerzeichnis = (anreichern = false): Promise<Einlesestart> => post(`/api/import/externes-verzeichnis?anreichern=${anreichern}`);
 export const einlesenVorschau = (quelle: "import" | "extern"): Promise<Einlesevorschau> => get("/api/import/vorschau", { verzeichnis: quelle });
-export const bereinigeImportTasks = (): Promise<any> => del("/api/import/bereinigen");
-export const brecheImportAb = (): Promise<any> => post("/api/import/abbrechen");
 
 function abfrage(typen: string[], kategorie: number | null, manuell: boolean): string {
   const p = new URLSearchParams({ typen: typen.join(","), manuell_einschliessen: String(manuell) });

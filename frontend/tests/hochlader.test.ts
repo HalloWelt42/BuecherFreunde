@@ -4,7 +4,7 @@ import { AndererStand, OhneVerbindung, type AnnahmeDienst, type AnnahmeEintrag, 
 const TEIL = 4;
 
 function eintrag(ueber: Partial<AnnahmeEintrag> = {}): AnnahmeEintrag {
-  return { id: 7, name: "Buch.epub", groesse: 10, sha256: "abc", empfangen: 0, teil_groesse: TEIL, stand: "wartet", schritt: 1, anteil: 0, text: "Bereit", buch_id: null, angelegt_am: "", geaendert_am: "", ...ueber };
+  return { id: 7, name: "Buch.epub", groesse: 10, sha256: "abc", empfangen: 0, teil_groesse: TEIL, stand: "wartet", schritt: 1, anteil: 0, text: "Bereit", buch_id: null, quelle: "hochladen", angelegt_am: "", geaendert_am: "", ...ueber };
 }
 
 /** Nachgebauter Server: merkt sich den Stand und wer wie viel zugleich schickt */

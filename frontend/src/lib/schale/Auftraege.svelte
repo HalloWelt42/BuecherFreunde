@@ -11,8 +11,8 @@
   import Einleseauftrag from "./Einleseauftrag.svelte";
   import Ergaenzungsauftrag from "./Ergaenzungsauftrag.svelte";
 
-  let leer = $derived(!annahme.laufend.length && !auftraege.laufend && !auftraege.aufgaben.length && !auftraege.ergaenzungFertig && !auftraege.eigene.length);
-  let ruhig = $derived(!auftraege.einlesenLaeuft && !auftraege.ergaenzung.laeuft && (auftraege.aufgaben.length > 0 || auftraege.ergaenzungFertig));
+  let leer = $derived(!annahme.laufend.length && !auftraege.laufend && !annahme.einlesen.gesamt && !auftraege.ergaenzungFertig && !auftraege.alleEigenen.length);
+  let ruhig = $derived(!auftraege.einlesenLaeuft && !auftraege.ergaenzung.laeuft && (annahme.einlesen.gesamt > 0 || auftraege.ergaenzungFertig));
 
   async function bereinigen() {
     try {
@@ -27,7 +27,7 @@
   <div class="auftrag"><b>{z.name}</b><Stationen stationen={z.stationen} prozent={z.prozent} /><span class="marke-text {z.ton}"><Symbol name={z.symbol} />{z.text}</span></div>
 {/each}
 {#if auftraege.ergaenzung.laeuft || auftraege.ergaenzungFertig}<Ergaenzungsauftrag />{/if}
-{#each auftraege.eigene as a (a.id)}
+{#each auftraege.alleEigenen as a (a.id)}
   <div class="auftrag">
     <div class="reihe"><b>{a.titel}</b>{#if a.abbrechen && a.laeuft}<span class="schiebt"><Knopf text="Anhalten" symbol="stop" klein frei onclick={a.abbrechen} /></span>{:else if !a.laeuft}<span class="schiebt"><Knopf text="Ausblenden" symbol="xmark" nur klein frei onclick={() => auftraege.entferne(a.id)} /></span>{/if}</div>
     {#if a.anteil !== null}<Balken anteil={a.anteil} name={a.titel} />{/if}
@@ -35,7 +35,7 @@
     {#if a.weg}<div><Knopf text="Anzeigen" symbol="arrow-right" klein frei href={a.weg} onclick={() => schale.schliesseAlles()} /></div>{/if}
   </div>
 {/each}
-{#if auftraege.aufgaben.length}<Einleseauftrag />{/if}
+{#if annahme.einlesen.gesamt}<Einleseauftrag />{/if}
 {#if leer}<p class="leise">Gerade läuft nichts.</p>{/if}
 
 <div class="reihe fuss">

@@ -1,20 +1,23 @@
 <script lang="ts">
-  // Was vom Ordner eingelesen wird: Zahlen, Balken, jede Datei mit ihrem Stand
+  // Was vom Ordner eingelesen wird: Zahlen, Balken, jede Datei mit ihrem Stand (Einträge der Annahme aus Ordnern)
+  import type { AnnahmeEintrag } from "../../../lib/annahme/typen";
+  import type { Sammellage } from "../../../lib/annahme/sammlung";
   import { zahl } from "../../../lib/format";
-  import { auftraege, type Einleseaufgabe } from "../../../lib/stand/auftraege.svelte";
+  import { annahme } from "../../../lib/stand/annahme.svelte";
+  import { auftraege } from "../../../lib/stand/auftraege.svelte";
   import { melde } from "../../../lib/stand/meldungen.svelte";
   import Balken from "../../../lib/teile/Balken.svelte";
   import Karte from "../../../lib/teile/Karte.svelte";
   import Knopf from "../../../lib/teile/Knopf.svelte";
   import Symbol from "../../../lib/teile/Symbol.svelte";
 
-  const lagen: Record<Einleseaufgabe["status"], [string, string, string]> = {
-    wartend: ["hourglass-half", "info", "Wartet"], verarbeite: ["circle-notch", "info", "Läuft"], fertig: ["circle-check", "gut", "Fertig"], fehler: ["triangle-exclamation", "schlecht", "Gescheitert"], duplikat: ["clone", "info", "Schon da"],
+  const lagen: Record<Sammellage, [string, string, string]> = {
+    wartet: ["hourglass-half", "info", "Wartet"], laeuft: ["circle-notch", "info", "Läuft"], fertig: ["circle-check", "gut", "Fertig"], fehler: ["triangle-exclamation", "schlecht", "Gescheitert"], da: ["clone", "info", "Schon da"],
   };
 
-  let z = $derived(auftraege.zaehler);
-  let erledigt = $derived(z.fertig + z.duplikat + z.fehler);
-  let ruhig = $derived(!auftraege.einlesenLaeuft && erledigt > 0);
+  let s = $derived(annahme.einlesen);
+  let ruhig = $derived(!s.laeuft && s.erledigt > 0);
+  let lage = (a: AnnahmeEintrag): Sammellage => s.lagen.get(a.id) ?? "wartet";
 
   async function tun(was: () => Promise<void>) {
     try {
@@ -24,25 +27,26 @@
     }
   }
 
-  function text(a: Einleseaufgabe): string {
-    if (a.status === "fehler") return a.error || "ohne Angabe";
-    if (a.status === "verarbeite") return `${a.current_step || "wird eingelesen"}, ${a.progress_percent} %`;
-    if (a.status === "duplikat") return a.error || "steht schon in der Bibliothek, nichts kopiert";
+  function text(a: AnnahmeEintrag): string {
+    const l = lage(a);
+    if (l === "fehler") return a.text || "ohne Angabe";
+    if (l === "laeuft") return a.text || "wird eingelesen";
+    if (l === "da") return a.text || "steht schon in der Bibliothek, nichts kopiert";
     return "";
   }
 </script>
 
 <Karte titel="Eingelesene Dateien" symbol="file-import">
   {#snippet neben()}
-    {#if z.wartend > 0}<Knopf text="Wartende anhalten" symbol="stop" klein titel="Was gerade läuft, läuft noch zu Ende" onclick={() => void tun(() => auftraege.einlesenAbbrechen())} />{/if}
+    {#if s.wartend > 0}<Knopf text="Wartende anhalten" symbol="stop" klein titel="Was gerade läuft, läuft noch zu Ende" onclick={() => void tun(() => auftraege.einlesenAbbrechen())} />{/if}
     {#if ruhig}<Knopf text="Fertige ausblenden" symbol="broom" klein frei onclick={() => void tun(() => auftraege.bereinigen())} />{/if}
   {/snippet}
-  <Balken anteil={z.gesamt ? erledigt / z.gesamt : 0} gut={!auftraege.einlesenLaeuft && !z.fehler} name="Einlesen" />
-  <p class="leise zahl">{zahl(erledigt)} von {zahl(z.gesamt)}: {zahl(z.fertig)} fertig{z.duplikat ? `, ${zahl(z.duplikat)} schon da` : ""}{z.fehler ? `, ${zahl(z.fehler)} gescheitert` : ""}{z.verarbeite + z.wartend ? `, ${zahl(z.verarbeite + z.wartend)} offen` : ""}</p>
+  <Balken anteil={s.gesamt ? s.erledigt / s.gesamt : 0} gut={!s.laeuft && !s.gescheitert} name="Einlesen" />
+  <p class="leise zahl">{zahl(s.erledigt)} von {zahl(s.gesamt)}: {zahl(s.imRegal)} fertig{s.da ? `, ${zahl(s.da)} schon da` : ""}{s.gescheitert ? `, ${zahl(s.gescheitert)} gescheitert` : ""}{s.gesamt - s.erledigt ? `, ${zahl(s.gesamt - s.erledigt)} offen` : ""}</p>
   <ul class="aufgaben">
-    {#each auftraege.aufgaben as a (a.id)}
-      {@const [symbol, ton, wort] = lagen[a.status] ?? lagen.fehler}
-      <li><span class="marke-text {ton}"><Symbol name={symbol} dreht={a.status === "verarbeite"} /></span><span class="name"><b>{a.filename}</b><br /><span class="marke-text {ton}">{wort}</span> <span class="klein">{text(a)}</span></span>{#if a.book_id}<Knopf text="Buch öffnen" symbol="book-open" klein href="/book/{a.book_id}" />{/if}</li>
+    {#each s.eintraege as a (a.id)}
+      {@const [symbol, ton, wort] = lagen[lage(a)]}
+      <li><span class="marke-text {ton}"><Symbol name={symbol} dreht={lage(a) === "laeuft"} /></span><span class="name"><b>{a.name}</b><br /><span class="marke-text {ton}">{wort}</span> <span class="klein">{text(a)}</span></span>{#if a.buch_id}<Knopf text="Buch öffnen" symbol="book-open" klein href="/book/{a.buch_id}" />{/if}</li>
     {/each}
   </ul>
 </Karte>

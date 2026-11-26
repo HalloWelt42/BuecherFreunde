@@ -3,7 +3,7 @@
   import { ladePfade } from "../../../lib/api/config";
   import { einlesenVorschau, scanneExternesVerzeichnis, scanneImportVerzeichnis, type Einlesevorschau } from "../../../lib/api/imports";
   import { anzahl, formatName, groesse, zahl } from "../../../lib/format";
-  import { auftraege } from "../../../lib/stand/auftraege.svelte";
+  import { annahme } from "../../../lib/stand/annahme.svelte";
   import { melde } from "../../../lib/stand/meldungen.svelte";
   import Haekchen from "../../../lib/teile/Haekchen.svelte";
   import Karte from "../../../lib/teile/Karte.svelte";
@@ -52,7 +52,7 @@
       if (e.gefunden) melde.gut(`${anzahl(e.gefunden, "Datei", "Dateien")} gefunden, Fortschritt unten und bei den Aufträgen`);
       else melde.info("Im Ordner liegt nichts, was sich einlesen lässt");
       vorschau = null;
-      await auftraege.auffrischen();
+      await annahme.auffrischen();
     } catch (e) {
       fehler = e instanceof Error ? e.message : String(e);
     } finally {

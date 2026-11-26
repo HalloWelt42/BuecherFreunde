@@ -1,6 +1,7 @@
 <script lang="ts">
   // Gemeinfreie Bücher suchen, über alle Seiten auswählen und holen
   import { anzahl, zahl } from "../../../lib/format";
+  import { annahme } from "../../../lib/stand/annahme.svelte";
   import { gutenberg as g } from "../../../lib/stand/gutenberg.svelte";
   import { melde } from "../../../lib/stand/meldungen.svelte";
   import Karte from "../../../lib/teile/Karte.svelte";
@@ -39,7 +40,7 @@
     <Knopf text="Suchen" symbol="magnifying-glass" art="submit" laeuft={g.laedt} />
   </form>
 
-  {#if g.stand}<Gemeinfreienauftrag stand={g.stand} />{/if}
+  {#if annahme.gemeinfrei.gesamt}<Gemeinfreienauftrag stand={annahme.gemeinfrei} />{/if}
 
   {#if g.fehler}
     <Zustand art="fehler" text={g.fehler} onerneut={() => void g.blaettere(0)} />

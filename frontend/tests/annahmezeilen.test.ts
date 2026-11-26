@@ -2,7 +2,7 @@ import { fuegeZusammen, laeuftVonSelbst } from "../src/lib/annahme/zeilen";
 import type { AnnahmeEintrag, Hochladung } from "../src/lib/annahme/typen";
 
 function eintrag(ueber: Partial<AnnahmeEintrag>): AnnahmeEintrag {
-  return { id: 1, name: "Buch.pdf", groesse: 1000, sha256: "", empfangen: 0, teil_groesse: 4, stand: "wartet", schritt: 1, anteil: 0, text: "Text", buch_id: null, angelegt_am: "", geaendert_am: "", ...ueber };
+  return { id: 1, name: "Buch.pdf", groesse: 1000, sha256: "", empfangen: 0, teil_groesse: 4, stand: "wartet", schritt: 1, anteil: 0, text: "Text", buch_id: null, quelle: "hochladen", angelegt_am: "", geaendert_am: "", ...ueber };
 }
 
 function hochladung(ueber: Partial<Hochladung>): Hochladung {

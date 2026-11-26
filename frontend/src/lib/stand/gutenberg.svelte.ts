@@ -1,10 +1,8 @@
-// Gemeinfreie Bücher: Suche, Auswahl über alle Seiten und die laufende Übernahme
-import { ereignisseGemeinfreie, setzeGemeinfreieZurueck, standGemeinfreie, sucheGemeinfreie, uebernimmGemeinfreie, type Fundbuch, type Uebernahmestand } from "../api/gutenberg";
+// Gemeinfreie Bücher: Suche und Auswahl über alle Seiten. Geholt wird über die Annahme; ihr Stand steht dort
+// (annahme.gemeinfrei), als Auftrag im Kopf zeigt ihn lib/stand/auftraege.svelte.ts.
+import { sucheGemeinfreie, uebernimmGemeinfreie, type Fundbuch } from "../api/gutenberg";
+import { annahme } from "./annahme.svelte";
 import { auftraege } from "./auftraege.svelte";
-import { bestand } from "./bestand.svelte";
-
-const AUFTRAG = "gutenberg";
-const NEU_VERBINDEN_MS = 3000;
 
 class Gutenberg {
   wort = $state("");
@@ -16,14 +14,12 @@ class Gutenberg {
   laedt = $state(false);
   fehler = $state("");
   gesucht = $state(false);
-  stand = $state<Uebernahmestand | null>(null);
   #gewaehlt = $state<ReadonlyMap<number, Fundbuch>>(new Map());
 
   zahl = $derived(this.#gewaehlt.size);
   alleGewaehlt = $derived(this.treffer.length > 0 && this.treffer.every((b) => this.#gewaehlt.has(b.gutenberg_id)));
-  laeuft = $derived(this.stand?.laeuft ?? false);
+  laeuft = $derived(annahme.gemeinfrei.laeuft);
 
-  #stromAus: (() => void) | null = null;
   #lauf = 0;
 
   hat(id: number): boolean {
@@ -88,60 +84,12 @@ class Gutenberg {
     const buecher = [...this.#gewaehlt.values()].map(({ gutenberg_id, titel, autor, download_url, download_format, cover_url }) => ({ gutenberg_id, titel, autor, download_url, download_format, cover_url }));
     await uebernimmGemeinfreie(buecher);
     this.#gewaehlt = new Map();
-    this.#setze({ laeuft: true, gesamt: buecher.length, fertig: 0, fehler: 0, duplikate: 0, aktuell: "", ergebnisse: [] });
-    this.#verbinde();
+    await annahme.auffrischen();
   }
 
-  /** Läuft am Server noch eine Übernahme (Seite neu geladen)? Dann dort wieder einsteigen. */
-  async pruefe(): Promise<void> {
-    if (this.#stromAus) return;
-    try {
-      const stand = await standGemeinfreie();
-      if (stand.gesamt > 0) this.#setze(stand);
-      if (stand.laeuft) this.#verbinde();
-    } catch {
-      // ohne Antwort bleibt der letzte Stand stehen
-    }
-  }
-
-  #verbinde(): void {
-    this.#stromAus?.();
-    this.#stromAus = ereignisseGemeinfreie(
-      (stand) => {
-        this.#setze(stand);
-        if (stand.laeuft || stand.gesamt === 0) return;
-        this.#trenne();
-        bestand.geaendert();
-      },
-      () => {
-        this.#stromAus = null;
-        if (this.laeuft) setTimeout(() => void this.pruefe(), NEU_VERBINDEN_MS);
-      },
-    );
-  }
-
-  #trenne(): void {
-    this.#stromAus?.();
-    this.#stromAus = null;
-  }
-
+  /** Geholtes, schon Vorhandenes und Gescheitertes aus der Liste nehmen; die Bücher bleiben */
   async zuruecksetzen(): Promise<void> {
-    await setzeGemeinfreieZurueck();
-    this.stand = null;
-    auftraege.entferne(AUFTRAG);
-  }
-
-  #setze(stand: Uebernahmestand): void {
-    this.stand = stand;
-    const neben = [stand.duplikate ? `${stand.duplikate} gab es schon` : "", stand.fehler ? `${stand.fehler} gescheitert` : ""].filter(Boolean);
-    auftraege.setze({
-      id: AUFTRAG,
-      titel: "Gemeinfreie Bücher holen",
-      text: [`${stand.fertig} von ${stand.gesamt}`, stand.laeuft ? stand.aktuell : "fertig", ...neben].filter(Boolean).join(", "),
-      anteil: stand.gesamt ? stand.fertig / stand.gesamt : null,
-      laeuft: stand.laeuft,
-      weg: "/import",
-    });
+    await auftraege.gemeinfreiAufraeumen();
   }
 }
 
