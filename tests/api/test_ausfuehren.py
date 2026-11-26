@@ -84,7 +84,7 @@ def leitstelle(monkeypatch, tmp_path):
     def antwort(r: httpx.Request) -> httpx.Response:
         if r.url.path == "/v1/models":
             return httpx.Response(200, json={"data": [{"id": "qwen/qwen3-next-80b", "x-leitstelle": {"geladen": True}}]})
-        return chat_antwort(json.dumps({"grund": "Die Funktion summe kommt aus einem früheren Beispiel.", "fehlt": ["funktion", "erfunden"]}))
+        return chat_antwort(json.dumps({"satz": "Die Funktion summe kommt aus einem früheren Beispiel.", "fehlt": ["Funktion", "erfunden"]}))
 
     attrappe = Attrappe(antwort)
     client = httpx.AsyncClient(transport=httpx.MockTransport(attrappe))

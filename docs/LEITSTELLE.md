@@ -64,10 +64,10 @@ Die Zertifikatsstelle des Hauses gilt wie für die Kellerwolke (`KELLERWOLKE_CA`
 
 | Punkt | Stand |
 |---|---|
-| Antwort über die Fassade | gegen eine Attrappe geprüft (`tests/api/test_ausfuehren.py`): Modell, Schlüssel, Titel, Priorität, Arbeit |
+| Antwort über die Fassade | gegen eine Attrappe geprüft (`tests/api/test_ausfuehren.py`, `tests/api/test_ki_einordnen.py`): Modell, Schlüssel, Titel, Priorität, Arbeit; am 26.11.2026 sparsam an der echten Leitstelle: Modellliste mit `qwen/qwen3-next-80b`, Einschätzungen der Vorprüfung und ein Einordnen kamen an |
 | Warten ohne Zeitgrenze | im Appkern ohne Lese-Zeitgrenze; Halt mit Retry-After gegen die Attrappe geprüft (wartet, fragt erneut, lässt sich anhalten) |
 | Halt zeigt Hinweis statt Fehlerspur | Grund in der Vorprüfung (`GET /api/ausfuehren/vorpruefung`) |
-| Anwendung und Aufträge in der Leitstelle sichtbar | offen: an der echten Leitstelle zu prüfen |
+| Anwendung und Aufträge in der Leitstelle sichtbar | offen: Aufträge liefen, ihr Eintrag im Verlauf (Dauer, Modell) ist in der Oberfläche der Leitstelle noch anzusehen |
 | Rückbau sichtbar | ja: keine eigene Adresse, keine Netzsuche, keine Lese-Zeitgrenze, kein Laden oder Entladen; die Modellwahl bleibt bei der App |
 
 ## Offene Punkte
@@ -76,5 +76,6 @@ Die Zertifikatsstelle des Hauses gilt wie für die Kellerwolke (`KELLERWOLKE_CA`
   `lm_studio_model` in `PATCH /api/ai/config`), damit die heutige Oberfläche weiterläuft; umbenennen zusammen mit der
   Oberfläche. Dort entfallen dann Adressfeld und "Netz absuchen" (die Schnittstelle lehnt die Adresse ab, die Suche gibt
   es nicht mehr).
-- Prüfung an der echten Leitstelle (Anwendung sichtbar, Auftrag im Verlauf mit Dauer und Modell).
+- Verlauf der Leitstelle ansehen: Aufträge "BücherFreunde: Vorprüfung ..." und "BücherFreunde: Einordnen ..." mit Dauer und Modell.
+- Im Betrieb die `.env` ergänzen: `LEITSTELLE_ADRESSE`, `LEITSTELLE_SCHLUESSEL_DATEI=/app/zugang/leitstelle.schluessel`.
 - Stufe 2 und 3, sobald die Leitstelle Anwendungen über den Kanal anmeldet.

@@ -36,12 +36,18 @@ FEHLT = ("import", "paket", "klasse", "funktion", "variable", "datei", "eingabe"
 FEHLERZEILE = re.compile(r"^((\w+\.)*\w*(Error|Exception)\b|PHP (Fatal|Parse) error|(Fatal|Parse) error|Warning:|Uncaught)")
 
 SYSTEM = ("Du prüfst Codebeispiele aus einem Lehrbuch. Das Beispiel lief für sich allein in einer abgeschotteten Umgebung "
-          "(ohne Netz, ohne fremde Pakete, ohne Dateien, ohne Eingabe) und brach ab. Sag in einem kurzen deutschen Satz, warum "
-          "es für sich nicht läuft, und nenne, was fehlt. Ändere den Code nicht und schreibe keinen Code. 'vorgaenger' heißt: "
-          "es braucht Code aus früheren Beispielen des Buchs.")
-SCHEMA = {"type": "object", "additionalProperties": False, "required": ["grund", "fehlt"],
-          "properties": {"grund": {"type": "string", "maxLength": 200},
-                         "fehlt": {"type": "array", "maxItems": 5, "items": {"type": "string", "enum": list(FEHLT)}}}}
+          "(ohne Netz, ohne fremde Pakete, ohne Dateien, ohne Eingabe) und brach ab. Ändere den Code nicht und schreibe keinen "
+          "Code. Antworte mit einem Objekt aus zwei Feldern: 'satz' ist ein ganzer kurzer deutscher Satz, warum das Beispiel "
+          "für sich nicht läuft (etwa: \"Die Funktion lade_daten stammt aus einem früheren Beispiel.\"). 'fehlt' ist eine "
+          "Liste mit den zutreffenden Wörtern aus: import (eine Importzeile der Standardbibliothek fehlt), paket (ein "
+          "fremdes Paket, das die Umgebung nicht hat), klasse, funktion, variable (ein Name, der anderswo definiert ist), "
+          "vorgaenger (Code aus früheren Beispielen des Buchs), datei, eingabe, netz, datenbank, rahmenwerk (ein Rahmenwerk "
+          "wie ein Webserver oder eine Oberfläche), sonstiges.")
+# Felder mit Beschreibung, ohne Aufzählung und Längen: so eingeschränkt verrutschten die Felder, und "grund" hielt das
+# Modell für ein Stichwort (gemessen 26.11.2026); die Wörter von "fehlt" werden danach gefiltert
+SCHEMA = {"type": "object", "additionalProperties": False, "required": ["satz", "fehlt"],
+          "properties": {"satz": {"type": "string", "description": "ein ganzer kurzer deutscher Satz"},
+                         "fehlt": {"type": "array", "items": {"type": "string"}, "description": "Wörter aus der Liste der Anweisung"}}}
 
 
 class Einschaetzung(BaseModel):
@@ -236,10 +242,10 @@ class Vorpruefer:
         roh = await self.ki.json_antwort(SYSTEM, nutzer, "vorpruefung", SCHEMA, titel=f"Vorprüfung {s.datei or s.sprache}",
                                          prioritaet="hintergrund", geduld=True, pruefen=self._pruefen_waehrend_warten,
                                          temperature=0.2, max_tokens=300)
-        if not isinstance(roh, dict) or not isinstance(roh.get("grund"), str):
+        if not isinstance(roh, dict) or not isinstance(roh.get("satz"), str) or len(roh["satz"].split()) < 3:
             raise KiFehler("Die Antwort der KI passt nicht zur verlangten Form", "einzeln")
-        fehlt = [w for w in roh.get("fehlt") or [] if w in FEHLT]
-        return Einschaetzung(grund=roh["grund"].strip()[:200], fehlt=list(dict.fromkeys(fehlt)))
+        fehlt = [w.strip().lower() for w in roh.get("fehlt") or [] if isinstance(w, str) and w.strip().lower() in FEHLT]
+        return Einschaetzung(grund=roh["satz"].strip()[:200], fehlt=list(dict.fromkeys(fehlt)))
 
     async def _merken(self, sprache: str, pruefsumme: str, v: Vorpruefung) -> None:
         await db.execute("""INSERT OR REPLACE INTO code_vorpruefung(sprache, pruefsumme, stand, quelle, ausgabe, fehler, grund, fehlt)
