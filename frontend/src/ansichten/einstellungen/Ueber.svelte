@@ -5,7 +5,7 @@
   import Knopf from "../../lib/teile/Knopf.svelte";
 </script>
 
-<div class="ueber">
+<div class="ueber-app">
   <span class="symbol"><Logo /></span>
   <div>
     <b>BücherFreunde</b>

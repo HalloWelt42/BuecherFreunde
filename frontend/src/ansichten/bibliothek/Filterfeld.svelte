@@ -1,5 +1,6 @@
 <script lang="ts">
   // Alle Filter, die nicht in der Leiste stehen: Regale mit Suche, Sammlung, Formate, Bewertung, Etiketten
+  import { eingrenzen } from "../../lib/eingrenzen";
   import { zahl } from "../../lib/format";
   import { bestand } from "../../lib/stand/bestand.svelte";
   import { filter } from "../../lib/stand/filter.svelte";
@@ -14,6 +15,10 @@
   let suche = $state("");
   let passend = $derived(bestand.regale.filter((r) => r.name.toLowerCase().includes(suche.trim().toLowerCase())));
   let gewaehlteRegale = $derived(filter.werte("category"));
+  // Sammlungen als Chips; bei vielen mit Suche und höchstens so vielen
+  const SAMMLUNGEN_HOECHSTENS = 24;
+  let sammlungswort = $state("");
+  let sammlungen = $derived(eingrenzen(bestand.sammlungen, (s) => s.name, sammlungswort, (s) => filter.hat("sammlung", String(s.id)), SAMMLUNGEN_HOECHSTENS));
 </script>
 
 <h2>Filter</h2>
@@ -31,7 +36,9 @@
   {#if bestand.sammlungen.length}
     <section>
       <h3>Sammlung</h3>
-      <div class="reihe">{#each bestand.sammlungen as s (s.id)}<Chip text={s.name} farbe={s.color} zahl={zahl(s.buch_anzahl)} gedrueckt={filter.hat("sammlung", String(s.id))} onclick={() => filter.schalte("sammlung", String(s.id))} />{/each}</div>
+      {#if sammlungen.mitSuche}<input class="eingabe" type="search" placeholder="Sammlung suchen" aria-label="Sammlung suchen" bind:value={sammlungswort} />{/if}
+      <div class="reihe">{#each sammlungen.gezeigt as s (s.id)}<Chip text={s.name} farbe={s.color} zahl={zahl(s.buch_anzahl)} gedrueckt={filter.hat("sammlung", String(s.id))} onclick={() => filter.schalte("sammlung", String(s.id))} />{:else}<p class="leise">Keine Sammlung heißt so.</p>{/each}</div>
+      {#if sammlungen.weitere}<p class="leise">Noch {sammlungen.weitere} weitere, Suche verfeinern.</p>{/if}
     </section>
   {/if}
   <section>

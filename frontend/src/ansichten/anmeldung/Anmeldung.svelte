@@ -20,6 +20,8 @@
   let mitCode = $state(!!ausLink);
   let darstellungOffen = $state(false);
   let angaben = $state<AppAngaben>({ name: "BücherFreunde", art: "kellerwolke", kellerwolke: "", besitzer: null, eingerichtet: true });
+  /** Koppeln gibt es nur mit der Kellerwolke und eingerichteter App; ein Link mit Code zeigt sonst die Anmeldung */
+  let koppelt = $derived(mitCode && angaben.art === "kellerwolke" && angaben.eingerichtet);
 
   $effect(() => {
     ladeAppAngaben().then((a) => (angaben = a)).catch(() => {});
@@ -35,7 +37,7 @@
   <section class="anmeldekarte glas milch" aria-label="Anmeldung">
     <header class="reihe">
       <span class="anmeldelogo"><Logo /></span>
-      <h1>{mitCode ? "Gerät koppeln" : angaben.name}</h1>
+      <h1>{koppelt ? "Gerät koppeln" : angaben.name}</h1>
       <span class="schiebt"><Knopf text="Darstellung" symbol="circle-half-stroke" nur frei aufgeklappt={darstellungOffen} onclick={() => (darstellungOffen = !darstellungOffen)} /></span>
     </header>
     {#if darstellungOffen}
@@ -47,7 +49,7 @@
     {#if angaben.art === "kellerwolke" && !angaben.eingerichtet}<p class="marke-text warn">Die App ist noch nicht mit der Kellerwolke verbunden, der App-Zugang fehlt.</p>{/if}
     {#if angaben.art === "eigen" && !angaben.eingerichtet}
       <Einrichten onerfolg={erfolg} />
-    {:else if mitCode && angaben.art === "kellerwolke"}
+    {:else if koppelt}
       <Koppeln {angaben} anfang={ausLink} onerfolg={erfolg} onzurueck={() => (mitCode = false)} />
     {:else}
       <Passwort {angaben} onerfolg={erfolg} onkoppeln={() => (mitCode = true)} />

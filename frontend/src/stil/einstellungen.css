@@ -51,6 +51,6 @@
 .rechtstext code, .rechtstext pre { font: 400 .875rem/1.5 var(--codeschrift); }
 .rechtstext pre { padding: .625rem; border-radius: var(--r2); background: var(--vertieft); white-space: pre-wrap; margin: 0 0 .75rem; }
 .rechtstext hr { border: 0; border-top: 1px solid var(--linie); margin: 1rem 0; }
-.ueber { display: grid; grid-template-columns: 3.5rem minmax(0, 1fr); gap: .875rem; align-items: start; }
-.ueber .symbol svg { display: block; width: 100%; height: auto; }
-.ueber > div { display: grid; gap: .5rem; }
+.ueber-app { display: grid; grid-template-columns: 3.5rem minmax(0, 1fr); gap: .875rem; align-items: start; }
+.ueber-app .symbol svg { display: block; width: 100%; height: auto; }
+.ueber-app > div { display: grid; gap: .5rem; }

@@ -1,6 +1,7 @@
 <script lang="ts">
   // Leiste links: Bestand, Lesen, Regale, Sammlungen. Filter lassen sich kombinieren, "Alle" hebt sie auf.
   import { abmelden } from "../api/client";
+  import { eingrenzen } from "../eingrenzen";
   import { offenesFeld } from "../flucht";
   import { zahl } from "../format";
   import { route } from "../router.svelte";
@@ -15,6 +16,13 @@
   const z = $derived(bestand.zahlen);
   const aufBibliothek = $derived(route.path === "/");
   const an = (k: string, w: string) => aufBibliothek && filter.hat(k, w);
+
+  // Bei vielen Regalen oder Sammlungen eine Suche und höchstens so viele Treffer; bei wenigen bleibt alles, wie es ist
+  const HOECHSTENS = 20;
+  let regalwort = $state("");
+  let sammlungswort = $state("");
+  let regale = $derived(eingrenzen(bestand.leistenRegale, (r) => r.name, regalwort, (r) => an("category", String(r.id)), HOECHSTENS));
+  let sammlungen = $derived(eingrenzen(bestand.sammlungen, (s) => s.name, sammlungswort, (s) => an("sammlung", String(s.id)), HOECHSTENS));
 
   function zu() {
     schale.leisteOffen = false;
@@ -55,18 +63,22 @@
 
     {#if bestand.leistenRegale.length}
       <h2>Regale</h2>
-      {#each bestand.leistenRegale as regal (regal.id)}
+      {#if regale.mitSuche}<input class="eingabe leistensuche" type="search" placeholder="Regal suchen" aria-label="Regal suchen" bind:value={regalwort} />{/if}
+      {#each regale.gezeigt as regal (regal.id)}
         <Punkt text={regal.name} symbol={regal.icon || "folder"} symbolfarbe={regal.color} zahl={regal.buch_anzahl} gedrueckt={an("category", String(regal.id))} onclick={() => { filter.schalte("category", String(regal.id)); zu(); }} />
-      {/each}
+      {:else}<p class="leise leistenhinweis">Kein Regal heißt so.</p>{/each}
+      {#if regale.weitere}<p class="leise leistenhinweis">Noch {zahl(regale.weitere)} weitere, Suche verfeinern.</p>{/if}
     {/if}
 
     {#if bestand.sammlungen.length}
       <h2>Sammlungen</h2>
-      {#each bestand.sammlungen as s (s.id)}
+      {#if sammlungen.mitSuche}<input class="eingabe leistensuche" type="search" placeholder="Sammlung suchen" aria-label="Sammlung suchen" bind:value={sammlungswort} />{/if}
+      {#each sammlungen.gezeigt as s (s.id)}
         <button type="button" class="punkt" aria-pressed={an("sammlung", String(s.id))} onclick={() => { filter.schalte("sammlung", String(s.id)); zu(); }}>
           <span class="farbe" style:background={s.color}></span><span class="name">{s.name}</span><span class="zahl">{zahl(s.buch_anzahl)}</span>
         </button>
-      {/each}
+      {:else}<p class="leise leistenhinweis">Keine Sammlung heißt so.</p>{/each}
+      {#if sammlungen.weitere}<p class="leise leistenhinweis">Noch {zahl(sammlungen.weitere)} weitere, Suche verfeinern.</p>{/if}
     {/if}
 
     <!-- Was der Kopf in schmalen Fenstern nicht mehr zeigt -->

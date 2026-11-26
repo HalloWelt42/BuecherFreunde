@@ -9,6 +9,11 @@ class Quellen {
 
   /** Quellen für Angaben zu Büchern, die gefragt werden können */
   buecher = $derived(this.liste.filter((q) => q.art === "buch" && q.bereit));
+  /** In der Einrichtung abgeschaltet? Erst wenn der Stand da ist; vorher gilt nichts als aus */
+  aus(kennung: string): boolean {
+    return this.liste.find((q) => q.kennung === kennung)?.aktiv === false;
+  }
+
   /** Kennung -> Name, wie die Oberfläche sie nennt */
   namen = $derived(Object.fromEntries(this.liste.map((q) => [q.kennung, q.name])));
 

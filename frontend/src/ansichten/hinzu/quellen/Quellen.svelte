@@ -3,6 +3,7 @@
   import { gutenberg } from "../../../lib/stand/gutenberg.svelte";
   import { ladeEingangsordner, type Eingangsordner as Ordnerstand } from "../../../lib/api/annahme";
   import { annahme } from "../../../lib/stand/annahme.svelte";
+  import { quellen as verzeichnisse } from "../../../lib/stand/quellen.svelte";
   import Symbol from "../../../lib/teile/Symbol.svelte";
   import Eingangsordner from "./Eingangsordner.svelte";
   import Einleseliste from "./Einleseliste.svelte";
@@ -14,14 +15,20 @@
   /** Eingangsordner in der Kellerwolke; ohne sie gilt der Ordner auf dem Gerät. */
   let wolke = $state<Ordnerstand | null>(null);
 
+  // Gemeinfreie Bücher nur, wenn die Quelle in der Einrichtung eingeschaltet ist
+  let ohneGemeinfreie = $derived(verzeichnisse.aus("gutenberg"));
   const quellen: [Quelle, string, string, string][] = $derived([
     ["import", "folder-open", "Eingangsordner", wolke?.bereit ? "in der Kellerwolke, wird beim Ablegen erkannt" : "einlesen, was im Ordner der App liegt"],
     ["extern", "hard-drive", "Alte Sammlung einlesen", "nur lesend, Doppel werden erkannt"],
-    ["gutenberg", "landmark", "Gemeinfreie Bücher", "suchen nach Titel, Autor, Sprache"],
+    ...(ohneGemeinfreie ? [] : [["gutenberg", "landmark", "Gemeinfreie Bücher", "suchen nach Titel, Autor, Sprache"] as [Quelle, string, string, string]]),
   ]);
 
   let offen = $state<Quelle | "">(gutenberg.gesucht || gutenberg.laeuft ? "gutenberg" : "");
 
+  $effect(() => void verzeichnisse.bereit());
+  $effect(() => {
+    if (ohneGemeinfreie && offen === "gutenberg") offen = "";
+  });
   $effect(() => {
     ladeEingangsordner().then((o) => (wolke = o)).catch(() => {});
   });

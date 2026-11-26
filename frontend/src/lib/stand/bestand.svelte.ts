@@ -8,6 +8,9 @@ const LEER: Zahlen = { buecher_gesamt: 0, favoriten: 0, leseliste: 0, gelesen: 0
 
 type Zuhoerer = () => void;
 
+/** "Regal 25" vor "Regal 225": Zahlen im Namen zählen als Zahlen, Groß und Klein gleich */
+export const NAMENSFOLGE = new Intl.Collator("de", { numeric: true, sensitivity: "base" });
+
 class Bestand {
   zahlen = $state<Zahlen>(LEER);
   regale = $state<Regal[]>([]);
@@ -21,7 +24,7 @@ class Bestand {
   async laden(): Promise<void> {
     const [zahlen, regale, sammlungen] = await Promise.allSettled([get("/api/config/stats"), ladeKategorien(), ladeSammlungen()]);
     if (zahlen.status === "fulfilled") this.zahlen = { ...LEER, ...zahlen.value };
-    if (regale.status === "fulfilled") this.regale = [...regale.value].sort((a: Regal, b: Regal) => a.name.localeCompare(b.name, "de"));
+    if (regale.status === "fulfilled") this.regale = [...regale.value].sort((a: Regal, b: Regal) => NAMENSFOLGE.compare(a.name, b.name));
     if (sammlungen.status === "fulfilled") this.sammlungen = sammlungen.value;
     this.geladen = true;
   }

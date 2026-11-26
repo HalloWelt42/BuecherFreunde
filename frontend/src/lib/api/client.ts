@@ -80,6 +80,14 @@ export async function abmelden(): Promise<void> {
   if (onAuthRequired) onAuthRequired();
 }
 
+/** Die Meldung des Servers: `detail` ist ein Satz, bei Prüffehlern (422) eine Liste mit `msg` je Feld */
+export function meldungAus(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+  const eine = (d: unknown) => (typeof d === "string" ? d : d && typeof d === "object" && "msg" in d ? String((d as { msg: unknown }).msg) : "");
+  if (Array.isArray(detail)) return [...new Set(detail.map(eine).filter(Boolean))].join("; ");
+  return eine(detail);
+}
+
 /** Die für das Lesen ohne Netz gemerkten Bücher gehören dem, der abgemeldet ist */
 function vergissLesestoff(): void {
   void sprich({ art: "abgemeldet" });
@@ -158,7 +166,7 @@ export async function anfrage(path: string, options: RequestInit = {}): Promise<
       onAuthRequired();
     }
 
-    const message = data?.detail || `HTTP ${response.status}`;
+    const message = meldungAus(data?.detail) || `HTTP ${response.status}`;
     throw new ApiError(response.status, message, data);
   }
 
