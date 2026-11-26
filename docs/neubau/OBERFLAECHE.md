@@ -11,7 +11,7 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 
 | Funktion | Neu | Geprüft |
 |---|---|---|
-| Adressen /, /book/:id, /book/:id/read, /authors, /author/:id, /search, /collection/:id, /import, /settings, /settings/* | `App.svelte`, dazu /danke und eine Seite für Unbekanntes | ja |
+| Adressen /, /book/:id, /book/:id/read, /authors, /author/:id, /search, /collection/:id, /zuordnen/:art/:id (BF-67), /import, /settings, /settings/* | `App.svelte`, dazu /danke und eine Seite für Unbekanntes | ja |
 | Alte Parameter der Bibliothek, der Suche und des Lesers | `stand/filter`, `stand/suche`, `leser/ziel` | ja |
 | Verweise ohne Neuladen, Cmd, Strg, Umschalt, Alt, Mittelklick wie im Browser | `lib/router` | ja (Test) |
 | Zurück und Vor, Rollhöhe bleibt | `lib/rollstand` | ja |
@@ -45,6 +45,12 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 | Stapel: Favorit, Lesesofa, Regal zuweisen mit Suche | Auswahlleiste | Lesesofa, Regal ja |
 | Entfernen mit Rückfrage und Folgen, Entf und Rücktaste nie im Textfeld (8) | Auswahlleiste | ja |
 | Esc nimmt immer nur das zuletzt Geöffnete (8) | `lib/flucht` | ja |
+| Große Sammlungen als ein Eintrag (BF-66): Band mit bis zu drei gestapelten Umschlägen, Anzahl oben rechts, Schild "Sammlung", Name, Autor, Bände; Tippen öffnet /collection/:id | `Sammlungsband`, `Stapel`, `sammlungseintrag.ts` | Tests, Probe-Server mit erfundenen Daten |
+| Zusammengefasst wird nur in Alle, Bücher, Dokumente und den Regalen, nie bei Schnellfilter, Weiterlesen, Favoriten, Lesesofa, Gelesen, Ungelesen, Markiertes und den übrigen Filtern; eine Stelle entscheidet (`zusammenfassen=true`) | `stand/eintraege.fasstZusammen`, `stand/buecher` | Tests |
+| Einträge in Anzeigereihenfolge, geblättert nach Einträgen, Zahlzeile "n Bücher, davon x in y Sammlungen" | `stand/buecher` (eintraege, gesamtEintraege), Werkzeugzeile | Tests, Probe-Server |
+| Sammlung in allen fünf Ansichten: Raster, groß, nur Umschläge (Hinweis statt Großbild), Liste (Zeichen und Bände), Liste mit Einzelheiten | `Regal`, `Liste`, `Detailliste` | Probe-Server |
+| Sammlung ist kein Buch: nicht anhakbar, nicht im Rechteck, nicht in der Vorschau, "Alle" wählt nur Bücher | ohne `data-buch`, `buecher.liste` nur Bücher | Tests |
+| Zuordnen im Regal (BF-67), wenn genau ein Regal gefiltert ist; am Telefon als Chip unter den Filtern | Werkzeugzeile | Probe-Server |
 
 ## 2 bis 4 Leiste, Kopf, Aufträge
 
@@ -118,7 +124,14 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 | Bearbeiten, Eingaben bleiben bei Fehlern | `AutorBearbeiten` | ja |
 | Vergleich je Feld und Foto, Werke im Bestand, nur Gewähltes senden (44) | `AutorVergleich` | nachgebaut |
 | Werke, Bücher, Biografie | Karten | Bücher, Biografie ja |
-| Sammlung mit fünf Ansichten, Band als Zahl sortiert (34), Verweise zum Filtern und Verwalten | /collection/:id | ja |
+| Sammlung als eigenes Regal (BF-66), fünf Ansichten, nach Band vom Server (`sortierung=band`) | /collection/:id | Probe-Server |
+| Schild "Band N" und Titel ohne Reihennamen und Nummer; erkannt am Namen der Sammlung, am Kopf der meisten Titel (bleibt nach dem Umstellen gültig) oder an der eigenen Bandnummer | `sammlung/angaben.ts` (kurztitel, reihenkopf) | Tests |
+| Kopf: zurück zur Bibliothek (zuletzt gefiltert), Name, Bände und Autoren, Zuordnen, Bearbeiten (Name, Beschreibung, Farbe) | `Sammlung.svelte`, `Sammlungsformular` | Probe-Server |
+| Zuordnen in zwei Spalten (BF-67), für Sammlung und Regal eine Ansicht: links was drin ist, rechts der Bestand (ohne Sammlung bzw. nicht im Regal) mit Suche, "Gleicher Autor" (häufigster Autor links) und "Ohne Sammlung"; jede Spalte rollt für sich | /zuordnen/:art/:id, `zuordnen/Zuordnen`, `Spalte`, `teile/Buchzeile` | Probe-Server |
+| Was je Art anders ist (Filter, Aktionen, Reihenfolge, Folgen in Rückfragen), steht nur in `zuordnen/ziel.ts`; Zustand mit Haken, Dazu, Heraus, Umstellen in `zuordnung.svelte.ts`, seitenweise Listen in `buchseiten.svelte.ts` | `ansichten/zuordnen` | Tests |
+| Ziehen und Ablegen in beide Richtungen, angehakte ziehen zusammen, Abbild schräg mit Zahl; in der Sammlung Stelle zwischen den Zeilen und Umstellen (danach PUT reihenfolge, Bandnummer folgt), im Regal ohne Bandnummer und Reihenfolge | `ziehen.svelte.ts`, `reihenfolge.ts` (ordne) | Tests, Probe-Server mit echten Mausereignissen |
+| Tasten "n dazu" und "Heraus"; Heraus fragt mit Titeln und Folgen, Dazu fragt, wenn Bücher eine andere Sammlung verlassen, Umstellen fragt, wenn Bandnummern mit Lücken neu durchgezählt würden | `zuordnung.svelte.ts`, `reihenfolge.ts` (vergibtNeu, neueNummern) | Tests, Probe-Server |
+| Telefon: Umschalter "In der Sammlung / Im Regal" und "Bestand", Anhaken und Tasten, kein Ziehen; Tastatur: Haken und Tasten | `Zuordnen.svelte` | Probe-Server bei 375 |
 | Sammlungen verwalten | Einstellungen, Regale und Sammlungen | ja |
 
 ## 10 bis 14 Leser
@@ -260,6 +273,9 @@ die Glaswelt (`stil/ausfuehren.css`), die Farben des Editors bleiben die der Cod
 | Dienste mit Stand und Feldern, "verbunden" nur nach Prüfung (45) | Verbindungen | ja |
 | Neu: Verbindungen und Orte | Verbindungen | ja |
 | Regale und Sammlungen verwalten, 24 Farben und eigene, Symbole mit Suche | Regale und Sammlungen | ja |
+| Sammlung als ein Eintrag ab n Büchern (2 bis 1000, Vorgabe 8), speichert beim Verlassen des Felds (BF-66) | Karte Sammlungen, `sammlungsgrenze.ts` | Tests, Probe-Server |
+| Vorschläge (BF-66): drei Stufen, "Sammlungen suchen" mit Stand, Lauf unter Aufträge, danach Meldung mit der Zahl der Funde; je Vorschlag Name, Anzahl, Autor, Fundwege (KI mit eigenem Zeichen), Satz der KI, bis 9 Umschläge und "+n", Anlegen, Verwerfen | Karte Vorschläge, `sammlungsvorschlaege.svelte.ts` | Tests, Probe-Server |
+| Bücher anpassen: Bücher abwählen, Namen ändern, anlegen mit Name und Auswahl | `Vorschlagsanpassung` | Probe-Server |
 | KI: Stand, Adresse (mit /v1, 43), Modell, testen, Netz absuchen | KI, Rechtliches, Über | Testen ja, Absuchen nein |
 | Anweisungen bearbeiten | Fenster | ja |
 | Verzeichnisse, Bücherzahl, Suchindex neu aufbauen | Wartung, Verbindungen | ja |

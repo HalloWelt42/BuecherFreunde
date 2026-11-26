@@ -24,6 +24,7 @@
   import Sammlung from "./ansichten/sammlung/Sammlung.svelte";
   import Suche from "./ansichten/suche/Suche.svelte";
   import Unbekannt from "./ansichten/Unbekannt.svelte";
+  import Zuordnen from "./ansichten/zuordnen/Zuordnen.svelte";
 
   interface Ziel {
     muster: string;
@@ -41,6 +42,7 @@
     { muster: "/author/:id", ansicht: Autorenseite },
     { muster: "/search", ansicht: Suche, vorschau: true },
     { muster: "/collection/:id", ansicht: Sammlung, vorschau: true },
+    { muster: "/zuordnen/:art/:id", ansicht: Zuordnen },
     { muster: "/import", ansicht: Hinzufuegen },
     { muster: "/settings/*", ansicht: Einstellungen },
     { muster: "/settings", ansicht: Einstellungen },
