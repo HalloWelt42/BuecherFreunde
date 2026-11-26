@@ -141,6 +141,9 @@
   .leseleiste.unten:has(.sprung.oben) .stand { margin-inline: auto; }
   .seitenfeld { top: 4.5rem; max-height: calc(100% - 9.25rem); }
 }
+@container app (max-width: 430px) {
+  .leseleiste.unten .seitenzahl { width: 3rem; }         /* Platz für die Stellen daneben (BF-63) */
+}
 /* Telefon quer: die Höhe gehört dem Buch */
 @media (max-height: 30rem) {
   .schale.ohne-leiste.ohne-vorschau:has(.leser) { grid-template: minmax(0, 1fr) / minmax(0, 1fr); gap: 0; padding: 0; }
