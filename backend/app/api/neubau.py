@@ -49,9 +49,9 @@ async def _codeschmiede() -> dict:
 async def _leitstelle() -> dict:
     eintrag = {"kennung": "leitstelle", "name": "Leitstelle"}
     s = await ki.stand()
-    if s.erreichbar and not s.grund:
-        return eintrag | {"stand": "gut", "text": f"KI mit {s.modell}"}
-    return eintrag | {"stand": "warn" if s.erreichbar else "schlecht", "text": s.grund}
+    if s.nutzbar:
+        return eintrag | ({"stand": "warn", "text": s.grund} if s.grund else {"stand": "gut", "text": f"KI mit {s.modell}"})
+    return eintrag | {"stand": "schlecht", "text": s.grund}
 
 
 @router.get("/verbindungen")

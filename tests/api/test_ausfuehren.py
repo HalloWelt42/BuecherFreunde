@@ -83,14 +83,16 @@ def leitstelle(monkeypatch, tmp_path):
 
     def antwort(r: httpx.Request) -> httpx.Response:
         if r.url.path == "/v1/models":
-            return httpx.Response(200, json={"data": [{"id": "qwen/qwen3-next-80b", "x-leitstelle": {"geladen": True}}]})
+            return httpx.Response(200, json={"data": [{"id": "qwen/qwen3-next-80b", "x-leitstelle": {"geladen": True}},
+                                                      {"id": "qwen/qwen3-coder-next", "x-leitstelle": {"name": "Qwen3 Coder Next"}}]})
         return chat_antwort(json.dumps({"satz": "Die Funktion summe kommt aus einem früheren Beispiel.", "fehlt": ["Funktion", "erfunden"]}))
 
     attrappe = Attrappe(antwort)
     client = httpx.AsyncClient(transport=httpx.MockTransport(attrappe))
     ki._zugang = ((LEITSTELLE, "ls_app_test"), Leitstelle(LEITSTELLE, "ls_app_test", APP, client=client), client)
+    ki._wahl, ki._angebot, ki._gilt = None, None, ""
     yield attrappe
-    ki._zugang = None
+    ki._zugang, ki._wahl, ki._angebot, ki._gilt = None, None, None, ""
 
 
 @pytest.fixture

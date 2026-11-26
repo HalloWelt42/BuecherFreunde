@@ -1,5 +1,6 @@
 """Schnittstelle der KI-Einordnung (BF-10): Vorschläge, Übernahme, Stand und Modellwahl über die Leitstelle, Anweisungen."""
 
+from appkern.leitstelle import LeitstellenFehler
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -97,8 +98,8 @@ async def accept_categories(
 async def ai_status(_token: str = Depends(verify_token)):
     """Ob die KI über die Leitstelle antwortet und welche Modelle sie anbietet (lädt nie ein Modell)."""
     stand = await ki.stand()
-    return {"erreichbar": stand.erreichbar and not stand.grund, "grund": stand.grund, "modelle": stand.modelle,
-            "url": ki.adresse, "modell": ki.modell(), "aktiviert": stand.bereit}
+    return {"erreichbar": stand.nutzbar, "grund": stand.grund, "modelle": stand.modelle, "url": ki.adresse, "modell": stand.modell,
+            "gewaehlt": stand.gewaehlt, "aktiviert": stand.bereit}
 
 
 # --- KI-Config ---
@@ -109,14 +110,21 @@ class AiConfigUpdate(BaseModel):
     lm_studio_url: str | None = None
 
 
-def _ki_config() -> dict:
-    return {"url": ki.adresse, "modell": ki.modell(), "aktiviert": ki.bereit}
+async def _ki_config() -> dict:
+    """`modell`: das Modell, das gilt (die Wahl, wenn die Leitstelle sie anbietet, sonst die Vorgabe)."""
+    modell = ki.modell()
+    if ki.bereit:
+        try:
+            modell, _ = await ki.gilt()
+        except LeitstellenFehler:
+            pass
+    return {"url": ki.adresse, "modell": modell, "aktiviert": ki.bereit}
 
 
 @router.get("/config")
 async def get_ai_config(_token: str = Depends(verify_token)):
     """Adresse der Leitstelle, gewähltes Modell und ob die KI eingerichtet ist."""
-    return _ki_config()
+    return await _ki_config()
 
 
 @router.patch("/config")
@@ -126,7 +134,7 @@ async def update_ai_config(data: AiConfigUpdate, _token: str = Depends(verify_to
         raise HTTPException(status_code=422, detail="Die Adresse der KI steht in der Einrichtung (LEITSTELLE_ADRESSE)")
     if data.lm_studio_model is not None:
         await ki.waehlen(data.lm_studio_model)
-    return _ki_config()
+    return await _ki_config()
 
 
 # --- Prompt-Verwaltung ---
