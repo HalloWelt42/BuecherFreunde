@@ -3,14 +3,17 @@
 Alle Wege brauchen die Anmeldung (`Authorization: Bearer` oder `X-Kellerwolke-Sitzung`). Bilder, Dateien und Ereignisströme lesen sie aus dem Inhalts-Cookie von `POST /api/anmeldung/zugang`; in Adressen steht sie nie.
 Fehler kommen als `{"detail": "deutscher Satz"}`. Die vorhandenen Wege bleiben unverändert.
 
-## Annahme (Hochladen)
+## Annahme (eine Auftragsliste für alle Quellen)
 
-Ein Eintrag je Datei:
+Ein Eintrag je Datei, gleich woher sie kommt (`quelle`): `hochladen` (Browser), `eingangsordner` (Kellerwolke), `ordner`
+(Einlese-Ordner auf dem Gerät, `POST /api/import/scan`), `extern` (externe Sammlung, `POST /api/import/externes-verzeichnis`),
+`gemeinfrei` (`POST /api/gutenberg/import`). Dateien aus Ordnern bleiben, wo sie sind; gemeinfreie Bücher werden beim Lesen
+geholt und kommen ins Regal "Gutenberg". Wartende Einträge gehen nach einem Neustart weiter.
 
 ```
 { "id": 7, "name": "Buch.epub", "groesse": 50541233, "sha256": "...", "empfangen": 31457280, "teil_groesse": 4194304,
   "stand": "laedt", "schritt": 1, "anteil": 0.62, "text": "Wird in der Kellerwolke abgelegt, 30,0 von 48,2 MB",
-  "buch_id": null, "angelegt_am": "2026-11-25T21:00:00Z", "geaendert_am": "..." }
+  "buch_id": null, "quelle": "hochladen", "angelegt_am": "2026-11-25T21:00:00Z", "geaendert_am": "..." }
 ```
 
 `stand`: `wartet`, `laedt`, `angehalten`, `liest`, `angaben`, `regal`, `wissen` (in der Bibliothek, Bedeutung folgt),

@@ -264,7 +264,8 @@ Alle anderen Endpunkte unter `/api/` brauchen eine Anmeldung (Kopf `Authorizatio
 - `GET /api/config` - Öffentliche Konfiguration
 - `GET /api/config/update-check` - Update-Prüfung
 - `GET /api/gutenberg/suche` - Gutenberg-Suche
-- `POST /api/gutenberg/import` - Gutenberg-Bücher importieren
+- `POST /api/gutenberg/import` - gemeinfreie Bücher aufnehmen (Stand in der einen Liste unter `/api/annahme`)
+- `POST /api/import/scan`, `POST /api/import/externes-verzeichnis` - Ordner auf dem Gerät aufnehmen (ebenso)
 - `POST /api/backup/create` - Backup erstellen
 
 Vollständige API-Dokumentation: `http://localhost:8160/docs`

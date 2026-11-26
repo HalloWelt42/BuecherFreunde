@@ -350,6 +350,14 @@ CREATE INDEX IF NOT EXISTS idx_aufnahme_sha ON aufnahme(sha256);
 """
 
 
+# Spalten, die nach dem Anlegen einer Tabelle des Neubaus dazukamen: fehlen sie, kommen sie beim Verbinden dazu
+NEUBAU_SPALTEN: tuple[tuple[str, str, str], ...] = (
+    ("aufnahme", "quelle", "TEXT NOT NULL DEFAULT 'hochladen'"),   # hochladen, eingangsordner, ordner, extern, gemeinfrei
+    ("aufnahme", "pfad", "TEXT DEFAULT NULL"),                     # die Datei auf dem Gerät (Ordner); bleibt, wo sie ist
+    ("aufnahme", "herkunft", "TEXT DEFAULT NULL"),                 # JSON, etwa Nummer und Adresse eines gemeinfreien Buchs
+)
+
+
 class Database:
     """Asynchrone SQLite-Datenbank-Verbindung."""
 
@@ -371,8 +379,17 @@ class Database:
 
         await self._init_schema()
         await self._connection.executescript(NEUBAU_SQL)
+        await self._spalten_nachziehen()
         await suchindex.anhaengen(self._connection, self.suche_dir)
         logger.info("Datenbank verbunden: %s", self.db_path)
+
+    async def _spalten_nachziehen(self) -> None:
+        assert self._connection is not None
+        for tabelle, spalte, art in NEUBAU_SPALTEN:
+            vorhanden = {z[1] for z in await (await self._connection.execute(f"PRAGMA table_info({tabelle})")).fetchall()}
+            if spalte not in vorhanden:
+                await self._connection.execute(f"ALTER TABLE {tabelle} ADD COLUMN {spalte} {art}")
+        await self._connection.commit()
 
     async def disconnect(self) -> None:
         """Verbindung trennen."""

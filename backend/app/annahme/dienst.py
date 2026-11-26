@@ -1,11 +1,13 @@
-"""Die Aufnahmen: jede Datei auf ihrem Weg in sechs Stationen (Prüfen, Wolke, Lesen, Angaben, Regal, Wissen). Der Stand steht
-in der Datenbank; nach einem Neustart geht jede Aufnahme dort weiter, wo sie war. Teile strömen vom Browser durch die App in die
-Kellerwolke, ohne hier abgelegt zu werden."""
+"""Die Aufnahmen: jede Datei auf ihrem Weg in sechs Stationen (Prüfen, Wolke, Lesen, Angaben, Regal, Wissen), eine Liste für
+alle Quellen: hochgeladen im Browser, der Eingangsordner, Ordner auf dem Gerät und gemeinfreie Bücher. Der Stand steht in der
+Datenbank; nach einem Neustart geht jede Aufnahme dort weiter, wo sie war, auch wartende. Teile strömen vom Browser durch die
+App in die Kellerwolke, ohne hier abgelegt zu werden; Dateien aus Ordnern auf dem Gerät bleiben, wo sie sind (kopiert wird
+in die Kellerwolke, ohne sie in den Speicher des Geräts)."""
 
 from __future__ import annotations
 
 import asyncio
-import hashlib
+import json
 import logging
 import shutil
 from collections.abc import AsyncIterator
@@ -14,19 +16,30 @@ from pathlib import Path
 from backend.app.ablage import originale
 from backend.app.ablage.namen import sauber
 from backend.app.ablage.wolke import WolkeFehler, wolke
-from backend.app.annahme import angaben, auswertung
+from backend.app.annahme import angaben, auswertung, gemeinfrei
 from backend.app.annahme.eintragen import ablegen, eintragen
 from backend.app.codestellen.dienst import codestellen
 from backend.app.core.anschluesse import anschluesse
 from backend.app.core.config import settings
 from backend.app.core.database import db
-from backend.app.services.storage import SUPPORTED_FORMATS, get_storage_path
+from backend.app.quellen.fehler import QuelleFehler
+from backend.app.services.storage import SUPPORTED_FORMATS, compute_hash, get_storage_path
 
 logger = logging.getLogger("buecherfreunde.annahme")
 TEIL = 4 * 1024 * 1024
 LAUFEND = ("wartet", "laedt", "angehalten", "liest", "angaben", "regal")
+IN_ARBEIT = ("liest", "angaben", "regal")
+QUELLEN = ("hochladen", "eingangsordner", "ordner", "extern", "gemeinfrei")
 KLAEREN = ("format", "kaputt", "fehler", "ohne_text")
 FORMATE = "PDF, EPUB, MOBI, TXT und MD"
+
+
+class AnnahmeFehler(Exception):
+    """Diese eine Aufnahme geht nicht weiter; `meldung` für Menschen."""
+
+    def __init__(self, meldung: str) -> None:
+        super().__init__(meldung)
+        self.meldung = meldung
 
 
 class Versatz(Exception):
@@ -42,7 +55,7 @@ def mb(n: int) -> str:
 
 
 def _aussen(z: dict) -> dict:
-    return {k: z[k] for k in ("id", "name", "groesse", "sha256", "empfangen", "stand", "schritt", "anteil", "text", "buch_id", "angelegt_am", "geaendert_am")} | {"teil_groesse": TEIL}
+    return {k: z[k] for k in ("id", "name", "groesse", "sha256", "empfangen", "stand", "schritt", "anteil", "text", "buch_id", "quelle", "angelegt_am", "geaendert_am")} | {"teil_groesse": TEIL}
 
 
 class Annahme:
@@ -133,9 +146,59 @@ class Annahme:
         stand, schritt, text, buch = await self._vorab(k["name"], k["groesse"], k["sha256"])
         if stand == "wartet":
             stand, schritt, text = "liest", 2, "Wartet auf das Lesen"
-        await db.execute("INSERT INTO aufnahme(name, groesse, sha256, stand, schritt, text, buch_id, knoten, empfangen, anteil) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+        await db.execute("INSERT INTO aufnahme(name, groesse, sha256, stand, schritt, text, buch_id, knoten, empfangen, anteil, quelle) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'eingangsordner')",
                          (k["name"], k["groesse"], k["sha256"], stand, schritt, text, buch, k["id"], k["groesse"]))
         await db.commit()
+        self._weiter()
+
+    async def aus_ordner(self, dateien: list[Path], quelle: str, anreichern: bool = False) -> int:
+        """Dateien aus einem Ordner auf dem Gerät: sie bleiben, wo sie sind. Was schon in Arbeit oder aufgenommen ist (gleicher
+        Ort, gleiche Größe), kommt nicht noch einmal."""
+        bekannt = {(z["pfad"], z["groesse"]) for z in await db.fetch_all(
+            "SELECT pfad, groesse FROM aufnahme WHERE pfad IS NOT NULL AND stand IN ('liest', 'angaben', 'regal', 'wissen', 'fertig', 'da')")}
+        neu = 0
+        for datei in dateien:
+            groesse = datei.stat().st_size
+            if (str(datei), groesse) in bekannt:
+                continue
+            stand, schritt, text, buch = await self._vorab(datei.name, groesse, "")
+            if stand == "wartet":
+                stand, schritt, text = "liest", 2, "Wartet auf das Lesen"
+            await db.execute("INSERT INTO aufnahme(name, groesse, stand, schritt, text, buch_id, empfangen, anteil, anreichern, quelle, pfad) "
+                             "VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)", (datei.name, groesse, stand, schritt, text, buch, groesse, int(anreichern), quelle, str(datei)))
+            neu += 1
+        await db.commit()
+        self._weiter()
+        return neu
+
+    async def aus_gemeinfrei(self, buecher: list[dict]) -> int:
+        """Gemeinfreie Bücher aus der Suche: geholt wird beim Lesen. Was es schon gibt oder schon geholt wird, kommt nicht noch
+        einmal; ohne Datei ist es gleich ein Fehler mit Grund."""
+        neu = 0
+        for b in buecher:
+            nummer = int(b.get("gutenberg_id") or 0)
+            adresse = str(b.get("download_url") or "")
+            titel = str(b.get("titel") or f"Gutenberg {nummer}")
+            if await db.fetch_one("SELECT id FROM aufnahme WHERE quelle = ? AND json_extract(herkunft, '$.gutenberg_id') = ? AND stand IN ('liest', 'angaben', 'regal')",
+                                  (gemeinfrei.QUELLE, nummer)):
+                continue
+            da = await gemeinfrei.schon_da(nummer)
+            if da:
+                stand, schritt, text, buch = "da", 0, f"Gibt es schon: \"{da['title']}\"", da["id"]
+            elif not adresse:
+                stand, schritt, text, buch = "fehler", 0, "Zu diesem Buch gibt es keine Datei", None
+            else:
+                stand, schritt, text, buch = "liest", 2, "Wartet auf das Holen", None
+            herkunft = {"gutenberg_id": nummer, "download_url": adresse, "cover_url": str(b.get("cover_url") or ""), "titel": titel}
+            name = sauber(titel, 150) + (".txt" if ".txt" in adresse else ".epub")
+            await db.execute("INSERT INTO aufnahme(name, groesse, stand, schritt, text, buch_id, anteil, quelle, herkunft) VALUES (?, 0, ?, ?, ?, ?, 1, ?, ?)",
+                             (name, stand, schritt, text, buch, gemeinfrei.QUELLE, json.dumps(herkunft, ensure_ascii=False)))
+            neu += 1
+        await db.commit()
+        self._weiter()
+        return neu
+
+    def _weiter(self) -> None:
         self._arbeit.set()
         for e in self._neu:
             e.set()
@@ -207,10 +270,10 @@ class Annahme:
             e.set()
 
     async def erneut(self, nr: int) -> dict | None:
-        z = await db.fetch_one("SELECT knoten, empfangen, groesse FROM aufnahme WHERE id = ?", (nr,))
+        z = await db.fetch_one("SELECT knoten, empfangen, groesse, pfad, quelle FROM aufnahme WHERE id = ?", (nr,))
         if z is None:
             return None
-        if z["empfangen"] >= z["groesse"] > 0:
+        if z["pfad"] or z["quelle"] == gemeinfrei.QUELLE or z["empfangen"] >= z["groesse"] > 0:
             await self._setze(nr, stand="liest", schritt=2, text="Wartet auf das Lesen", versuche=0)
             self._arbeit.set()
         else:
@@ -262,6 +325,16 @@ class Annahme:
         hier = self._hier(z)
         if hier.exists():
             return hier
+        if z["pfad"]:
+            if not Path(z["pfad"]).is_file():
+                raise AnnahmeFehler("Die Datei liegt nicht mehr im Ordner")
+            return Path(z["pfad"])
+        if z["quelle"] == gemeinfrei.QUELLE:
+            await self._setze(z["id"], text="Wird geholt")
+            try:
+                return await gemeinfrei.holen(z, hier)
+            except QuelleFehler as f:
+                raise AnnahmeFehler(f.grund) from f
         await db.execute("INSERT OR IGNORE INTO ablage_datei(hash, knoten, name, groesse) VALUES (?, ?, ?, ?)", (z["sha256"], z["knoten"], Path(z["name"]).name, z["groesse"]))
         await db.commit()
         pfad = await asyncio.to_thread(originale.holen, z["sha256"])
@@ -282,7 +355,13 @@ class Annahme:
             await self._setze(nr, stand="da", schritt=0, anteil=1, buch_id=da["id"], text=f"Gibt es schon: \"{da['title']}\" hat denselben Inhalt")
             return
         pfad = await self._datei(z)
-        summe = z["sha256"] or await asyncio.to_thread(lambda: hashlib.sha256(pfad.read_bytes()).hexdigest())
+        summe = z["sha256"]
+        if not summe:                                    # Ordner und gemeinfreie Bücher: erst jetzt bekannt
+            summe = await asyncio.to_thread(compute_hash, pfad)
+            await self._setze(nr, sha256=summe, groesse=z["groesse"] or pfad.stat().st_size)
+            if da := await db.fetch_one("SELECT id, title FROM books WHERE hash = ?", (summe,)):
+                await self._setze(nr, stand="da", schritt=0, anteil=1, buch_id=da["id"], text=f"Gibt es schon: \"{da['title']}\" hat denselben Inhalt")
+                return
         e = await auswertung.auswerten(pfad)
         if not e.lesbar:
             await self._zu_klaeren(z)
@@ -292,16 +371,31 @@ class Annahme:
         if z["anreichern"]:
             await angaben.ergaenzen(e, pfad.stem)
         await self._setze(nr, stand="regal", schritt=4, text="Kommt ins Regal")
-        buch = await eintragen(summe, name, z["groesse"], e)
-        if z["knoten"]:
-            await ablegen(buch, z["knoten"])
-        else:
-            ziel = get_storage_path(summe) / name
-            ziel.parent.mkdir(parents=True, exist_ok=True)
-            await asyncio.to_thread(shutil.move, pfad, ziel)      # auch über Datenträger hinweg
+        buch = await eintragen(summe, name, z["groesse"] or pfad.stat().st_size, e)
+        await self._ablegen(z, buch, summe, name, pfad)
+        if z["quelle"] == gemeinfrei.QUELLE:
+            await gemeinfrei.nachher(z, buch, summe)
         codestellen.vormerken(buch)                               # Codestellen im Hintergrund, sobald das Original liegt
         stand, schritt, text = self._am_ziel(e.fulltext)
         await self._setze(nr, buch_id=buch, schritt=schritt, anteil=1, stand=stand, text=text)
+
+    async def _ablegen(self, z: dict, buch: int, summe: str, name: str, pfad: Path) -> None:
+        """Das Original an seinen Ort: liegt es schon in der Kellerwolke, dort umziehen; sonst mit Kellerwolke dorthin
+        schreiben, ohne sie in den Speicher des Geräts. Dateien aus Ordnern bleiben, wo sie sind (Kopie), was nur im
+        Zwischenspeicher liegt, zieht um."""
+        if z["knoten"]:
+            await ablegen(buch, z["knoten"])
+            return
+        if wolke.bereit:
+            await wolke.ordner(f"{settings.ablage_ordner}/Eingang")
+            k = await wolke.datei_schreiben(f"{settings.ablage_ordner}/Eingang/{summe[:12]} {sauber(name, 180)}", pfad)
+            await ablegen(buch, k["id"])
+            if not z["pfad"]:
+                pfad.unlink(missing_ok=True)
+            return
+        ziel = get_storage_path(summe) / name
+        ziel.parent.mkdir(parents=True, exist_ok=True)
+        await asyncio.to_thread(shutil.copy2 if z["pfad"] else shutil.move, pfad, ziel)      # auch über Datenträger hinweg
 
     @staticmethod
     def _am_ziel(volltext: str) -> tuple[str, int, str]:

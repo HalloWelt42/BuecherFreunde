@@ -63,24 +63,6 @@ def _ensure_directories() -> None:
         logger.info("Verzeichnis bereit: %s", d)
 
 
-async def _cleanup_stale_tasks() -> None:
-    """Räumt verwaiste Import-Tasks auf die vom letzten Lauf übrig sind."""
-    stale = await db.fetch_one(
-        "SELECT COUNT(*) as n FROM import_tasks WHERE status IN ('verarbeite', 'wartend')"
-    )
-    if stale and stale["n"] > 0:
-        await db.execute(
-            """UPDATE import_tasks SET status = 'fehler',
-               error = 'Beim Neustart abgebrochen', updated_at = datetime('now')
-               WHERE status = 'verarbeite'"""
-        )
-        await db.execute(
-            "DELETE FROM import_tasks WHERE status = 'wartend'"
-        )
-        await db.commit()
-        logger.info("%d verwaiste Import-Tasks beim Start aufgeräumt", stale["n"])
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialisierung beim Start, Aufräumen beim Herunterfahren."""
@@ -103,8 +85,6 @@ async def lifespan(app: FastAPI):
     codestellen.starten()
     vorpruefer.starten()
     im_hintergrund = [asyncio.create_task(pflege.laufen()), asyncio.create_task(eingangsordner.laufen()), asyncio.create_task(nachschlagen.vorwaermen())]
-    # Verwaiste Tasks aufräumen (vom letzten Lauf übrig geblieben)
-    await _cleanup_stale_tasks()
     yield
     for lauf in im_hintergrund:
         lauf.cancel()
