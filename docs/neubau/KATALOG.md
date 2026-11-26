@@ -67,9 +67,16 @@ Eine Datei, gültig für jede Bibliothek, ohne Bezug auf einen bestimmten Bestan
 ```
 
 Zehn Bereiche wie im Entwurf: Romane, Kinder und Jugend, Wissen, Technik, Wirtschaft und Recht, Kunst und Kultur, Leben,
-Lernen, Comics, Dokumente; zusammen etwa 60 Kategorien. Der Bereich Dokumente ordnet nach der Art des Schriftstücks:
-Gebrauchsanleitungen, Datenblätter, Handbücher und Referenzen, Projektdokumentationen, Skripte und Abschlussarbeiten,
-Folien und Vorträge, Kataloge und Prospekte, Belege und Rechnungen, Verträge, Zeugnisse und Urkunden, Formulare. Sachgruppen sind die Nummern der Bibliotheken (Dezimal und die
+Lernen, Comics, Besonderes; zusammen etwa 60 Kategorien. "Besonderes" ist alles, was kein Buch ist, und ordnet nach der
+Art des Schriftstücks: Gebrauchsanleitungen, Datenblätter, Handbücher und Referenzen, Projektdokumentationen, Skripte und
+Abschlussarbeiten, Folien und Vorträge, Kataloge und Prospekte, Zeitschriften und Hefte, Belege und Rechnungen, Verträge,
+Zeugnisse und Urkunden, Formulare.
+
+Jeder Bereich nennt die Arten des Werks, für die er gilt (`arten`, aus `books.typ`: "" für Buch, dokument, heft,
+katalog, broschuere; gespeichert als JSON an `categories` des Bereichs, im Datei-Format, in `GET /api/katalog` und in
+POST/PATCH der Bereiche). Im Standard gilt "Besonderes" für dokument, heft, katalog und broschuere, alle anderen Bereiche
+für Bücher. Regeln und KI schlagen einem Werk nur Kategorien aus Bereichen vor, die für seine Art gelten. Das Menü links
+zeigt "Bücher" und "Besonderes" nach der Art (BF-77). Sachgruppen sind die Nummern der Bibliotheken (Dezimal und die
 Buchstabengruppen der Nationalbibliografie wie B für Belletristik, K für Kinder- und Jugendliteratur), Schlagworte und
 Titelwörter jeweils auf Deutsch und Englisch. Zeichen sind Namen aus Font Awesome Free (solid).
 
