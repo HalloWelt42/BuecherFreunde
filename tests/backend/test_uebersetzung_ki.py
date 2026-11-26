@@ -5,10 +5,12 @@ import json
 
 import pytest
 
-from backend.app.uebersetzung import anweisungen, begriffe
+from backend.app.uebersetzung import anweisungen, begriffe, vorgaben
 from backend.app.uebersetzung.begriffe import Buchtext
 from backend.app.uebersetzung.modelle import Befund, Begriff, Block, Kandidat, Unbrauchbar
-from backend.app.uebersetzung.pruefer import UNBEURTEILT, Urteil, gilt, pruefen_lassen, urteile_aus
+from backend.app.uebersetzung.pruefer import (
+    OHNE_ZWEITE, UNBEURTEILT, Entscheidung, Urteil, bestaetigen_lassen, entscheidungen_aus, gilt, pruefen_lassen, urteile_aus, urteilen,
+)
 from backend.app.uebersetzung.uebersetzen import Auftrag, nacharbeiten, portionen, speicherschluessel, texte_aus, uebersetzen, zusammenhang
 
 TABELLE = {"Fill the tank.": "Fülle den Tank.", "Use clean water.": "Nimm sauberes Wasser.", "Start the pump.": "Starte die Pumpe.",
@@ -173,12 +175,20 @@ def test_zwischenspeicher_haengt_an_vorlage_und_begriffen():
 # -- KI-Prüfer ----------------------------------------------------------------------------------------------------------------
 
 class Pruefer:
-    def __init__(self, urteile, kaputt_ab: int = 99) -> None:
-        self.urteile, self.kaputt_ab, self.aufrufe = urteile, kaputt_ab, []
+    """Nachgestellt: der erste Prüfer urteilt nach `urteile`, die zweite Prüfung bestätigt jeden Einwand außer denen zu den
+    Übersetzungen in `verwerfen`; ab `kaputt_ab` Paaren oder Fällen kommt eine unbrauchbare Antwort."""
+
+    def __init__(self, urteile, kaputt_ab: int = 99, verwerfen: frozenset[str] = frozenset(), zweite_kaputt_ab: int = 99) -> None:
+        self.urteile, self.kaputt_ab, self.verwerfen, self.zweite_kaputt_ab, self.aufrufe = urteile, kaputt_ab, verwerfen, zweite_kaputt_ab, []
 
     async def __call__(self, system, nutzer, *, schema_name, schema, titel, modell=""):
         daten = json.loads(nutzer)
-        self.aufrufe.append({"daten": daten, "modell": modell, "schema": schema})
+        self.aufrufe.append({"art": schema_name, "daten": daten, "modell": modell, "schema": schema, "system": system, "titel": titel})
+        if schema_name == "bestaetigung":
+            faelle = daten["faelle"]
+            if len(faelle) >= self.zweite_kaputt_ab:
+                return {"entscheidungen": []}
+            return {"entscheidungen": [{"grund": "Das Original sagt anderes", "berechtigt": f["deutsch"] not in self.verwerfen} for f in faelle]}
         paare = daten["paare"]
         if len(paare) >= self.kaputt_ab:
             return {"urteile": []}
@@ -211,15 +221,88 @@ async def test_pruefer_urteilt_nur_ueber_sinn_ausgelassenes_und_hinzugefuegtes()
     assert aus == {"2.1": Urteil(verworfen=1), "2.2": Urteil(verworfen=1),
                    "2.3": Urteil(mangel=Befund(art="sinn", quelle="ki", text="Ein Eimer ist kein Tank", stelle="Eimer"))}
     assert anweisungen.schema_urteile(1)["properties"]["urteile"]["items"]["properties"]["art"]["enum"] == [
-        "", "sinn", "ausgelassen", "hinzugefuegt", "anderes"]
+        "", "sinn", "ausgelassen", "hinzugefuegt", "englisch", "anderes"]
     prompt = anweisungen.pruefen(3)
-    assert "Ein Mangel ist nur: sinn" in prompt and "Rechtschreibung, Groß- und Kleinschreibung" in prompt
+    assert "englisch: englische Wörter sind stehen geblieben" in prompt and "Rechtschreibung, Groß- und Kleinschreibung" in prompt
+    assert "Kein Mangel ist: andere Wortwahl mit gleichem Sinn und Synonyme" in prompt
     # Befunde aus der Zeit, als der Prüfer auch über Begriffe und Grammatik urteilte, gelten nicht mehr
-    assert not gilt(Befund(art="begriff", quelle="ki", text="Iteration bleibt englisch"))
-    assert not gilt(Befund(art="grammatik", quelle="ki", text="Bits klein"))
-    assert not gilt(Befund(art="sinn", quelle="ki", text="Laut Begriffsliste falsch"))
-    assert gilt(Befund(art="sinn", quelle="ki", text="Der Tank wird geleert")) and gilt(Befund(art="pruefer", quelle="ki", text=UNBEURTEILT))
+    assert not gilt(Befund(art="begriff", quelle="ki", text="Iteration bleibt englisch", bestaetigung="ja"))
+    assert not gilt(Befund(art="grammatik", quelle="ki", text="Bits klein", bestaetigung="ja"))
+    assert not gilt(Befund(art="sinn", quelle="ki", text="Laut Begriffsliste falsch", bestaetigung="ja"))
+    # ein Einwand gilt nur bestätigt; ein Prüfer ohne brauchbare Antwort und die festen Prüfungen gelten immer
+    assert gilt(Befund(art="sinn", quelle="ki", text="Der Tank wird geleert", bestaetigung="Das Original sagt füllen"))
+    assert not gilt(Befund(art="sinn", quelle="ki", text="Der Tank wird geleert"))
+    assert gilt(Befund(art="pruefer", quelle="ki", text=UNBEURTEILT))
     assert gilt(Befund(art="begriffe", quelle="pruefung", text="Der Begriff thread bleibt englisch"))
+
+
+async def test_mehrfachpruefung_bestaetigt_jeden_einwand_gebuendelt():
+    """Jeder Einwand des Prüfers geht vor der Nacharbeit an die zweite Prüfung: alle Einwände einer Portion in einer Anfrage,
+    mit dem Prüfmodell und eigener Anweisung, mit Original, Übersetzung, Art und Stelle, ohne die Begründung des ersten
+    Prüfers. Nur ein bestätigter Einwand ist ein Mangel und trägt die Bestätigung; ein verworfener wird gezählt."""
+    p = Pruefer({
+        "Fülle den Eimer.": {"in_ordnung": False, "art": "sinn", "grund": "Ein Eimer ist kein Tank", "stelle": "Eimer"},
+        "Nimm sauberes Wasser.": {"in_ordnung": False, "art": "sinn", "grund": "Nimm muss verwende heißen", "stelle": "Nimm"},
+        "Starte die Pumpe.": {"in_ordnung": True, "art": "", "grund": "", "stelle": ""},
+    }, verwerfen=frozenset({"Nimm sauberes Wasser."}))
+    b = bloecke("Fill the tank.", "Use clean water.", "Start the pump.")
+    pruefauftrag = AUFTRAG.model_copy(update={"modell": "qwen/qwen3-coder-next", "titel": "Prüfen: Garten"})
+    bestaetigung = pruefauftrag.model_copy(update={"titel": "Bestätigen: Garten"})
+    aus = await urteilen(p, [(b[0], "Fülle den Eimer."), (b[1], "Nimm sauberes Wasser."), (b[2], "Starte die Pumpe.")], pruefauftrag, bestaetigung)
+    assert aus == {"2.1": Urteil(mangel=Befund(art="sinn", quelle="ki", text="Ein Eimer ist kein Tank", stelle="Eimer",
+                                               bestaetigung="Das Original sagt anderes")),
+                   "2.2": Urteil(verworfen=1), "2.3": Urteil()}
+    assert [a["art"] for a in p.aufrufe] == ["pruefung", "bestaetigung"]
+    zweite = p.aufrufe[1]
+    assert zweite["modell"] == "qwen/qwen3-coder-next" and zweite["titel"] == "Bestätigen: Garten"
+    assert zweite["schema"] == anweisungen.schema_entscheidungen(2) and "zweite, unabhängige Prüfung" in zweite["system"]
+    assert zweite["daten"]["faelle"] == [{"original": "Fill the tank.", "deutsch": "Fülle den Eimer.", "art": "sinn", "stelle": "Eimer"},
+                                         {"original": "Use clean water.", "deutsch": "Nimm sauberes Wasser.", "art": "sinn", "stelle": "Nimm"}]
+    assert "Eimer ist kein" not in json.dumps(zweite["daten"], ensure_ascii=False)           # die erste Begründung geht nicht mit
+    for satz in ("Synonyme", "eingeführter Fachbegriff", "Englische Wörter sind stehen geblieben"):
+        assert satz in zweite["system"]
+    # ohne Einwand keine zweite Anfrage
+    ruhig = Pruefer({})
+    assert await urteilen(ruhig, [(b[0], "Fülle den Tank.")], pruefauftrag, bestaetigung) == {"2.1": Urteil()}
+    assert [a["art"] for a in ruhig.aufrufe] == ["pruefung"]
+
+
+async def test_einwand_englisch_gegen_die_begriffsliste_ohne_anfrage_verworfen():
+    """Ein Einwand "englisch", an dessen Stelle nur steht, was englisch bleiben darf (Begriff der Liste, eingeführtes
+    Fachwort, Bezeichner), wird ohne zweite Anfrage verworfen; stehengebliebenes Englisch aus dem Original geht zur zweiten
+    Prüfung."""
+    p = Pruefer({
+        "Prüfe den Thread im Cache.": {"in_ordnung": False, "art": "englisch", "grund": "Thread ist englisch", "stelle": "Thread im Cache"},
+        "Prüfe die water flow.": {"in_ordnung": False, "art": "englisch", "grund": "water flow ist englisch", "stelle": "water flow"},
+        "Prüfe die Pumpe.": {"in_ordnung": False, "art": "englisch", "grund": "Englisch", "stelle": "Pumpe"},
+    })
+    b = bloecke("Check the thread in the cache.", "Check the water flow.", "Check the pump.")
+    aus = await urteilen(p, [(b[0], "Prüfe den Thread im Cache."), (b[1], "Prüfe die water flow."), (b[2], "Prüfe die Pumpe.")], AUFTRAG, AUFTRAG)
+    assert aus["2.1"] == Urteil(verworfen=1) and aus["2.3"] == Urteil(verworfen=1)
+    assert aus["2.2"].mangel is not None and aus["2.2"].mangel.art == "englisch" and aus["2.2"].mangel.bestaetigung
+    assert [f["stelle"] for f in p.aufrufe[1]["daten"]["faelle"]] == ["water flow"]
+
+
+async def test_zweite_pruefung_halbiert_und_laesst_den_einwand_stehen():
+    """Antwortet die zweite Prüfung nicht brauchbar, wird halbiert; zu einem einzelnen Einwand ohne brauchbare Antwort bleibt
+    der Einwand stehen: nichts wird ungeprüft eingesetzt."""
+    mangel = {"in_ordnung": False, "art": "ausgelassen", "grund": "Etwas fehlt", "stelle": "x"}
+    p = Pruefer({"Eins.": mangel, "Zwei.": mangel, "Drei.": mangel}, zweite_kaputt_ab=2)
+    b = bloecke("One.", "Two.", "Three.")
+    faelle = [(x, d, Befund(art="ausgelassen", quelle="ki", text="Etwas fehlt", stelle="x")) for x, d in zip(b, ("Eins.", "Zwei.", "Drei."))]
+    aus = await bestaetigen_lassen(p, faelle, AUFTRAG)
+    assert {k: e.berechtigt for k, e in aus.items()} == {"2.1": True, "2.2": True, "2.3": True}
+    assert [len(a["daten"]["faelle"]) for a in p.aufrufe] == [3, 1, 2, 1, 1]
+    nie = Pruefer({}, zweite_kaputt_ab=1)
+    assert await bestaetigen_lassen(nie, faelle[:1], AUFTRAG) == {"2.1": Entscheidung(berechtigt=True, grund=OHNE_ZWEITE)}
+
+
+def test_entscheidungen_lesen():
+    assert entscheidungen_aus({"entscheidungen": [{"grund": " Gleich  bedeutend ", "berechtigt": False}]}, 1) == [
+        Entscheidung(berechtigt=False, grund="Gleich bedeutend")]
+    for roh in ({"entscheidungen": [{"berechtigt": "ja"}]}, {"entscheidungen": []}, []):
+        with pytest.raises(Unbrauchbar):
+            entscheidungen_aus(roh, 1)
 
 
 async def test_pruefer_halbiert_und_nennt_unbeurteiltes():
@@ -326,6 +409,23 @@ def test_vorschlag_ohne_deutsche_form_fuer_fachwoerter_die_englisch_bleiben_und_
     assert begriffe.verstoss(Kandidat(englisch="caches", bleibt=False, deutsch="Caches | Zwischenspeicher"), text, frozenset(), im_fach) == ""
     vorschlag = anweisungen.begriffe(60)
     assert "Cache, Interrupt, Thread, Exception als Fachwort" in vorschlag and "Überschriften und Titel sind keine Begriffe" in vorschlag
+    assert "use case: Anwendungsfall" in vorschlag                    # eine übliche deutsche Form gewinnt
+
+
+def test_fachwoerter_die_englisch_bleiben_auch_als_wortgruppe():
+    """Ein Eintrag in englisch_im_fach darf eine Wortgruppe sein (game loop): eine deutsche Form, die ihn nicht trägt, ist ein
+    Verstoß, eine, die ihn mit Bindestrich trägt, nicht. "feature" und "case" sind gewöhnliche Wörter: "features" und
+    "use cases" bleiben nicht englisch."""
+    text = text_aus("The game loop runs. Each game loop step draws. Use cases and features matter.")
+    im_fach = frozenset({"game loop", "paging"})
+    assert begriffe.verstoss(Kandidat(englisch="game loops", bleibt=False, deutsch="Spielschleifen"), text, frozenset(), im_fach) == (
+        "Game loop bleibt im deutschen Fachtext gebräuchlich englisch")
+    assert begriffe.verstoss(Kandidat(englisch="game loop", bleibt=False, deutsch="Game-Loop"), text, frozenset(), im_fach) == ""
+    assert begriffe.verstoss(Kandidat(englisch="5-level paging", bleibt=False, deutsch="5-Level-Paging"), text, frozenset(), im_fach) == ""
+    alltag = vorgaben.alltagswoerter()
+    for englisch in ("features", "use cases"):
+        assert begriffe.verstoss(Kandidat(englisch=englisch, bleibt=True), text, alltag, im_fach) == begriffe.GRUND_ALLTAG
+    assert "feature" not in vorgaben.englisch_im_fach() and {"game loop", "event loop"} <= vorgaben.englisch_im_fach()
 
 
 def test_fragwuerdige_eintraege_nach_den_regeln_von_heute():

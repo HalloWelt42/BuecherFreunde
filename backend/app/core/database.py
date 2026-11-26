@@ -528,6 +528,7 @@ NEUBAU_SPALTEN: tuple[tuple[str, str, str], ...] = (
     ("uebersetzung_block", "seite", "INTEGER DEFAULT NULL"),       # Dateiseite ab 1; leer bei EPUB
     ("uebersetzung_block", "seite_gedruckt", "TEXT NOT NULL DEFAULT ''"),  # die Beschriftung dieser Seite, sonst die Dateiseite
     ("uebersetzung_block", "lage", "TEXT NOT NULL DEFAULT ''"),    # JSON [links, oben, rechts, unten] in Punkten der Seite
+    ("uebersetzung_block", "reparaturen", "TEXT NOT NULL DEFAULT '[]'"),  # JSON: was an der Übersetzung berichtigt ist (BF-71)
 )
 
 

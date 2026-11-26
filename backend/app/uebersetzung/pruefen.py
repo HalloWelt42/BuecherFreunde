@@ -2,14 +2,18 @@
 Stück im deutschen Text, an dem es auffiel. `FASSUNG` zählt die Prüfungen: steigt sie, prüft der Lauf, was schon übersetzt
 ist, ohne neue Anfrage noch einmal (services/uebersetzungslauf.py).
 
+Vor den Prüfungen berichtigt `reparieren` an jeder Antwort der KI, was eindeutig und verlustfrei geht: eine Klammermarke,
+die doppelt steht oder die es im Original nicht gibt, verliert die Marke, nie den Text (marken.reparieren). Jede Reparatur
+steht als Hinweis am Block. Platzhalter fasst sie nie an.
+
 | Prüfung | bestanden, wenn |
 |---|---|
-| Marken | jede Marke genau einmal, gleiche Schachtelung, keine fremde Auszeichnung |
-| Zahlen | dieselben Zahlen nach Angleichen der Tausender- und Dezimalzeichen (zahlen.py) |
+| Marken | jede Marke genau einmal, gleiche Schachtelung, keine fremde Auszeichnung; fehlt ein Platzhalter, nennt der Befund seine Stelle im Original |
+| Zahlen | dieselben Zahlen nach Angleichen der Tausender- und Dezimalzeichen; Zahlwörter eins bis zwölf zählen für eine übrige Zahl (4-level: vierstufig; zahlen.py) |
 | Einheiten | dieselben Einheiten, keine von selbst zugefügte Umrechnung; englische Einheitennamen in der vereinbarten Form; eine Zahl gleich hinter dem Satzende ist ein Fußnotenzeichen und trägt keine Einheit (12].1 A logical: kein Ampere) |
 | Bezeichner | Adressen, Dateinamen, Pfade, Aufrufe, Bezeichner, Optionen, Versionen und Abkürzungen unverändert (außer sie stehen mit deutscher Form in der Begriffsliste) |
 | Begriffe | jeder Begriff mit "bleibt" steht da, jeder mit deutscher Form in einer erlaubten Form, gebeugt oder in einem zusammengesetzten Wort; was nur Teil eines längeren Begriffs der Liste ist, zählt für diesen |
-| Sprache | kein englischer Satz übrig (Begriffe und Bezeichner ausgenommen), nichts unübersetzt stehen gelassen (`unuebersetzt`: unverändert mit mindestens drei Wörtern oder einem gewöhnlichen englischen Wort außer Begriffen, Namen und Bezeichnern) |
+| Sprache | kein englischer Satz übrig (Begriffe und Bezeichner ausgenommen), nichts unübersetzt stehen gelassen (`unuebersetzt`: unverändert mit mindestens drei Wörtern oder einem gewöhnlichen englischen Wort außer Begriffen, Namen und Bezeichnern), keine stehengebliebene englische Wortgruppe (`stehengeblieben`) |
 | Länge | Verhältnis Deutsch zu Englisch in den Grenzen, ab einer Mindestlänge des Originals |
 | Vollständigkeit | gleich viele Sätze, Abweichung höchstens eins |
 | Zeichen | echte Umlaute, gerade Anführungszeichen, keine Sonderstriche, keine Zeichenreferenz als Text (zeichen.py) |
@@ -18,7 +22,16 @@ ist, ohne neue Anfrage noch einmal (services/uebersetzungslauf.py).
 Inline-Code (auch in Backticks) geht als Platzhalter nie ans Modell und kommt Zeichen für Zeichen zurück; die Prüfung
 "Bezeichner" gilt dem, was im Fließtext steht. Ein Wort in Binnenmajuskeln (CrossPlatform) fordert sie nicht, wenn es aus
 zwei gewöhnlichen Wörtern besteht und in einer Zeile mit lauter großen Wörtern steht (einer Überschrift, deren Bindestrich
-beim Umwandeln des Buchs verloren ging) oder das Original es auch klein schreibt."""
+beim Umwandeln des Buchs verloren ging) oder das Original es auch klein schreibt.
+
+Stehengebliebenes Englisch (`stehengeblieben`): eine Wortgruppe der Übersetzung aus mindestens zwei klein geschriebenen
+Wörtern, die genau so, Wort für Wort, klein im Original steht ("graphics rendering"). Das Original ist das Wörterbuch: was
+dort klein steht, ist kein Name, und was nicht dort steht, ist kein stehengebliebenes Englisch. Nicht gezählt werden
+Begriffe, die englisch bleiben dürfen, eingeführte Fachwörter (`englisch_im_fach`), Bezeichner, Namen mit ihrer Abkürzung,
+was in einer Klammermarke unverändert aus dem Original übernommen ist (ein benannter Begriff), Text in Anführungszeichen und
+Wörter, die es im Deutschen genauso gibt (`auch_deutsch`: in, so, null). Groß geschriebene Wortgruppen (Scene Management,
+aber auch Game Loop, Draw Calls) unterscheidet keine feste Regel von eingeführten Begriffen: über sie urteilt der Prüfer
+(Art "englisch", pruefer.py)."""
 
 from __future__ import annotations
 
@@ -29,9 +42,9 @@ from collections.abc import Callable, Sequence
 from backend.app.uebersetzung import anrede as anreden
 from backend.app.uebersetzung import marken, zahlen, zeichen
 from backend.app.uebersetzung.begriffe import fuer_text, im_deutschen, muster_deutsch, muster_einheit, muster_englisch
-from backend.app.uebersetzung.modelle import Anrede, Befund, Befundart, Begriff, Laengengrenzen
-from backend.app.uebersetzung.sprache import STOPP_EN, englischer_satz, saetze, woerter
-from backend.app.uebersetzung.vorgaben import alltagswoerter, in_liste
+from backend.app.uebersetzung.modelle import Anrede, Befund, Befundart, Begriff, Laengengrenzen, Reparatur
+from backend.app.uebersetzung.sprache import STOPP_DE, STOPP_EN, englischer_satz, saetze, woerter
+from backend.app.uebersetzung.vorgaben import alltagswoerter, auch_deutsch, englisch_im_fach, in_liste
 
 DATEIENDUNGEN = ("py|pyc|js|mjs|ts|tsx|jsx|json|yaml|yml|toml|ini|cfg|conf|txt|md|rst|html|htm|xhtml|css|scss|xml|csv|tsv|sh|"
                  "bash|zsh|ps1|bat|c|h|cc|cpp|hpp|cs|java|kt|go|rs|rb|php|pl|swift|sql|db|log|lock|env|zip|tar|gz|tgz|bz2|"
@@ -49,7 +62,7 @@ BEZEICHNER = (
     re.compile(r"(?<![\w-])--?[A-Za-z][\w-]*"),                                              # Option
     re.compile(r"\bv\d+(?:\.\d+)+\b|\b\d+\.\d+\.\d+(?:[-+.]\w+)*\b"),                         # Version
 )
-FASSUNG = 3
+FASSUNG = 4
 ABKUERZUNG = re.compile(r"\b[A-Z][A-Z0-9]{1,9}s?\b")
 #: ein Wort aus zwei groß geschriebenen gewöhnlichen Wörtern (CrossPlatform, InGame), wie es ein verlorener Bindestrich hinterlässt
 ZWEI_WOERTER = re.compile(r"[A-Z][a-z]{1,}[A-Z][a-z]{1,}")
@@ -67,17 +80,32 @@ PROZENT_WORT = re.compile(r"(?<=\d)[ \u00a0\u202f]Prozent\b")
 #: eine Zahl gleich hinter dem Ende eines Satzes oder einer Klammer ist ein Fußnotenzeichen, keine Menge: "[bit 12].1 A logical"
 FUSSNOTENZEICHEN = re.compile(r"(?:(?<=[^\W\d_][.!?;:,)\]])|(?<=[)\]][.!?;:,]))\d+(?=[ \u00a0\u202f])")
 UNUEBERSETZT_AB = 3                                  # so viele Wörter ohne Begriffe und Bezeichner, damit Gleichheit auffällt
+STEHENGEBLIEBEN_AB = 2                               # so viele englische Wörter, die nicht auch deutsch sind, machen eine Wortgruppe
+#: ein englisch geschriebenes Wort: Buchstaben ohne Umlaute, auch mit Bindestrichen (platform-specific)
+WORT_ASCII = re.compile(r"[A-Za-z]+(?:-[A-Za-z]+)*")
+#: Text in geraden Anführungszeichen: ein Name, eine Aufschrift, ein Zitat
+ANGEFUEHRT = re.compile(r'"[^"]*"')
+LUECKE = " | "                                       # was an die Stelle von Ausgenommenem tritt; trennt Wortgruppen
 
 
 def _befund(art: Befundart, text: str, stelle: str = "") -> Befund:
     return Befund(art=art, quelle="pruefung", text=text, stelle=stelle)
 
 
+def reparieren(original: str, deutsch: str) -> tuple[str, list[Reparatur]]:
+    """Eine Antwort der KI mit eindeutig und verlustfrei berichtigten Marken, dazu je Berichtigung ein Hinweis."""
+    text, berichtigt = marken.reparieren(original, deutsch)
+    return text, [Reparatur(art="marken", text=b.grund, stelle=b.stelle) for b in berichtigt]
+
+
 def pruefe_marken(original: str, deutsch: str, **_: object) -> list[Befund]:
+    plan = marken.plan(original)
     try:
-        marken.lesen(marken.plan(original), deutsch)
+        marken.lesen(plan, deutsch)
     except marken.MarkenFehler as f:
-        return [_befund("marken", f.grund, f.stelle)]
+        fehlt = f.grund.endswith("fehlt") and f.nr in plan and plan[f.nr].atom
+        ort = marken.umgebung(original, f.nr) if fehlt else ""
+        return [_befund("marken", f"{f.grund}; im Original steht sie so: \"{ort}\"" if ort else f.grund, f.stelle)]
     return []
 
 
@@ -189,16 +217,28 @@ def namen_mit_kuerzel(text: str) -> list[str]:
     return aus
 
 
-def _ohne_festes(text: str, begriffe: list[Begriff], namen: Sequence[str] = ()) -> str:
-    """Der Text ohne Begriffe, die englisch bleiben, ohne Namen mit ihrer Abkürzung und ohne Bezeichner: was dann englisch
-    klingt, ist unübersetzt."""
+def englisch_erlaubt(b: Begriff) -> bool:
+    """Ob ein Begriff der Liste englisch dastehen darf: er bleibt, oder das englische Wort ist eine seiner Formen."""
+    return b.bleibt or any(f.casefold() == b.englisch.casefold() for f in b.formen())
+
+
+def _ohne_festes(text: str, begriffe: list[Begriff], namen: Sequence[str] = (), luecke: str = " ") -> str:
+    """Der Text ohne Begriffe, die englisch dastehen dürfen, ohne Namen mit ihrer Abkürzung und ohne Bezeichner: was dann
+    englisch klingt, ist unübersetzt. `luecke` tritt an ihre Stelle."""
     for b in begriffe:
-        if b.bleibt:
-            text = muster_englisch(b.englisch).sub(" ", text)
+        if englisch_erlaubt(b):
+            text = muster_englisch(b.englisch).sub(luecke, text)
     for name in sorted(namen, key=len, reverse=True):
-        text = text.replace(name, " ")
+        text = text.replace(name, luecke)
     for token in sorted(set(bezeichner(text)), key=len, reverse=True):
-        text = text.replace(token, " ")
+        text = text.replace(token, luecke)
+    return text
+
+
+def _ohne_fachwoerter(text: str, luecke: str = LUECKE) -> str:
+    """Der Text ohne eingeführte Fachwörter, die englisch bleiben (`englisch_im_fach`, auch Wortgruppen wie game loop)."""
+    for eintrag in sorted(englisch_im_fach(), key=len, reverse=True):
+        text = muster_englisch(eintrag).sub(luecke, text)
     return text
 
 
@@ -225,14 +265,68 @@ def unuebersetzt(original: str, deutsch: str, begriffe: list[Begriff]) -> bool:
     return len(rest) >= UNUEBERSETZT_AB or any(in_liste(w, alltagswoerter()) for w in rest)
 
 
+def _ohne_uebernommenes(original: str, deutsch: str, de: str, luecke: str = " ") -> str:
+    """Der deutsche Klartext ohne das, was in einer Klammermarke unverändert aus dem Original übernommen ist."""
+    for uebernommen in sorted(_uebernommene_klammern(original, deutsch), key=len, reverse=True):
+        de = de.replace(uebernommen, luecke)
+    return de
+
+
+def _klein_im_original(woerter_: Sequence[str], en: str) -> bool:
+    """Ob Wörter genau so, klein und nacheinander (getrennt durch Leerraum oder Bindestrich), im Original stehen."""
+    return re.search(r"(?<![\w-])" + r"[\s-]+".join(re.escape(w) for w in woerter_) + r"(?![\w-])", en) is not None
+
+
+def _englisches_wort(wort: str) -> bool:
+    return wort.islower() and wort not in STOPP_DE
+
+
+def _zaehlt(gruppe: Sequence[str]) -> bool:
+    return sum(w not in auch_deutsch() for w in gruppe) >= STEHENGEBLIEBEN_AB
+
+
+def stehengeblieben(original: str, deutsch: str, begriffe: list[Begriff]) -> list[str]:
+    """Die englischen Wortgruppen, die in der Übersetzung stehen geblieben sind (siehe oben), je Vorkommen."""
+    en = marken.klartext(original, LUECKE)
+    de = _ohne_uebernommenes(original, deutsch, marken.klartext(deutsch, LUECKE), LUECKE)
+    de = ANGEFUEHRT.sub(LUECKE, _ohne_fachwoerter(_ohne_festes(de, begriffe, namen_mit_kuerzel(en), LUECKE)))
+    aus: list[str] = []
+    gruppe: list[str] = []
+    ende = 0
+    for m in WORT_ASCII.finditer(de):
+        w = m.group(0)
+        anschluss = bool(gruppe) and not de[ende:m.start()].strip() and _klein_im_original([gruppe[-1], w], en)
+        if _englisches_wort(w) and anschluss:
+            gruppe.append(w)
+        else:
+            if _zaehlt(gruppe):
+                aus.append(" ".join(gruppe))
+            gruppe = [w] if _englisches_wort(w) else []
+        ende = m.end()
+    if _zaehlt(gruppe):
+        aus.append(" ".join(gruppe))
+    return aus
+
+
+def englisch_aus_dem_original(stelle: str, original: str, begriffe: list[Begriff]) -> list[str]:
+    """Die Wörter einer Stelle, die englisch aus dem Original stammen und nicht englisch bleiben dürfen (Begriffe, die bleiben,
+    eingeführte Fachwörter, Bezeichner, Wörter, die es auch im Deutschen gibt): leer, wenn an der Stelle kein
+    stehengebliebenes Englisch sein kann (pruefer.py)."""
+    im_original = {w.casefold() for w in WORT_ASCII.findall(marken.klartext(original))}
+    rest = _ohne_fachwoerter(_ohne_festes(marken.klartext(stelle), begriffe, (), LUECKE))
+    return [w for w in WORT_ASCII.findall(rest) if w.casefold() in im_original and w.casefold() not in STOPP_DE
+            and w.casefold() not in auch_deutsch()]
+
+
 def pruefe_sprache(original: str, deutsch: str, begriffe: list[Begriff], **_: object) -> list[Befund]:
     en, de = marken.klartext(original), marken.klartext(deutsch)
-    rest = _ohne_festes(de, begriffe, namen_mit_kuerzel(en))
-    for uebernommen in sorted(_uebernommene_klammern(original, deutsch), key=len, reverse=True):
-        rest = rest.replace(uebernommen, " ")
+    rest = _ohne_festes(_ohne_uebernommenes(original, deutsch, de), begriffe, namen_mit_kuerzel(en))
     aus = [_befund("sprache", "Ein englischer Satz ist übrig", s) for s in saetze(rest) if englischer_satz(s)]
     if not aus and unuebersetzt(original, deutsch, begriffe):
         aus.append(_befund("sprache", "Der Block ist unübersetzt", de[:120]))
+    if not aus:
+        aus = [_befund("sprache", f"Englisch stehen geblieben: \"{g}\" hat im Deutschen eine übliche Form", g)
+               for g in stehengeblieben(original, deutsch, begriffe)]
     return aus
 
 

@@ -83,7 +83,7 @@ async def test_start_und_stand(client, test_db, uebersetzer):
     s = r.json()
     assert s["stand"] == "laeuft" and [x["name"] for x in s["stationen"]] == STATIONEN and {x["stand"] for x in s["stationen"]} == {"wartet"}
     assert s["kapitel"] == [] and s["zahlen"] == {"bloecke": 0, "uebersetzt": 0, "bestanden": 0, "nachgearbeitet": 0, "offen": 0,
-                                                     "verworfen": 0}
+                                                     "verworfen": 0, "repariert": 0}
     fid = s["id"]
     assert (await client.post(f"/api/books/{buch}/fassungen/de")).json()["id"] == fid     # noch einmal: dieselbe Fassung
     await Uebersetzungslauf(ki).runde()
@@ -94,7 +94,8 @@ async def test_start_und_stand(client, test_db, uebersetzer):
     assert [(k["nr"], k["titel"], k["stand"], k["bloecke"], k["fertig"], k["geschaetzt"]) for k in s["kapitel"]] == [
         (2, "Getting Started", "fertig", 15, 15, False), (3, "Watering the Beds", "fertig", 5, 5, False),
         (4, "Inhaltsverzeichnis", "fertig", 3, 3, False), (5, "Inhaltsverzeichnis", "fertig", 2, 2, False)]
-    assert s["zahlen"] == {"bloecke": 25, "uebersetzt": 25, "bestanden": 25, "nachgearbeitet": 0, "offen": 0, "verworfen": 0}
+    assert s["zahlen"] == {"bloecke": 25, "uebersetzt": 25, "bestanden": 25, "nachgearbeitet": 0, "offen": 0, "verworfen": 0,
+                           "repariert": 0}
     assert s["kapitel_jetzt"] is None and s["block_jetzt"] is None
     assert (await client.get("/api/fassungen/999/stand")).status_code == 404
 

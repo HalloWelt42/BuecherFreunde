@@ -7,15 +7,21 @@ Kapitel für Kapitel Übersetzen (Portionen, Zwischenspeicher), Prüfen (KI-Prü
 Rest bleibt offen im Original), zuletzt Setzen und Ablegen. Fertige Kapitel sind sofort lesbar: die Datei für den Leser
 wird bis dahin aus den Blöcken gesetzt (api/uebersetzung.py).
 
+Jede Antwort der KI wird vor den festen Prüfungen berichtigt, wo es eindeutig und verlustfrei geht (pruefen.reparieren:
+doppelte und erfundene Auszeichnungsmarken); was dabei geschah, steht als Reparatur am Block und im Prüfbericht.
+
 Ändern sich die festen Prüfungen (fassungen.geprueft_mit), prüft der nächste Durchgang zuerst die Begriffsliste des Buchs
 (Einträge von Regel und KI, die die Regeln nicht mehr bestehen, werden fragwürdig und gelten nicht, bis der Nutzer
-entscheidet), dann alles neu, was die KI schon übersetzt hat, ohne neue Anfrage: was besteht, bleibt bestanden (eine offene
-Stelle, die nur an den festen Prüfungen oder an einem Einwand des Prüfers scheiterte, der nicht mehr gilt, geht zum Prüfer);
-was neu durchfällt, geht mit vollen Nacharbeiten in die Nacharbeit. Texte und Annahmen des Nutzers bleiben unberührt.
+entscheidet), dann alles neu, was die KI schon übersetzt hat, ohne neue Anfrage und mit derselben Reparatur: was besteht,
+bleibt bestanden (eine offene Stelle, die nur an den festen Prüfungen oder an einem Einwand des Prüfers scheiterte, der nicht
+gilt oder nicht bestätigt ist, geht zum Prüfer, mit vollen Nacharbeiten: die bisherigen galten einem Mangel, den es so nicht
+gab); was neu durchfällt, geht mit vollen Nacharbeiten in die Nacharbeit. Texte und Annahmen des Nutzers bleiben unberührt.
+Bestanden heißt: im ersten Versuch durch alle Prüfungen; wer mehr Versuche brauchte, ist nachgearbeitet.
 
-Einwände des Prüfers anderer Art als Sinn, Ausgelassenes und Hinzugefügtes gelten nicht (uebersetzung/pruefer.py); sie
-werden verworfen und an der Fassung gezählt. Kommt eine Nacharbeit unverändert zurück, steht das als Befund dabei, damit die
-nächste Nacharbeit (bei Temperatur 0) nicht dieselbe Anfrage ist.
+Einwände des Prüfers gelten nur, wenn sie von seiner Art sind (Sinn, Ausgelassenes, Hinzugefügtes, Englisch) und eine
+zweite, unabhängige Prüfung sie bestätigt (uebersetzung/pruefer.py, Mehrfachprüfung); die übrigen werden verworfen und an
+der Fassung gezählt. Kommt eine Nacharbeit unverändert zurück, steht das als Befund dabei, damit die nächste Nacharbeit (bei
+Temperatur 0) nicht dieselbe Anfrage ist.
 
 Anhalten (Pause, Abbrechen, Herunterfahren) wirkt sofort, auch mitten in einer Anfrage; deren Ergebnis fehlt dann und die
 Portion kommt beim Fortsetzen neu. Ist die Leitstelle weg, länger als die Geduld reicht, oder das Original gerade nicht zu
@@ -46,8 +52,8 @@ from backend.app.uebersetzung import anweisungen, begriffe, marken, vorgaben
 from backend.app.uebersetzung.anweisungen import FASSUNG as ANWEISUNG
 from backend.app.uebersetzung.begriffe import Buchtext
 from backend.app.uebersetzung.modelle import Anrede, Befund, Begriff, Unbrauchbar
-from backend.app.uebersetzung.pruefen import pruefen
-from backend.app.uebersetzung.pruefer import Urteil, gilt as einwand_gilt, pruefen_lassen
+from backend.app.uebersetzung.pruefen import pruefen, reparieren
+from backend.app.uebersetzung.pruefer import Urteil, gilt as einwand_gilt, urteilen, von_der_art
 from backend.app.uebersetzung.uebersetzen import Auftrag, nacharbeiten, portionen, speicherschluessel, uebersetzen
 from backend.app.uebersetzung.werk import NichtLesbar
 
@@ -117,35 +123,43 @@ def _nach_mangel(z: BlockZeile) -> str:
 
 
 def geprueft(z: BlockZeile, text: str | None, gilt: list[Begriff], anrede: Anrede) -> BlockZeile:
-    """Nach einer Antwort der KI: die festen Prüfungen. Bestanden wartet auf den Prüfer, sonst Nacharbeit, oder offen,
-    wenn keine Nacharbeit mehr bleibt. Ohne brauchbare Antwort bleibt die frühere Übersetzung für den Bericht stehen."""
+    """Nach einer Antwort der KI: berichtigt, wo es eindeutig geht, dann die festen Prüfungen. Bestanden wartet auf den
+    Prüfer, sonst Nacharbeit, oder offen, wenn keine Nacharbeit mehr bleibt. Ohne brauchbare Antwort bleibt die frühere
+    Übersetzung (mit ihren Reparaturen) für den Bericht stehen."""
     if text is None:
         return z.model_copy(update={"stand": _nach_mangel(z), "versuche": z.versuche + 1,
                                     "befunde": [Befund(art="antwort", quelle="pruefung", text=KEINE_ANTWORT)]})
+    text, reparaturen = reparieren(z.vorlage, text)
     befunde = pruefen(z.vorlage, text, gilt, fassungen.grenzen(), anrede)
-    return z.model_copy(update={"uebersetzung": text, "befunde": befunde, "versuche": z.versuche + 1,
+    return z.model_copy(update={"uebersetzung": text, "befunde": befunde, "reparaturen": reparaturen, "versuche": z.versuche + 1,
                                 "stand": "uebersetzt" if not befunde else _nach_mangel(z)})
 
 
 def nachgeprueft(z: BlockZeile, gilt: list[Begriff], anrede: Anrede) -> BlockZeile | None:
-    """Ein Block, den die KI übersetzt hat, nach geänderten Prüfungen noch einmal fest geprüft, ohne neue Anfrage; None,
-    wenn alles bleibt. Rohe Zeichen einer früheren Antwort (<, &) werden dabei sicher geschrieben. Besteht er, bleibt sein
-    Stand; eine offene Stelle, die nur an den festen Prüfungen oder an einem Einwand des Prüfers scheiterte, der nicht mehr
-    gilt (über Begriffe, Grammatik), geht zum Prüfer. Fällt er durch, geht er mit vollen Nacharbeiten in die Nacharbeit.
-    Eine Stelle ohne Übersetzung oder mit einem Mangel des Prüfers, der gilt, bleibt offen."""
+    """Ein Block, den die KI übersetzt hat, nach geänderten Prüfungen noch einmal berichtigt und fest geprüft, ohne neue
+    Anfrage; None, wenn alles bleibt. Rohe Zeichen einer früheren Antwort (<, &) werden dabei sicher geschrieben. Besteht
+    er, bleibt sein Stand; eine offene Stelle, die nur an den festen Prüfungen oder an einem Einwand des Prüfers scheiterte,
+    der nicht gilt (über Begriffe, Grammatik) oder nicht bestätigt ist, geht mit vollen Nacharbeiten zum Prüfer. Fällt er
+    durch, geht er mit vollen Nacharbeiten in die Nacharbeit. Eine Stelle ohne Übersetzung oder mit einem Mangel des Prüfers,
+    der gilt, bleibt offen."""
     if not z.uebersetzung:
         return None
-    text = marken.gesichert(z.uebersetzung, z.vorlage)
+    text, neu = reparieren(z.vorlage, marken.gesichert(z.uebersetzung, z.vorlage))
+    reparaturen = [*z.reparaturen, *neu]
     befunde = pruefen(z.vorlage, text, gilt, fassungen.grenzen(), anrede)
     if befunde:
-        return z.model_copy(update={"uebersetzung": text, "befunde": befunde, "stand": "nacharbeit", "nacharbeiten": 0})
+        return z.model_copy(update={"uebersetzung": text, "reparaturen": reparaturen, "befunde": befunde, "stand": "nacharbeit",
+                                    "nacharbeiten": 0})
     if z.stand == "offen" and not any(b.quelle == "ki" and einwand_gilt(b) for b in z.befunde):
-        return z.model_copy(update={"uebersetzung": text, "befunde": [], "stand": "uebersetzt", "geprueft": False})
-    return z.model_copy(update={"uebersetzung": text}) if text != z.uebersetzung else None
+        return z.model_copy(update={"uebersetzung": text, "reparaturen": reparaturen, "befunde": [], "stand": "uebersetzt",
+                                    "geprueft": False, "nacharbeiten": 0})
+    return z.model_copy(update={"uebersetzung": text, "reparaturen": reparaturen}) if text != z.uebersetzung else None
 
 
 def nicht_geltende_einwaende(z: BlockZeile) -> int:
-    return sum(not einwand_gilt(b) for b in z.befunde)
+    """Einwände des Prüfers, die nach ihrer Art nicht gelten (Begriffe, Grammatik); ein Einwand, der nur noch nicht bestätigt
+    ist, zählt nicht: er geht mit dem Block noch einmal zum Prüfer."""
+    return sum(b.quelle == "ki" and b.art != "pruefer" and not von_der_art(b) for b in z.befunde)
 
 
 class Uebersetzungslauf:
@@ -328,9 +342,10 @@ class Uebersetzungslauf:
                           titel=f"Übersetzen: {b.title[:60]}, {kap.titel[:40]}")
         pruefauftrag = auftrag.model_copy(update={"titel": f"Prüfen: {b.title[:60]}, {kap.titel[:40]}",
                                                   "modell": settings.uebersetzen_pruefmodell})
+        bestaetigung = pruefauftrag.model_copy(update={"titel": f"Bestätigen: {b.title[:60]}, {kap.titel[:40]}"})
         await self._aus_dem_speicher(f, kap, auftrag)
         await self._uebersetzen(f, kap, auftrag, uhr)
-        while await self._pruefen(f, kap, pruefauftrag, auftrag, uhr) or await self._nacharbeiten(f, kap, auftrag, uhr):
+        while await self._pruefen(f, kap, (pruefauftrag, bestaetigung), auftrag, uhr) or await self._nacharbeiten(f, kap, auftrag, uhr):
             pass
 
     async def _aus_dem_speicher(self, f: FassungZeile, kap: KapitelZeile, auftrag: Auftrag) -> None:
@@ -356,19 +371,20 @@ class Uebersetzungslauf:
             await fassungen.bloecke_merken(f.id, [geprueft(je[k], text, auftrag.begriffe, auftrag.anrede) for k, text in texte.items()])
             await uhr.merken()
 
-    async def _pruefen(self, f: FassungZeile, kap: KapitelZeile, pruefauftrag: Auftrag, auftrag: Auftrag, uhr: Uhr) -> bool:
+    async def _pruefen(self, f: FassungZeile, kap: KapitelZeile, pruefer: tuple[Auftrag, Auftrag], auftrag: Auftrag, uhr: Uhr) -> bool:
+        """Der Prüfer mit Bestätigung je Portion (`pruefer`: Auftrag des Prüfers und der zweiten Prüfung)."""
         bereit = await fassungen.bloecke(f.id, kap.nr, ("uebersetzt",))
         if not bereit:
             return False
         je = {z.kennung: z for z in bereit}
         for portion in portionen([z.als_block() for z in bereit], settings.uebersetzen_portion_zeichen, settings.uebersetzen_portion_bloecke):
             self.jetzt = Jetzt(f.id, "Prüfen", kap.nr, portion[0].kennung)
-            urteile = await pruefen_lassen(self._anfrage, [(x, je[x.kennung].uebersetzung) for x in portion], pruefauftrag)
+            urteile = await urteilen(self._anfrage, [(x, je[x.kennung].uebersetzung) for x in portion], *pruefer)
             neu, speicher = [], {}
             for x in portion:
                 z, mangel = je[x.kennung], urteile.get(x.kennung, Urteil()).mangel
                 if mangel is None:
-                    neu.append(z.model_copy(update={"stand": "bestanden" if z.nacharbeiten == 0 else "nachgearbeitet", "befunde": [],
+                    neu.append(z.model_copy(update={"stand": "bestanden" if z.versuche <= 1 else "nachgearbeitet", "befunde": [],
                                                     "geprueft": True}))
                     speicher[speicherschluessel(z.vorlage, auftrag, f.sprache)] = z.uebersetzung
                 else:
@@ -392,7 +408,7 @@ class Uebersetzungslauf:
             text = await nacharbeiten(self._anfrage, z.als_block(), z.uebersetzung, z.befunde, auftrag,
                                       [y.als_block() for y in alle if y.nr < z.nr])
             neu = geprueft(z.model_copy(update={"nacharbeiten": z.nacharbeiten + 1}), text, auftrag.begriffe, auftrag.anrede)
-            if text == z.uebersetzung and neu.befunde:
+            if text is not None and neu.uebersetzung == z.uebersetzung and neu.befunde:
                 neu.befunde.append(Befund(art="antwort", quelle="pruefung", text=UNVERAENDERT))
             await fassungen.bloecke_merken(f.id, [neu])
             await uhr.merken()

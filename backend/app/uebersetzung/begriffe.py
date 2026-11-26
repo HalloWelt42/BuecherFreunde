@@ -41,7 +41,7 @@ from typing import Any
 from backend.app.uebersetzung import marken
 from backend.app.uebersetzung.modelle import FORMEN_TRENNER, Begriff, Block, Kandidat, formen_von
 from backend.app.uebersetzung.sprache import STOPP_EN, saetze
-from backend.app.uebersetzung.vorgaben import grundform, in_liste
+from backend.app.uebersetzung.vorgaben import in_liste
 
 NAME = re.compile(r"(?<![\w.@/\\-])[A-Z][a-z]{2,}(?![\w-])")
 WORT = re.compile(r"[A-Za-z]+")
@@ -266,17 +266,21 @@ def alltaeglich(englisch: str, alltag: frozenset[str]) -> bool:
     return bool(woerter) and all(w in STOPP_EN or in_liste(w, alltag) for w in woerter)
 
 
+def _flach(text: str) -> str:
+    """Klein und ohne Leerraum und Bindestriche, damit "Game-Loop" und "game loop" gleich sind."""
+    return re.sub(r"[-\s]+", "", text.lower())
+
+
 def verstoss(k: Kandidat, text: Buchtext, alltag: frozenset[str], im_fach: frozenset[str]) -> str:
     """Warum ein Vorschlag der KI die Regeln der Begriffsliste nicht besteht, leer, wenn er sie besteht: "bleibt englisch"
     aus lauter gewöhnlichen Wörtern; eine deutsche Form für ein Fachwort, das im deutschen Fachtext englisch bleibt (die
-    vereinbarte, erste Form trägt es nicht); eine Überschrift statt eines Begriffs."""
+    vereinbarte, erste Form trägt es nicht, auch als Wortgruppe wie game loop); eine Überschrift statt eines Begriffs."""
     if k.bleibt:
         return GRUND_ALLTAG if alltaeglich(k.englisch, alltag) else ""
-    erste = next(iter(formen_von(k.deutsch)), "").lower()
-    for w in WORT.findall(k.englisch):
-        g = grundform(w, im_fach)
-        if g is not None and g not in erste:
-            return f"{g.capitalize()} bleibt im deutschen Fachtext gebräuchlich englisch"
+    erste = _flach(next(iter(formen_von(k.deutsch)), ""))
+    for eintrag in sorted(im_fach, key=len, reverse=True):
+        if kommt_vor(eintrag, k.englisch) and _flach(eintrag) not in erste:
+            return f"{eintrag.capitalize()} bleibt im deutschen Fachtext gebräuchlich englisch"
     if not stellen(k.englisch, list(text.fliesstext)) and stellen(k.englisch, list(text.titel)):
         return GRUND_UEBERSCHRIFT
     return ""

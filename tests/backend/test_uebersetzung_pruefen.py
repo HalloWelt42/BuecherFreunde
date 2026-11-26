@@ -1,14 +1,15 @@
 """Die zehn festen Prüfungen beim Übersetzen (BF-71): je Prüfung Gut- und Schlechtfälle, dazu ihre Bausteine (Zahlen,
-Sätze, Sprache, Zeichen, Anrede, Zeichen für das Modell). Alle Texte sind erfunden."""
+Zahlwörter, Sätze, Sprache, stehengebliebenes Englisch, Zeichen, Anrede, Zeichen für das Modell) und die Reparatur der Marken
+vor den Prüfungen. Alle Texte sind erfunden."""
 
 import pytest
 
 from backend.app.uebersetzung import zahlen
 from backend.app.uebersetzung.marken import aus_modell, fuer_modell, gesichert
-from backend.app.uebersetzung.modelle import Begriff, Laengengrenzen
+from backend.app.uebersetzung.modelle import Begriff, Laengengrenzen, Reparatur
 from backend.app.uebersetzung.pruefen import (
-    bezeichner, pruefe_anrede, pruefe_begriffe, pruefe_bezeichner, pruefe_einheiten, pruefe_laenge, pruefe_marken, pruefe_sprache,
-    pruefe_vollstaendigkeit, pruefe_zahlen, pruefe_zeichen, pruefen, unuebersetzt,
+    bezeichner, englisch_aus_dem_original, pruefe_anrede, pruefe_begriffe, pruefe_bezeichner, pruefe_einheiten, pruefe_laenge, pruefe_marken,
+    pruefe_sprache, pruefe_vollstaendigkeit, pruefe_zahlen, pruefe_zeichen, pruefen, reparieren, stehengeblieben, unuebersetzt,
 )
 from backend.app.uebersetzung.sprache import buch_ist_englisch, englischer_satz, ist_englisch, saetze
 from backend.app.uebersetzung.zeichen import gerade
@@ -50,6 +51,46 @@ def test_marken_gut(deutsch):
 def test_marken_schlecht(deutsch, grund, stelle):
     [befund] = pruefe_marken(VORLAGE, deutsch)
     assert befund.art == "marken" and grund in befund.text and befund.stelle == stelle
+
+
+def test_ein_fehlender_platzhalter_nennt_seine_stelle_im_original():
+    [befund] = pruefe_marken("Tools such as <x1/> and more. Also, <x2/>you can add your own.", "Werkzeuge wie <x1/> und mehr. Du kannst eigene ergänzen.")
+    assert befund.text == 'Die Marke 2 fehlt; im Original steht sie so: "and more. Also, <x2/>you can add"' and befund.stelle == "<x2/>"
+
+
+DOPPELT = "Doppelt: nur die Stelle, die zum Original passt, behält die Marke; der Text bleibt"
+
+
+@pytest.mark.parametrize("vorlage, deutsch, repariert, stellen", [
+    # doppelt: dasselbe Wort wie im Original behält die Marke, das andere Vorkommen nur den Text
+    ("<t1>Leaf mode</t1> is new. Then leaf mode starts.", "<t1>Leaf mode</t1> ist neu. Dann startet <t1>Leaf mode</t1>.",
+     "<t1>Leaf mode</t1> ist neu. Dann startet Leaf mode.", ["Leaf mode"]),
+    ("Then <t1>leaf mode</t1> starts.", "<t1>Blattmodus</t1> ist neu. Dann startet <t1>leaf mode</t1>.",       # das passende, nicht das erste
+     "Blattmodus ist neu. Dann startet <t1>leaf mode</t1>.", ["Blattmodus"]),
+    ("A <t1>leaf</t1> and a leaf.", "Ein <t1>Blatt</t1> und ein <t1>Blatt</t1>.", "Ein <t1>Blatt</t1> und ein Blatt.", ["Blatt"]),
+    # ein Stück ohne Gegenstück neben einem ganzen Paar fällt weg
+    ("<t1>Leaf mode</t1> is old, called <t2>stem mode</t2>. Then enter leaf mode.",
+     "<t1>Leaf mode</t1> ist alt, genannt <t2>stem mode</t2>. Dann starte <t2>Leaf mode</t1>.",
+     "<t1>Leaf mode</t1> ist alt, genannt <t2>stem mode</t2>. Dann starte Leaf mode.", ["<t2>", "</t1>"]),
+    # erfunden: eine Klammer, die es nicht gibt, auch mit der Nummer eines Platzhalters
+    ("<x1/> A flag for leaf mode.", "<x1/> Ein Flag für <t1>Leaf mode</t1>.", "<x1/> Ein Flag für Leaf mode.", ["Leaf mode"]),
+    ("As shown in", "Wie in <t1>...</t1>", "Wie in ...", ["..."]),
+])
+def test_marken_werden_verlustfrei_repariert(vorlage, deutsch, repariert, stellen):
+    text, reparaturen = reparieren(vorlage, deutsch)
+    assert text == repariert and pruefe_marken(vorlage, text) == []
+    assert [r.stelle for r in reparaturen] == stellen and all(r.art == "marken" for r in reparaturen)
+
+
+def test_reparatur_nennt_den_grund_und_fasst_platzhalter_nie_an():
+    _, [doppelt] = reparieren("A <t1>leaf</t1>.", "Ein <t1>Blatt</t1>, ein <t1>Blatt</t1>.")
+    assert doppelt == Reparatur(art="marken", text="Die Marke 1 stand doppelt da: sie bleibt nur an der Stelle, die zum Original "
+                                                   "passt; hier fiel sie weg, der Text bleibt", stelle="Blatt")
+    _, [erfunden] = reparieren("A leaf.", "Ein <t3>Blatt</t3>.")
+    assert erfunden.text == "Die Marke 3 gibt es im Original nicht: entfernt, der Text bleibt"
+    for deutsch in ("Ein Blatt.", "Ein Blatt <x1/> <x1/>.", "Ein Blatt <x1/> <x2/>.", "Ein <t2>Blatt.", "Ein <t2>Blatt</t2> <x1/>"):
+        assert reparieren("A <t2>leaf</t2> <x1/>.", deutsch) == (deutsch, [])     # fehlt, doppelt, fremd, offen: bleibt ein Befund
+    assert reparieren("A <t1>leaf</t1>.", "Ein <t1>Blatt</t1>.") == ("Ein <t1>Blatt</t1>.", [])
 
 
 # -- Zeichen für das Modell ---------------------------------------------------------------------------------------------------
@@ -105,6 +146,11 @@ def test_zeichenreferenz_als_text_faellt_auf():
     ("It happened on 11/26/2026.", "Es geschah am 26.11.2026."),                           # Datum umgestellt
     ("Step <t1>2</t1> of 3.", "Schritt <t1>2</t1> von 3."),
     ("Three plants.", "Drei Pflanzen."),
+    ("Three plants.", "3 Pflanzen."),                                                        # Zahlwort im Original
+    ("The robot walks a 4-level maze of 512 cells.", "Der Roboter läuft durch ein vierstufiges Labyrinth aus 512 Zellen."),
+    ("A 2-way valve with 3D sensors.", "Ein Zweiwegeventil mit dreidimensionalen Sensoren."),
+    ("Fill 1 tank.", "Fülle einen Tank."),
+    ("Two levels and two rows.", "Zwei Ebenen und zwei Reihen."),                           # Zahlwörter allein fordern nichts
 ])
 def test_zahlen_gut(original, deutsch):
     assert pruefe_zahlen(original, deutsch) == []
@@ -117,6 +163,10 @@ def test_zahlen_gut(original, deutsch):
     ("It takes 1.5 hours.", "Es dauert 15 Stunden.", "im Original 1.5"),
     ("It waters 16,000 plants.", "Sie gießt 16,000 Pflanzen.", "englischer Schreibweise"),  # hieße 16
     ("Add 1.500 litres.", "Gib 1.500 Liter dazu.", "englischer Schreibweise"),             # hieße 1500
+    ("A 4-level maze.", "Ein vierzehnstufiges Labyrinth.", "im Original 4"),                  # vierzehn ist nicht vier
+    ("Wait 8 hours.", "Achte auf die Stunden.", "im Original 8"),                             # achten ist keine Zahl
+    ("Cut 2 branches.", "Schneide Zweige.", "im Original 2"),                                 # Zweig ist keine Zahl
+    ("Fill 3 tanks.", "Fülle einige Tanks.", "im Original 3"),
 ])
 def test_zahlen_schlecht(original, deutsch, im_text):
     befunde = pruefe_zahlen(original, deutsch)
@@ -357,6 +407,39 @@ def test_unveraendert_mit_gedankenstrich_ist_unuebersetzt():
 def test_sprache_schlecht(original, deutsch, stelle):
     [befund] = pruefe_sprache(original, deutsch, begriffe=BEGRIFFE)
     assert befund.art == "sprache" and befund.stelle == stelle
+
+
+@pytest.mark.parametrize("original, deutsch, gruppen", [
+    ("The tool offers features like file loading, error handling, and sound output.",
+     "Das Werkzeug bietet Funktionen wie file loading, error handling und sound output.", ["file loading", "error handling", "sound output"]),
+    ("It has platform-specific helpers.", "Es hat platform-specific helpers.", ["platform-specific helpers"]),
+])
+def test_stehengebliebenes_englisch(original, deutsch, gruppen):
+    assert stehengeblieben(original, deutsch, BEGRIFFE) == gruppen
+    befunde = pruefe_sprache(original, deutsch, begriffe=BEGRIFFE)
+    assert [(b.art, b.stelle) for b in befunde] == [("sprache", g) for g in gruppen]
+    assert befunde[0].text == f'Englisch stehen geblieben: "{gruppen[0]}" hat im Deutschen eine übliche Form'
+
+
+@pytest.mark.parametrize("original, deutsch", [
+    ("Similar to null in other languages.", "Ähnlich wie null in anderen Sprachen."),          # null, in: auch deutsch
+    ("The Garden Store sells seeds.", "Der Garden Store verkauft Samen."),                     # ein Name: im Original groß
+    ("The scene management runs.", "Das Scene Management läuft."),                             # groß: urteilt der Prüfer
+    ("A value called the <t1>leaf budget limit</t1>.", "Ein Wert namens <t1>leaf budget limit</t1>."),   # benannter Begriff
+    ('The field "leaf budget limit" is set.', 'Das Feld "leaf budget limit" ist gesetzt.'),    # in Anführungszeichen
+    ("Each event loop runs in a game loop.", "Jede event loop läuft in einer game loop."),     # Begriff und eingeführtes Fachwort
+    ("The thread pool is full.", "Der thread pool ist voll."),                                 # thread: eingeführtes Fachwort
+    ("Python offers a for loop.", "Python bietet eine for-Schleife."),                          # nur ein Wort aus dem Original
+    ("Call setup_tank() and read_level() now.", "Rufe setup_tank() und read_level() auf."),     # Bezeichner
+])
+def test_kein_stehengebliebenes_englisch(original, deutsch):
+    assert stehengeblieben(original, deutsch, BEGRIFFE) == []
+
+
+def test_englisch_aus_dem_original_fuer_den_pruefer():
+    assert englisch_aus_dem_original("Scene Management und Game Loop", "It offers scene management and a game loop.", []) == ["Scene", "Management"]
+    assert englisch_aus_dem_original("Thread im Cache", "A thread in the cache.", BEGRIFFE) == []
+    assert englisch_aus_dem_original("Wasserfluss", "The water flow.", []) == []
 
 
 def test_namen_mit_abkuerzung_duerfen_bleiben():

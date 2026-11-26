@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from backend.app.models.grenzen import AUSWAHL_HOECHSTENS, BEGRIFF, BEGRIFF_GRUND, BLOCKTEXT, Leseposition, Nr
-from backend.app.uebersetzung.modelle import Anrede, Befund
+from backend.app.uebersetzung.modelle import Anrede, Befund, Reparatur
 
 Stand = Literal["laeuft", "pause", "teilweise", "fertig", "fehler"]
 Zielsprache = Literal["de"]                          # Sprachen, in die übersetzt wird
@@ -123,7 +123,8 @@ class Zahlen(BaseModel):
     bestanden: int = 0                               # im ersten Versuch durch alle Prüfungen
     nachgearbeitet: int = 0                          # nach Nacharbeit durch alle Prüfungen
     offen: int = 0                                   # im Original, im Bericht
-    verworfen: int = 0                               # Einwände des KI-Prüfers anderer Art (Begriffe, Schreibung), die nicht gelten
+    verworfen: int = 0                               # Einwände des KI-Prüfers, die nicht gelten: anderer Art oder nicht bestätigt
+    repariert: int = 0                               # deutsch in der Fassung, mit berichtigten Marken (im Bericht)
 
 
 class FassungStand(BaseModel):
@@ -142,7 +143,8 @@ class FassungStand(BaseModel):
     grund: str = ""
 
 
-class OffeneStelle(BaseModel):
+class Stelle(BaseModel):
+    """Ein Block im Prüfbericht."""
     kennung: str
     kapitel: int
     ort: str                                         # für Menschen, etwa "Getting Started, Absatz 4"
@@ -150,12 +152,17 @@ class OffeneStelle(BaseModel):
     seite_gedruckt: str = ""                         # nur bei PDF: ihre gedruckte Beschriftung (für Menschen)
     original: str                                    # Vorlage mit Marken
     deutsch: str                                     # die letzte Übersetzung, mit Marken; leer, wenn keine kam
+    reparaturen: list[Reparatur] = Field(default_factory=list)   # was an der Übersetzung berichtigt ist
+
+
+class OffeneStelle(Stelle):
     befunde: list[Befund]
 
 
 class Bericht(BaseModel):
     zahlen: Zahlen
     offen: list[OffeneStelle]
+    repariert: list[Stelle] = Field(default_factory=list)       # deutsch in der Fassung, mit berichtigten Marken
     begriffe_fragwuerdig: list[BegriffEintrag] = Field(default_factory=list)   # gelten nicht, bis der Nutzer entscheidet
 
 

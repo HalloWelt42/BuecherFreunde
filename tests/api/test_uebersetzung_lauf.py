@@ -1,6 +1,7 @@
 """Der Lauf der Übersetzung gegen eine Attrappe der Leitstelle (BF-71): ganze Kette für das Probe-EPUB, falsche Anzahl
-(Halbieren), fehlende Marke, geänderte Zahl, englischer Satz und Mangel des Prüfers (Nacharbeit, Verbleib im Original mit
-Bericht), Zwischenspeicher, Fortsetzen nach einem Neustart mitten im Kapitel, Ablage in der Kellerwolke."""
+(Halbieren), fehlende Marke, geänderte Zahl, englischer Satz und Mangel des Prüfers mit Bestätigung (Nacharbeit, Verbleib im
+Original mit Bericht), doppelte Marke (Reparatur), Zwischenspeicher, Fortsetzen nach einem Neustart mitten im Kapitel, Ablage
+in der Kellerwolke."""
 
 import asyncio
 import json
@@ -64,9 +65,13 @@ async def test_ganze_kette_mit_halbieren_nacharbeit_und_bericht(client, test_db,
     # falsche Anzahl: die erste Portion (das ganze Kapitel) wird halbiert
     anfragen = [d["bloecke"] for a, d in u.beantwortet if a == "uebersetzung"]
     assert len(anfragen[0]) == 15 and len(anfragen[1]) == 7 and len(anfragen[2]) == 8
-    # Prüfer mit dem zweiten Modell, Übersetzen mit dem, das gilt; alles im Hintergrund
-    assert {m for a, m in u.modelle if a == "pruefung"} == {"qwen/qwen3-coder-next"}
-    assert {m for a, m in u.modelle if a != "pruefung"} == {"qwen/qwen3-next-80b"}
+    # Prüfer und Bestätigung mit dem zweiten Modell, Übersetzen mit dem, das gilt; alles im Hintergrund
+    assert {m for a, m in u.modelle if a in ("pruefung", "bestaetigung")} == {"qwen/qwen3-coder-next"}
+    assert {m for a, m in u.modelle if a not in ("pruefung", "bestaetigung")} == {"qwen/qwen3-next-80b"}
+    # der Einwand ging vor der Nacharbeit an die zweite Prüfung: Original, Übersetzung, Art und Stelle, nicht der Grund
+    [bestaetigung] = [d for a, d in u.beantwortet if a == "bestaetigung"]
+    assert bestaetigung["faelle"] == [{"original": MANGEL, "deutsch": DEUTSCH[MANGEL], "art": "sinn", "stelle": "erhöhter"}]
+    assert (zeilen["3.4"].befunde, zeilen["3.4"].reparaturen) == ([], [])
     chats = [r for r in leitstelle.anfragen if r.url.path == "/v1/chat/completions"]
     assert chats and all(r.headers.get("X-Leitstelle-Prioritaet") == "hintergrund" for r in chats)
     # Nacharbeit mit dem Grund im Auftrag
@@ -88,8 +93,9 @@ async def test_ganze_kette_mit_halbieren_nacharbeit_und_bericht(client, test_db,
 
     # Bericht: die offene Stelle mit Original, Übersetzung und Befund
     bericht = (await client.get(f"/api/fassungen/{fid}/bericht")).json()
-    assert bericht["zahlen"] == {"bloecke": 25, "uebersetzt": 24, "bestanden": 21, "nachgearbeitet": 3, "offen": 1, "verworfen": 0}
-    assert bericht["begriffe_fragwuerdig"] == []
+    assert bericht["zahlen"] == {"bloecke": 25, "uebersetzt": 24, "bestanden": 21, "nachgearbeitet": 3, "offen": 1, "verworfen": 0,
+                                 "repariert": 0}
+    assert bericht["begriffe_fragwuerdig"] == [] and bericht["repariert"] == []
     [offen] = bericht["offen"]
     assert {k: offen[k] for k in ("kennung", "kapitel", "ort", "seite_original", "original", "deutsch")} == {
         "kennung": "2.2", "kapitel": 2, "ort": "Getting Started, Absatz 2", "seite_original": None, "original": ZAHL, "deutsch": FALSCHE_ZAHL}
@@ -123,8 +129,8 @@ async def _block_aendern(test_db, fid: int, kennung: str, **spalten) -> None:
 async def test_geaenderte_pruefungen_pruefen_neu_ohne_neu_zu_uebersetzen(client, test_db, uebersetzer):
     """Eine fertige Fassung, geprüft mit einer älteren Fassung der Prüfungen: der nächste Durchgang prüft alles der KI noch
     einmal fest. Was besteht, bleibt; was neu durchfällt (hier die Anrede), geht mit vollen Nacharbeiten in die Nacharbeit;
-    eine offene Stelle, die nur an den festen Prüfungen scheiterte, geht zum Prüfer; ein Mangel des Prüfers bleibt offen;
-    Texte des Nutzers bleiben, wie sie sind. Übersetzt wird dabei nichts neu."""
+    eine offene Stelle, die nur an den festen Prüfungen oder an einem nie bestätigten Einwand scheiterte, geht zum Prüfer;
+    ein bestätigter Mangel des Prüfers bleibt offen; Texte des Nutzers bleiben, wie sie sind. Übersetzt wird nichts neu."""
     u = uebersetzer
     buch = await probebuch(test_db)
     fid = await starten(client, buch)
@@ -133,10 +139,13 @@ async def test_geaenderte_pruefungen_pruefen_neu_ohne_neu_zu_uebersetzen(client,
 
     sie = "Rufe <x1/> auf, bevor Sie die <t2>Pumpe</t2> starten, &amp; lies im <t3>nächsten Kapitel</t3> die Einzelheiten."
     await _block_aendern(test_db, fid, "2.3", uebersetzung=sie, nacharbeiten=2)
-    await _block_aendern(test_db, fid, "3.2", stand="offen", nacharbeiten=2,
+    await _block_aendern(test_db, fid, "3.2", stand="offen", nacharbeiten=2, versuche=3,
                          befunde=[Befund(art="marken", quelle="pruefung", text="Fremde Auszeichnung im Text", stelle="<")])
-    await _block_aendern(test_db, fid, "3.4", stand="offen", nacharbeiten=2,
-                         befunde=[Befund(art="sinn", quelle="ki", text="Der Kasten ist nicht erhöht", stelle="erhöhter")])
+    await _block_aendern(test_db, fid, "3.4", stand="offen", nacharbeiten=2, versuche=3,
+                         befunde=[Befund(art="sinn", quelle="ki", text="Der Kasten ist nicht erhöht", stelle="erhöhter",
+                                         bestaetigung="Das Original sagt raised")])
+    await _block_aendern(test_db, fid, "3.3", stand="offen", nacharbeiten=2, versuche=3,                     # nie bestätigt: geht zum Prüfer
+                         befunde=[Befund(art="sinn", quelle="ki", text="Ein Beet ist kein Feld", stelle="Beet")])
     von_hand = "Hier sehen Sie einen Garten im Morgengrauen."
     await _block_aendern(test_db, fid, "2.13", stand="gesetzt", uebersetzung=von_hand)
     await test_db.execute("UPDATE fassung SET geprueft_mit = '1:0.8:1.8:60' WHERE id = ?", (fid,))
@@ -152,13 +161,17 @@ async def test_geaenderte_pruefungen_pruefen_neu_ohne_neu_zu_uebersetzen(client,
     assert (zeilen["2.3"].stand, zeilen["2.3"].nacharbeiten) == ("nachgearbeitet", 1) and " du " in zeilen["2.3"].uebersetzung
     assert (zeilen["3.2"].stand, zeilen["3.2"].befunde, zeilen["3.2"].geprueft) == ("nachgearbeitet", [], True)
     assert zeilen["3.4"].stand == "offen" and zeilen["3.4"].befunde[0].quelle == "ki"
+    assert (zeilen["3.3"].stand, zeilen["3.3"].befunde, zeilen["3.3"].geprueft) == ("nachgearbeitet", [], True)
+    assert (zeilen["3.3"].nacharbeiten, zeilen["3.2"].nacharbeiten) == (0, 0)        # zurück beim Prüfer mit vollen Nacharbeiten
     assert (zeilen["2.13"].stand, zeilen["2.13"].uebersetzung) == ("gesetzt", von_hand)
     assert zeilen["2.1"].stand == "bestanden"
     neu = u.beantwortet[vorher:]
     assert [a for a, _ in neu if a != "pruefung"] == ["nacharbeit"]                              # nichts neu übersetzt
     assert neu[0][1]["beanstandet"]["maengel"] == ['Der Leser wird mit "du" angesprochen, hier steht "Sie" (Stelle: bevor Sie)']
     assert sorted(p["deutsch"] for _, d in neu if _ == "pruefung" for p in d["paare"]) == sorted(
-        [DEUTSCH["Call <x1/> before you start the <t2>pump</t2> & check the <t3>next chapter</t3> for details."], DEUTSCH["Water early, water deep."]])
+        [DEUTSCH["Call <x1/> before you start the <t2>pump</t2> & check the <t3>next chapter</t3> for details."], DEUTSCH["Water early, water deep."],
+         DEUTSCH["Bed"]])
+    assert (await fassungen.holen(fid)).pruefer_verworfen == 0          # der nie bestätigte Einwand ist nicht verworfen, er ging neu zum Prüfer
 
 
 async def test_geaenderte_regeln_kennzeichnen_fragwuerdige_begriffe_und_verwerfen_einwaende(client, test_db, uebersetzer):
@@ -175,7 +188,7 @@ async def test_geaenderte_regeln_kennzeichnen_fragwuerdige_begriffe_und_verwerfe
         (buch, "beds", "Beete", 0, "ki", "üblich"),                               # steht nur in Überschriften: kein Begriff
         (buch, "tank", "", 1, "hand", "so gewollt"),                              # von Hand: fasst keine Regel an
     ])
-    await _block_aendern(test_db, fid, "3.2", stand="offen", nacharbeiten=2,
+    await _block_aendern(test_db, fid, "3.2", stand="offen", nacharbeiten=2, versuche=3,
                          befunde=[Befund(art="begriff", quelle="ki", text="Water muss laut Begriffsliste englisch bleiben")])
     await test_db.execute("UPDATE fassung SET geprueft_mit = '2:0.8:1.8:60' WHERE id = ?", (fid,))
     await test_db.commit()
@@ -198,6 +211,53 @@ async def test_geaenderte_regeln_kennzeichnen_fragwuerdige_begriffe_und_verwerfe
     assert bericht["zahlen"]["verworfen"] == 2                                               # der alte Einwand und der neue
     assert [b["englisch"] for b in bericht["begriffe_fragwuerdig"]] == ["beds", "Watering"]
     assert (await fassungen.holen(fid)).stand == "fertig"
+
+
+async def test_mehrfachpruefung_verwirft_nicht_bestaetigte_einwaende(client, test_db, uebersetzer):
+    """Ein Einwand des Prüfers, den die zweite Prüfung nicht bestätigt, schickt nichts zur Nacharbeit: der Block besteht, der
+    Einwand wird verworfen und gezählt. Ein Einwand "englisch" gegen einen Begriff, der englisch bleibt, braucht keine
+    zweite Anfrage."""
+    u = uebersetzer
+    u.maengel[DEUTSCH[MANGEL]] = {"in_ordnung": False, "art": "sinn", "grund": "erhöht heißt hoch", "stelle": "erhöhter"}
+    u.unbestaetigt.add(DEUTSCH[MANGEL])
+    pumpe = DEUTSCH["Call <x1/> before you start the <t2>pump</t2> & check the <t3>next chapter</t3> for details."]
+    u.maengel[pumpe] = {"in_ordnung": False, "art": "englisch", "grund": "Pumpe ist englisch", "stelle": "Pumpe"}
+    buch = await probebuch(test_db)
+    fid = await starten(client, buch)
+    await Uebersetzungslauf(ki).runde()
+
+    zeilen = {z.kennung: z for z in await fassungen.bloecke(fid)}
+    assert (zeilen["3.4"].stand, zeilen["3.4"].befunde, zeilen["3.4"].nacharbeiten) == ("bestanden", [], 0)
+    assert (zeilen["2.3"].stand, zeilen["2.3"].nacharbeiten) == ("bestanden", 0)
+    assert u.gesendet("nacharbeit") == []
+    assert [f["deutsch"] for a, d in u.beantwortet if a == "bestaetigung" for f in d["faelle"]] == [DEUTSCH[MANGEL]]
+    assert (await client.get(f"/api/fassungen/{fid}/bericht")).json()["zahlen"]["verworfen"] == 2
+
+
+async def test_doppelte_marke_wird_repariert_und_steht_im_bericht(client, test_db, uebersetzer):
+    """Eine Antwort, die eine Auszeichnungsmarke doppelt setzt, wird vor den Prüfungen verlustfrei berichtigt: die Stelle, die
+    zum Original passt, behält die Marke, die andere nur den Text. Der Block besteht ohne Nacharbeit, die Reparatur steht am
+    Block und im Bericht; nichts geschieht still."""
+    u = uebersetzer
+    doppelt = "Prüfe den <t1>Filter <t2>zweimal</t2></t1> pro Woche, den <t1>Filter</t1> genau."
+    u.tabelle[MARKE] = doppelt
+    buch = await probebuch(test_db)
+    fid = await starten(client, buch)
+    await Uebersetzungslauf(ki).runde()
+
+    z = await fassungen.block(fid, "2.8")
+    assert (z.stand, z.nacharbeiten, z.uebersetzung) == ("bestanden", 0, "Prüfe den <t1>Filter <t2>zweimal</t2></t1> pro Woche, den Filter genau.")
+    assert [(r.art, r.stelle) for r in z.reparaturen] == [("marken", "Filter")] and "doppelt" in z.reparaturen[0].text
+    assert MARKE not in u.gesendet("nacharbeit")
+    bericht = (await client.get(f"/api/fassungen/{fid}/bericht")).json()
+    assert bericht["zahlen"]["repariert"] == 1 and bericht["offen"] == []
+    [stelle] = bericht["repariert"]
+    assert {k: stelle[k] for k in ("kennung", "ort", "original", "deutsch")} == {
+        "kennung": "2.8", "ort": "Getting Started, Listenpunkt 8", "original": MARKE, "deutsch": z.uebersetzung}
+    assert stelle["reparaturen"] == [r.model_dump() for r in z.reparaturen]
+
+    await client.post(f"/api/fassungen/{fid}/bloecke/2.8", json={"aktion": "neu"})            # neu übersetzen nimmt sie weg
+    assert (await fassungen.block(fid, "2.8")).reparaturen == []
 
 
 async def test_zwischenspeicher_uebersetzt_wiederkehrendes_einmal(client, test_db, uebersetzer):

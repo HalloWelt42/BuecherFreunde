@@ -12,11 +12,12 @@ from backend.app.uebersetzung.bloecke import Art
 #: Arten von Befunden: die zehn festen Prüfungen, eine unbrauchbare Antwort, die Arten des KI-Prüfers (begriff und grammatik
 #: stehen nur noch in Befunden aus der Zeit, als der Prüfer auch darüber urteilte; sie gelten nicht mehr, pruefer.py)
 Befundart = Literal["marken", "zahlen", "einheiten", "bezeichner", "begriffe", "sprache", "laenge", "vollstaendigkeit", "zeichen",
-                    "anrede", "antwort", "sinn", "ausgelassen", "hinzugefuegt", "begriff", "grammatik", "pruefer"]
+                    "anrede", "antwort", "sinn", "ausgelassen", "hinzugefuegt", "englisch", "begriff", "grammatik", "pruefer"]
 #: wie der Leser angesprochen wird; ein Buch bleibt durchgehend bei einer
 Anrede = Literal["du", "Sie"]
-#: worüber der KI-Prüfer urteilt; Begriffe, Schreibung, Zeichen und Anrede prüfen die festen Prüfungen
-KI_ARTEN: tuple[Befundart, ...] = ("sinn", "ausgelassen", "hinzugefuegt")
+#: worüber der KI-Prüfer urteilt (englisch: Englisch stehen geblieben, wo das Deutsche eine übliche Form hat); Begriffe,
+#: Schreibung, Zeichen und Anrede prüfen die festen Prüfungen
+KI_ARTEN: tuple[Befundart, ...] = ("sinn", "ausgelassen", "hinzugefuegt", "englisch")
 
 
 class Befund(BaseModel):
@@ -24,6 +25,16 @@ class Befund(BaseModel):
     quelle: Literal["pruefung", "ki"]
     text: str                                        # ein deutscher Satz
     stelle: str = ""                                 # das beanstandete Stück im deutschen Text
+    bestaetigung: str = ""                           # Einwand des Prüfers: was die zweite Prüfung dazu sagt; leer: nicht bestätigt
+
+
+class Reparatur(BaseModel):
+    """Was nach einer Antwort der KI eindeutig und verlustfrei berichtigt wurde, bevor die Prüfungen sie sehen (pruefen.py):
+    eine Auszeichnungsmarke, die doppelt stand oder die es im Original nicht gibt, verlor die Marke, nie den Text. Steht als
+    Hinweis am Block und im Prüfbericht, damit nichts still geschieht."""
+    art: Literal["marken"] = "marken"
+    text: str                                        # ein deutscher Satz
+    stelle: str = ""                                 # der Text, der die Marke verlor
 
 
 class Block(BaseModel):

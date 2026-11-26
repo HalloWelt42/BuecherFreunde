@@ -1,5 +1,6 @@
 """Für die Tests der Übersetzung (BF-71): das Probebuch im Bestand (als EPUB und als PDF) und die Leitstelle als nachgestellter
-Übersetzer, der nach der Art der Anfrage antwortet (Name der Antwortform: begriffe, uebersetzung, nacharbeit, pruefung)."""
+Übersetzer, der nach der Art der Anfrage antwortet (Name der Antwortform: begriffe, uebersetzung, nacharbeit, pruefung,
+bestaetigung)."""
 
 from __future__ import annotations
 
@@ -117,6 +118,7 @@ class Uebersetzer:
         self.tabelle: dict[str, str] = DEUTSCH | DEUTSCH_PDF
         self.nacharbeit: dict[str, list[str]] = {}               # Vorlage -> je Nacharbeit eine Übersetzung
         self.maengel: dict[str, dict] = {}                       # Übersetzung -> ein Mangel des Prüfers (einmal)
+        self.unbestaetigt: set[str] = set()                      # Übersetzungen, deren Einwand die zweite Prüfung verwirft
         self.kaputt: set[str] = set()                            # Arten, deren nächste Antwort einen Text zu wenig hat
         self.vorschlag: object = {"begriffe": VORSCHLAG}
         self.unterbrechen: Callable[[str, dict], bool] = lambda art, daten: False   # True: Verbindung bricht ab
@@ -142,6 +144,9 @@ class Uebersetzer:
             return self.vorschlag
         if art == "pruefung":
             return {"urteile": [self.maengel.pop(p["deutsch"], IN_ORDNUNG) for p in daten["paare"]]}
+        if art == "bestaetigung":
+            return {"entscheidungen": [{"grund": "Die Stelle sagt etwas anderes als das Original",
+                                        "berechtigt": f["deutsch"] not in self.unbestaetigt} for f in daten["faelle"]]}
         if art == "nacharbeit":
             [vorlage] = daten["bloecke"]
             liste = self.nacharbeit.get(vorlage)

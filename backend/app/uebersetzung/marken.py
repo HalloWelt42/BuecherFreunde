@@ -4,7 +4,11 @@ Platzhalter `<x2/>`, dessen Inhalt nie zum Modell geht. Die Nummern zählen in d
 Nummer, innere Marken tragen höhere Nummern als die äußere.
 
 Eine Übersetzung taugt nur, wenn sie jede Marke der Vorlage genau einmal trägt, in derselben Schachtelung und ohne fremde
-Auszeichnung; die Stellung im Satz darf sich ändern.
+Auszeichnung; die Stellung im Satz darf sich ändern. Was dabei eindeutig und verlustfrei zu berichtigen ist, berichtigt
+`reparieren`: eine Klammermarke, die doppelt steht, behält nur das Vorkommen, das am besten zum Original passt (gleicher
+umschlossener Text, sonst das erste), die übrigen und jedes Stück von ihr ohne Gegenstück verlieren die Marke; eine
+Klammermarke, die es im Original nicht gibt, verliert sie auch. Der Text bleibt immer. Platzhalter fasst das nie an: einer,
+der fehlt oder fremd ist, bleibt ein Befund.
 
 Text steht in den Vorlagen und den gespeicherten Übersetzungen mit &lt; &gt; &amp;. Das Modell sieht ihn als Zeichen
 (`fuer_modell`: "if age < 18"), nur die Marken sind Auszeichnung; seine Antwort kommt mit `aus_modell` wieder in die
@@ -44,11 +48,18 @@ Teil = str | Klammer | Platz
 
 
 class MarkenFehler(ValueError):
-    """Die Marken einer Übersetzung passen nicht zur Vorlage; `stelle` ist das Stück, an dem es auffiel."""
+    """Die Marken einer Übersetzung passen nicht zur Vorlage; `stelle` ist das Stück, an dem es auffiel, `nr` die Marke."""
 
-    def __init__(self, grund: str, stelle: str = "") -> None:
+    def __init__(self, grund: str, stelle: str = "", nr: int = 0) -> None:
         super().__init__(grund)
-        self.grund, self.stelle = grund, stelle
+        self.grund, self.stelle, self.nr = grund, stelle, nr
+
+
+@dataclass(frozen=True)
+class Berichtigung:
+    """Eine Marke, die `reparieren` weggenommen hat: warum, und der Text, der sie trug (oder das Stück ohne Gegenstück)."""
+    grund: str
+    stelle: str
 
 
 def plan(vorlage: str) -> dict[int, Marke]:
@@ -84,16 +95,16 @@ def lesen(plan_: dict[int, Marke], text: str) -> list[Teil]:
         zu, t, x = m.group(1), m.group(2), m.group(3)
         n = int(t or x)
         if n not in plan_:
-            raise MarkenFehler(f"Die Marke {n} gibt es im Original nicht", m.group(0))
+            raise MarkenFehler(f"Die Marke {n} gibt es im Original nicht", m.group(0), n)
         if zu:
             if stapel[-1][0] != n:
-                raise MarkenFehler(f"Die Marke {n} ist falsch geschlossen", m.group(0))
+                raise MarkenFehler(f"Die Marke {n} ist falsch geschlossen", m.group(0), n)
             stapel.pop()
             continue
         if n in gesehen:
-            raise MarkenFehler(f"Die Marke {n} steht doppelt da", m.group(0))
+            raise MarkenFehler(f"Die Marke {n} steht doppelt da", m.group(0), n)
         if bool(x) != plan_[n].atom:
-            raise MarkenFehler(f"Die Marke {n} hat die falsche Art", m.group(0))
+            raise MarkenFehler(f"Die Marke {n} hat die falsche Art", m.group(0), n)
         gesehen[n] = stapel[-1][0]
         if x:
             stapel[-1][1].append(Platz(n))
@@ -104,15 +115,96 @@ def lesen(plan_: dict[int, Marke], text: str) -> list[Teil]:
     if pos < len(text):
         stapel[-1][1].append(text[pos:])
     if len(stapel) != 1:
-        raise MarkenFehler(f"Die Marke {stapel[-1][0]} ist nicht geschlossen", f"<t{stapel[-1][0]}>")
+        raise MarkenFehler(f"Die Marke {stapel[-1][0]} ist nicht geschlossen", f"<t{stapel[-1][0]}>", stapel[-1][0])
     fehlt = sorted(set(plan_) - set(gesehen))
     if fehlt:
         n = fehlt[0]
-        raise MarkenFehler(f"Die Marke {n} fehlt", f"<x{n}/>" if plan_[n].atom else f"<t{n}>")
+        raise MarkenFehler(f"Die Marke {n} fehlt", f"<x{n}/>" if plan_[n].atom else f"<t{n}>", n)
     anders = sorted(n for n in gesehen if gesehen[n] != plan_[n].oben)
     if anders:
-        raise MarkenFehler(f"Die Marke {anders[0]} ist anders geschachtelt", f"<t{anders[0]}>" if not plan_[anders[0]].atom else f"<x{anders[0]}/>")
+        n = anders[0]
+        raise MarkenFehler(f"Die Marke {n} ist anders geschachtelt", f"<t{n}>" if not plan_[n].atom else f"<x{n}/>", n)
     return wurzel
+
+
+def _klammern(stuecke: list[re.Match[str]], nr: int) -> tuple[list[tuple[int, int]], list[int]]:
+    """Die Vorkommen einer Klammermarke als Paare (Stelle von Anfang und Ende in `stuecke`), jedes Ende zum letzten offenen
+    Anfang; dazu die Stücke ohne Gegenstück."""
+    paare: list[tuple[int, int]] = []
+    offen: list[int] = []
+    allein: list[int] = []
+    for i, m in enumerate(stuecke):
+        if m.group(2) is None or int(m.group(2)) != nr:
+            continue
+        if not m.group(1):
+            offen.append(i)
+        elif offen:
+            paare.append((offen.pop(), i))
+        else:
+            allein.append(i)
+    return sorted(paare), sorted(allein + offen)
+
+
+def _umschlossen(text: str, stuecke: list[re.Match[str]], paar: tuple[int, int]) -> str:
+    return klartext(text[stuecke[paar[0]].end():stuecke[paar[1]].start()])
+
+
+def _am_besten(text: str, stuecke: list[re.Match[str]], paare: list[tuple[int, int]], original: str) -> tuple[int, int]:
+    """Das Vorkommen, das zum Original passt: derselbe umschlossene Text, dann ohne Unterschied von Groß und Klein, sonst das
+    erste."""
+    for gleich in (lambda a: a == original, lambda a: a.casefold() == original.casefold()):
+        treffer = next((p for p in paare if gleich(_umschlossen(text, stuecke, p))), None)
+        if treffer is not None:
+            return treffer
+    return paare[0]
+
+
+def reparieren(vorlage: str, text: str) -> tuple[str, list[Berichtigung]]:
+    """Die Übersetzung mit berichtigten Klammermarken (siehe oben) und was weggenommen wurde; unverändert, wenn die Marken
+    passen oder nichts eindeutig zu berichtigen ist. Was danach noch nicht passt, meldet die Prüfung."""
+    plan_ = plan(vorlage)
+    try:
+        lesen(plan_, text)
+        return text, []
+    except MarkenFehler:
+        pass
+    stuecke = list(MARKE.finditer(text))
+    weg: set[int] = set()                              # Stellen in `stuecke`, die wegfallen
+    berichtigt: list[tuple[int, Berichtigung]] = []     # je weggenommenes Vorkommen, mit der Stelle seines Anfangs
+    for nr in sorted({int(m.group(2)) for m in stuecke if m.group(2)}):
+        paare, allein = _klammern(stuecke, nr)
+        if nr not in plan_ or plan_[nr].atom:
+            grund, bleibt = f"Die Marke {nr} gibt es im Original nicht: entfernt, der Text bleibt", None
+        elif paare and len(paare) + len(allein) > 1:
+            grund = (f"Die Marke {nr} stand doppelt da: sie bleibt nur an der Stelle, die zum Original passt; hier fiel sie weg, "
+                     "der Text bleibt")
+            umschlossen = re.search(rf"<t{nr}>(.*?)</t{nr}>", vorlage, re.S)
+            bleibt = _am_besten(text, stuecke, paare, klartext(umschlossen.group(1)) if umschlossen else "")
+        else:
+            continue
+        for paar in paare:
+            if paar != bleibt:
+                weg.update(paar)
+                berichtigt.append((paar[0], Berichtigung(grund, _umschlossen(text, stuecke, paar))))
+        weg.update(allein)
+        berichtigt += [(i, Berichtigung(grund, stuecke[i].group(0))) for i in allein]
+    if not weg:
+        return text, []
+    aus, pos = [], 0
+    for i in sorted(weg):
+        aus.append(text[pos:stuecke[i].start()])
+        pos = stuecke[i].end()
+    return "".join(aus) + text[pos:], [b for _, b in sorted(berichtigt, key=lambda e: e[0])]
+
+
+def umgebung(vorlage: str, nr: int, woerter: int = 3) -> str:
+    """Wo ein Platzhalter im Original steht, mit ein paar Wörtern davor und dahinter, wie das Modell es sieht."""
+    m = re.search(rf"<x{nr}/>", vorlage)
+    if m is None:
+        return ""
+    vor = re.search(rf"(?:\S+\s*){{0,{woerter}}}$", fuer_modell(vorlage[:m.start()]))
+    nach = re.match(rf"(?:\s*\S+){{0,{woerter}}}", fuer_modell(vorlage[m.end():]))
+    return ((vor.group(0) if vor else "") + m.group(0) + (nach.group(0) if nach else "")).strip()
 
 
 def klartext(text: str, platz: str = " ") -> str:

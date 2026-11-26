@@ -16,7 +16,7 @@ from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.models.fassung import (
     IN_ARBEIT, MIT_DEUTSCH, Bericht, FassungEintrag, FassungStand, Folgen, KapitelStand, LaufEintrag, OffeneStelle, Station, Stationsstand,
-    Zahlen,
+    Stelle, Zahlen,
 )
 from backend.app.quellen.sprache import kuerzel
 from backend.app.services import begriffsliste, fassung_ablage, fassungen
@@ -56,10 +56,15 @@ async def tempo(f: FassungZeile | None = None) -> float:
 
 # -- Zahlen -------------------------------------------------------------------------------------------------------------------
 
+def repariert(z: BlockZeile) -> bool:
+    """Ein Block, der deutsch in der Fassung steht und dessen Marken berichtigt sind; er steht im Bericht."""
+    return z.stand in MIT_DEUTSCH and bool(z.reparaturen)
+
+
 def zahlen_aus(zeilen: list[BlockZeile], verworfen: int = 0) -> Zahlen:
     n = Counter(z.stand for z in zeilen)
     return Zahlen(bloecke=len(zeilen), uebersetzt=sum(n[s] for s in MIT_DEUTSCH), bestanden=n["bestanden"],
-                  nachgearbeitet=n["nachgearbeitet"], offen=n["offen"], verworfen=verworfen)
+                  nachgearbeitet=n["nachgearbeitet"], offen=n["offen"], verworfen=verworfen, repariert=sum(map(repariert, zeilen)))
 
 
 def _kapitel_fertig(zeilen: list[BlockZeile]) -> bool:
@@ -205,14 +210,19 @@ async def stand(f: FassungZeile) -> FassungStand:
 
 # -- Bericht ------------------------------------------------------------------------------------------------------------------
 
+def _stelle(z: BlockZeile, titel: dict[int, str]) -> Stelle:
+    return Stelle(kennung=z.kennung, kapitel=z.kapitel, ort=f"{titel.get(z.kapitel, z.kapitel)}, {ARTWORT.get(z.art, z.art)} {z.nr}",
+                  seite_original=z.seite, seite_gedruckt=z.seite_gedruckt, original=z.vorlage, deutsch=z.uebersetzung,
+                  reparaturen=z.reparaturen)
+
+
 async def bericht(f: FassungZeile) -> Bericht:
-    """Zahlen, jede offene Stelle und die fragwürdigen Einträge der Begriffsliste (sie gelten nicht, bis der Nutzer entscheidet)."""
+    """Zahlen, jede offene Stelle, jede Stelle mit berichtigten Marken und die fragwürdigen Einträge der Begriffsliste (sie
+    gelten nicht, bis der Nutzer entscheidet)."""
     zeilen = await fassungen.bloecke(f.id)
     titel = {k.nr: k.titel for k in await fassungen.kapitel(f.id)}
-    offen = [OffeneStelle(kennung=z.kennung, kapitel=z.kapitel, ort=f"{titel.get(z.kapitel, z.kapitel)}, {ARTWORT.get(z.art, z.art)} {z.nr}",
-                          seite_original=z.seite, seite_gedruckt=z.seite_gedruckt, original=z.vorlage, deutsch=z.uebersetzung,
-                          befunde=z.befunde)
-             for z in zeilen if z.stand == "offen"]
+    offen = [OffeneStelle(**_stelle(z, titel).model_dump(), befunde=z.befunde) for z in zeilen if z.stand == "offen"]
     fragwuerdig = [e for e in await begriffsliste.liste(f.buch_id) if e.fragwuerdig]
-    return Bericht(zahlen=zahlen_aus(zeilen, f.pruefer_verworfen), offen=offen, begriffe_fragwuerdig=fragwuerdig)
+    return Bericht(zahlen=zahlen_aus(zeilen, f.pruefer_verworfen), offen=offen, repariert=[_stelle(z, titel) for z in zeilen if repariert(z)],
+                   begriffe_fragwuerdig=fragwuerdig)
 

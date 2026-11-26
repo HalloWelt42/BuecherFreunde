@@ -8,6 +8,8 @@ BücherFreunde überall zeigt (services/seiten.py).
 Stand einer Fassung: laeuft, pause, teilweise (abgebrochen, Fertiges bleibt), fertig, fehler (ein Mensch ist gefragt).
 Stand eines Blocks: wartet, uebersetzt (feste Prüfungen bestanden, wartet auf den Prüfer), nacharbeit, bestanden,
 nachgearbeitet, offen (im Original, im Bericht), angenommen (offen und vom Nutzer angenommen), gesetzt (Text des Nutzers).
+Die Reparaturen eines Blocks gehören zu seiner Übersetzung: eine neue Antwort der KI bringt ihre eigenen mit, ein Text des
+Nutzers und neu Übersetzen nehmen sie weg.
 
 `aenderungen` zählt jede Änderung an Blöcken, `gesetzt` den Stand, den die abgelegte Datei zeigt; weichen sie ab, wird neu
 gesetzt und abgelegt. `geprueft_mit` nennt die Fassung der festen Prüfungen samt Grenzen, mit der die Blöcke geprüft sind;
@@ -19,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections.abc import Sequence
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
@@ -31,7 +34,7 @@ from backend.app.services.storage import get_original_file
 from backend.app.uebersetzung import marken
 from backend.app.uebersetzung.anweisungen import FASSUNG as ANWEISUNG
 from backend.app.uebersetzung.begriffe import kommt_vor
-from backend.app.uebersetzung.modelle import Anrede, Befund, Begriff, Block, Laengengrenzen
+from backend.app.uebersetzung.modelle import Anrede, Befund, Begriff, Block, Laengengrenzen, Reparatur
 from backend.app.uebersetzung.pruefen import FASSUNG as PRUEF_FASSUNG
 from backend.app.uebersetzung.pruefen import pruefen
 from backend.app.uebersetzung.setzen import Hinweis, Satz, Uebersetzt
@@ -114,6 +117,7 @@ class BlockZeile(BaseModel):
     uebersetzung: str = ""
     stand: Blockstand = "wartet"
     befunde: list[Befund] = Field(default_factory=list)
+    reparaturen: list[Reparatur] = Field(default_factory=list)   # was an der Übersetzung berichtigt ist (pruefen.reparieren)
     versuche: int = 0
     nacharbeiten: int = 0
     geprueft: bool = False
@@ -204,8 +208,8 @@ async def naechste(ausser: set[int]) -> FassungZeile | None:
 
 
 def _block(z: dict) -> BlockZeile:
-    return BlockZeile(**{**z, "befunde": json.loads(z["befunde"] or "[]"), "geprueft": bool(z["geprueft"]),
-                         "lage": json.loads(z["lage"] or "[]")})
+    return BlockZeile(**{**z, "befunde": json.loads(z["befunde"] or "[]"), "reparaturen": json.loads(z["reparaturen"] or "[]"),
+                         "geprueft": bool(z["geprueft"]), "lage": json.loads(z["lage"] or "[]")})
 
 
 async def bloecke(fid: int, kapitel: int | None = None, staende: tuple[str, ...] | None = None) -> list[BlockZeile]:
@@ -267,13 +271,17 @@ async def zeit_merken(fid: int, kapitel_nr: int | None, sekunden: float) -> None
 
 
 _BLOCKSPALTEN = ("kapitel", "nr", "art", "stufe", "pruefsumme", "vorlage", "woerter", "uebersetzung", "stand", "befunde",
-                 "versuche", "nacharbeiten", "geprueft", "seite", "seite_gedruckt", "lage")
+                 "reparaturen", "versuche", "nacharbeiten", "geprueft", "seite", "seite_gedruckt", "lage")
+
+
+def _als_json(liste: Sequence[BaseModel]) -> str:
+    return json.dumps([x.model_dump() for x in liste], ensure_ascii=False)
 
 
 def _werte(fid: int, z: BlockZeile) -> tuple:
     return (fid, z.kennung, z.kapitel, z.nr, z.art, z.stufe, z.pruefsumme, z.vorlage, z.woerter, z.uebersetzung, z.stand,
-            json.dumps([b.model_dump() for b in z.befunde], ensure_ascii=False), z.versuche, z.nacharbeiten, int(z.geprueft),
-            z.seite, z.seite_gedruckt, json.dumps(z.lage) if z.lage else "")
+            _als_json(z.befunde), _als_json(z.reparaturen), z.versuche, z.nacharbeiten, int(z.geprueft), z.seite, z.seite_gedruckt,
+            json.dumps(z.lage) if z.lage else "")
 
 
 async def bloecke_merken(fid: int, zeilen: list[BlockZeile]) -> None:
@@ -282,10 +290,10 @@ async def bloecke_merken(fid: int, zeilen: list[BlockZeile]) -> None:
         return
     zeit = jetzt()
     async with db.einheit():
-        await db.execute_many("""UPDATE uebersetzung_block SET uebersetzung = ?, stand = ?, befunde = ?, versuche = ?,
+        await db.execute_many("""UPDATE uebersetzung_block SET uebersetzung = ?, stand = ?, befunde = ?, reparaturen = ?, versuche = ?,
                                  nacharbeiten = ?, geprueft = ?, geaendert_am = ? WHERE fassung_id = ? AND kennung = ?""",
-                              [(z.uebersetzung, z.stand, json.dumps([b.model_dump() for b in z.befunde], ensure_ascii=False),
-                                z.versuche, z.nacharbeiten, int(z.geprueft), zeit, fid, z.kennung) for z in zeilen])
+                              [(z.uebersetzung, z.stand, _als_json(z.befunde), _als_json(z.reparaturen), z.versuche, z.nacharbeiten,
+                                int(z.geprueft), zeit, fid, z.kennung) for z in zeilen])
         await db.execute("UPDATE fassung SET aenderungen = aenderungen + 1, geaendert_am = ? WHERE id = ?", (jetzt(), fid))
 
 
@@ -295,7 +303,8 @@ def _uebernommen(neu: Block, alt: BlockZeile | None) -> BlockZeile:
                        lage=[round(v, 1) for v in neu.lage] if neu.lage else [])
     if alt is None:
         return zeile
-    return zeile.model_copy(update={k: getattr(alt, k) for k in ("uebersetzung", "stand", "befunde", "versuche", "nacharbeiten", "geprueft")})
+    return zeile.model_copy(update={k: getattr(alt, k) for k in ("uebersetzung", "stand", "befunde", "reparaturen", "versuche", "nacharbeiten",
+                                                                  "geprueft")})
 
 
 async def abgleichen(fid: int, werk: Werk) -> None:
@@ -383,6 +392,11 @@ async def verworfen_zaehlen(fid: int, n: int) -> None:
 
 # -- Aktionen an einem Block --------------------------------------------------------------------------------------------------
 
+def wartend(z: BlockZeile) -> BlockZeile:
+    """Ein Block, der wieder auf seine Übersetzung wartet: ohne Text, Befunde und Reparaturen, mit allen Versuchen."""
+    return z.model_copy(update={"uebersetzung": "", "stand": "wartet", "befunde": [], "reparaturen": [], "versuche": 0, "nacharbeiten": 0,
+                                "geprueft": False})
+
 async def _block_aendern(fid: int, z: BlockZeile) -> BlockZeile:
     await bloecke_merken(fid, [z])
     return z
@@ -393,8 +407,7 @@ async def block_neu(f: FassungZeile, kennung: str) -> BlockZeile | None:
     z = await block(f.id, kennung)
     if z is None:
         return None
-    neu = await _block_aendern(f.id, z.model_copy(update={"uebersetzung": "", "stand": "wartet", "befunde": [], "versuche": 0,
-                                                            "nacharbeiten": 0, "geprueft": False}))
+    neu = await _block_aendern(f.id, wartend(z))
     await stand_setzen(f.id, "laeuft", nur_aus=("fertig",))
     return neu
 
@@ -425,7 +438,7 @@ async def block_setzen(f: FassungZeile, kennung: str, text: str, begriffe: list[
     befunde = pruefen(z.vorlage, text, begriffe, grenzen(), f.anrede)
     if befunde:
         raise Beanstandet(befunde)
-    return await _block_aendern(f.id, z.model_copy(update={"uebersetzung": text, "stand": "gesetzt", "befunde": []}))
+    return await _block_aendern(f.id, z.model_copy(update={"uebersetzung": text, "stand": "gesetzt", "befunde": [], "reparaturen": []}))
 
 
 async def neu_markieren(buch_id: int | None, englisch: list[str], ausser_buecher: frozenset[int] = frozenset()) -> int:
@@ -444,8 +457,7 @@ async def neu_markieren(buch_id: int | None, englisch: list[str], ausser_buecher
             continue
         betroffen = [z for z in await bloecke(f["id"], staende=VON_DER_KI)
                      if any(kommt_vor(e, marken.klartext(z.vorlage)) for e in begriffe)]
-        await bloecke_merken(f["id"], [z.model_copy(update={"uebersetzung": "", "stand": "wartet", "befunde": [], "versuche": 0,
-                                                            "nacharbeiten": 0, "geprueft": False}) for z in betroffen])
+        await bloecke_merken(f["id"], [wartend(z) for z in betroffen])
         if betroffen:
             await stand_setzen(f["id"], "laeuft", nur_aus=("fertig",))
         gesamt += len(betroffen)
