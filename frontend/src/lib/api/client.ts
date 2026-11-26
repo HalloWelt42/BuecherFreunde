@@ -200,12 +200,7 @@ export class ApiError extends Error {
 /**
  * Basis-Fetch mit Auth-Header und Fehlerbehandlung.
  */
-/** Wie eine Anfrage mit 401 umgeht: wer selbst Name und Kennwort prüfen lässt (PIN vergessen), meldet das Gerät nicht ab */
-export interface Anfrageart {
-  anmeldungGeprueft?: boolean;
-}
-
-export async function anfrage(path: string, options: RequestInit = {}, art: Anfrageart = {}): Promise<Response> {
+export async function anfrage(path: string, options: RequestInit = {}): Promise<Response> {
   const headers: Record<string, string> = { ...(options.headers as Record<string, string>) };
 
   const token = getToken();
@@ -247,7 +242,7 @@ export async function anfrage(path: string, options: RequestInit = {}, art: Anfr
     // Profil, bleibt das Gerät angemeldet und es geht zur Profilwahl.
     const profilFehlt = response.status === 401 && (data?.code === PROFIL_WAEHLEN || /\bProfil\b/.test(response.headers?.get?.("WWW-Authenticate") ?? ""));
     if (profilFehlt) onProfilRequired?.();
-    else if (response.status === 401 && onAuthRequired && !art.anmeldungGeprueft) {
+    else if (response.status === 401 && onAuthRequired) {
       onAuthRequired();
     }
 
@@ -289,11 +284,11 @@ export async function get<T = any>(path: string, params?: Parameter): Promise<T>
 /**
  * POST-Request mit JSON-Body.
  */
-export async function post<T = any>(path: string, body?: unknown, art: Anfrageart = {}): Promise<T> {
+export async function post<T = any>(path: string, body?: unknown): Promise<T> {
   const response = await anfrage(path, {
     method: "POST",
     body: body !== undefined ? JSON.stringify(body) : undefined,
-  }, art);
+  });
   return inhalt(response);
 }
 

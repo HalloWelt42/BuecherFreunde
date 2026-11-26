@@ -34,6 +34,8 @@ class Familienstand {
   wechselbar = $derived(this.profile.length > 1 || this.profile.some((p) => p.hat_pin || p.hat_bild_pin));
   /** Mit nur einem Profil sieht niemand sonst etwas; "Nur für mich" hätte keine Wirkung */
   mehrere = $derived(this.profile.length > 1);
+  /** Vorlesestimme der Familie: "Wer liest?", die Namen und jedes Kind ohne eigene Wahl; leer: keine */
+  stimme = $derived(this.familie?.stimme ?? "");
   /** PIN und Bild-PIN, wie der Server sie annimmt */
   zugang = $derived<Zugang>(this.stufen.zugang ?? OHNE_ZUGANG);
 

@@ -1,6 +1,6 @@
 // Familie mit Profilen (BF-78, docs/neubau/FAMILIE.md): Profile, Wahl beim Start, Rechte, Freigaben, Lesezeit, Einblick,
 // Katze. Was ein Profil sieht und darf, entscheidet der Server; die Oberfläche zeigt nur, was er erlaubt.
-import { anfrage, del, get, patch, post, put } from "./client";
+import { del, get, patch, post, put } from "./client";
 import type { Buch } from "../typen";
 
 export type Rolle = "verwaltung" | "erwachsen" | "kind";
@@ -27,7 +27,7 @@ export interface Lesehilfen {
   hinweise_sprechen: boolean;
   /** Eine gedrückte Taste sagt, was sie tut */
   tasten_ansagen: boolean;
-  /** Stimme der Ansagen: "katalog:<name>" aus dem Sprechdienst oder "geraet"; leer: noch keine gewählt */
+  /** Stimme der Ansagen: "katalog:<name>" aus dem Sprechdienst, "geraet" oder leer: die Stimme der Familie */
   stimme?: string;
 }
 
@@ -94,6 +94,8 @@ export interface Familie {
   /** Das Profil des mitgeschickten Schlüssels, wenn er gilt */
   aktiv: string | null;
   geraet: Geraetestand;
+  /** Vorlesestimme der Familie: spricht "Wer liest?" und die Namen, Vorgabe für jedes Kind ohne eigene Wahl; leer: keine */
+  stimme: string;
 }
 
 export interface Lesezeitstand {
@@ -238,12 +240,24 @@ export interface Einblick {
 /** Die Ansagen spricht das Gerät selbst; gedacht für Installationen ohne Sprechdienst */
 export const GERAETESTIMME = "geraet";
 
-/** Wie weit die festen Ansagen einer Stimme sind (Auftrag "Ansagen erstellen") */
+/** Der Auftrag "Ansagen erstellen" für eine Stimme: wie weit, seit wann, warum nicht */
 export interface Ansagenstand {
+  was: string;
+  stimme: string;
+  stand: "wartet" | "laeuft" | "fertig" | "fehler";
   gesamt: number;
   fertig: number;
-  /** Der Auftrag läuft gerade */
-  laeuft: boolean;
+  /** Warum es nicht weitergeht, etwa ohne Sprechdienst */
+  grund: string;
+  begonnen: string | null;
+  geaendert: string | null;
+  fertig_am: string | null;
+}
+
+/** Ein fester Satz: sein Text und die Adresse seines Tons; ohne Adresse spricht ihn die Stimme des Geräts */
+export interface Ansageeintrag {
+  text: string;
+  url: string | null;
 }
 
 /** Womit sich jemand ausweist: PIN aus Ziffern oder drei Bildschlüssel */
@@ -270,20 +284,20 @@ export const profilfolgen = (id: string): Promise<Profilfolgen> => get(`${profil
 /** Nur mit dem `stand` der Löschfolgen; 409, wenn sich seither etwas geändert hat */
 export const loescheProfil = (id: string, stand: string): Promise<unknown> => del(`${profilweg(id)}?${new URLSearchParams({ stand })}`);
 /** Die PIN der Verwaltung fällt weg, wenn sich das Konto des Geräts erneut anmeldet */
-export const vergissPin = (id: string, kennung: string, passwort: string): Promise<Familie> =>
-  // Ein falsches Kennwort hier heißt nicht, dass das Gerät abgemeldet ist
-  post(`${profilweg(id)}/pin/vergessen`, { kennung, passwort }, { anmeldungGeprueft: true });
+export const vergissPin = (id: string, kennung: string, passwort: string): Promise<Familie> => post(`${profilweg(id)}/pin/vergessen`, { kennung, passwort });
 
 export const ladeFreigaben = (id: string): Promise<Freigaben> => get(`${profilweg(id)}/freigaben`);
 export const gibFrei = (id: string, art: Freigabeart, ziel_ids: number[]): Promise<unknown> => post(`${profilweg(id)}/freigaben`, { art, ziel_ids });
 export const nimmFreigabe = (id: string, art: Freigabeart, ziel_ids: number[]): Promise<unknown> => del(`${profilweg(id)}/freigaben`, { art, ziel_ids });
 export const ladeEinblick = (id: string): Promise<Einblick> => get(`${profilweg(id)}/einblick`);
 
-/** Der Probesatz in dieser Stimme, als Ton */
-export async function ansageProbe(stimme: string): Promise<Blob> {
-  return (await anfrage(`${WEG}/ansagen/probe`, { method: "POST", body: JSON.stringify({ stimme }) })).blob();
-}
-export const ansagenStand = (stimme: string): Promise<Ansagenstand> => get(`${WEG}/ansagen/stand`, { stimme });
+/** Der Probesatz in dieser Stimme; mit der Stimme des Geräts nur der Text */
+export const ansageProbe = (stimme: string): Promise<Ansageeintrag> => post(`${WEG}/ansagen/probe`, { stimme });
+/** Der Auftrag "Ansagen erstellen" dieser Stimme; leer, solange es keinen gab */
+export const ansagenStand = async (stimme: string): Promise<Ansagenstand | null> =>
+  (await get<Ansagenstand[]>(`${WEG}/ansagen/stand`, { stimme })).find((s) => s.stimme === stimme) ?? null;
+/** Die Stimme der Familie (Fähigkeit profile) */
+export const setzeFamilienstimme = (stimme: string): Promise<{ stimme: string }> => put(`${WEG}/stimme`, { stimme });
 
 export const bindeGeraet = (profil_id: string, eltern_pin: string): Promise<unknown> => post(`${WEG}/geraet`, { profil_id, eltern_pin });
 /** Mit der PIN der Eltern; als Verwaltung ohne sie */

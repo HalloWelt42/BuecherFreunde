@@ -97,8 +97,9 @@ describe("Profilschlüssel im Kopf", () => {
     antwort(401, { detail: "Anmeldung erforderlich" }, { "WWW-Authenticate": "Bearer" });
     await expect(get("/api/books")).rejects.toBeInstanceOf(ApiError);
     expect(abmelden).toHaveBeenCalledTimes(1);
-    antwort(401, { detail: "Name oder Kennwort stimmt nicht" });
-    await expect(post("/api/familie/profile/x/pin/vergessen", {}, { anmeldungGeprueft: true })).rejects.toBeInstanceOf(ApiError);
+    // PIN vergessen mit falschem Kennwort: 403 mit Grund, das Gerät bleibt angemeldet
+    antwort(403, { detail: "Name oder Kennwort stimmt nicht" });
+    await expect(post("/api/familie/profile/x/pin/vergessen", {})).rejects.toBeInstanceOf(ApiError);
     expect(abmelden).toHaveBeenCalledTimes(1);
   });
 
@@ -118,7 +119,7 @@ describe("Profilschlüssel im Kopf", () => {
 
 describe("Start mit Profilen", () => {
   const OHNE_GERAET = { gebunden_an: null, fest_auf: null, offen: false };
-  const familieMit = (mehr: Partial<Familie>): Familie => ({ profile: [profil()], braucht_wahl: false, aktiv: null, geraet: OHNE_GERAET, ...mehr });
+  const familieMit = (mehr: Partial<Familie>): Familie => ({ profile: [profil()], braucht_wahl: false, aktiv: null, geraet: OHNE_GERAET, stimme: "", ...mehr });
 
   it("geht mit einem gültigen gemerkten Schlüssel gleich weiter", async () => {
     setProfil("gilt-noch");
@@ -333,27 +334,67 @@ describe("Bild-PIN", () => {
 describe("Stimme der Ansagen", () => {
   const KATALOG = { da: true, stimmen: [{ id: "katalog:serena", name: "serena", gruppe: "eingebaut" }], hinweis: "" };
   const mitStimme = (stimme: string): Profil => ({ ...KIND, einstellungen: { lesehilfen: { mitlesen: true, tempo: 1, silben: false, lesezeile: true, schrift: "mittel", hinweise_sprechen: true, tasten_ansagen: true, stimme } } });
+  const auftrag = (stand: "wartet" | "laeuft" | "fertig" | "fehler", fertig: number, grund = "") =>
+    [{ was: "Ansagen erstellen", stimme: "katalog:serena", stand, gesamt: 186, fertig, grund, begonnen: null, geaendert: null, fertig_am: null }];
+  const mitFamilienstimme = async (stimme: string) => {
+    server({ "/api/familie": { profile: [KIND], braucht_wahl: false, aktiv: null, geraet: { gebunden_an: null, fest_auf: null, offen: false }, stimme } });
+    await familie.laden();
+  };
 
   it("zeigt die gewählte Stimme und dass die festen Ansagen bereitliegen", async () => {
-    server({ "/api/vorlesen/stimmen": KATALOG, "/api/familie/ansagen/stand": { gesamt: 186, fertig: 186, laeuft: false } });
+    await mitFamilienstimme("");
+    server({ "/api/vorlesen/stimmen": KATALOG, "/api/familie/ansagen/stand": auftrag("fertig", 186) });
     render(Ansagestimme, { props: { profil: mitStimme("katalog:serena"), aendert: true } });
     expect(await screen.findByText("186 feste Ansagen fertig, auch ohne Sprechdienst")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "serena" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "serena" })).toBeTruthy();
     expect((screen.getByRole("button", { name: "Probe" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it("zeigt, wie weit die Ansagen entstehen, mit dem Weg zum Auftrag", async () => {
-    server({ "/api/vorlesen/stimmen": KATALOG, "/api/familie/ansagen/stand": { gesamt: 186, fertig: 40, laeuft: true } });
-    render(Ansagestimme, { props: { profil: mitStimme("katalog:serena"), aendert: true } });
+  it("zeigt, wie weit die Ansagen entstehen, und den Grund, wenn sie nicht entstehen", async () => {
+    await mitFamilienstimme("");
+    server({ "/api/vorlesen/stimmen": KATALOG, "/api/familie/ansagen/stand": auftrag("laeuft", 40) });
+    const { unmount } = render(Ansagestimme, { props: { profil: mitStimme("katalog:serena"), aendert: true } });
     expect(await screen.findByText(/werden erstellt: 40 von 186/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Auftrag" })).toBeTruthy();
+    unmount();
+    server({ "/api/vorlesen/stimmen": KATALOG, "/api/familie/ansagen/stand": auftrag("fehler", 0, "Es ist kein Sprechdienst angeschlossen") });
+    render(Ansagestimme, { props: { profil: mitStimme("katalog:serena"), aendert: true } });
+    expect(await screen.findByText(/Es ist kein Sprechdienst angeschlossen/)).toBeTruthy();
   });
 
-  it("bittet ohne Stimme um eine Wahl, die Probe ruht", async () => {
+  it("folgt ohne eigene Wahl der Stimme der Familie, ohne sie bittet es um eine Wahl", async () => {
+    await mitFamilienstimme("katalog:serena");
+    server({ "/api/vorlesen/stimmen": KATALOG, "/api/familie/ansagen/stand": auftrag("fertig", 186) });
+    const { unmount } = render(Ansagestimme, { props: { profil: mitStimme(""), aendert: true } });
+    expect(screen.getByRole("button", { name: "wie die Familie" })).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Probe" }) as HTMLButtonElement).disabled).toBe(false);
+    unmount();
+    await mitFamilienstimme("");
     server({ "/api/vorlesen/stimmen": KATALOG });
     render(Ansagestimme, { props: { profil: mitStimme(""), aendert: true } });
     expect(screen.getByRole("button", { name: "Stimme wählen" })).toBeTruthy();
     expect((screen.getByRole("button", { name: "Probe" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText("Noch keine Stimme gewählt")).toBeTruthy();
+    expect(screen.getByText("Noch keine Stimme gewählt, die Ansagen schweigen")).toBeTruthy();
+  });
+
+  it("holt die Probe als Satz mit Adresse des Tons", async () => {
+    const f = server({ "/api/familie/ansagen/probe": { text: "Hallo, ich lese dir vor.", url: "/api/familie/ansagen/ton/serena/probe-0123456789abcdef.wav" } });
+    const { ansageProbe } = await import("../src/lib/api/familie");
+    expect(await ansageProbe("katalog:serena")).toEqual({ text: "Hallo, ich lese dir vor.", url: "/api/familie/ansagen/ton/serena/probe-0123456789abcdef.wav" });
+    const [, optionen] = f.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(optionen.body))).toEqual({ stimme: "katalog:serena" });
+  });
+});
+
+describe("Fertig gelesen", () => {
+  it("markiert fertig gelesen, der Zeitpunkt des letzten Lesens bleibt", async () => {
+    server({ "/api/books/3/gelesen": { book_id: 3, gelesen: true } });
+    const { merkmale } = await import("../src/lib/stand/merkmale.svelte");
+    const vorher = buch(3, "Die Möwe Malu", { last_read_at: "2026-11-20 10:00:00", fertig_am: null });
+    const neu = await merkmale.gelesen(vorher);
+    expect(neu.fertig_am).toBeTruthy();
+    expect(neu.last_read_at).toBe("2026-11-20 10:00:00");
+    server({ "/api/books/3/gelesen": { book_id: 3, gelesen: false } });
+    expect(await merkmale.gelesen({ ...vorher, fertig_am: "2026-11-21 10:00:00" })).toEqual({ fertig_am: null });
   });
 });
