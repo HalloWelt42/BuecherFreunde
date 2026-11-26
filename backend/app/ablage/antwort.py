@@ -35,8 +35,14 @@ async def original_antwort(request: Request, file_hash: str, art: str, name: str
     ablage = originale.eintrag(file_hash)
     if ablage is None or not wolke.bereit:
         raise HTTPException(status_code=404, detail=FEHLT)
+    return await wolke_antwort(request, ablage["knoten"], art, name or ablage["name"], herunterladen)
+
+
+async def wolke_antwort(request: Request, knoten: str, art: str, name: str, herunterladen: bool = False) -> Response:
+    """Eine Datei der Kellerwolke, durchgereicht mit Bereichen (auch für Fassungen eines Buchs, BF-71)."""
+    weise = "attachment" if herunterladen else "inline"
     try:
-        r = await wolke.strom(ablage["knoten"], request.headers.get("range"))
+        r = await wolke.strom(knoten, request.headers.get("range"))
     except WolkeFehler as f:
         raise HTTPException(status_code=503, detail=f.meldung) from f
     if r.status_code >= 400 and r.status_code != 416:
@@ -44,7 +50,7 @@ async def original_antwort(request: Request, file_hash: str, art: str, name: str
         raise HTTPException(status_code=503, detail=f"Die Kellerwolke meldet {r.status_code}")
     kopf = {k: r.headers[k] for k in ("content-length", "content-range", "etag") if k in r.headers}
     kopf["Accept-Ranges"] = "bytes"
-    kopf["Content-Disposition"] = f"{weise}; filename*=UTF-8''{quote(name or ablage['name'])}"
+    kopf["Content-Disposition"] = f"{weise}; filename*=UTF-8''{quote(name)}"
 
     async def strom():
         try:

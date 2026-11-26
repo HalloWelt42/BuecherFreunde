@@ -55,6 +55,20 @@ class Settings(BaseSettings):
     leitstelle_schluessel_datei: str = ""                     # Schlüssel der Anwendung (Datei, Modus 0600)
     ki_modell: str = "qwen/qwen3-next-80b"                    # Modellwahl der App; die Leitstelle wählt nie eins
     sprechdienst: str = "klangwerk-sprechen"                  # Vorlesen über diesen Dienst der Leitstelle; ohne: Stimmen des Geräts
+    # Bücher übersetzen (BF-71): Englisch nach Deutsch über die Leitstelle, je Buch auf Wunsch
+    uebersetzen_s_je_seite: float = Field(default=30, gt=0)         # Schätzung vor dem ersten fertigen Lauf, mit Prüfung
+    uebersetzen_woerter_je_seite: int = Field(default=400, ge=50)   # so viele Wörter Text gelten als eine Seite
+    uebersetzen_tempo_laeufe: int = Field(default=5, ge=1)          # danach das Mittel der letzten so vielen fertigen Läufe
+    uebersetzen_portion_zeichen: int = Field(default=2500, ge=200)  # so viel Text je Anfrage, immer an Blockgrenzen
+    uebersetzen_portion_bloecke: int = Field(default=30, ge=1)      # höchstens so viele Blöcke je Anfrage
+    uebersetzen_nacharbeiten: int = Field(default=2, ge=0)          # so oft wird ein beanstandeter Block nachgearbeitet
+    uebersetzen_pruefmodell: str = ""                               # Modell des KI-Prüfers; leer oder nicht angeboten: KI_MODELL
+    uebersetzen_nie_klassen: str = "programlisting,screen,literallayout,sourcecode"  # Klassen im EPUB, die nie übersetzt werden
+    uebersetzen_anrede: str = Field(default="du", pattern="^(du|Sie)$")          # wie der Leser angesprochen wird
+    uebersetzen_laenge_min: float = Field(default=0.8, gt=0)        # Verhältnis Deutsch zu Englisch je Block, kleinstes
+    uebersetzen_laenge_max: float = Field(default=1.8, gt=0)        # und größtes
+    uebersetzen_laenge_ab_zeichen: int = Field(default=60, ge=0)    # erst ab so vielen Zeichen im Original sagt die Länge etwas
+    uebersetzen_takt_s: float = Field(default=300, gt=0)            # so oft sieht der Lauf von selbst nach laufenden Fassungen
     # Gestaltete Deckblätter (BF-59): die Umschlagprüfung findet schlichte Umschläge, die lokale KI ordnet diese Bücher ein
     umschlaege_pruefen_takt_s: float = Field(default=600, gt=0)   # so oft sieht die Umschlagprüfung nach neuen oder geänderten Umschlägen
     # Art aller Werke (BF-77): erst feste Regeln (services/artregeln.py), den Rest die lokale KI, gebündelt

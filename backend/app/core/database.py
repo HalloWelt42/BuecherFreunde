@@ -346,6 +346,80 @@ CREATE TABLE IF NOT EXISTS code_vorpruefung (       -- je Code (codestellen/vorp
     geprueft_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     PRIMARY KEY (sprache, pruefsumme)
 );
+CREATE TABLE IF NOT EXISTS fassung (                -- Übersetzungen eines Buchs (BF-71, services/fassungen.py)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    buch_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    sprache TEXT NOT NULL,                           -- de
+    aus_sprache TEXT NOT NULL,                       -- en
+    stand TEXT NOT NULL,                             -- laeuft, pause, teilweise, fertig, fehler
+    grund TEXT NOT NULL DEFAULT '',                  -- warum Fehler, oder was den Lauf zuletzt aufhielt
+    zerlegt TEXT NOT NULL DEFAULT '',                -- womit zerlegt wurde (Fassung und Einstellungen); leer: noch nicht
+    nicht_lesbar TEXT NOT NULL DEFAULT '[]',         -- JSON: Dateien des Originals, die sich nicht lesen ließen
+    begriffe_fertig INTEGER NOT NULL DEFAULT 0,
+    begriffe_text TEXT NOT NULL DEFAULT '',          -- wie die Begriffsliste entstand
+    woerter INTEGER NOT NULL DEFAULT 0,
+    aenderungen INTEGER NOT NULL DEFAULT 0,          -- zählt jede Änderung an Blöcken
+    gesetzt INTEGER NOT NULL DEFAULT -1,             -- der Stand der Änderungen, den die abgelegte Datei zeigt
+    datei TEXT NOT NULL DEFAULT '',                  -- Ort der Datei: Pfad in der Kellerwolke oder auf dem Gerät
+    knoten TEXT DEFAULT NULL,                        -- die Datei in der Kellerwolke
+    modell TEXT NOT NULL DEFAULT '',
+    pruefmodell TEXT NOT NULL DEFAULT '',
+    anweisung INTEGER NOT NULL DEFAULT 0,            -- Fassung der Anweisungen (uebersetzung/anweisungen.py)
+    begonnen TEXT DEFAULT NULL,
+    bisher_s REAL NOT NULL DEFAULT 0,                -- gerechnete Zeit
+    angelegt_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    geaendert_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    UNIQUE (buch_id, sprache)
+);
+CREATE TABLE IF NOT EXISTS uebersetzung_kapitel (   -- Kapitel einer Fassung: eine Datei des EPUB
+    fassung_id INTEGER NOT NULL REFERENCES fassung(id) ON DELETE CASCADE,
+    nr INTEGER NOT NULL,
+    titel TEXT NOT NULL DEFAULT '',
+    datei TEXT NOT NULL DEFAULT '',                  -- Pfad im EPUB
+    bloecke INTEGER NOT NULL DEFAULT 0,
+    woerter INTEGER NOT NULL DEFAULT 0,
+    dauer_s REAL NOT NULL DEFAULT 0,                 -- gemessene Zeit
+    PRIMARY KEY (fassung_id, nr)
+);
+CREATE TABLE IF NOT EXISTS uebersetzung_block (     -- je Block Ergebnis, Befunde und Stand; daran setzt der Lauf fort
+    fassung_id INTEGER NOT NULL REFERENCES fassung(id) ON DELETE CASCADE,
+    kennung TEXT NOT NULL,                           -- Kapitel.Block, etwa 3.17
+    kapitel INTEGER NOT NULL,
+    nr INTEGER NOT NULL,
+    art TEXT NOT NULL,
+    stufe INTEGER NOT NULL DEFAULT 0,
+    pruefsumme TEXT NOT NULL,                        -- der Vorlage im Original
+    vorlage TEXT NOT NULL,
+    woerter INTEGER NOT NULL DEFAULT 0,
+    uebersetzung TEXT NOT NULL DEFAULT '',
+    stand TEXT NOT NULL DEFAULT 'wartet',            -- wartet, uebersetzt, nacharbeit, bestanden, nachgearbeitet, offen, angenommen, gesetzt
+    befunde TEXT NOT NULL DEFAULT '[]',              -- JSON
+    versuche INTEGER NOT NULL DEFAULT 0,             -- Antworten der KI zu diesem Block
+    nacharbeiten INTEGER NOT NULL DEFAULT 0,
+    geprueft INTEGER NOT NULL DEFAULT 0,             -- vom KI-Prüfer beurteilt
+    geaendert_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    PRIMARY KEY (fassung_id, kennung)
+);
+CREATE INDEX IF NOT EXISTS idx_uebersetzung_block_stand ON uebersetzung_block(fassung_id, kapitel, stand);
+CREATE TABLE IF NOT EXISTS uebersetzung_speicher (   -- geprüfte Übersetzungen: Wiederkehrendes wird einmal übersetzt
+    schluessel TEXT PRIMARY KEY,                     -- Prüfsumme aus Vorlage, Begriffen und Fassung der Anweisung
+    uebersetzung TEXT NOT NULL,
+    gemerkt_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE TABLE IF NOT EXISTS begriff (                 -- Begriffsliste je Buch, buch_id leer: für alle Bücher (BF-71)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    buch_id INTEGER DEFAULT NULL REFERENCES books(id) ON DELETE CASCADE,
+    englisch TEXT NOT NULL,
+    deutsch TEXT NOT NULL DEFAULT '',
+    bleibt INTEGER NOT NULL DEFAULT 0,
+    art TEXT NOT NULL DEFAULT 'begriff',             -- begriff, einheit
+    herkunft TEXT NOT NULL DEFAULT 'hand',           -- regel, ki, hand, vorgabe
+    stellen INTEGER NOT NULL DEFAULT 0,
+    grund TEXT NOT NULL DEFAULT '',
+    angelegt_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    geaendert_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_begriff_eindeutig ON begriff(COALESCE(buch_id, 0), lower(englisch));
 CREATE TABLE IF NOT EXISTS vorlesestelle (          -- wo das Vorlesen je Buch stehen blieb (api/user_data.py); gilt auf jedem Gerät
     buch_id INTEGER PRIMARY KEY REFERENCES books(id) ON DELETE CASCADE,
     einheit INTEGER NOT NULL,                        -- Seite, Abschnitt oder Stück der Lesequelle, ab 0

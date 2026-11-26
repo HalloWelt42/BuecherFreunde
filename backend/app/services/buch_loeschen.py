@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import shutil
+from pathlib import Path
 
 from pydantic import BaseModel
 
@@ -41,6 +42,7 @@ class Folgen(BaseModel):
     regale: int
     datei: Datei | None
     abschnitte: int | None      # in der Suche nach Bedeutung; None, wenn sie nicht angeschlossen ist oder das Buch nicht kennt
+    fassungen: list[Datei] = []  # übersetzte Fassungen (BF-71): in der Kellerwolke in den Papierkorb, auf dem Gerät mit dem Buch fort
 
 
 class NichtGeloescht(Exception):
@@ -54,6 +56,17 @@ async def _zahl(sql: str, buch: int) -> int:
 async def _ablage(file_hash: str) -> dict | None:
     """Der Eintrag in der Kellerwolke, über die Verbindung der laufenden Einheit."""
     return await db.fetch_one("SELECT knoten, name, pfad, groesse FROM ablage_datei WHERE hash = ?", (file_hash,))
+
+
+async def _fassungen(buch: int) -> list[dict]:
+    return await db.fetch_all("SELECT datei, knoten FROM fassung WHERE buch_id = ? AND datei != ''", (buch,))
+
+
+def _fassungsdatei(z: dict) -> Datei:
+    if z["knoten"]:
+        return Datei(pfad=z["datei"], groesse=0, papierkorb=True)
+    hier = Path(z["datei"])
+    return Datei(pfad=hier.name, groesse=hier.stat().st_size if hier.is_file() else 0, papierkorb=False)
 
 
 async def folgen(buch: int) -> Folgen | None:
@@ -78,6 +91,7 @@ async def folgen(buch: int) -> Folgen | None:
                            "WHERE x.book_id = ? AND c.slug != 'ungeordnet'", buch),          # "Ungeordnet" ist keins (wie api/books.py)
         datei=datei,
         abschnitte=stand["abschnitte"] if stand else None,
+        fassungen=[_fassungsdatei(f) for f in await _fassungen(buch)],
     )
 
 
@@ -87,14 +101,15 @@ async def loeschen(buch: int) -> bool:
     if z is None:
         return False
     ablage = await _ablage(z["hash"])
-    if ablage is not None and not wolke.bereit:
+    knoten = ([ablage["knoten"]] if ablage is not None else []) + [f["knoten"] for f in await _fassungen(buch) if f["knoten"]]
+    if knoten and not wolke.bereit:
         raise NichtGeloescht("Die Kellerwolke ist nicht angebunden, die Datei käme nicht in den Papierkorb.")
     await db.execute("DELETE FROM books WHERE id = ?", (buch,))
     await db.execute("DELETE FROM ablage_datei WHERE hash = ?", (z["hash"],))
-    if ablage is not None:
+    for k in knoten:
         try:
             # in den Papierkorb der Kellerwolke, der Begleiter geht mit; endgültig löscht nur das Konto
-            await wolke.rufe("DELETE", f"/api/v1/ablage/knoten/{ablage['knoten']}")
+            await wolke.rufe("DELETE", f"/api/v1/ablage/knoten/{k}")
         except WolkeFehler as f:
             if f.status != 404:                             # schon fort: dann bleibt nur, den Eintrag zu löschen
                 raise NichtGeloescht(f.meldung) from f

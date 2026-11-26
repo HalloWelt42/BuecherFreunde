@@ -33,6 +33,7 @@ from backend.app.api.highlights import router as highlights_router
 from backend.app.api.labels import router as labels_router
 from backend.app.api.neubau import router as neubau_router
 from backend.app.api.notes import router as notes_router
+from backend.app.api.uebersetzung import router as uebersetzung_router
 from backend.app.api.user_data import router as user_data_router
 from backend.app.api.vorlesen import router as vorlesen_router
 from backend.app.api.wartung import router as wartung_router
@@ -50,6 +51,8 @@ from backend.app.katalog.einordnen import einordner as katalog_einordner
 from backend.app.services.einordnung import einordner
 from backend.app.services.ki import ki
 from backend.app.services.sammlungsfinder import sammlungsfinder
+from backend.app.services.begriffsliste import vorgaben_einspielen
+from backend.app.services.uebersetzungslauf import uebersetzungslauf
 from backend.app.services.umschlagpruefung import umschlagpruefung
 
 logger = logging.getLogger("buecherfreunde")
@@ -98,6 +101,8 @@ async def lifespan(app: FastAPI):
     einordner.starten()
     await katalog_einordner.nach_neustart()           # ein laufendes Einordnen geht am letzten fertigen Stapel weiter
     await bestandslauf.nach_neustart()
+    await vorgaben_einspielen()
+    uebersetzungslauf.starten()
     im_hintergrund = [asyncio.create_task(pflege.laufen()), asyncio.create_task(eingangsordner.laufen()), asyncio.create_task(nachschlagen.vorwaermen())]
     yield
     for lauf in im_hintergrund:
@@ -107,6 +112,7 @@ async def lifespan(app: FastAPI):
     await einordner.stoppen()
     await katalog_einordner.stoppen()
     await bestandslauf.stoppen()
+    await uebersetzungslauf.stoppen()
     await sammlungsfinder.stoppen()
     await umschlagpruefung.stoppen()
     await codestellen.stoppen()
@@ -153,6 +159,7 @@ app.include_router(labels_router)
 app.include_router(metadata_router)
 app.include_router(notes_router)
 app.include_router(search_router)
+app.include_router(uebersetzung_router)
 app.include_router(user_data_router)
 app.include_router(wartung_router)
 app.include_router(vorlesen_router)

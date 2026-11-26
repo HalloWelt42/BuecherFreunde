@@ -199,16 +199,25 @@ class Ki:
         return KiStand(bereit=True, erreichbar=True, nutzbar=bietet(modelle, modell), modell=modell, gewaehlt=self._wahl or "",
                        modelle=[m.id for m in modelle], grund=grund)
 
+    async def fuer(self, wunsch: str = "") -> str:
+        """Das Modell für eine Anfrage: der Wunsch, wenn die Leitstelle ihn anbietet, sonst das, das gilt (wirft
+        LeitstellenFehler)."""
+        if wunsch and bietet(await self.angebot(), wunsch):
+            return wunsch
+        return (await self.gilt())[0]
+
     async def antwort(self, system: str, nutzer: str, *, titel: str, prioritaet: Prioritaet | None = None,
-                      geduld: bool = False, pruefen: Callable[[], Awaitable[None]] | None = None, **optionen: Any) -> str:
+                      geduld: bool = False, pruefen: Callable[[], Awaitable[None]] | None = None, modell: str = "",
+                      **optionen: Any) -> str:
         """Eine Antwort am Stück. `geduld`: warten, solange die Leitstelle sagt, dass es gerade nicht geht (Halt, Dienst
-        weg, Rechner schläft); `pruefen` darf das Warten abbrechen. Ein in der Leitstelle abgebrochener Auftrag liefert
-        seinen Teiltext nicht als Antwort, sondern als Grund."""
+        weg, Rechner schläft); `pruefen` darf das Warten abbrechen. `modell`: ein anderes Modell für diese Anfrage, wenn die
+        Leitstelle es anbietet (etwa für den Prüfer beim Übersetzen), sonst das, das gilt. Ein in der Leitstelle
+        abgebrochener Auftrag liefert seinen Teiltext nicht als Antwort, sondern als Grund."""
         nachrichten = [Nachricht(rolle="system", inhalt=system), Nachricht(rolle="user", inhalt=nutzer)]
 
         async def fragen() -> str:
-            modell, _ = await self.gilt()
-            a = await self.leitstelle().chat(nachrichten, modell=modell, titel=titel, prioritaet=prioritaet, **optionen)
+            name = await self.fuer(modell)
+            a = await self.leitstelle().chat(nachrichten, modell=name, titel=titel, prioritaet=prioritaet, **optionen)
             if a.abgebrochen:
                 raise KiFehler("In der Leitstelle abgebrochen" + (f"; bis dahin: {a.text[:200]}" if a.text else ""), "einzeln")
             return a.text

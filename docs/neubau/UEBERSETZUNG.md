@@ -29,6 +29,8 @@ Original (EPUB, PDF, Scan)
   -> Prüfkette: feste Prüfungen, KI-Prüfer, Nacharbeit    uebersetzung/pruefen.py
   -> Zusammensetzen zur deutschen Fassung (EPUB)          uebersetzung/setzen.py
   -> Ablage in der Kellerwolke neben dem Original         services/fassungen.py, Tabelle fassung
+     (Lauf services/uebersetzungslauf.py, Stand services/fassungsstand.py, Ablage services/fassung_ablage.py,
+      Begriffsliste services/begriffsliste.py, Wege api/uebersetzung.py)
   -> Lesen: Flaggenlabels, gemeinsamer Lesestand          Oberfläche nach Entwurf
 ```
 
@@ -148,13 +150,13 @@ nur erfundene Texte.
 | Weg | Inhalt |
 |---|---|
 | `GET /api/books/{id}/fassungen` | `[{id, sprache, original, stand, kapitel_fertig, kapitel_gesamt, fertig_gegen, modell, pruefmodell, angelegt, geaendert}]`; das Original steht immer zuerst (`id` null, `original` true) |
-| `GET /api/books/{id}/fassungen/de/folgen` | Rückfrage vor dem Start: `{seiten, kapitel, bloecke, begriffe, abbildungen, dauer_s, fertig_gegen, tempo_s_je_seite, ablage, geht, grund}`; `geht` false mit Grund, wenn das Buch nicht englisch ist oder das Format noch nicht übersetzt wird |
+| `GET /api/books/{id}/fassungen/de/folgen` | Rückfrage vor dem Start: `{seiten, kapitel, bloecke, begriffe, abbildungen, dauer_s, fertig_gegen, tempo_s_je_seite, ablage: {ort, pfad}, geht, grund}`; `ort` kellerwolke oder geraet; `geht` false mit Grund, wenn das Buch nicht englisch ist oder das Format noch nicht übersetzt wird |
 | `POST /api/books/{id}/fassungen/de` | startet (oder setzt fort), Antwort Stand |
-| `GET /api/fassungen/{fid}/stand` | `{stand, begonnen, bisher_s, noch_s, fertig_gegen, tempo_s_je_seite, kapitel_jetzt, block_jetzt, stationen: [{name, stand, text}], kapitel: [{nr, titel, stand, dauer_s, geschaetzt, bloecke, fertig, geprueft, nachgearbeitet, offen}], zahlen: {bloecke, uebersetzt, bestanden, nachgearbeitet, offen}, grund}`; Stationen in fester Folge: Zerlegen, Begriffe, Übersetzen, Prüfen, Nacharbeit, Setzen; Stand je Station: wartet, laeuft, fertig |
+| `GET /api/fassungen/{fid}/stand` | `{id, stand, begonnen, bisher_s, noch_s, fertig_gegen, tempo_s_je_seite, kapitel_jetzt, block_jetzt, stationen: [{name, stand, text}], kapitel: [{nr, titel, stand, dauer_s, geschaetzt, bloecke, fertig, geprueft, nachgearbeitet, offen}], zahlen: {bloecke, uebersetzt, bestanden, nachgearbeitet, offen}, grund}`; Stationen in fester Folge: Zerlegen, Begriffe, Übersetzen, Prüfen, Nacharbeit, Setzen; Stand je Station: wartet, laeuft, fertig |
 | `POST /api/fassungen/{fid}/pause`, `.../fortsetzen`, `.../abbrechen` | Stand; Abbrechen behält Fertiges, die Fassung bleibt "teilweise" |
 | `GET /api/fassungen/{fid}/bericht` | `{zahlen, offen: [{kennung, kapitel, ort, seite_original, original, deutsch, befunde: [{art, quelle, text, stelle}]}]}`; `quelle` pruefung oder ki; `stelle` das beanstandete Stück im deutschen Text |
 | `POST /api/fassungen/{fid}/bloecke/{kennung}` | `{aktion: "neu" \| "annehmen" \| "setzen", text?}`; "setzen" nimmt deinen Text, wenn er die festen Prüfungen besteht, sonst 422 mit Befunden |
-| `GET /api/books/{id}/begriffe`, `POST`, `PATCH /api/begriffe/{bid}`, `DELETE` | Begriffsliste je Buch `[{id, englisch, deutsch, bleibt, herkunft, stellen, grund}]`; `GET /api/begriffe` die Liste für alle Bücher |
+| `GET /api/books/{id}/begriffe`, `POST`, `PATCH /api/begriffe/{bid}`, `DELETE` | Begriffsliste je Buch `[{id, englisch, deutsch, bleibt, herkunft, stellen, grund, art}]`; `art` begriff oder einheit, `herkunft` regel, ki, hand oder vorgabe; `GET /api/begriffe` und `POST /api/begriffe` die Liste für alle Bücher |
 | `GET /api/fassungen/{fid}/datei` | die deutsche Fassung als EPUB für den Leser, auch teilweise (offene Blöcke im Original mit Marke) |
 
 Geschätzt wird aus dem Tempo dieses Rechners: vor dem ersten Lauf aus einer festen Vorgabe (`UEBERSETZEN_S_JE_SEITE`,

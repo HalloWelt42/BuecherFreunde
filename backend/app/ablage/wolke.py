@@ -134,14 +134,21 @@ class Wolke:
     async def ordner(self, pfad: str) -> dict:
         return await self.rufe("POST", "/api/v1/ablage/ordner", json={"pfad": pfad})
 
+    @staticmethod
+    async def _stuecke(quelle: Path) -> AsyncIterator[bytes]:
+        with quelle.open("rb") as f:
+            while s := f.read(1 << 20):
+                yield s
+
     async def datei_schreiben(self, pfad: str, quelle: Path) -> dict:
         """Eine Datei vom Gerät an einen Ort in der Kellerwolke, nur neu."""
-        async def stuecke() -> AsyncIterator[bytes]:
-            with quelle.open("rb") as f:
-                while s := f.read(1 << 20):
-                    yield s
-        return await self.rufe("PUT", "/api/v1/ablage/datei", params={"pfad": pfad}, content=stuecke(),
+        return await self.rufe("PUT", "/api/v1/ablage/datei", params={"pfad": pfad}, content=self._stuecke(quelle),
                                headers={"If-None-Match": "*", "Content-Length": str(quelle.stat().st_size), "Content-Type": "application/octet-stream"})
+
+    async def inhalt_ersetzen(self, knoten: str, quelle: Path, etag: str) -> dict:
+        """Eine neue Version einer vorhandenen Datei; nur, wenn sie noch den Stand `etag` hat (sonst 412)."""
+        return await self.rufe("PUT", f"/api/v1/ablage/knoten/{knoten}/inhalt", content=self._stuecke(quelle),
+                               headers={"If-Match": f'"{etag}"', "Content-Length": str(quelle.stat().st_size), "Content-Type": "application/octet-stream"})
 
     async def upload_anlegen(self, name: str, ordner: str, groesse: int, sha256: str) -> dict:
         return await self.rufe("POST", "/api/v1/uploads", json={"name": name, "parent_id": ordner, "groesse": groesse, "pruefsumme": sha256, "nur_neu": True})

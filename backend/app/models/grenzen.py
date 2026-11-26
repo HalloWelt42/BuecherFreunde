@@ -42,6 +42,9 @@ ADRESSE = 2_000
 PROMPT_NAME = 100
 PROMPT_BESCHREIBUNG = 1_000
 PROMPT = 20_000
+BEGRIFF = 200                            # ein Eintrag der Begriffsliste beim Übersetzen (BF-71)
+BEGRIFF_GRUND = 300
+BLOCKTEXT = 50_000                       # eine Übersetzung von Hand für einen Block
 
 # Bereiche
 SEITEN_HOECHSTENS = 100_000
