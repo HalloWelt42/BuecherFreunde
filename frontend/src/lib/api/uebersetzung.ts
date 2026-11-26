@@ -26,6 +26,9 @@ export const holeBegriffe = (buch: number): Promise<Begriff[]> => get(`/api/book
 export const legeBegriffAn = (buch: number, neu: BegriffNeu): Promise<Begriff> => post(`/api/books/${buch}/begriffe`, neu);
 export const aendereBegriff = (id: number, aenderung: Partial<BegriffNeu>): Promise<Begriff> => patch(`/api/begriffe/${id}`, aenderung);
 export const loescheBegriff = (id: number): Promise<{ geloescht: boolean; id: number }> => del(`/api/begriffe/${id}`);
+/** Entfernt die genannten fragwürdigen Einträge eines Buchs; was nicht mehr fragwürdig ist, bleibt */
+export const entferneFragwuerdige = (buch: number, ids: number[]): Promise<{ entfernt: number[] }> =>
+  post(`/api/books/${buch}/begriffe/fragwuerdige/entfernen`, { ids });
 
 /** Die Übersetzung als EPUB zum Lesen, auch teilweise */
 export function fassungsdatei(fassung: number): string {

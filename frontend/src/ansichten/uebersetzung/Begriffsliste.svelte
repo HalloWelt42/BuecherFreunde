@@ -1,8 +1,9 @@
 <script lang="ts">
   // Begriffsliste eines Buchs (BF-71, Entwurf Abschnitt 5): Suche und Neu bleiben stehen, nur die Liste rollt. Eine Änderung
-  // übersetzt nur die Stellen neu, in denen der Begriff vorkommt.
+  // übersetzt nur die Stellen neu, in denen der Begriff vorkommt. Fragwürdige Einträge (von Regel oder KI, sie bestehen die
+  // Regeln nicht) gelten nicht, bis du sie änderst oder entfernst; "Fragwürdige entfernen" nennt vorher jeden mit Grund.
   import { untrack } from "svelte";
-  import { holeBegriffe, loescheBegriff } from "../../lib/api/uebersetzung";
+  import { entferneFragwuerdige, holeBegriffe, loescheBegriff } from "../../lib/api/uebersetzung";
   import { anzahl } from "../../lib/format";
   import { melde } from "../../lib/stand/meldungen.svelte";
   import { frage } from "../../lib/stand/rueckfrage.svelte";
@@ -38,9 +39,10 @@
 
   let gezeigt = $derived.by(() => {
     const s = suche.trim().toLowerCase();
-    return (liste ?? []).filter((b) => !s || [b.englisch, b.deutsch, b.grund].some((t) => t.toLowerCase().includes(s)));
+    return (liste ?? []).filter((b) => !s || [b.englisch, b.deutsch, b.grund, b.fragwuerdig].some((t) => t.toLowerCase().includes(s)));
   });
   let vorhanden = $derived(new Set((liste ?? []).map((b) => b.englisch.toLowerCase())));
+  let fragwuerdige = $derived((liste ?? []).filter((b) => b.fragwuerdig));
 
   function gespeichert(b: Begriff) {
     const da = (liste ?? []).some((x) => x.id === b.id);
@@ -52,13 +54,26 @@
 
   async function entfernen(b: Begriff) {
     const folgen = [`"${b.englisch}" steht danach nicht mehr in der Begriffsliste dieses Buchs.`];
-    if (bezug.deutsch && b.stellen) folgen.push(`${anzahl(b.stellen, "Stelle", "Stellen")} mit dem Begriff ${b.stellen === 1 ? "wird" : "werden"} neu übersetzt; was du von Hand gesetzt oder angenommen hast, bleibt.`);
+    if (bezug.deutsch && b.stellen && !b.fragwuerdig) folgen.push(`${anzahl(b.stellen, "Stelle", "Stellen")} mit dem Begriff ${b.stellen === 1 ? "wird" : "werden"} neu übersetzt; was du von Hand gesetzt oder angenommen hast, bleibt.`);
     if (!(await frage({ titel: "Begriff entfernen?", folgen, ja: "Entfernen" }))) return;
     try {
       await loescheBegriff(b.id);
       liste = (liste ?? []).filter((x) => x.id !== b.id);
       melde.gut("Begriff entfernt");
       if (bezug.deutsch) uebersetzungen.angestossen();
+    } catch (e) {
+      melde.schlecht(e, "Nicht entfernt");
+    }
+  }
+
+  async function fragwuerdigeEntfernen() {
+    const weg = fragwuerdige;
+    const folgen = [...weg.map((b) => `${b.englisch}: ${b.fragwuerdig}`), "Sie gelten schon jetzt nicht; keine Stelle wird dafür neu übersetzt."];
+    if (!(await frage({ titel: `${anzahl(weg.length, "fragwürdigen Begriff", "fragwürdige Begriffe")} entfernen?`, folgen, ja: "Entfernen" }))) return;
+    try {
+      const { entfernt } = await entferneFragwuerdige(bezug.id, weg.map((b) => b.id));
+      liste = (liste ?? []).filter((x) => !entfernt.includes(x.id));
+      melde.gut(`${anzahl(entfernt.length, "Begriff", "Begriffe")} entfernt`);
     } catch (e) {
       melde.schlecht(e, "Nicht entfernt");
     }
@@ -81,6 +96,7 @@
       <div class="reihe">
         <input class="eingabe begriffsuche" type="search" placeholder="Begriff suchen ({liste.length})" aria-label="Begriff suchen" bind:value={suche} />
         <Knopf text="Begriff" symbol="plus" klein onclick={() => (formular = "neu")} />
+        {#if fragwuerdige.length}<Knopf text="Fragwürdige entfernen ({fragwuerdige.length})" symbol="broom" klein frei titel="Einträge von Regel oder KI, die die Regeln nicht bestehen" onclick={() => void fragwuerdigeEntfernen()} />{/if}
         <span class="leise">Eine Änderung übersetzt nur die betroffenen Stellen neu.</span>
       </div>
       <div class="begriffsliste rollen" role="table" aria-label="Begriffe">
@@ -92,7 +108,7 @@
             <span>{#if b.bleibt}<span class="leise">bleibt englisch</span>{:else}{b.deutsch}{/if}</span>
             <span class="leise"><Symbol name={zeichen} /> {herkunft}</span>
             <span class="zahl leise">{b.stellen}</span>
-            <span class="grund">{b.grund}</span>
+            <span class="grund">{#if b.fragwuerdig}<span class="marke-text warn" title="Gilt nicht, bis du ihn änderst oder entfernst"><Symbol name="circle-exclamation" />fragwürdig</span> {b.fragwuerdig}{:else}{b.grund}{/if}</span>
             <span class="reihe">
               <Knopf text="Bearbeiten" symbol="pen" nur klein frei onclick={() => (formular = b)} />
               <Knopf text="Entfernen" symbol="trash" nur klein frei onclick={() => void entfernen(b)} />

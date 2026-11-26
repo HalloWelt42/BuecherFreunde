@@ -7,6 +7,7 @@
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Symbol from "../../lib/teile/Symbol.svelte";
   import Zustand from "../../lib/teile/Zustand.svelte";
+  import { anzahl } from "../../lib/format";
   import { berichtsmarken } from "../../lib/uebersetzung/texte";
   import type { Bericht } from "../../lib/uebersetzung/typen";
   import { Buchuebersetzung } from "./fassung.svelte";
@@ -54,8 +55,12 @@
     <Zustand art="laedt" text="Prüfbericht wird geladen" />
   {:else}
     {@const fassung = bezug.deutsch.id}
+    {@const fragwuerdig = bericht.begriffe_fragwuerdig?.length ?? 0}
     <div class="fuellt">
-      <div class="reihe">{#each berichtsmarken(bericht.zahlen) as m (m.ton)}<span class="marke-text {m.ton}"><Symbol name={m.symbol} />{m.text}</span>{/each}</div>
+      <div class="reihe">
+        {#each berichtsmarken(bericht.zahlen) as m (m.symbol)}<span class="marke-text {m.ton}" title={m.titel}><Symbol name={m.symbol} />{m.text}</span>{/each}
+        {#if fragwuerdig}<Knopf text="{anzahl(fragwuerdig, 'Begriff', 'Begriffe')} fragwürdig" symbol="spell-check" klein href="/book/{bezug.id}/begriffe" />{/if}
+      </div>
       <div class="berichtsliste rollen">
         {#each bericht.offen as stelle (stelle.kennung)}
           <Offenestelle {stelle} {fassung} onerledigt={() => erledigt(stelle.kennung)} />

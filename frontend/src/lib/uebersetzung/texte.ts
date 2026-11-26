@@ -90,12 +90,14 @@ export function befundzeichen(b: Befund): string {
   return b.art === "begriffe" ? "spell-check" : "list-check";
 }
 
-/** Die Zahlen des Prüfberichts als Marken: geprüft, nachgearbeitet, offen */
-export function berichtsmarken(z: Zahlen): { text: string; ton: "gut" | "info" | "warn"; symbol: string }[] {
+/** Die Zahlen des Prüfberichts als Marken: geprüft, nachgearbeitet, offen, dazu verworfene Einwände des Prüfers */
+export function berichtsmarken(z: Zahlen): { text: string; ton: "gut" | "info" | "warn"; symbol: string; titel?: string }[] {
   return [
     { text: `${zahl(z.bestanden)} geprüft`, ton: "gut", symbol: "circle-check" },
     { text: `${zahl(z.nachgearbeitet)} nachgearbeitet`, ton: "info", symbol: "rotate" },
     { text: `${zahl(z.offen)} offen`, ton: "warn", symbol: "circle-exclamation" },
+    ...(z.verworfen ? [{ text: `${zahl(z.verworfen)} verworfen`, ton: "info" as const, symbol: "robot",
+                         titel: "Einwände des KI-Prüfers zu Begriffen, Schreibung oder Anrede: das prüfen die festen Prüfungen" }] : []),
   ];
 }
 

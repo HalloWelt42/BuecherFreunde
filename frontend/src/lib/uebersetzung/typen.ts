@@ -80,6 +80,8 @@ export interface Zahlen {
   bestanden: number;
   nachgearbeitet: number;
   offen: number;
+  /** Einwände des KI-Prüfers anderer Art (Begriffe, Schreibung), die nicht gelten; fehlt bei älteren Antworten */
+  verworfen?: number;
 }
 
 export interface Laufstand {
@@ -140,6 +142,8 @@ export interface OffeneStelle {
 export interface Bericht {
   zahlen: Zahlen;
   offen: OffeneStelle[];
+  /** Einträge der Begriffsliste, die die Regeln nicht bestehen; sie gelten nicht, bis du entscheidest */
+  begriffe_fragwuerdig?: Begriff[];
 }
 
 export type Blockaktion = { aktion: "neu" } | { aktion: "annehmen" } | { aktion: "setzen"; text: string };
@@ -160,6 +164,8 @@ export interface Begriff {
   stellen: number;
   grund: string;
   art: Begriffsart;
+  /** warum ein Eintrag von Regel oder KI die Regeln nicht besteht; leer: er gilt */
+  fragwuerdig: string;
 }
 
 export interface BegriffNeu {

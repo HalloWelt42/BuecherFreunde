@@ -5,20 +5,22 @@ import Fassungslabels from "../src/ansichten/buch/Fassungslabels.svelte";
 import Buchkopf from "../src/ansichten/buch/Buchkopf.svelte";
 import Uebersetzungsfrage from "../src/ansichten/buch/Uebersetzungsfrage.svelte";
 import { Buchfassungen, fassungsAdresse, uebersetzbar } from "../src/ansichten/buch/fassungen.svelte";
+import Begriffsliste from "../src/ansichten/uebersetzung/Begriffsliste.svelte";
 import Offenestelle from "../src/ansichten/uebersetzung/Offenestelle.svelte";
 import { ladeLesefassung, originalfassung, uebersetzungsfassung } from "../src/lib/leser/lesefassung";
 import { Positionsspeicher } from "../src/lib/leser/position";
 import { Lesesitzung } from "../src/lib/leser/sitzung.svelte";
 import { anschluesse } from "../src/lib/stand/anschluesse.svelte";
 import { auftraege } from "../src/lib/stand/auftraege.svelte";
+import { rueckfrage } from "../src/lib/stand/rueckfrage.svelte";
 import { buecher } from "../src/lib/stand/buecher.svelte";
 import { uebersetzungen } from "../src/lib/stand/uebersetzungen.svelte";
 import type { BuchEinzeln } from "../src/lib/typen";
 import { klartext, stuecke } from "../src/lib/uebersetzung/marken";
 import {
-  auftragstext, befundname, ergebnistext, kapiteldauer, kapitelzeilen, labeltext, laufanteil, laufort, stationstext,
+  auftragstext, befundname, berichtsmarken, ergebnistext, kapiteldauer, kapitelzeilen, labeltext, laufanteil, laufort, stationstext,
 } from "../src/lib/uebersetzung/texte";
-import type { Fassungseintrag, Kapitelstand, Laufeintrag, Laufstand, OffeneStelle } from "../src/lib/uebersetzung/typen";
+import type { Begriff, Fassungseintrag, Kapitelstand, Laufeintrag, Laufstand, OffeneStelle } from "../src/lib/uebersetzung/typen";
 import { dauer, etwa, gegen, ungefaehr, zeitKurz } from "../src/lib/uebersetzung/zeiten";
 
 const BUCH = {
@@ -280,6 +282,47 @@ describe("Offene Stelle im Prüfbericht", () => {
     await fireEvent.click(screen.getByRole("button", { name: /Speichern/ }));
     await vi.waitFor(() => expect(erledigt).toHaveBeenCalled());
     expect(anfragen.at(-1)).toEqual({ weg: "/api/fassungen/3/bloecke/5.4", methode: "POST", koerper: { aktion: "setzen", text: "Zu kurz." } });
+  });
+});
+
+describe("Fragwürdige Begriffe", () => {
+  const begriff = (id: number, englisch: string, mehr: Partial<Begriff> = {}): Begriff => ({
+    id, englisch, deutsch: "", bleibt: true, herkunft: "ki", stellen: 3, grund: "Fachbegriff", art: "begriff", fragwuerdig: "", ...mehr,
+  });
+
+  it("stehen mit Grund in der Liste und gehen erst nach der Rückfrage mit allen Gründen, ohne neu zu übersetzen", async () => {
+    let liste = [begriff(1, "Sorting", { herkunft: "regel", fragwuerdig: "Kein Name nach der Regel: im Fließtext nicht oft genug mitten im Satz groß" }),
+                 begriff(2, "paging", { bleibt: false, deutsch: "Seitenverwaltung", fragwuerdig: "Paging bleibt im deutschen Fachtext gebräuchlich englisch" }),
+                 begriff(3, "sensor")];
+    const anfragen = server((weg, methode) => {
+      if (weg.endsWith("/begriffe/fragwuerdige/entfernen")) {
+        liste = liste.filter((b) => !b.fragwuerdig);
+        return [200, { entfernt: [1, 2] }];
+      }
+      if (weg.endsWith("/begriffe")) return [200, liste];
+      if (weg.endsWith("/fassungen")) return [200, [original(), deutsch()]];
+      return [200, methode === "GET" ? BUCH : {}];
+    });
+    render(Begriffsliste, { props: { params: { id: "7" } } });
+    await screen.findByText("Paging bleibt im deutschen Fachtext gebräuchlich englisch");
+    expect(screen.getAllByText("fragwürdig")).toHaveLength(2);
+    expect(screen.getByText("Fachbegriff")).toBeTruthy();                              // der gute Eintrag zeigt seinen Grund
+    await fireEvent.click(screen.getByRole("button", { name: /Fragwürdige entfernen \(2\)/ }));
+    await vi.waitFor(() => expect(rueckfrage.offen).not.toBeNull());
+    expect(rueckfrage.offen?.titel).toBe("2 fragwürdige Begriffe entfernen?");
+    expect(rueckfrage.offen?.folgen).toEqual(["Sorting: Kein Name nach der Regel: im Fließtext nicht oft genug mitten im Satz groß",
+      "paging: Paging bleibt im deutschen Fachtext gebräuchlich englisch", "Sie gelten schon jetzt nicht; keine Stelle wird dafür neu übersetzt."]);
+    expect(anfragen.some((a) => a.methode === "POST")).toBe(false);                    // nichts geht vor dem Ja
+    rueckfrage.antworte(true);
+    await vi.waitFor(() => expect(screen.queryByText("Paging bleibt im deutschen Fachtext gebräuchlich englisch")).toBeNull());
+    expect(anfragen.find((a) => a.methode === "POST")).toEqual({ weg: "/api/books/7/begriffe/fragwuerdige/entfernen", methode: "POST", koerper: { ids: [1, 2] } });
+    expect(screen.queryByRole("button", { name: /Fragwürdige entfernen/ })).toBeNull();
+  });
+
+  it("der Prüfbericht zählt verworfene Einwände des Prüfers nur, wenn es welche gibt", () => {
+    const z = { bloecke: 40, uebersetzt: 24, bestanden: 22, nachgearbeitet: 2, offen: 1 };
+    expect(berichtsmarken(z).map((m) => m.text)).toEqual(["22 geprüft", "2 nachgearbeitet", "1 offen"]);
+    expect(berichtsmarken({ ...z, verworfen: 12 }).at(-1)).toMatchObject({ text: "12 verworfen", ton: "info", symbol: "robot" });
   });
 });
 
