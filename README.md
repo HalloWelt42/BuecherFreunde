@@ -22,8 +22,7 @@ Selbst gehostete Buchverwaltung für 50.000+ Bücher. Läuft per Docker auf Rasp
     <td><img src="docs/bilder/marken-am-rand.png" alt="Marken am Rand"><br>Marken am Rand stehen auf Höhe ihrer Stelle und klappen beim Überfahren zur Karte auf.</td>
   </tr>
   <tr>
-    <td><img src="docs/bilder/ausfuehren-debugger.png" alt="Ausführen mit Debugger"><br>Listings aus dem Buch laufen in der Sandbox, Schritt für Schritt mit Haltepunkten, Variablen und Ausgabe.</td>
-    <td><img src="docs/bilder/nachschlagen.png" alt="Nachschlagen"><br>Ein markiertes Wort lässt sich nachschlagen, der Artikel öffnet sich im Fenster neben dem Buch.</td>
+    <td colspan="2"><img src="docs/bilder/ausfuehren-debugger.png" alt="Ausführen mit Debugger"><br>Listings aus dem Buch laufen in der Sandbox, Schritt für Schritt mit Haltepunkten, Variablen und Ausgabe.</td>
   </tr>
 </table>
 
