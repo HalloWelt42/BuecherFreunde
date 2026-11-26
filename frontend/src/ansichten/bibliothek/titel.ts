@@ -5,7 +5,7 @@ import { filter } from "../../lib/stand/filter.svelte";
 
 const NAMEN: Record<string, string> = {
   "art=buch": "Bücher", "art=besonderes": "Besonderes", "hat_isbn=true": "Mit ISBN", "hat_isbn=false": "Ohne ISBN", "weiterlesen=true": "Weiterlesen", "is_favorite=true": "Favoriten", "is_to_read=true": "Lesesofa",
-  "gelesen=true": "Gelesen", "gelesen=false": "Ungelesen", "hat_highlights=true": "Markiertes", "hat_labels=true": "Mit Etiketten",
+  "gelesen=true": "Gelesen", "gelesen=false": "Nicht fertig", "hat_highlights=true": "Markiertes", "hat_labels=true": "Mit Etiketten",
   "ohne_kategorie=true": "Ohne Kategorie",
 };
 

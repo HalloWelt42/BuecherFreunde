@@ -266,7 +266,10 @@ export interface Buch {
   is_to_read: boolean;
   rating: number;
   reading_position: string;
+  /** Zuletzt gelesen, auch wenn es nicht fertig ist */
   last_read_at: string | null;
+  /** Fertig gelesen (Lesestand am Ende oder markiert, BF-78); leer: noch nicht */
+  fertig_am?: string | null;
   categories: RegalKurz[];
   sammlung: SammlungKurz | null;
   created_at: string;

@@ -12,4 +12,4 @@
 
 <Knopf text="Favorit" symbol="heart" nur gedrueckt={buch.is_favorite} onclick={() => void tun("favorit")} />
 <Knopf text="Lesesofa" symbol="couch" nur gedrueckt={buch.is_to_read} onclick={() => void tun("sofa")} />
-<Knopf text="Gelesen" symbol="circle-check" nur gedrueckt={!!buch.last_read_at} onclick={() => void tun("gelesen")} />
+<Knopf text="Fertig gelesen" symbol="circle-check" nur gedrueckt={!!buch.fertig_am} onclick={() => void tun("gelesen")} />

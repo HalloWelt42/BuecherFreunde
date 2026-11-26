@@ -7,7 +7,7 @@ import { buecher } from "./buecher.svelte";
 import { melde } from "./meldungen.svelte";
 import { wahl } from "./wahl.svelte";
 
-type Merkbar = Pick<Buch, "id" | "is_favorite" | "is_to_read" | "last_read_at" | "rating" | "privat">;
+type Merkbar = Pick<Buch, "id" | "is_favorite" | "is_to_read" | "last_read_at" | "fertig_am" | "rating" | "privat">;
 
 function verteile(id: number, neu: Partial<Buch>): void {
   buecher.aktualisiere(id, neu);
@@ -47,7 +47,9 @@ export const merkmale = {
   gelesen: (buch: Merkbar) =>
     mitZahlen(buch, async () => {
       const a = await toggleGelesen(buch.id);
-      return { last_read_at: (a.gelesen ?? !buch.last_read_at) ? new Date().toISOString() : null };
+      // Fertig gelesen markieren oder zurücknehmen (BF-78); wann zuletzt gelesen wurde, bleibt
+      const jetzt = new Date().toISOString();
+      return (a.gelesen ?? !buch.fertig_am) ? { fertig_am: jetzt, last_read_at: buch.last_read_at ?? jetzt } : { fertig_am: null };
     }),
   sterne: (buch: Merkbar, wert: number) =>
     mitZahlen(buch, async () => {

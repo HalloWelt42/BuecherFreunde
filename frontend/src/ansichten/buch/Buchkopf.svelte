@@ -47,7 +47,7 @@
       ["Jahr", buch.year ? String(buch.year) : ""],
       ["Datei", buch.file_name],
       ["Dazu am", datum(buch.created_at)],
-      ["Gelesen", buch.last_read_at ? datum(buch.last_read_at) : ""],
+      ["Gelesen", buch.fertig_am ? datum(buch.fertig_am) : ""],
     ] as [string, string][]).filter(([, w]) => w),
   );
 

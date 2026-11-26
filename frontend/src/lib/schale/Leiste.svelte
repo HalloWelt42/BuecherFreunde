@@ -76,7 +76,7 @@
       {@render schalter("is_favorite", "true", "Favoriten", "heart", z.favoriten)}
       {@render schalter("is_to_read", "true", "Lesesofa", "couch", z.leseliste)}
       {@render schalter("gelesen", "true", "Gelesen", "circle-check", z.gelesen)}
-      {@render schalter("gelesen", "false", "Ungelesen", "circle-dot", z.ungelesen)}
+      {@render schalter("gelesen", "false", "Nicht fertig", "circle-dot", z.ungelesen)}
       {@render schalter("hat_highlights", "true", "Markiertes", "highlighter", z.mit_highlights)}
     </div>
 
