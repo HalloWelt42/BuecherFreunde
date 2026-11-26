@@ -18,11 +18,11 @@ import type { Ansagefolge } from "./ansagen";
 
 export interface Ansageeintrag {
   text: string;
-  /** Leer: der Ton ist noch nicht fertig */
-  url: string;
+  /** Der fertige Ton (GET /api/familie/ansagen/ton/{ordner}/{datei}); null mit der Stimme des Geräts */
+  url: string | null;
 }
 
-/** GET /api/familie/ansagen */
+/** GET /api/familie/ansagen: für das aktive Profil, ohne Profil die der Profilwahl in der Stimme der Familie */
 export interface Ansagekatalog {
   /** Die Stimme, die die Eltern gewählt haben; "geraet": die Stimme des Geräts */
   stimme: string;
@@ -149,7 +149,7 @@ export class Ansage {
   async #klinge(teile: Ansageeintrag[], abbruch: AbortSignal): Promise<void> {
     if (this.katalog?.stimme === GERAETESTIMME) return this.quelle.sprich(teile.map((t) => t.text).join(" "), abbruch);
     // Erst alle Töne, dann ohne Pause hintereinander
-    const toene = await Promise.all(teile.map((t) => this.#ton(t.url)));
+    const toene = await Promise.all(teile.map((t) => this.#ton(t.url!)));
     for (const ton of toene) {
       if (abbruch.aborted) return;
       await this.quelle.spiele(ton, abbruch);

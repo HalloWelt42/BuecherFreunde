@@ -30,7 +30,8 @@ function symbolEinbetten() {
 
 // Module, die der Leser ohne Netz nie braucht oder die zu groß sind: Diagramme in Markdown laden erst bei Bedarf
 const OHNE_VORRAT = /node_modules\/(?:mermaid|@mermaid-js|cytoscape|katex|elkjs)\//;
-const LESER = /\/src\/(?:ansichten|lib)\/leser\//;
+// Der Leser, der Kinderbereich und die Trennmuster seiner Silben (lib/kind/silben.ts lädt sie erst bei Bedarf)
+const LESER = /\/src\/(?:ansichten|lib)\/(?:leser|kind)\/|\/node_modules\/hyphen\//;
 
 /** Was der Dienst im Hintergrund vorab speichert: die Hülle der App (alles, was der Einstieg fest lädt) und der Leser mit
  *  allen Formaten (pdf.js samt Worker, foliate-js, Textleser), dazu ihr Stil, ihre Schriften und Bilder */

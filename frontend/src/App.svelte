@@ -23,6 +23,7 @@
   import Danke from "./ansichten/danke/Danke.svelte";
   import Profilwahl from "./ansichten/familie/Profilwahl.svelte";
   import Kinderbereich from "./ansichten/kind/Kinderbereich.svelte";
+  import { nutztKinderbereich } from "./lib/kind/ich";
   import Einstellungen from "./ansichten/einstellungen/Einstellungen.svelte";
   import Hinzufuegen from "./ansichten/hinzu/Hinzufuegen.svelte";
   import Leser from "./ansichten/leser/Leser.svelte";
@@ -122,7 +123,7 @@
       <Profilwahl />
     {:else if familie.phase === "fehler"}
       <main class="familienfehler"><Zustand art="fehler" text={familie.fehler} onerneut={() => void familie.starte()} /></main>
-    {:else if familie.phase === "bereit" && ich.istKind}
+    {:else if familie.phase === "bereit" && ich.jetzt && nutztKinderbereich(ich.jetzt)}
       <!-- Ein Kind sieht statt der Schale seinen eigenen, einfacheren Bereich -->
       <Kinderbereich ich={ich.jetzt} onverlassen={() => void familie.neuBeginnen()} />
     {:else if familie.phase === "bereit"}

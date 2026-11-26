@@ -10,8 +10,7 @@
   import Katze from "../../lib/kind/Katze.svelte";
   import Kinderuhr from "../../lib/kind/Kinderuhr.svelte";
   import type { Lesezeituhr } from "../../lib/kind/lesezeit.svelte";
-  import { fertigGelesen } from "../../lib/kind/stelle";
-  import type { Ich } from "../../lib/kind/typen";
+  import type { Ich, Kinderbuch } from "../../lib/kind/typen";
   import { navigate, route } from "../../lib/router.svelte";
   import { vorlesen } from "../../lib/stand/vorlesen.svelte";
   import type { Buch } from "../../lib/typen";
@@ -31,7 +30,7 @@
   let art = $derived<Regalart>(regale.some(([a]) => a === route.params.regal) ? (route.params.regal as Regalart) : "alle");
   let gross = $derived(regale.length === 1 && !f.has("suche"));
 
-  let buecher = $state.raw<Buch[]>([]);
+  let buecher = $state.raw<Kinderbuch[]>([]);
   let laedt = $state(true);
   let fehler = $state("");
   let suche = $state("");
@@ -42,9 +41,7 @@
     try {
       const liste = await holeRegal(welche);
       if (welche !== art) return;
-      buecher = welche === "gelesen"
-        ? liste.filter((b) => fertigGelesen(b.reading_position, b.page_count)).toSorted((a, b) => (b.last_read_at ?? "").localeCompare(a.last_read_at ?? ""))
-        : liste;
+      buecher = welche === "gelesen" ? liste.toSorted((a, b) => (b.fertig_am ?? "").localeCompare(a.fertig_am ?? "")) : liste;
     } catch (e) {
       fehler = e instanceof Error ? e.message : String(e);
     } finally {
@@ -135,7 +132,7 @@
   {:else}
     <div class="k-regal" class:gross aria-busy={laedt}>
       {#each gezeigt as buch (buch.id)}
-        <Buchkachel {buch} unter={art === "gelesen" ? wannGelesen(buch.last_read_at, jetzt) : ""} onwahl={oeffne} />
+        <Buchkachel {buch} unter={art === "gelesen" ? wannGelesen(buch.fertig_am ?? buch.last_read_at, jetzt) : ""} onwahl={oeffne} />
       {/each}
     </div>
   {/if}

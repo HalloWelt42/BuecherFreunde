@@ -26,21 +26,14 @@ export function stufeAus(w: unknown): Stufe | null {
   return STUFEN.includes(w as Stufe) ? (w as Stufe) : null;
 }
 
-/**
- * Fähigkeiten als Liste ["lesen", ...] oder als Schalter {lesen: true, ...}; fehlt die Angabe, gilt die Stufe. Der Rückblick
- * "Gelesen" gehört zu den eigenen Regalen: nennt der Server ihn nicht eigens, kommt er mit den Lieblingen.
- */
+/** Fähigkeiten als Liste ["lesen", ...] oder als Schalter {lesen: true, ...}; fehlt die Angabe, gilt die Stufe */
 export function faehigkeitenAus(roh: unknown, stufe: Stufe): Set<Faehigkeit> {
-  const benannt = Array.isArray(roh) || (!!roh && typeof roh === "object");
   const namen = Array.isArray(roh)
     ? roh.filter((n): n is string => typeof n === "string")
     : roh && typeof roh === "object"
       ? Object.entries(roh as Roh).filter(([, an]) => an === true).map(([n]) => n)
       : VORGABEN[stufe].faehigkeiten;
-  const kennt = (f: string) => (Array.isArray(roh) ? roh.includes(f) : benannt ? f in (roh as Roh) : namen.includes(f));
-  const aus = new Set(BEKANNT.filter((f) => namen.includes(f)));
-  if (!kennt("gelesen") && aus.has("favoriten")) aus.add("gelesen");
-  return aus;
+  return new Set(BEKANNT.filter((f) => namen.includes(f)));
 }
 
 /** Ein CSS-Millimeter in Pixeln */

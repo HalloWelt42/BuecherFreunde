@@ -2,12 +2,15 @@
   // "Wer liest?" (BF-78, Entwurf kinder-4 Abschnitt 1): große Bilder statt Namenslisten, unten die Katze auf ihrem eigenen
   // Platz. Ein Tipp wählt; Erwachsene geben danach ihre PIN im Zahlenfeld ein, Kinder ihre Bild-PIN, ein Profil ohne PIN
   // öffnet sofort. Auf einem gebundenen Gerät steht nur das Kind da, bis die Eltern es mit ihrer PIN öffnen. Die Verwaltung
-  // kommt über das Konto des Geräts auch ohne ihre PIN hinein.
+  // kommt über das Konto des Geräts auch ohne ihre PIN hinein. Angesagt wird in der Stimme der Familie (lib/kind/ansage.svelte.ts):
+  // "Wer liest?", der Name des getippten Profils, die Anleitung zur Bild-PIN und eine falsche Bild-PIN.
   import "@fontsource/andika/400.css";
   import "@fontsource/andika/700.css";
   import { untrack } from "svelte";
   import { ApiError } from "../../lib/api/client";
   import type { Familie, Nachweis, Profil } from "../../lib/api/familie";
+  import { ansage } from "../../lib/kind/ansage.svelte";
+  import { HINWEIS, profil as profilansage, TASTE } from "../../lib/kind/ansagen";
   import Katze from "../../lib/kind/Katze.svelte";
   import { darstellung, wahlen } from "../../lib/stand/darstellung.svelte";
   import { familie } from "../../lib/stand/familie.svelte";
@@ -33,11 +36,24 @@
   let wartet = $state(false);
   let darstellungOffen = $state(false);
 
+  // Die Ansagen der Profilwahl (ohne Profil: Hinweise, Tasten und Namen in der Stimme der Familie); "Wer liest?", sobald sie da sind
+  $effect(() => {
+    untrack(() => {
+      ansage.stelle(true, true);
+      void ansage.lade().then(() => {
+        if (!gewaehlt) void ansage.hinweis([HINWEIS.werLiest]);
+      });
+    });
+    return () => ansage.beende();
+  });
+
   function tippe(p: Profil) {
     fehler = "";
     wartet = false;
     if (!p.hat_pin && !p.hat_bild_pin) void pruefe(p, {});
     else gewaehlt = p;
+    // Der Name, bei einer Bild-PIN gleich die Anleitung dazu
+    void ansage.taste(p.hat_bild_pin ? [profilansage(p.id), HINWEIS.bildPin] : [profilansage(p.id)]);
   }
 
   async function pruefe(p: Profil, nachweis: Nachweis) {
@@ -50,6 +66,7 @@
       fehler = e instanceof Error ? e.message : String(e);
       wartet = e instanceof ApiError && e.status === 429;
       versuch += 1;
+      if (p.hat_bild_pin && !wartet) void ansage.hinweis([HINWEIS.bildPinFalsch]);
       // Etwa die offene Wahl eines gebundenen Geräts ist vorbei: was zur Wahl steht, kommt neu
       void familie.laden().catch(() => undefined);
     } finally {
@@ -61,6 +78,7 @@
     gewaehlt = null;
     fehler = "";
     wartet = false;
+    void ansage.taste([TASTE.zurueck]);
   }
 
   /** Ohne PIN öffnet das Profil sofort */
@@ -70,6 +88,9 @@
     await pruefe(p, {});
   }
 </script>
+
+<!-- Das erste Antippen gibt die Ansagen frei -->
+<svelte:window onpointerdown={() => ansage.freigeben()} onkeydown={() => ansage.freigeben()} />
 
 <main class="wer-liest" aria-label="Wer liest?">
   <header class="kopfzeile">

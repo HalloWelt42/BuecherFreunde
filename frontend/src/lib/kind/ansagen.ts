@@ -1,7 +1,7 @@
-// Die Schlüssel der Ansagen an einer Stelle. Die Sätze legt backend/app/familie/ansagen.json fest (tasten, hinweise, bausteine,
-// dinge); GET /api/familie/ansagen liefert sie als fertige Töne unter "Gruppe.Name": tasten.weiter, hinweise.frag_eltern,
-// uhr.4, minute.35, noch.25, heute.45, titel.{Buch}, katze, profil.{Profil}, ruhezeit. Eine Ansage ist eine Folge von
-// Schlüsseln, die ohne Pause hintereinander klingen; zusammengesetzt wird nur die Uhr. Wie die Schlüssel heißen, steht nur hier.
+// Die Schlüssel der Ansagen an einer Stelle (docs/neubau/SCHNITTSTELLE.md, Feste Ansagen; Sätze in
+// backend/app/familie/ansagen.json). GET /api/familie/ansagen liefert sie als fertige Töne unter "gruppe.name": tasten.weiter,
+// hinweise.frag_eltern, uhr.4, minute.35, noch.25, heute.45, titel.<buch>, katze, katze.<vorschlag>, ruhezeit, profil.<profil>.
+// Eine Ansage ist eine Folge von Schlüsseln, die ohne Pause hintereinander klingen. Wie die Schlüssel heißen, steht nur hier.
 
 export type Ansagefolge = string[];
 
@@ -24,7 +24,6 @@ export const TASTE = {
   gelesen: taste("gelesen"),
   schloss: taste("schloss"),
   zumRegal: taste("zum_regal"),
-  // Ab Stufe Schule (dort sind Ansagen von selbst aus) und am Ende eines Buchs; ohne Ton am Server bleiben sie still
   stiftAn: taste("stift_an"),
   stiftAus: taste("stift_aus"),
   gemerkt: taste("gemerkt"),
@@ -42,7 +41,10 @@ export const HINWEIS = {
   lesezeitUm: hinweis("lesezeit_um"),
   fragEltern: hinweis("frag_eltern"),
   katzeBenennen: hinweis("katze_benennen"),
-  // Ohne Ton am Server bleiben sie still
+  werLiest: hinweis("wer_liest"),
+  /** "Tippe drei Bilder an." */
+  bildPin: hinweis("bild_pin"),
+  bildPinFalsch: hinweis("bild_pin_falsch"),
   buchFertig: hinweis("buch_fertig"),
   regalLeer: hinweis("regal_leer"),
   lieblingeLeer: hinweis("lieblinge_leer"),
@@ -50,14 +52,15 @@ export const HINWEIS = {
   sucheLeer: hinweis("suche_leer"),
 } as const;
 
-/** "Jetzt ist Ruhezeit. Ab 6:30 kannst du wieder lesen." mit der Uhrzeit des Kindes */
+/** "Jetzt ist Ruhezeit. Ab sechs Uhr dreißig kannst du wieder lesen.", ein ganzer Satz je Kind mit dem Ende seiner Ruhezeit */
 export const RUHEZEIT = "ruhezeit";
 /** Der Titel eines freigegebenen Buchs */
 export const buch = (id: number): string => `titel.${id}`;
 /** Der Name der Katze */
 export const KATZE = "katze";
-/** Ein Vorschlag für den Namen der Katze; den Ton gibt es nur, wenn der Server ihn spricht */
+/** Ein Vorschlag für den Namen der Katze im Vorlesealter (stufen.json, katze.vorschlaege) */
 export const katzenvorschlag = (name: string): string => `katze.${name}`;
+/** Der Name eines Profils für "Wer liest?", in der Stimme der Familie */
 export const profil = (id: string): string => `profil.${id}`;
 
 /** "Es ist vier Uhr" + "fünfunddreißig" + "Noch fünfundzwanzig Minuten"; volle Stunden ohne Minutenwort */

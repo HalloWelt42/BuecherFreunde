@@ -21,7 +21,7 @@
   import { kindangabenAus, kinderlesewerte } from "../../lib/kind/stelle";
   import { lesetasten, steuertVorlesen, tastenansage, tastenbild, type Lesetaste, type Tastenstand } from "../../lib/kind/tasten";
   import type { Ich, Kinderstelle, Wort } from "../../lib/kind/typen";
-  import { lesewerte } from "../../lib/lesestand";
+  import { lesestand, lesewerte } from "../../lib/lesestand";
   import { buchort, Positionsspeicher } from "../../lib/leser/position";
   import { wischen } from "../../lib/leser/wischen";
   import { liesJson, merkeJson } from "../../lib/speicher";
@@ -36,6 +36,8 @@
 
   /** Ist die Ruhe fällig und blättert das Kind nicht weiter, kommt sie nach dieser Frist trotzdem */
   const NACHFRIST_MS = 120_000;
+  /** Ab diesem Anteil steht der Lesestand am Ende (wie lesestand.fertig_ab in stufen.json) */
+  const FERTIG_AB = 0.99;
   /** Der Hinweis kurz vor dem Ende steht so lange groß da */
   const HINWEIS_MS = 8000;
 
@@ -84,7 +86,8 @@
     const s = stand;
     if (!s || !speicher) return;
     const grund = await s.quelle.lesewerte(stelle).catch(() => ({}));
-    speicher.merke(kinderlesewerte(fertig ? { ...grund, percent: 100 } : grund, stelle, s.lesezeichen, fertig));
+    // Am Ende steht der Lesestand auf dem Ende; fertig gelesen ist das Buch dann nach der Regel des Servers
+    speicher.merke(kinderlesewerte(fertig ? { ...grund, percent: 100 } : grund, stelle, s.lesezeichen));
   }
 
   async function oeffne() {
@@ -109,10 +112,12 @@
         wortgenau: () => vorlesen.stimme.startsWith("geraet:"),
       });
       vorlesequelle = s.vorlesequelle();
-      // Ein Lesezeichen gibt an, wo das Buch aufgeht; sonst die Stelle, an der zuletzt gelesen wurde. Ein fertiges Buch beginnt neu.
-      const start = angaben?.fertig ? { einheit: 0, zeichen: 0 } : (angaben?.lesezeichen ?? (angaben ? { einheit: angaben.einheit, zeichen: angaben.zeichen } : await q.stelleAus(werte)) ?? { einheit: 0, zeichen: 0 });
+      // Ein Lesezeichen gibt an, wo das Buch aufgeht; sonst die Stelle, an der zuletzt gelesen wurde. Steht der Lesestand am Ende,
+      // beginnt das Buch neu.
+      const amEnde = lesestand(b).anteil >= FERTIG_AB;
+      const start = amEnde ? { einheit: 0, zeichen: 0 } : (angaben?.lesezeichen ?? (angaben ? { einheit: angaben.einheit, zeichen: angaben.zeichen } : await q.stelleAus(werte)) ?? { einheit: 0, zeichen: 0 });
       stand = s;
-      await s.beginne(start, angaben?.fertig ? null : (angaben?.lesezeichen ?? null));
+      await s.beginne(start, amEnde ? null : (angaben?.lesezeichen ?? null));
       if (f.has("markierungen")) {
         const m = new Kindermarkierungen(b.id, q);
         markierungen = m;

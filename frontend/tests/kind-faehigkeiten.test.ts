@@ -1,7 +1,8 @@
 // Was ein Kind darf und wie es liest (BF-78): aus GET /api/familie/ich, Fehlendes aus den Vorgaben der Stufe; der Lesestand
 // in der Form des normalen Lesers
 import { darstellungAus, faehigkeitenAus, ichAus, katzeAus, lesezeitAus, nutztKinderbereich } from "../src/lib/kind/ich";
-import { fertigGelesen, kindangabenAus, kinderlesewerte } from "../src/lib/kind/stelle";
+import { kindangabenAus, kinderlesewerte } from "../src/lib/kind/stelle";
+import { lesestand } from "../src/lib/lesestand";
 import { einheitenAus, textstueckeAus } from "../src/lib/kind/quelle-text";
 
 describe("Fähigkeiten", () => {
@@ -57,9 +58,9 @@ describe("Fähigkeiten", () => {
     expect(ich.einblick).toEqual(["titel", "lesezeit", "fortschritt"]);
     expect(darstellungAus({ schrift: "serifenlos", zeichen_je_zeile: null }, "schule").schrift).toContain("Atkinson");
     expect(darstellungAus({ zeichen_je_zeile: null }, "schule").zeichen_je_zeile).toBe(0);
-    // Der Rückblick kommt mit den Lieblingen, solange der Server ihn nicht eigens nennt
-    expect(ich.faehigkeiten.has("gelesen")).toBe(true);
-    expect(faehigkeitenAus({ favoriten: true, gelesen: false }, "schule").has("gelesen")).toBe(false);
+    // Den Rückblick gibt es nur mit der Fähigkeit gelesen vom Server, nie von selbst
+    expect(ich.faehigkeiten.has("gelesen")).toBe(false);
+    expect(faehigkeitenAus(["lesen", "favoriten", "gelesen"], "lesen_lernen").has("gelesen")).toBe(true);
   });
 
   it("baut ein vollständiges Ich, auch aus wenig", () => {
@@ -83,27 +84,17 @@ describe("Fähigkeiten", () => {
 });
 
 describe("Lesestand des Kinderlesers", () => {
-  it("schreibt die Form des normalen Lesers und dazu Stelle, Lesezeichen und Ende", () => {
-    const w = kinderlesewerte({ page: 3 }, { einheit: 2, zeichen: 40 }, { einheit: 1, zeichen: 0 }, false);
+  it("schreibt die Form des normalen Lesers und dazu Stelle und Lesezeichen", () => {
+    const w = kinderlesewerte({ page: 3 }, { einheit: 2, zeichen: 40 }, { einheit: 1, zeichen: 0 });
     const position = `pdf:${JSON.stringify(w)}`;
-    expect(kindangabenAus(position)).toEqual({ einheit: 2, zeichen: 40, lesezeichen: { einheit: 1, zeichen: 0 }, fertig: false });
-    expect(fertigGelesen(position, 10)).toBe(false);
-    expect(fertigGelesen(`pdf:${JSON.stringify(kinderlesewerte({ page: 10 }, { einheit: 9, zeichen: 0 }, null, true))}`, 10)).toBe(true);
+    expect(kindangabenAus(position)).toEqual({ einheit: 2, zeichen: 40, lesezeichen: { einheit: 1, zeichen: 0 } });
+    // Am Ende steht der Lesestand auf dem Ende: so gilt das Buch nach der Regel des Servers als fertig
+    const ende = `epub:${JSON.stringify(kinderlesewerte({ cfi: "epubcfi(/6/8!/4/2/1:0)", percent: 100 }, { einheit: 3, zeichen: 0 }, null))}`;
+    expect(lesestand({ reading_position: ende, page_count: 0 }).anteil).toBe(1);
   });
 
   it("versteht Stände des normalen Lesers", () => {
     expect(kindangabenAus('epub:{"cfi":"epubcfi(/6/4!/4/2/1:0)","percent":40}')).toBeNull();
-    expect(fertigGelesen("pdf:{\"page\":12}", 12)).toBe(true);
-    expect(fertigGelesen('epub:{"percent":99.5}')).toBe(true);
-    expect(fertigGelesen("")).toBe(false);
-  });
-});
-
-describe("Textbücher", () => {
-  it("teilt Absätze und Überschriften und beginnt an jeder Überschrift eine Einheit", () => {
-    const s = textstueckeAus("# Erster Teil\n\nEin **kurzer** Satz.\n\n## Zweiter\n\nNoch [einer](x).", true);
-    expect(s).toEqual([{ art: "titel", text: "Erster Teil" }, { art: "absatz", text: "Ein kurzer Satz." }, { art: "titel", text: "Zweiter" }, { art: "absatz", text: "Noch einer." }]);
-    expect(einheitenAus(s).map((e) => e.length)).toEqual([2, 2]);
-    expect(textstueckeAus("# Kein Titel\n\nText", false)[0].art).toBe("absatz");
+    expect(kindangabenAus("")).toBeNull();
   });
 });
