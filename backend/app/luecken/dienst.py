@@ -39,9 +39,20 @@ def haeufigster_autor(baende: list[Buchband]) -> str:
 
 def reihenname(baende: list[Buchband], sammlung: str) -> str:
     """Nach welchem Namen die Quelle für diese Bände gefragt wird: der Reihe, die ihre Titel am häufigsten nennen ("Lighthouse
-    Quay, Book 2"), sonst der Sammlung. Eine Übersetzung heißt oft anders als die Sammlung. Private Bücher zählen nie mit."""
+    Quay, Book 2"), sonst der Sammlung. Eine Übersetzung heißt oft anders als die Sammlung. Ist der häufigste Name nur eine
+    Abkürzung aus Dateinamen ("DRdZ 17 - ..."), kennt ihn kein Katalog; dann gilt der Name der Sammlung. Private Bücher zählen
+    nie mit."""
     zahlen = Counter(e.reihe for b in baende if not b.privat and (e := erkennen(b.titel)))
-    return zahlen.most_common(1)[0][0] if zahlen else sammlung
+    if not zahlen:
+        return sammlung
+    name = zahlen.most_common(1)[0][0]
+    return sammlung if sammlung and abkuerzung(name) else name
+
+
+def abkuerzung(name: str) -> bool:
+    """Ein einzelnes kurzes Wort mit mehreren Großbuchstaben, etwa "DRdZ" oder "HdR"; kein Katalog führt eine Reihe so."""
+    wort = name.strip()
+    return " " not in wort and 2 <= len(wort) <= 6 and sum(z.isupper() for z in wort) >= 2
 
 
 def luecke(reihe: str, sprache: str, nummer: int, q: Quellband | None, autor: str, vorlage: str) -> Luecke:

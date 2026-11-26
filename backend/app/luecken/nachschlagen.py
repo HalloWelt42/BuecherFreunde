@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 
 from backend.app.core.config import settings
 from backend.app.luecken import speicher
-from backend.app.luecken.dienst import haeufigster_autor, reihenname
+from backend.app.luecken.dienst import abkuerzung, haeufigster_autor, reihenname
 from backend.app.luecken.modelle import Nachschlagestand
 from backend.app.luecken.rechnen import aus_den_quellen
 from backend.app.luecken.sprachen import hauptsprache, sprachname
@@ -80,6 +80,7 @@ class Nachschlagen:
 
     async def runde(self) -> int:
         """Alles Offene der Reihe nach; liefert, wie viele gefragt wurden."""
+        await speicher.abkuerzungen_neu_fragen(abkuerzung)
         offen = await speicher.offene_paare()
         if not offen:
             self.grund = ""

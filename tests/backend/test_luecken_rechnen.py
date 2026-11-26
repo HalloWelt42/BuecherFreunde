@@ -125,3 +125,14 @@ def test_anfragen_der_kataloge():
     assert KATALOGE["dnb"].anfrage(frage) == 'TIT="Leuchtfeuer Kai" and PER="sandvoss" and MAT=books and SPR=ger'
     assert KATALOGE["k10plus"].anfrage(frage) == 'pica.tit="Leuchtfeuer Kai" and pica.per="sandvoss"'
     assert KATALOGE["dnb"].anfrage(Reihenfrage(reihe="Leuchtfeuerkai")) == 'TIT="Leuchtfeuerkai" and MAT=books'
+
+
+
+def test_reihenname_nimmt_bei_einer_abkuerzung_den_namen_der_sammlung():
+    from backend.app.luecken.dienst import abkuerzung, reihenname
+    from backend.app.luecken.modelle import Buchband
+    baende = [Buchband(id=i, titel=f"LFK {i:02d} - Ein erfundener Titel {i}", band=str(i)) for i in range(1, 6)]
+    assert reihenname(baende, "Leuchtfeuerkai") == "Leuchtfeuerkai"
+    assert abkuerzung("LFK") and abkuerzung("DRdZ") and not abkuerzung("Leuchtfeuerkai") and not abkuerzung("Die Saga")
+    ausgeschrieben = [Buchband(id=i, titel=f"Leuchtfeuerkai Band {i} - Ein erfundener Titel", band=str(i)) for i in range(1, 4)]
+    assert reihenname(ausgeschrieben, "Meine Sammlung") == "Leuchtfeuerkai"

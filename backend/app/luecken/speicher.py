@@ -95,6 +95,22 @@ async def _abgeschlossen(sammlung_id: int, sprache: str, quelle: str, gefragt: s
                      (sammlung_id, sprache, quelle, gefragt, stand, grund, gesamt))
 
 
+ABKUERZUNG_NEU = "luecken_abkuerzung_neu_gefragt"     # Merker in app_settings: einmal und nie wieder
+
+
+async def abkuerzungen_neu_fragen(ist_abkuerzung) -> int:
+    """Einmal: Fragen, die unter einer Abkürzung aus Dateinamen ohne Ergebnis blieben (vor der Regel in dienst.reihenname),
+    werden wieder offen, damit sie mit dem Namen der Sammlung genau ein weiteres Mal gestellt werden. Danach nie wieder."""
+    if await db.fetch_one("SELECT 1 FROM app_settings WHERE key = ?", (ABKUERZUNG_NEU,)):
+        return 0
+    zeilen = await db.fetch_all("SELECT sammlung_id, sprache, gefragt FROM reihe_sprache WHERE stand = 'fertig' AND quelle_gesamt IS NULL")
+    neu = [(z["sammlung_id"], z["sprache"]) for z in zeilen if ist_abkuerzung(z["gefragt"])]
+    await db.execute_many("UPDATE reihe_sprache SET stand = 'offen', grund = '' WHERE sammlung_id = ? AND sprache = ?", neu)
+    await db.execute("INSERT INTO app_settings(key, value) VALUES (?, '1')", (ABKUERZUNG_NEU,))
+    await db.commit()
+    return len(neu)
+
+
 async def neu_nachschlagen(sammlung_id: int) -> None:
     """Alle Sprachen der Sammlung wieder offen, auf Wunsch des Nutzers (etwa nach einem Fehler oder einem neuen Namen)."""
     await db.execute("UPDATE reihe_sprache SET stand = 'offen', grund = '' WHERE sammlung_id = ?", (sammlung_id,))
