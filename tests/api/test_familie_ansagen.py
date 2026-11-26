@@ -19,7 +19,7 @@ KERSTIN, THORSTEN = "katalog:Kerstin", "katalog:Thorsten"
 # die Schlüssel, die der Kinderbereich nennt (frontend/src/lib/kind/ansagen.ts)
 TASTEN = {"weiter", "zurueck", "pause", "vorlesen", "silben_an", "silben_aus", "zeile_an", "zeile_aus", "mein_regal", "lieblinge",
           "gelesen", "schloss", "zum_regal", "stift_an", "stift_aus", "gemerkt", "lesezeichen_weg", "notiz", "lieblingsbuch",
-          "kein_lieblingsbuch", "fertig"}
+          "kein_lieblingsbuch", "fertig", "kinderschrift_an", "kinderschrift_aus"}
 HINWEISE = {"lesezeit_gleich_um", "lesezeit_um", "frag_eltern", "katze_benennen", "buch_fertig", "regal_leer", "lieblinge_leer",
             "gelesen_leer", "suche_leer", "wer_liest", "bild_pin", "bild_pin_falsch"}
 

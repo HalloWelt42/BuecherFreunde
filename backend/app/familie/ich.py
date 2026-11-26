@@ -1,14 +1,15 @@
 """Wie ein Profil hinausgeht (BF-78): `GET /api/familie/ich` mit Fähigkeiten, Darstellung und Lesehilfen der Stufe samt der Wahl
-der Eltern, Lesezeitstand, Katze und dem, was die Eltern sehen; ein Profil für die Liste (mit Geburtsjahr und Einstellungen
-nur für die, die es ändern dürfen); die Stufen aus stufen.json für die Oberfläche."""
+der Eltern, Lesezeitstand, Katze, dem, was die Eltern sehen, und der Gestaltung des Kinderbereichs (BF-88); ein Profil für die
+Liste (mit Geburtsjahr und Einstellungen nur für die, die es ändern dürfen); die Stufen aus stufen.json für die Oberfläche."""
 
 from __future__ import annotations
 
 from backend.app.familie import lesezeit, profile, rechte
+from backend.app.familie.fehler import NichtErlaubt
 from backend.app.familie.modelle import (
     Ich, Katze, Lesezeitvorgabe, Profil, ProfilEintrag, Profileinstellungen, Stufenangabe, Stufenansicht, Stufenvorgaben, Zugangsangaben,
 )
-from backend.app.familie.stufen import Darstellung, Lesehilfen, Stufe, stufenbuch
+from backend.app.familie.stufen import Darstellung, Gestaltungsart, Lesehilfen, Leseschrift, Stufe, Uhrart, stufenbuch
 
 
 def _stufe(p: Profil) -> Stufe | None:
@@ -22,24 +23,45 @@ def lesehilfen(p: Profil) -> Lesehilfen | None:
 
 
 def darstellung(p: Profil) -> Darstellung | None:
-    """Die Darstellung der Stufe; die Schriftwahl der Eltern (klein, mittel, groß) ändert die Größe."""
+    """Die Darstellung der Stufe; die Schriftwahl (klein, mittel, groß) ändert die Größe, die Leseschrift normal Schriftart und
+    Abstände (stufen.json, `gestaltung.normalschrift`). Die Kinderschrift ist die Darstellung der Stufe selbst."""
     if (s := _stufe(p)) is None:
         return None
-    faktor = stufenbuch().gestaltung.schriftgroessen[lesehilfen(p).schrift]
-    return s.darstellung.model_copy(update={"groesse_px": round(s.darstellung.groesse_px * faktor)})
+    hilfen, gestaltung = lesehilfen(p), stufenbuch().gestaltung
+    neu: dict[str, object] = {"groesse_px": round(s.darstellung.groesse_px * gestaltung.schriftgroessen[hilfen.schrift])}
+    if hilfen.schrift_wahl == "normal":
+        neu |= gestaltung.normalschrift.model_dump()
+    return s.darstellung.model_copy(update=neu)
 
 
 def katze(p: Profil) -> Katze:
     k, s = p.einstellungen.katze, _stufe(p)
     if s is None:
         return Katze(an=False, name=k.name, schnurren=False)
-    return Katze(an=True if k.an is None else k.an, name=k.name, schnurren=k.schnurren, name_eingabe=s.katze_name)
+    return Katze(an=s.katze_an if k.an is None else k.an, name=k.name, schnurren=k.schnurren, name_eingabe=s.katze_name)
+
+
+def gestaltung(p: Profil) -> Gestaltungsart | None:
+    """Klein oder groß: die Wahl der Eltern, sonst die Stufe. Eine Stufe ohne Gestaltung (Jugend) liest in der Oberfläche der App,
+    dort gilt keine Wahl."""
+    if (s := _stufe(p)) is None or s.gestaltung is None:
+        return None
+    return p.einstellungen.gestaltung or s.gestaltung
+
+
+def uhr(p: Profil) -> Uhrart | None:
+    """Die Uhr im Kopf der Gestaltung groß: Zeiger oder Zahl, die Wahl der Eltern, sonst die Stufe."""
+    if (s := _stufe(p)) is None:
+        return None
+    return p.einstellungen.uhr or s.uhr
 
 
 def einstellungen(p: Profil) -> Profileinstellungen | None:
     """Was für ein Kind wirkt; Erwachsene haben keine Lesehilfen und keine Lesezeit."""
-    hilfen, zeit = lesehilfen(p), lesezeit.wirksam(p)
-    return Profileinstellungen(lesehilfen=hilfen, lesezeit=zeit, katze=katze(p)) if hilfen and zeit else None
+    hilfen, zeit, art = lesehilfen(p), lesezeit.wirksam(p), uhr(p)
+    if not (hilfen and zeit and art):
+        return None
+    return Profileinstellungen(lesehilfen=hilfen, lesezeit=zeit, katze=katze(p), gestaltung=gestaltung(p), uhr=art)
 
 
 def eintrag(p: Profil, mit_angaben: bool = False) -> ProfilEintrag:
@@ -56,7 +78,15 @@ def eintrag_fuer(p: Profil, betrachter: Profil | None) -> ProfilEintrag:
 async def ich(p: Profil) -> Ich:
     s = _stufe(p)
     return Ich(profil=eintrag(p, mit_angaben=True), faehigkeiten=sorted(rechte.faehigkeiten(p)), darstellung=darstellung(p) or {},
-               lesehilfen=lesehilfen(p), lesezeit=await lesezeit.stand(p), katze=katze(p), einblick=s.einblick if s else [])
+               lesehilfen=lesehilfen(p), lesezeit=await lesezeit.stand(p), katze=katze(p), einblick=s.einblick if s else [],
+               gestaltung=gestaltung(p), uhr=uhr(p))
+
+
+async def schrift_waehlen(p: Profil, wahl: Leseschrift) -> Ich:
+    """Das Kind schaltet beim Lesen zwischen normal und Kinderschrift; nur in der Gestaltung groß, sonst wählen die Eltern."""
+    if gestaltung(p) != "gross":
+        raise NichtErlaubt("Die Schrift wählen hier die Eltern")
+    return await ich(await profile.schrift_waehlen(p, wahl))
 
 
 def stufenansicht() -> Stufenansicht:
@@ -64,7 +94,8 @@ def stufenansicht() -> Stufenansicht:
     stufen = [Stufenangabe(schluessel=s.schluessel, name=s.name, alter=s.alter, alter_von=s.ab_alter, alter_bis=sb.alter_bis(s),
                            faehigkeiten=s.faehigkeiten, einblick=s.einblick, darstellung=s.darstellung, lesezeichen_je_buch=s.lesezeichen_je_buch,
                            vorgaben=Stufenvorgaben(lesehilfen=s.lesehilfen, lesezeit=lesezeit.vorgabe_fuer(s.ab_alter),
-                                                   katze=Katze(an=True, name="", schnurren=False, name_eingabe=s.katze_name)))
+                                                   katze=Katze(an=s.katze_an, name="", schnurren=False, name_eingabe=s.katze_name),
+                                                   gestaltung=s.gestaltung, uhr=s.uhr))
               for s in sb.stufen]
     return Stufenansicht(
         stufen=stufen,

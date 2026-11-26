@@ -653,10 +653,10 @@ tut `backend/app/familie/`, die Wege stehen in `backend/app/api/familie.py`, Stu
 - **Profil in Antworten** (`GET /api/familie`, Anlegen, Ändern, PIN): `{id, name, zeichen, farbe, rolle, stufe, hat_pin,
   hat_bild_pin, geburtsjahr, einstellungen}`; Geburtsjahr und Einstellungen nur für die, die das Profil ändern dürfen, und für
   das Profil selbst (sonst null). `einstellungen` (nur Kinder) ist, was wirkt: `{lesehilfen: {mitlesen, tempo, silben,
-  lesezeile, schrift, hinweise_sprechen, tasten_ansagen, stimme}, lesezeit: {an, minuten, ruhe_an, ruhe_von, ruhe_bis, vorlesen_zaehlt}, katze: {an, name, schnurren,
-  name_eingabe}}`; ohne Wahl der Eltern gelten die Lesehilfen der Stufe und die Lesezeit nach dem Alter. Beim Anlegen und Ändern
-  ersetzt jeder genannte Teil von `einstellungen` den gespeicherten, die übrigen bleiben. `schrift`: klein, mittel, gross (Anteil
-  an der Größe der Stufe, `gestaltung.schriftgroessen`). `GET /api/familie/profile/{id}` gibt ein Profil einzeln.
+  lesezeile, schrift, schrift_wahl, hinweise_sprechen, tasten_ansagen, stimme}, lesezeit: {an, minuten, ruhe_an, ruhe_von, ruhe_bis, vorlesen_zaehlt}, katze: {an, name, schnurren,
+  name_eingabe}, gestaltung, uhr}`; ohne Wahl der Eltern gelten die Lesehilfen, Katze, Gestaltung und Uhr der Stufe und die
+  Lesezeit nach dem Alter. Beim Anlegen und Ändern ersetzt jeder genannte Teil von `einstellungen` den gespeicherten, die übrigen
+  bleiben. `schrift`: klein, mittel, gross (Anteil an der Größe der Stufe, `gestaltung.schriftgroessen`). `GET /api/familie/profile/{id}` gibt ein Profil einzeln.
 - **GET /api/familie** dazu `aktiv` (das Profil des Schlüssels, wenn er gilt), `geraet: {gebunden_an, fest_auf, offen}`
   (`fest_auf` ist die Bindung, `gebunden_an` nur, solange sie wirkt, dann nur dieses Profil in `profile`) und `stimme`, die
   Vorlesestimme der Familie (leer: keine). `PUT /api/familie/stimme {stimme}` setzt sie (Fähigkeit `profile`).
@@ -679,8 +679,18 @@ tut `backend/app/familie/`, die Wege stehen in `backend/app/api/familie.py`, Stu
   Rückblick des Kindes und den Einblick der Eltern (`fertig`, dann Fortschritt 1). `last_read_at` bleibt der Zeitpunkt des
   letzten Lesens. Beim Start bekam jeder bisherige Lesestand `fertig_am` nach der Regel; als gelesen markiert galt dabei ein
   Buch mit Zeitpunkt ohne Lesestand.
-- **Hinweise sprechen, Tasten ansagen**: `lesehilfen.hinweise_sprechen` und `lesehilfen.tasten_ansagen`, Vorgabe an bis Lesen und
-  Lernen, aus ab Schule; die Eltern ändern beides. `lesehilfen.stimme`: eine Stimme aus dem Katalog des Sprechdienstes
+- **Gestaltung (BF-88)**: der Kinderbereich hat zwei Gestaltungen, `gestaltung` `klein` (verspielt, große Tasten) und `gross`
+  (ruhig im Stil der App). Vorgabe je Stufe in `stufen.json`: klein für Vorlesen und Erstes Lesen, groß für Lesen und Lernen und
+  Schule; Jugend hat keine (null) und liest in der Oberfläche der App, dort wirkt keine Wahl. Die Eltern stellen sie je Kind um
+  (`einstellungen.gestaltung`); was das Kind darf, bleibt an der Stufe. In Groß sind Katze (`katze_an` der Stufe) und Ansagen
+  anfangs aus. `uhr`: die Uhr im Kopf der Gestaltung groß, `zeiger` oder `zahl`, Vorgabe Zeiger für Lesen und Lernen, Zahl für
+  Schule (`einstellungen.uhr`). `lesehilfen.schrift_wahl`: `normal` (Schriftart und Abstände aus `gestaltung.normalschrift`,
+  die gut lesbare serifenlose Leseschrift mit normalen Abständen) oder `kinderschrift` (die Darstellung der Stufe); Vorgabe
+  Kinderschrift in Klein, normal in Groß. `darstellung` in `GET /api/familie/ich` ist damit schon eingerechnet.
+  `PATCH /api/familie/ich/schrift {schrift_wahl}`: das Kind schaltet beim Lesen selbst um, nur in der Gestaltung groß (sonst 403,
+  dann wählen die Eltern); es ändert nur die Leseschrift und antwortet mit dem neuen Ich.
+- **Hinweise sprechen, Tasten ansagen**: `lesehilfen.hinweise_sprechen` und `lesehilfen.tasten_ansagen`, Vorgabe an in Vorlesen
+  und Erstes Lesen, aus ab Lesen und Lernen (Gestaltung groß); die Eltern ändern beides. `lesehilfen.stimme`: eine Stimme aus dem Katalog des Sprechdienstes
   (`katalog:<name>`, aus `GET /api/vorlesen/stimmen`), `geraet` für die Stimme des Geräts (nur für Installationen ohne
   Sprechdienst, immer eine ausdrückliche Wahl, nie ein stiller Rückfall) oder leer: die Vorlesestimme der Familie. Gibt es keine,
   schweigen die Ansagen und der Elternbereich zeigt "Stimme wählen".
@@ -688,7 +698,8 @@ tut `backend/app/familie/`, die Wege stehen in `backend/app/api/familie.py`, Stu
   Ort texte unter `ansagen/<ordner der stimme>/<schluessel>-<pruefsumme>.wav` (Prüfsumme aus Fassung und Text: ein geänderter
   Text gibt einen neuen Ton). Die Schlüssel heißen `gruppe.name`:
   - `tasten.<name>`: weiter, zurueck, pause, vorlesen, silben_an, silben_aus, zeile_an, zeile_aus, mein_regal, lieblinge,
-    gelesen, schloss, zum_regal, stift_an, stift_aus, gemerkt, lesezeichen_weg, notiz, lieblingsbuch, kein_lieblingsbuch, fertig;
+    gelesen, schloss, zum_regal, stift_an, stift_aus, gemerkt, lesezeichen_weg, notiz, lieblingsbuch, kein_lieblingsbuch, fertig,
+    kinderschrift_an, kinderschrift_aus;
   - `hinweise.<name>`: lesezeit_gleich_um, lesezeit_um, bild_pin ("Tippe drei Bilder an.", die Zahl aus `zugang`),
     bild_pin_falsch, katze_benennen, frag_eltern, wer_liest, buch_fertig, regal_leer, lieblinge_leer, gelesen_leer, suche_leer;
   - Bausteine der Uhr, Zahlen als deutsche Wörter: `uhr.1` bis `uhr.12` ("Es ist vier Uhr"), `minute.1` bis `minute.59`
@@ -715,11 +726,12 @@ tut `backend/app/familie/`, die Wege stehen in `backend/app/api/familie.py`, Stu
     503 mit Grund.
   - `GET /api/familie/ansagen/stand?stimme=`: `[{was: "Ansagen erstellen", stimme, stand (wartet, laeuft, fertig, fehler),
     gesamt, fertig, grund, begonnen, geaendert, fertig_am}]`, ebenso nur für Erwachsene mit `profile` oder `freigeben`.
-- **GET /api/familie/ich**: `{profil, faehigkeiten, darstellung, lesehilfen, lesezeit, katze, einblick}`; für Erwachsene
-  `darstellung` `{}`, `lesehilfen` null, `lesezeit.an` false, `katze.an` false, `einblick` leer. `lesezeit`:
-  `{an, heute_s, grenze_s, rest_s, hinweis_ab_s, ruht, ruhe_bis}`. `PATCH /api/familie/ich/katze {name}` antwortet mit der Katze.
+- **GET /api/familie/ich**: `{profil, faehigkeiten, darstellung, lesehilfen, lesezeit, katze, einblick, gestaltung, uhr}`; für
+  Erwachsene `darstellung` `{}`, `lesehilfen` null, `lesezeit.an` false, `katze.an` false, `einblick` leer, `gestaltung` und `uhr`
+  null. `lesezeit`: `{an, heute_s, grenze_s, rest_s, hinweis_ab_s, ruht, ruhe_bis}`. `PATCH /api/familie/ich/katze {name}`
+  antwortet mit der Katze, `PATCH /api/familie/ich/schrift {schrift_wahl}` mit dem Ich (Gestaltung).
 - **GET /api/familie/stufen**: `{stufen: [{schluessel, name, alter, alter_von, alter_bis, faehigkeiten, einblick, darstellung,
-  lesezeichen_je_buch, vorgaben: {lesehilfen, lesezeit, katze}}], lesezeit: [{alter_von, alter_bis, minuten, an}], rollen,
+  lesezeichen_je_buch, vorgaben: {lesehilfen, lesezeit, katze, gestaltung, uhr}}], lesezeit: [{alter_von, alter_bis, minuten, an}], rollen,
   faehigkeiten, zugang: {pin_stellen_von, pin_stellen_bis, bild_pin_anzahl, bilder}, katze_vorschlaege, katze_nennung}`;
   `alter_bis` null: nach oben offen. Einblick-Arten: `titel`, `lesezeit`, `fortschritt`, `grober_fortschritt`, `zuletzt`,
   `geteiltes` (nur, was das Kind teilt).

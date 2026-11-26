@@ -11,7 +11,9 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, Field, StringConstraints, model_validator
 
-from backend.app.familie.stufen import Darstellung, Einblickart, Lesehilfen, Rollenname, Schriftwahl, Uhrzeit, stufenbuch
+from backend.app.familie.stufen import (
+    Darstellung, Einblickart, Gestaltungsart, Lesehilfen, Leseschrift, Rollenname, Schriftwahl, Uhrart, Uhrzeit, stufenbuch,
+)
 from backend.app.models.book import BookListItem
 from backend.app.models.grenzen import FarbeOderLeer, Nr
 
@@ -67,6 +69,7 @@ class LesehilfenWahl(BaseModel):
     silben: bool | None = None
     lesezeile: bool | None = None
     schrift: Schriftwahl | None = None
+    schrift_wahl: Leseschrift | None = None                  # normal oder Kinderschrift; in Groß ändert das Kind sie selbst
     hinweise_sprechen: bool | None = None
     tasten_ansagen: bool | None = None
     stimme: Stimmwahl | None = None                          # leer: die Vorlesestimme der Familie
@@ -95,6 +98,8 @@ class Einstellungen(BaseModel):
     lesehilfen: LesehilfenWahl = Field(default_factory=LesehilfenWahl)
     lesezeit: Lesezeitregel | None = None                    # leer: die Vorgabe nach dem Alter
     katze: KatzeWahl = Field(default_factory=KatzeWahl)
+    gestaltung: Gestaltungsart | None = None                 # leer: wie die Stufe (BF-88)
+    uhr: Uhrart | None = None                                # leer: wie die Stufe
 
 
 class EinstellungenEingabe(BaseModel):
@@ -103,6 +108,8 @@ class EinstellungenEingabe(BaseModel):
     lesehilfen: LesehilfenWahl | None = None
     lesezeit: Lesezeitregel | None = None
     katze: KatzeWahl | None = None
+    gestaltung: Gestaltungsart | None = None
+    uhr: Uhrart | None = None
 
 
 class Katze(BaseModel):
@@ -113,11 +120,14 @@ class Katze(BaseModel):
 
 
 class Profileinstellungen(BaseModel):
-    """Was für ein Kind wirkt: Lesehilfen der Stufe mit der Wahl der Eltern, Lesezeit (Wahl oder Vorgabe), Katze."""
+    """Was für ein Kind wirkt: Lesehilfen der Stufe mit der Wahl der Eltern, Lesezeit (Wahl oder Vorgabe), Katze, Gestaltung
+    und Uhr im Kopf."""
 
     lesehilfen: Lesehilfen
     lesezeit: Lesezeitregel
     katze: Katze
+    gestaltung: Gestaltungsart | None                        # leer: kein Kinderbereich (Jugend)
+    uhr: Uhrart
 
 
 # -- Profile -------------------------------------------------------------------------------------------------------------------
@@ -195,6 +205,8 @@ class Ich(BaseModel):
     lesezeit: Lesezeitstand
     katze: Katze
     einblick: list[Einblickart]                              # was die Eltern sehen, für das Kind sichtbar; leer bei Erwachsenen
+    gestaltung: Gestaltungsart | None = None                 # Kinderbereich klein oder groß; leer: die Oberfläche der App
+    uhr: Uhrart | None = None                                # Uhr im Kopf der Gestaltung groß; leer bei Erwachsenen
 
 
 # -- Stufen für die Oberfläche --------------------------------------------------------------------------------------------------
@@ -203,6 +215,8 @@ class Stufenvorgaben(BaseModel):
     lesehilfen: Lesehilfen
     lesezeit: Lesezeitregel                                  # für das Alter, ab dem die Stufe gilt
     katze: Katze
+    gestaltung: Gestaltungsart | None                        # leer: kein Kinderbereich
+    uhr: Uhrart
 
 
 class Stufenangabe(BaseModel):
@@ -314,6 +328,10 @@ class Lesezeitmeldung(BaseModel):
 
 class KatzeName(BaseModel):
     name: Katzenname
+
+
+class Schriftwechsel(BaseModel):
+    schrift_wahl: Leseschrift
 
 
 class Freigabeauftrag(BaseModel):

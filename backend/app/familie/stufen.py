@@ -19,6 +19,10 @@ NIE_FUER_KINDER = frozenset({"ki"})                # Entscheidung vom 26.11.2026
 # die das Kind teilt
 Einblickart = Literal["titel", "lesezeit", "fortschritt", "grober_fortschritt", "zuletzt", "geteiltes"]
 Schriftwahl = Literal["klein", "mittel", "gross"]  # Schrift des Kindes, ausgehend von der Größe seiner Stufe
+# Gestaltung des Kinderbereichs (BF-88): klein verspielt mit großen Tasten, groß ruhig im Stil der App
+Gestaltungsart = Literal["klein", "gross"]
+Uhrart = Literal["zeiger", "zahl"]                  # die Uhr im Kopf der Gestaltung groß
+Leseschrift = Literal["normal", "kinderschrift"]    # normal: die Leseschrift aus gestaltung.normalschrift; sonst die der Stufe
 Uhrzeit = Annotated[str, StringConstraints(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")]       # 07:30
 
 
@@ -42,6 +46,7 @@ class Lesehilfen(BaseModel):
     silben: bool                                    # farbige Silben
     lesezeile: bool
     schrift: Schriftwahl
+    schrift_wahl: Leseschrift                       # in der Gestaltung groß wählt das Kind sie selbst (PATCH /ich/schrift)
     hinweise_sprechen: bool                         # Hinweise werden gesprochen (feste Ansagen, familie/ansagen.py)
     tasten_ansagen: bool                            # eine gewählte Taste sagt, was sie tut
     stimme: str = ""                                # katalog:<name> oder geraet; leer: die Vorlesestimme der Familie (familie/ansagen.py)
@@ -58,6 +63,9 @@ class Stufe(BaseModel):
     lesehilfen: Lesehilfen
     einblick: list[Einblickart]
     katze_name: Literal["vorschlaege", "tippen"]    # Vorlesealter: aus vorgelesenen Vorschlägen wählen
+    katze_an: bool                                  # Vorgabe, ob die Katze im Bereich ist
+    gestaltung: Gestaltungsart | None               # leer: kein Kinderbereich, das Kind liest in der Oberfläche der App
+    uhr: Uhrart                                     # Vorgabe der Uhr im Kopf (nur in der Gestaltung groß)
 
 
 class Rolle(BaseModel):
@@ -103,12 +111,22 @@ class KatzeVorgaben(BaseModel):
     nennung: str
 
 
+class Normalschrift(BaseModel):
+    """Was die Leseschrift normal an der Darstellung der Stufe ändert: Schriftart und Abstände; Größe und Zeilen bleiben."""
+
+    schrift: str
+    buchstabe: float
+    wort: float
+    absatz: float
+
+
 class Gestaltung(BaseModel):
     kontrast_mindestens: float
     kontrast_text: float
     tippflaeche_mindestens_px: int
     fortschritt_grob_stufen: int = Field(ge=2)
     schriftgroessen: dict[Schriftwahl, float]       # Anteil an der Größe der Stufe
+    normalschrift: Normalschrift                    # Leseschrift normal (BF-88)
 
 
 class Stufenbuch(BaseModel):

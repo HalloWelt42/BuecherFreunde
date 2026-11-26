@@ -14,7 +14,7 @@ from backend.app.familie.fehler import Fehlt, Konflikt, NichtErlaubt, Unpassend
 from backend.app.familie.modelle import (
     Einstellungen, EinstellungenEingabe, Loeschfolgen, PinSetzen, Profil, ProfilAenderung, ProfilEintrag, ProfilNeu,
 )
-from backend.app.familie.stufen import Rollenname, stufenbuch
+from backend.app.familie.stufen import Leseschrift, Rollenname, stufenbuch
 
 SPALTEN = """id, name, zeichen, farbe, rolle, stufe, pin != '' AS hat_pin, bild_pin != '' AS hat_bild_pin, geburtsjahr, einstellungen,
              sortierung, angelegt_am, name_vom_konto"""
@@ -147,6 +147,13 @@ async def aendern(pid: str, a: ProfilAenderung, von: Profil) -> Profil:
 
 async def katze_benennen(p: Profil, name: str) -> Profil:
     e = p.einstellungen.model_copy(update={"katze": p.einstellungen.katze.model_copy(update={"name": name})})
+    await db.execute("UPDATE profil SET einstellungen = ? WHERE id = ?", (e.model_dump_json(), p.id))
+    return await noetig(p.id)
+
+
+async def schrift_waehlen(p: Profil, wahl: Leseschrift) -> Profil:
+    """Nur die Leseschrift der Lesehilfen; ob das Kind sie selbst wählen darf, prüft familie/ich.py."""
+    e = p.einstellungen.model_copy(update={"lesehilfen": p.einstellungen.lesehilfen.model_copy(update={"schrift_wahl": wahl})})
     await db.execute("UPDATE profil SET einstellungen = ? WHERE id = ?", (e.model_dump_json(), p.id))
     return await noetig(p.id)
 

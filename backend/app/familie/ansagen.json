@@ -22,7 +22,9 @@
     "notiz": "Notiz",
     "lieblingsbuch": "Lieblingsbuch",
     "kein_lieblingsbuch": "Kein Lieblingsbuch mehr",
-    "fertig": "Fertig"
+    "fertig": "Fertig",
+    "kinderschrift_an": "Kinderschrift an",
+    "kinderschrift_aus": "Kinderschrift aus"
   },
   "hinweise": {
     "lesezeit_gleich_um": "Deine Lesezeit ist gleich um.",

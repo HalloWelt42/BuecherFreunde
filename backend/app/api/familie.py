@@ -19,7 +19,7 @@ from backend.app.familie.fehler import Familienfehler, ZuVieleVersuche
 from backend.app.familie.modelle import (
     Einblicksantwort, Familie, Freigabeauftrag, Freigaben, Geraetestand, GeraetBinden, GeraetLoesen, Gewaehlt, Ich, Katze, KatzeName,
     Lesezeitmeldung, Lesezeitstand, Loeschfolgen, PinSetzen, PinVergessen, Profil, ProfilAenderung, ProfilEintrag, ProfilNeu,
-    Stufenansicht, Verlassen, Wahl, Ansageeintrag, Ansagen, Ansagestand, Stimmeingabe,
+    Schriftwechsel, Stufenansicht, Verlassen, Wahl, Ansageeintrag, Ansagen, Ansagestand, Stimmeingabe,
 )
 
 router = APIRouter(prefix="/api/familie", tags=["Familie"])
@@ -168,6 +168,15 @@ async def katze_benennen(k: KatzeName, p: Profil = Depends(profil)) -> Katze:
     katze = ich.katze(await profile.katze_benennen(p, k.name))
     await _angestossen()
     return katze
+
+
+@router.patch("/ich/schrift", response_model=Ich)
+async def schrift_waehlen(w: Schriftwechsel, p: Profil = Depends(profil)) -> Ich:
+    """Das Kind schaltet beim Lesen zwischen normal und Kinderschrift (nur in der Gestaltung groß); zurück kommt das neue Ich."""
+    try:
+        return await ich.schrift_waehlen(p, w.schrift_wahl)
+    except Familienfehler as f:
+        raise _http(f) from f
 
 
 @router.post("/lesezeit", response_model=Lesezeitstand)

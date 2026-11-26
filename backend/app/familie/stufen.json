@@ -51,10 +51,11 @@
       "lesezeichen_je_buch": null,
       "darstellung": {"schrift": "kinderschrift", "groesse_px": 32, "fett": true, "woerter_je_zeile": 4, "zeichen_je_zeile": null,
                       "zeilenabstand": 1.5, "absatz": 2, "buchstabe": 0.12, "wort": 0.16, "tippflaeche_px": 76, "symbole": true},
-      "lesehilfen": {"mitlesen": true, "tempo": 0.8, "silben": false, "lesezeile": false, "schrift": "mittel",
+      "lesehilfen": {"mitlesen": true, "tempo": 0.8, "silben": false, "lesezeile": false, "schrift": "mittel", "schrift_wahl": "kinderschrift",
                      "hinweise_sprechen": true, "tasten_ansagen": true},
       "einblick": ["titel", "lesezeit", "fortschritt"],
-      "katze_name": "vorschlaege"
+      "katze_name": "vorschlaege",
+      "katze_an": true, "gestaltung": "klein", "uhr": "zeiger"
     },
     {
       "schluessel": "erstes_lesen",
@@ -65,10 +66,11 @@
       "lesezeichen_je_buch": null,
       "darstellung": {"schrift": "kinderschrift", "groesse_px": 28, "fett": true, "woerter_je_zeile": 6, "zeichen_je_zeile": null,
                       "zeilenabstand": 1.5, "absatz": 2, "buchstabe": 0.12, "wort": 0.16, "tippflaeche_px": 76, "symbole": true},
-      "lesehilfen": {"mitlesen": true, "tempo": 0.9, "silben": false, "lesezeile": true, "schrift": "mittel",
+      "lesehilfen": {"mitlesen": true, "tempo": 0.9, "silben": false, "lesezeile": true, "schrift": "mittel", "schrift_wahl": "kinderschrift",
                      "hinweise_sprechen": true, "tasten_ansagen": true},
       "einblick": ["titel", "lesezeit", "fortschritt"],
-      "katze_name": "tippen"
+      "katze_name": "tippen",
+      "katze_an": true, "gestaltung": "klein", "uhr": "zeiger"
     },
     {
       "schluessel": "lesen_lernen",
@@ -79,10 +81,11 @@
       "lesezeichen_je_buch": null,
       "darstellung": {"schrift": "kinderschrift", "groesse_px": 24, "fett": false, "woerter_je_zeile": null, "zeichen_je_zeile": 60,
                       "zeilenabstand": 1.5, "absatz": 2, "buchstabe": 0.12, "wort": 0.16, "tippflaeche_px": 56, "symbole": true},
-      "lesehilfen": {"mitlesen": true, "tempo": 1.0, "silben": false, "lesezeile": true, "schrift": "mittel",
-                     "hinweise_sprechen": true, "tasten_ansagen": true},
+      "lesehilfen": {"mitlesen": true, "tempo": 1.0, "silben": false, "lesezeile": true, "schrift": "mittel", "schrift_wahl": "normal",
+                     "hinweise_sprechen": false, "tasten_ansagen": false},
       "einblick": ["titel", "lesezeit", "fortschritt"],
-      "katze_name": "tippen"
+      "katze_name": "tippen",
+      "katze_an": false, "gestaltung": "gross", "uhr": "zeiger"
     },
     {
       "schluessel": "schule",
@@ -91,12 +94,13 @@
       "ab_alter": 10,
       "faehigkeiten": ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "gelesen", "markierungen", "notizen"],
       "lesezeichen_je_buch": null,
-      "darstellung": {"schrift": "serifenlos", "groesse_px": 20, "fett": false, "woerter_je_zeile": null, "zeichen_je_zeile": 80,
+      "darstellung": {"schrift": "kinderschrift", "groesse_px": 20, "fett": false, "woerter_je_zeile": null, "zeichen_je_zeile": 80,
                       "zeilenabstand": 1.5, "absatz": 2, "buchstabe": 0.12, "wort": 0.16, "tippflaeche_px": 44, "symbole": false},
-      "lesehilfen": {"mitlesen": false, "tempo": 1.0, "silben": false, "lesezeile": false, "schrift": "mittel",
+      "lesehilfen": {"mitlesen": false, "tempo": 1.0, "silben": false, "lesezeile": false, "schrift": "mittel", "schrift_wahl": "normal",
                      "hinweise_sprechen": false, "tasten_ansagen": false},
       "einblick": ["titel", "grober_fortschritt"],
-      "katze_name": "tippen"
+      "katze_name": "tippen",
+      "katze_an": false, "gestaltung": "gross", "uhr": "zahl"
     },
     {
       "schluessel": "jugend",
@@ -108,10 +112,11 @@
       "lesezeichen_je_buch": null,
       "darstellung": {"schrift": "serifenlos", "groesse_px": 18, "fett": false, "woerter_je_zeile": null, "zeichen_je_zeile": 80,
                       "zeilenabstand": 1.5, "absatz": 2, "buchstabe": 0.12, "wort": 0.16, "tippflaeche_px": 44, "symbole": false},
-      "lesehilfen": {"mitlesen": false, "tempo": 1.0, "silben": false, "lesezeile": false, "schrift": "mittel",
+      "lesehilfen": {"mitlesen": false, "tempo": 1.0, "silben": false, "lesezeile": false, "schrift": "mittel", "schrift_wahl": "normal",
                      "hinweise_sprechen": false, "tasten_ansagen": false},
       "einblick": ["titel", "grober_fortschritt", "geteiltes"],
-      "katze_name": "tippen"
+      "katze_name": "tippen",
+      "katze_an": false, "gestaltung": null, "uhr": "zahl"
     }
   ],
   "lesestand": {
@@ -150,6 +155,7 @@
     "kontrast_text": 7,
     "tippflaeche_mindestens_px": 44,
     "fortschritt_grob_stufen": 4,
-    "schriftgroessen": {"klein": 0.85, "mittel": 1.0, "gross": 1.2}
+    "schriftgroessen": {"klein": 0.85, "mittel": 1.0, "gross": 1.2},
+    "normalschrift": {"schrift": "serifenlos", "buchstabe": 0, "wort": 0, "absatz": 1}
   }
 }
