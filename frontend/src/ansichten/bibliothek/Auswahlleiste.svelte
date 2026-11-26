@@ -6,6 +6,7 @@
   import { auswahl } from "../../lib/stand/auswahl.svelte";
   import { bestand } from "../../lib/stand/bestand.svelte";
   import { buecher } from "../../lib/stand/buecher.svelte";
+  import { ich } from "../../lib/stand/ich.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
   import { frage } from "../../lib/stand/rueckfrage.svelte";
   import { wahl } from "../../lib/stand/wahl.svelte";
@@ -70,7 +71,7 @@
   <Knopf text="Favorit" symbol="heart" klein gesperrt={leer || laeuft} onclick={() => void tun("favorit", true, "Als Favorit gemerkt")} />
   <Knopf text="Lesesofa" symbol="couch" klein gesperrt={leer || laeuft} onclick={() => void tun("zu_lesen", true, "Aufs Lesesofa gelegt")} />
   <Knopf text="Regal zuweisen" symbol="folder-plus" klein gesperrt={leer || laeuft} aufgeklappt={regalOffen} bind:element={regalKnopf} onclick={() => (regalOffen = !regalOffen)} />
-  <Knopf text="Entfernen" symbol="trash" klein gesperrt={leer || laeuft} onclick={() => void entferne()} />
+  {#if ich.darf("loeschen")}<Knopf text="Entfernen" symbol="trash" klein gesperrt={leer || laeuft} onclick={() => void entferne()} />{/if}
   <Knopf text="Auswahl aufheben" symbol="xmark" klein frei gesperrt={leer} onclick={() => auswahl.leere()} />
 </span>
 {#if !leer}<span class="leise auswahltitel">{titelkurz}</span>{/if}

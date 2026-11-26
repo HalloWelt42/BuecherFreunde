@@ -40,7 +40,7 @@
     <Knopf text="Kennwort ändern" symbol="check" art="submit" haupt {laeuft} gesperrt={!alt || neu.length < 8} />
   </form>
 {/if}
-<div class="reihe">
+<div class="tasten">
   <Knopf text="Abmelden" symbol="right-from-bracket" onclick={ab} />
   {#if eigen && !offen}<Knopf text="Kennwort ändern" symbol="key" onclick={() => (offen = true)} />{/if}
 </div>
@@ -49,5 +49,11 @@
   p,
   form {
     padding-bottom: 0.75rem;
+  }
+  /* Gleich breit wie die Tasten des Profils darüber (BF-78) */
+  .tasten {
+    display: grid;
+    gap: 0.375rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(7.5rem, 100%), 1fr));
   }
 </style>

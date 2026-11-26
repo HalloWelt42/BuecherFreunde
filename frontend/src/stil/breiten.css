@@ -116,6 +116,10 @@
   .zuordnungszeile { min-height: 2.75rem; }
   .buehne .suchfeld-mobil { display: flex; }
 }
+/* Am Telefon steht im Kopf auch das Bild des Profils (BF-78): ist es zu schmal für den Namen, trägt das Zeichen allein */
+@container app (max-width: 26rem) {
+  .kopf .zeichen span { display: none; }
+}
 /* Sehr große Schrift am Telefon: das Zeichen trägt allein */
 @container app (max-width: 20rem) {
   .kopf .zeichen span { display: none; }

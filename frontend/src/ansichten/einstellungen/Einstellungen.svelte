@@ -1,16 +1,22 @@
 <script lang="ts">
   import { tick } from "svelte";
   import { route } from "../../lib/router.svelte";
+  import { ich } from "../../lib/stand/ich.svelte";
   import Chip from "../../lib/teile/Chip.svelte";
   import Darstellungsreiter from "./Darstellungsreiter.svelte";
+  import Familienreiter from "./familie/Familienreiter.svelte";
   import Katalogreiter from "./katalog/Katalogreiter.svelte";
   import Mehrreiter from "./Mehrreiter.svelte";
   import Regalreiter from "./Regalreiter.svelte";
   import Verbindungsreiter from "./Verbindungsreiter.svelte";
   import Wartungsreiter from "./Wartungsreiter.svelte";
-  import { reiter, reiterAus } from "./reiter";
+  import { reiterAus, sichtbareReiter } from "./reiter";
 
-  let hier = $derived(reiterAus(route.path));
+  let reiter = $derived(sichtbareReiter((f) => ich.darf(f)));
+  let hier = $derived(reiterAus(route.path, reiter.map(([r]) => r)));
+  // Nur ein anderer Reiter oder eine andere Stelle rollt; die Wahl eines Profils im Reiter Familie lässt die Seite stehen
+  let jetzt = $derived(hier.reiter);
+  let stelle = $derived(hier.stelle);
   let flaeche: HTMLElement | undefined = $state();
 
   // Alte Adressen meinen eine Stelle im Reiter, neue den Anfang. Bis die Karten darüber geladen sind, rutscht der Inhalt
@@ -18,7 +24,6 @@
   const FESTHALTEN_MS = 4000;
 
   $effect(() => {
-    const { reiter: jetzt, stelle } = hier;
     const f = flaeche;
     if (!f || !jetzt) return;
     if (!stelle) {
@@ -53,6 +58,7 @@
 <!-- Jeder Reiter bringt sein Raster mit und bestimmt so selbst, ob seine Listen die Höhe der Seite füllen (BF-74) -->
 <div class="inhalt rollen" bind:this={flaeche}>
   {#if hier.reiter === "darstellung"}<Darstellungsreiter />
+  {:else if hier.reiter === "familie"}<Familienreiter />
   {:else if hier.reiter === "verbindungen"}<Verbindungsreiter />
   {:else if hier.reiter === "regale"}<Regalreiter />
   {:else if hier.reiter === "katalog"}<Katalogreiter />

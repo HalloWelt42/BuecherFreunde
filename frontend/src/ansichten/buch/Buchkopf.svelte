@@ -2,6 +2,8 @@
   import { datum, formatName, groesse, sprache, tagWort, zahl } from "../../lib/format";
   import { leseKnopf, lesestand, leseweise, schriftprobe, standText } from "../../lib/lesestand";
   import { arten } from "../../lib/stand/arten.svelte";
+  import { familie } from "../../lib/stand/familie.svelte";
+  import { ich } from "../../lib/stand/ich.svelte";
   import { merkmale } from "../../lib/stand/merkmale.svelte";
   import Balken from "../../lib/teile/Balken.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
@@ -53,6 +55,10 @@
     onneu(await merkmale.sterne(buch, n));
   }
 
+  async function privat() {
+    onneu(await merkmale.privat(buch));
+  }
+
   async function waehleUmschlag(art: Umschlagart) {
     if (art === buch.umschlag) return;
     waehlt = true;
@@ -76,7 +82,9 @@
       </div>
       <div class="reihe">
         <Sterne wert={buch.rating} onwahl={(n) => void bewerte(n)} /><Merkmalsknoepfe {buch} {onneu} />
-        <span class="loeschen"><Knopf text="Buch löschen" symbol="trash" nur onclick={() => void buchLoeschen(buch.id)} /></span>
+        <!-- Nur für das aktive Erwachsenenprofil (BF-78); mit einem einzigen Profil sähe es ohnehin niemand sonst -->
+        {#if ich.erwachsen && familie.mehrere}<Knopf text="Nur für mich" symbol="lock" nur gedrueckt={!!buch.privat} onclick={() => void privat()} />{/if}
+        {#if ich.darf("loeschen")}<span class="loeschen"><Knopf text="Buch löschen" symbol="trash" nur onclick={() => void buchLoeschen(buch.id)} /></span>{/if}
       </div>
       <Fassungslabels {buch} {fassungen} />
       <div class="reihe">

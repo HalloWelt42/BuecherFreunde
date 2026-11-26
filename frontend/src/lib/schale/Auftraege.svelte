@@ -2,6 +2,7 @@
   // Alles, was gerade läuft: Aufnahmen, Einlesen von Ordnern, Ergänzen, Aufträge der Ansichten
   import { annahme } from "../stand/annahme.svelte";
   import { auftraege } from "../stand/auftraege.svelte";
+  import { ich } from "../stand/ich.svelte";
   import { melde } from "../stand/meldungen.svelte";
   import { schale } from "../stand/schale.svelte";
   import Balken from "../teile/Balken.svelte";
@@ -39,7 +40,7 @@
 {#if leer}<p class="leise">Gerade läuft nichts.</p>{/if}
 
 <div class="reihe fuss">
-  <Knopf text="Alle Aufnahmen" symbol="list-check" href="/import" onclick={() => schale.schliesseAlles()} />
+  {#if ich.darf("hinzufuegen")}<Knopf text="Alle Aufnahmen" symbol="list-check" href="/import" onclick={() => schale.schliesseAlles()} />{/if}
   {#if ruhig}<Knopf text="Fertige ausblenden" symbol="broom" frei onclick={bereinigen} />{/if}
 </div>
 

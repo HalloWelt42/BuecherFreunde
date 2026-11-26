@@ -2,6 +2,7 @@
   // Eine Spalte der Zuordnung (BF-67): Überschrift, Werkzeuge, Bücher zum Anhaken und Ziehen, Ablage
   import type { Snippet } from "svelte";
   import { schale } from "../../lib/stand/schale.svelte";
+  import type { Buch } from "../../lib/typen";
   import Buchzeile from "../../lib/teile/Buchzeile.svelte";
   import Nachlader from "../../lib/teile/Nachlader.svelte";
   import { bandText, kurztitel } from "../sammlung/angaben";
@@ -61,6 +62,8 @@
   }
 
   const zeilentitel = (titelGanz: string, band: string) => (reihe === undefined ? titelGanz : kurztitel(titelGanz, reihe, band));
+  /** Rechts an der Zeile: in einer Reihe der Band, sonst was das Ziel nennt (etwa die Altersangabe) */
+  const rechtsText = (b: Buch) => (reihe !== undefined ? { text: bandText(b.band_nummer), titel: undefined } : (zuordnung.ziel.merkmal?.(b) ?? { text: "", titel: undefined }));
 </script>
 
 <section class="zuordnungsspalte platte" class:nimmt aria-label={titel} ondragover={ueber} ondragleave={verlaesst} ondrop={lege}>
@@ -68,7 +71,8 @@
   {@render children?.()}
   <div class="zuordnungszeilen rollen">
     {#each buecher as buch (buch.id)}
-      <Buchzeile {buch} titel={zeilentitel(buch.title, buch.band_nummer)} band={reihe === undefined ? "" : bandText(buch.band_nummer)} an={zuordnung.hat(spalte, buch.id)} onwahl={(an) => zuordnung.hakeAn(spalte, buch.id, an)}
+      {@const rechts = rechtsText(buch)}
+      <Buchzeile {buch} titel={zeilentitel(buch.title, buch.band_nummer)} band={rechts.text} bandTitel={rechts.titel} an={zuordnung.hat(spalte, buch.id)} onwahl={(an) => zuordnung.hakeAn(spalte, buch.id, an)}
         {ziehbar} gezogen={ziehen.zieht(buch.id)} davor={mitStelle && hier?.vor === buch.id} ondragstart={(e) => ziehen.beginne(e, spalte, zuordnung.gezogene(spalte, buch.id))} ondragend={() => ziehen.ende()} />
     {:else}
       {#if seiten.fehler}<p class="marke-text schlecht" role="alert">{seiten.fehler}</p>

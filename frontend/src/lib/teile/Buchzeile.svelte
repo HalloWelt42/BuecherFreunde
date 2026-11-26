@@ -11,8 +11,10 @@
     onwahl: (an: boolean) => void;
     /** Was als Titel steht, etwa ohne Reihennamen; sonst der ganze */
     titel?: string;
-    /** "Band 3" oder leer */
+    /** "Band 3", eine Altersangabe oder leer */
     band?: string;
+    /** Hinweis dazu, etwa woher die Altersangabe kommt */
+    bandTitel?: string;
     ziehbar?: boolean;
     gezogen?: boolean;
     /** Hier würde das Gezogene einsortiert */
@@ -20,7 +22,7 @@
     ondragstart?: (e: DragEvent) => void;
     ondragend?: (e: DragEvent) => void;
   }
-  let { buch, an, onwahl, titel = undefined, band = "", ziehbar = false, gezogen = false, davor = false, ondragstart = undefined, ondragend = undefined }: Eigenschaften = $props();
+  let { buch, an, onwahl, titel = undefined, band = "", bandTitel = undefined, ziehbar = false, gezogen = false, davor = false, ondragstart = undefined, ondragend = undefined }: Eigenschaften = $props();
 </script>
 
 <label class="zuordnungszeile" class:ohne-griff={!ziehbar} class:gewaehlt={an} class:gezogen class:davor data-buch={buch.id} draggable={ziehbar ? "true" : undefined} {ondragstart} {ondragend}>
@@ -28,5 +30,5 @@
   <input type="checkbox" checked={an} aria-label="{buch.title} auswählen" onchange={(e) => onwahl(e.currentTarget.checked)} />
   <span class="bild"><Umschlag {buch} /></span>
   <span class="titel">{titel ?? buch.title}<small>{buch.author}</small></span>
-  <span class="bandnr">{band}</span>
+  <span class="bandnr" title={bandTitel}>{band}</span>
 </label>

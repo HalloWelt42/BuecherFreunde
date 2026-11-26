@@ -1,5 +1,6 @@
 // Was an diese Installation angeschlossen ist. Was fehlt, zeigt die Oberfläche nicht.
 import { ladeOberflaeche } from "../api/orte";
+import { ich } from "./ich.svelte";
 
 export interface Anschluesse {
   ablage: "kellerwolke" | "geraet";
@@ -19,8 +20,17 @@ export interface Anschluesse {
 const OHNE: Anschluesse = { ablage: "geraet", anmeldung: "kellerwolke", bedeutung: false, assistent: "", nachschlag: "", nachschlag_art: "", ki: false, vorlesen: false, ausfuehren: false };
 
 class Anschlussstand {
-  jetzt = $state<Anschluesse>(OHNE);
+  #roh = $state<Anschluesse>(OHNE);
+  /** Ein Profil ohne KI (BF-78) sieht die KI nicht, auch wenn sie angeschlossen ist; bis das Profil feststeht, gilt der Server */
+  #sichtbar = $derived(ich.jetzt && !ich.darf("ki") ? { ...this.#roh, ki: false, assistent: "", bedeutung: false } : this.#roh);
   geladen = $state(false);
+
+  get jetzt(): Anschluesse {
+    return this.#sichtbar;
+  }
+  set jetzt(wert: Anschluesse) {
+    this.#roh = wert;
+  }
 
   inWolke = $derived(this.jetzt.ablage === "kellerwolke");
   /** Wie die Taste heißt, die einen Artikel im Lexikon selbst öffnet */

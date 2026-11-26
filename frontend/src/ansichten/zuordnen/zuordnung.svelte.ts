@@ -39,11 +39,14 @@ export class Zuordnung {
 
   constructor(ziel: Zuordnungsziel) {
     this.ziel = ziel;
-    this.drin = new Buchseiten(!!ziel.ordne);
+    this.drin = new Buchseiten(!!ziel.ordne, ziel.drinQuelle ?? null);
     this.gleicherAutor = ziel.gleicherAutorVorgabe;
     this.ohneSammlung = ziel.ohneSammlungVorgabe;
     this.autor = $derived(autoren(this.drin.liste)[0] ?? "");
-    this.rechts = $derived(this.uebrig.liste.filter((b) => !ziel.hat(b)));
+    this.rechts = $derived.by(() => {
+      const links = new Set(this.drin.liste.map((b) => b.id));
+      return this.uebrig.liste.filter((b) => !ziel.hat(b) && !links.has(b.id));
+    });
     this.uebrigFilter = $derived({
       ...ziel.uebrig(this.ohneSammlung),
       suche: this.wort.trim() || undefined,

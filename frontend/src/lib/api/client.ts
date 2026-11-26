@@ -6,6 +6,10 @@ import { sprich } from "../hintergrund";
 import { netz } from "../stand/netz.svelte";
 
 const SCHLUESSEL = "api_token";
+// Das gewählte Profil (BF-78): sein Schlüssel geht in jeder Anfrage im Kopf X-Profil mit und bleibt auf dem Gerät, bis
+// gewechselt wird; die zufällige Kennung des Geräts im Kopf X-Geraet bleibt immer (Bindung an ein Kind, Sitzungen).
+const PROFIL = "profil_schluessel";
+const GERAET = "geraet_kennung";
 
 // Die Anmeldung liegt im Speicher des Browsers (je Adresse geteilt von allen Tabs) und wird bei jeder Anfrage frisch
 // gelesen: meldet man sich in einem Tab an, gilt das sofort für alle (etwa einen Leser, der aus dem Assistenten an einer
@@ -63,6 +67,65 @@ export function setToken(token: string): void {
   }
 }
 
+/** Ohne Speicher im Browser gelten Profil und Kennung nur für diese Seite */
+let profilOhneSpeicher = "";
+let geraetOhneSpeicher = "";
+
+/** Der Schlüssel des gewählten Profils; leer: keins gewählt */
+export function getProfil(): string {
+  try {
+    return localStorage.getItem(PROFIL) || "";
+  } catch {
+    return profilOhneSpeicher;
+  }
+}
+
+/** Merkt den Schlüssel des gewählten Profils; leer vergisst ihn (Wechsel, Abmelden) */
+export function setProfil(schluessel: string): void {
+  profilOhneSpeicher = schluessel;
+  try {
+    if (schluessel) localStorage.setItem(PROFIL, schluessel);
+    else localStorage.removeItem(PROFIL);
+  } catch {
+    // ohne Speicher gilt die Wahl nur für diese Seite
+  }
+}
+
+/** Ein anderer Tab hat das Profil gewechselt */
+export function beiProfilWechsel(tun: (schluessel: string) => void): void {
+  addEventListener("storage", (e) => {
+    if (e.key === PROFIL) tun(e.newValue || "");
+  });
+}
+
+/** Zufällige Kennung dieses Browsers, beim ersten Mal erzeugt */
+export function geraetKennung(): string {
+  let kennung = "";
+  try {
+    kennung = localStorage.getItem(GERAET) || "";
+  } catch {
+    kennung = geraetOhneSpeicher;
+  }
+  if (kennung) return kennung;
+  kennung = zufallsKennung();
+  geraetOhneSpeicher = kennung;
+  try {
+    localStorage.setItem(GERAET, kennung);
+  } catch {
+    // ohne Speicher gilt die Kennung für diese Seite
+  }
+  return kennung;
+}
+
+/** UUID der Version 4; crypto.randomUUID gibt es nur über https, getRandomValues überall */
+function zufallsKennung(): string {
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
 /**
  * Abmelden: beendet die Sitzung in der Kellerwolke (auf einem gekoppelten Gerät trennt es das Gerät).
  */
@@ -76,6 +139,7 @@ export async function abmelden(): Promise<void> {
     // egal: lokal ist man danach abgemeldet
   }
   setToken("");
+  setProfil("");
   vergissLesestoff();
   if (onAuthRequired) onAuthRequired();
 }
@@ -134,6 +198,9 @@ export async function anfrage(path: string, options: RequestInit = {}): Promise<
     headers["Authorization"] = `Bearer ${token}`;
     headers["X-Kellerwolke-Sitzung"] = token;
   }
+  const profil = getProfil();
+  if (profil) headers["X-Profil"] = profil;
+  headers["X-Geraet"] = geraetKennung();
 
   if (
     options.body &&
@@ -229,10 +296,10 @@ export async function put<T = any>(path: string, body?: unknown): Promise<T> {
 }
 
 /**
- * DELETE-Request.
+ * DELETE-Request, mit Angaben, wo der Weg sie braucht (etwa welche Freigaben zurückgehen).
  */
-export async function del<T = any>(path: string): Promise<T> {
-  const response = await anfrage(path, { method: "DELETE" });
+export async function del<T = any>(path: string, body?: unknown): Promise<T> {
+  const response = await anfrage(path, { method: "DELETE", body: body !== undefined ? JSON.stringify(body) : undefined });
   return response.json();
 }
 

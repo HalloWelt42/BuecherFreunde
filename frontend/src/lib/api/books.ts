@@ -1,5 +1,5 @@
 // Bücher: Liste, Einzelnes, Umschlag, Datei, Text
-import { del, get, patch, post } from "./client";
+import { del, get, patch, post, put } from "./client";
 import type { Parameter } from "./client";
 import type { Buch, BuchEinzeln, BuchListe, Loeschfolgen } from "../typen";
 
@@ -23,6 +23,8 @@ export const aehnlicheBuecher = (id: number): Promise<{ vom_autor: Buch[]; in_ka
 export const loeschfolgen = (id: number): Promise<Loeschfolgen> => get(`/api/books/${id}/loeschfolgen`);
 export const loescheBuch = (id: number): Promise<{ geloescht: boolean; id: number }> => del(`/api/books/${id}`);
 export const aktualisiereBuch = (id: number, daten: Record<string, unknown>): Promise<BuchEinzeln> => patch(`/api/books/${id}`, daten);
+/** Nur das aktive Profil sieht das Buch (BF-78) */
+export const setzePrivat = (id: number, privat: boolean): Promise<{ privat: boolean }> => put(`/api/books/${id}/privat`, { privat });
 /** Was POST /api/books/bulk mit mehreren Büchern tut; wert ist je nach Aktion Regal, Sammlung, Art oder ein Schalter */
 export type Sammelaktion = "loeschen" | "favorit" | "zu_lesen" | "typ_setzen" | "kategorie_zuweisen" | "kategorie_entfernen" | "sammlung_zuweisen" | "sammlung_entfernen";
 

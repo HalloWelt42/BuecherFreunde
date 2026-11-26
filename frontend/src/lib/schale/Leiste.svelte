@@ -8,6 +8,7 @@
   import { route } from "../router.svelte";
   import { bestand } from "../stand/bestand.svelte";
   import { filter } from "../stand/filter.svelte";
+  import { ich } from "../stand/ich.svelte";
   import { notizblock } from "../stand/notizblock.svelte";
   import { schale } from "../stand/schale.svelte";
   import Katalogzeichen from "../teile/Katalogzeichen.svelte";
@@ -68,7 +69,7 @@
       {@render schalter("art", "besonderes", "Besonderes", "shapes", z.besonderes)}
       <Punkt text="Autoren" symbol="users" zahl={z.autoren} href="/authors" hier={route.path.startsWith("/author")} onclick={zu} />
       <!-- Am Telefon hat die untere Leiste dafür Vollbild (BF-33) -->
-      <span class="nur-telefon"><Punkt text="Hinzufügen" symbol="plus" href="/import" hier={route.path === "/import"} onclick={zu} /></span>
+      {#if ich.darf("hinzufuegen")}<span class="nur-telefon"><Punkt text="Hinzufügen" symbol="plus" href="/import" hier={route.path === "/import"} onclick={zu} /></span>{/if}
 
       <h2>Lesen</h2>
       {@render schalter("weiterlesen", "true", "Weiterlesen", "book-open", z.weiterlesen)}
@@ -96,7 +97,7 @@
             {/each}
           {/if}
         {:else}
-          <Punkt text="Katalog einrichten" symbol="sitemap" href="/settings/katalog" hier={route.path === "/settings/katalog"} onclick={zu} />
+          {#if ich.darf("einstellungen")}<Punkt text="Katalog einrichten" symbol="sitemap" href="/settings/katalog" hier={route.path === "/settings/katalog"} onclick={zu} />{/if}
         {/each}
         {#if katalog.hat_katalog}
           <h2>Noch nicht eingeordnet</h2>
@@ -137,7 +138,7 @@
   </div>
 
   <div class="leiste-fuss">
-    <Punkt text="Einstellungen" symbol="gear" href="/settings" hier={route.path.startsWith("/settings")} onclick={zu} />
+    {#if ich.mitEinstellungen}<Punkt text="Einstellungen" symbol="gear" href="/settings" hier={route.path.startsWith("/settings")} onclick={zu} />{/if}
     <Leistenfuss />
   </div>
 </nav>

@@ -13,12 +13,15 @@ export class Buchseiten {
   geladen = $state(false);
   /** Alle Seiten auf einmal: eine Sammlung braucht für die Reihenfolge jeden Band */
   readonly ganz: boolean;
+  /** Statt der Liste der Bücher eine eigene Quelle, die alles auf einmal bringt (Freigaben eines Kindes) */
+  readonly #quelle: (() => Promise<BuchListe>) | null;
   #filter: Parameter = {};
   #seite = 0;
   #lauf = 0;
 
-  constructor(ganz = false) {
-    this.ganz = ganz;
+  constructor(ganz = false, quelle: (() => Promise<BuchListe>) | null = null) {
+    this.ganz = ganz || !!quelle;
+    this.#quelle = quelle;
   }
 
   laden(filter: Parameter): Promise<void> {
@@ -60,7 +63,7 @@ export class Buchseiten {
   }
 
   #holeSeite(seite: number): Promise<BuchListe> {
-    return listeBooks({ ...this.#filter, seite, pro_seite: JE_SEITE });
+    return this.#quelle ? this.#quelle() : listeBooks({ ...this.#filter, seite, pro_seite: JE_SEITE });
   }
 
   /** Die Seiten 1 bis `bis` (Infinity: alle) */

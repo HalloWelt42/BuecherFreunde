@@ -4,6 +4,7 @@ import { ordneBuchZu } from "../../lib/api/categories";
 import { leseAdresse, lesestand } from "../../lib/lesestand";
 import { navigate } from "../../lib/router.svelte";
 import { bestand } from "../../lib/stand/bestand.svelte";
+import { ich } from "../../lib/stand/ich.svelte";
 import type { Anbieter, Eintrag } from "../../lib/stand/kontextmenue.svelte";
 import { kontextmenue } from "../../lib/stand/kontextmenue.svelte";
 import { melde } from "../../lib/stand/meldungen.svelte";
@@ -34,6 +35,6 @@ async function eintraege(b: Buch | number): Promise<Eintrag[]> {
     { text: lesestand(buch).angefangen ? "Weiterlesen" : "Lesen", symbol: "book-open", tun: () => navigate(leseAdresse(buch.id)) },
     { text: buch.is_favorite ? "Kein Favorit mehr" : "Favorit", symbol: "heart", tun: () => merkmale.favorit(buch) },
     { text: "In ein Regal", symbol: "folder-plus", weiter: { komponente: Regalwahl, eigenschaften: { ohne: buch.categories.map((c) => c.id), onwahl: (r: Regal) => void stelleEin(buch, r) } } },
-    { text: "Bearbeiten", symbol: "pen", tun: () => navigate(`/book/${buch.id}?bearbeiten`) },
+    ...(ich.darf("bearbeiten") ? [{ text: "Bearbeiten", symbol: "pen", tun: () => navigate(`/book/${buch.id}?bearbeiten`) }] : []),
   ];
 }

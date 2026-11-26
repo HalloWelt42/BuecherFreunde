@@ -12,6 +12,10 @@
   import Darstellungswahl from "./Darstellungswahl.svelte";
   import Konto from "./Konto.svelte";
   import Kopf from "./Kopf.svelte";
+  import Profilmenue from "./Profilmenue.svelte";
+  import { ich } from "../stand/ich.svelte";
+  import { profilformular } from "../stand/profilformular.svelte";
+  import Profilformular from "./Profilformular.svelte";
   import Leiste from "./Leiste.svelte";
   import { gespraech } from "../stand/gespraech.svelte";
   import { nachschlag } from "../stand/nachschlag.svelte";
@@ -69,8 +73,13 @@
 {:else if schale.offen === "darstellung"}
   <Schwebefeld titel="Darstellung"><Darstellungswahl /><p class="leise hinweis">Die Regalwand entsteht aus den Farben der eigenen Umschläge. Eigene Hintergrundbilder stehen unter Einstellungen, Darstellung.</p></Schwebefeld>
 {:else if schale.offen === "konto"}
-  <Schwebefeld titel={anschluesse.jetzt.anmeldung === "kellerwolke" ? "Angemeldet mit der Kellerwolke" : "Konto"} breite="18rem"><Konto /></Schwebefeld>
+  <Schwebefeld titel={ich.profil ? "Profil und Konto" : "Konto"} breite="18rem">
+    <Profilmenue />
+    <h3 class="kontokopf">{anschluesse.jetzt.anmeldung === "kellerwolke" ? "Angemeldet mit der Kellerwolke" : "Konto des Geräts"}</h3>
+    <Konto />
+  </Schwebefeld>
 {/if}
+{#if profilformular.offen}{#key profilformular.offen}<Profilformular ziel={profilformular.offen} />{/key}{/if}
 {#if schale.notizOffen}<Schnellnotiz />{/if}
 {#if kontextmenue.offen}{#key kontextmenue.offen}<Kontextmenue />{/key}{/if}
 {#if nachschlag.offen}<Nachschlagefenster />{/if}
@@ -80,5 +89,10 @@
 <style>
   .hinweis {
     padding-top: 0.75rem;
+  }
+  .kontokopf {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    padding-bottom: 0.25rem;
   }
 </style>

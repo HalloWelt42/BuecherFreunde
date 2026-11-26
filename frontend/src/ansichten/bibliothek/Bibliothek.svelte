@@ -3,6 +3,7 @@
   import { bestand } from "../../lib/stand/bestand.svelte";
   import { buecher } from "../../lib/stand/buecher.svelte";
   import { filter } from "../../lib/stand/filter.svelte";
+  import { ich } from "../../lib/stand/ich.svelte";
   import { schnellfilter } from "../../lib/stand/schnellfilter.svelte";
   import { suche } from "../../lib/stand/suche.svelte";
   import { wahl } from "../../lib/stand/wahl.svelte";
@@ -56,7 +57,7 @@
   {:else if leer && filter.aktiv}
     <Zustand text="Kein Buch passt zu diesen Filtern."><Knopf text="Filter aufheben" symbol="xmark" klein onclick={() => filter.leere()} /></Zustand>
   {:else if leer}
-    <Zustand text="Die Bibliothek ist noch leer."><Knopf text="Bücher hinzufügen" symbol="plus" klein haupt href="/import" /></Zustand>
+    <Zustand text="Die Bibliothek ist noch leer.">{#if ich.darf("hinzufuegen")}<Knopf text="Bücher hinzufügen" symbol="plus" klein haupt href="/import" />{/if}</Zustand>
   {:else if !buecher.eintraege.length}
     <Zustand art="laedt" text="Bücher werden geladen" />
   {/if}

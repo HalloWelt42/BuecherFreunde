@@ -1,9 +1,11 @@
 <script lang="ts">
   import type { Component } from "svelte";
   import { route, matchRoute, handleLinkClick } from "./lib/router.svelte";
-  import { hasToken, oeffneInhalte, onAuthError, beiTokenWechsel } from "./lib/api/client";
+  import { hasToken, oeffneInhalte, onAuthError, beiTokenWechsel, beiProfilWechsel } from "./lib/api/client";
   import { fassungVerfolgen, vielleichtNeuLaden } from "./lib/fassung.svelte";
   import { anschluesse } from "./lib/stand/anschluesse.svelte";
+  import { familie } from "./lib/stand/familie.svelte";
+  import { ich } from "./lib/stand/ich.svelte";
   import { filter } from "./lib/stand/filter.svelte";
   import { schale } from "./lib/stand/schale.svelte";
   import Kulisse from "./lib/schale/Kulisse.svelte";
@@ -12,12 +14,15 @@
   import Fassungsband from "./lib/schale/Fassungsband.svelte";
   import Meldungen from "./lib/teile/Meldungen.svelte";
   import Rueckfrage from "./lib/teile/Rueckfrage.svelte";
+  import Zustand from "./lib/teile/Zustand.svelte";
   import Anmeldung from "./ansichten/anmeldung/Anmeldung.svelte";
   import Autoren from "./ansichten/autoren/Autoren.svelte";
   import Autorenseite from "./ansichten/autoren/Autorenseite.svelte";
   import Bibliothek from "./ansichten/bibliothek/Bibliothek.svelte";
   import Buchseite from "./ansichten/buch/Buchseite.svelte";
   import Danke from "./ansichten/danke/Danke.svelte";
+  import Profilwahl from "./ansichten/familie/Profilwahl.svelte";
+  import Kinderbereich from "./ansichten/kind/Kinderbereich.svelte";
   import Einstellungen from "./ansichten/einstellungen/Einstellungen.svelte";
   import Hinzufuegen from "./ansichten/hinzu/Hinzufuegen.svelte";
   import Leser from "./ansichten/leser/Leser.svelte";
@@ -57,9 +62,12 @@
   ];
 
   let angemeldet = $state(hasToken());
-  /** Erst wenn Bilder und Ereignisströme lesen dürfen und feststeht, was angeschlossen ist, kommt die Bibliothek auf den Schirm. */
+  /**
+   * Erst wenn Bilder und Ereignisströme lesen dürfen, feststeht, was angeschlossen ist, und klar ist, wer liest (BF-78:
+   * "Wer liest?" oder gleich das gemerkte Profil), kommt die Bibliothek auf den Schirm.
+   */
   let offen = $state(false);
-  if (hasToken()) void Promise.all([oeffneInhalte(), anschluesse.laden()]).then(() => (offen = true));
+  if (hasToken()) void Promise.all([oeffneInhalte(), anschluesse.laden(), familie.starte()]).then(() => (offen = true));
 
   let ziel = $derived.by(() => {
     for (const z of ziele) {
@@ -88,6 +96,9 @@
     else if (!token) angemeldet = false;
   });
 
+  // Ein anderer Tab hat das Profil gewechselt: hier liest dann jemand anderes, nichts vom bisherigen Profil bleibt stehen
+  beiProfilWechsel(() => location.reload());
+
   // Neue Fassung auf dem Server: von selbst neu laden (Start, Ortswechsel, Fenster wieder vorn)
   $effect(() => fassungVerfolgen());
 
@@ -105,9 +116,18 @@
 <div class="app" bind:clientWidth={schale.breite}>
   <Kulisse />
   {#if angemeldet && offen}
-    <Schale mitVorschau={!!ziel.vorschau} mitLeiste={!ziel.ohneLeiste}>
-      {#key schluessel}<ziel.ansicht params={ziel.params} />{/key}
-    </Schale>
+    {#if familie.phase === "wahl"}
+      <Profilwahl />
+    {:else if familie.phase === "fehler"}
+      <main class="familienfehler"><Zustand art="fehler" text={familie.fehler} onerneut={() => void familie.starte()} /></main>
+    {:else if familie.phase === "bereit" && ich.istKind}
+      <!-- Ein Kind sieht statt der Schale seinen eigenen, einfacheren Bereich -->
+      <Kinderbereich ich={ich.jetzt} onverlassen={() => void familie.neuBeginnen()} />
+    {:else if familie.phase === "bereit"}
+      <Schale mitVorschau={!!ziel.vorschau} mitLeiste={!ziel.ohneLeiste}>
+        {#key schluessel}<ziel.ansicht params={ziel.params} />{/key}
+      </Schale>
+    {/if}
   {:else if !angemeldet}
     <Anmeldung onerfolg={nachAnmeldung} />
   {/if}
@@ -116,3 +136,15 @@
   <Meldungen />
   <Rueckfrage />
 </div>
+
+<style>
+  .familienfehler {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    grid-template-columns: minmax(0, 28rem);
+  }
+</style>

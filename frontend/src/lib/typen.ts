@@ -271,6 +271,13 @@ export interface Buch {
   sammlung: SammlungKurz | null;
   created_at: string;
   updated_at: string;
+  /** Nur das aktive Profil sieht das Buch (BF-78) */
+  privat?: boolean;
+  /** Altersangabe aus den Quellen, nur Hilfe beim Freigeben (BF-78); null: keine */
+  alter_von?: number | null;
+  alter_bis?: number | null;
+  /** Woher die Altersangabe kommt, etwa der Name einer Quelle oder "eigen" */
+  alter_quelle?: string;
 }
 
 /** Was mit einem Buch verloren geht (BF-60, GET /api/books/{id}/loeschfolgen) */

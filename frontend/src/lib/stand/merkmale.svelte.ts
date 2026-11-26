@@ -1,5 +1,5 @@
 // Favorit, Lesesofa, Gelesen, Sterne, Umschlag: eine Stelle ändert am Server und zieht Liste, Vorschau und Zahlen nach
-import { aktualisiereBuch } from "../api/books";
+import { aktualisiereBuch, setzePrivat } from "../api/books";
 import { setzeBewertung, toggleFavorit, toggleGelesen, toggleZumLesen } from "../api/user-data";
 import type { Buch, Umschlagart } from "../typen";
 import { bestand } from "./bestand.svelte";
@@ -7,7 +7,7 @@ import { buecher } from "./buecher.svelte";
 import { melde } from "./meldungen.svelte";
 import { wahl } from "./wahl.svelte";
 
-type Merkbar = Pick<Buch, "id" | "is_favorite" | "is_to_read" | "last_read_at" | "rating">;
+type Merkbar = Pick<Buch, "id" | "is_favorite" | "is_to_read" | "last_read_at" | "rating" | "privat">;
 
 function verteile(id: number, neu: Partial<Buch>): void {
   buecher.aktualisiere(id, neu);
@@ -53,6 +53,12 @@ export const merkmale = {
     mitZahlen(buch, async () => {
       const a = await setzeBewertung(buch.id, wert);
       return { rating: a.bewertung ?? wert };
+    }),
+  /** Nur für mich (BF-78): das aktive Profil behält das Buch für sich; andere Profile sehen es nicht mehr */
+  privat: (buch: Merkbar) =>
+    aendere(buch.id, async () => {
+      const a = await setzePrivat(buch.id, !buch.privat);
+      return { privat: a.privat ?? !buch.privat };
     }),
   /** Gestaltetes Blatt oder Titelseite (BF-59); was der Umschlag dann zeigt, sagt der Server */
   umschlag: (buch: Pick<Buch, "id">, art: Umschlagart) =>

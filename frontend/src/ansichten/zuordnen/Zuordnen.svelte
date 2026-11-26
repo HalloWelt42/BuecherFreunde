@@ -1,10 +1,10 @@
 <script lang="ts">
-  // Zuordnen in zwei Spalten (BF-67), für Sammlung und Regal gleich: links was drin ist, rechts der Bestand. Ziehen in beide
-  // Richtungen, auch mehrere angehakte; dazu die Tasten. Am Telefon untereinander mit Umschalter, ohne Ziehen.
+  // Zuordnen in zwei Spalten (BF-67), für Sammlung, Regal und die Freigaben eines Kindes (BF-78) gleich: links was drin
+  // ist, rechts der Bestand. Ziehen in beide Richtungen, auch mehrere angehakte; dazu die Tasten. Am Telefon untereinander
+  // mit Umschalter, ohne Ziehen.
   import { untrack } from "svelte";
   import { zahl } from "../../lib/format";
   import Suchfeld from "../../lib/schale/Suchfeld.svelte";
-  import { bestand } from "../../lib/stand/bestand.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
   import Chip from "../../lib/teile/Chip.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
@@ -25,7 +25,8 @@
   const ziel = untrack(() => zielAus(params.art, params.id));
   const zuordnung = ziel ? new Zuordnung(ziel) : null;
 
-  let name = $derived(!ziel ? "" : ((ziel.art === "sammlung" ? bestand.sammlung(ziel.id)?.name : bestand.regal(ziel.id)?.name) ?? ""));
+  let name = $derived(ziel?.name() ?? "");
+  const ZIELNAME = { sammlung: "Sammlung", regal: "Regal", freigabe: "Familie" } as const;
   let sicht = $state<Spaltenname>("drin");
   let dazuZahl = $derived(zuordnung?.angehakt("uebrig").length ?? 0);
   let herausZahl = $derived(zuordnung?.angehakt("drin").length ?? 0);
@@ -65,13 +66,13 @@
 
 <div class="werkzeug">
   <Suchfeld id="suchfeld-m" klasse="suchfeld-mobil" />
-  {#if ziel}<Knopf text={name || (ziel.art === "sammlung" ? "Sammlung" : "Regal")} symbol="arrow-left" klein href={ziel.zurueck} />{/if}
+  {#if ziel}<Knopf text={name || ZIELNAME[ziel.art]} symbol="arrow-left" klein href={ziel.zurueck} />{/if}
   <h1>Zuordnen</h1>
 </div>
 
 <div class="inhalt zuordnen-flaeche">
   {#if !zuordnung}
-    <Zustand art="fehler" text="Diese Sammlung oder dieses Regal gibt es nicht."><Knopf text="Zur Bibliothek" symbol="book-bookmark" klein href="/" /></Zustand>
+    <Zustand art="fehler" text="Diese Sammlung, dieses Regal oder dieses Profil gibt es nicht."><Knopf text="Zur Bibliothek" symbol="book-bookmark" klein href="/" /></Zustand>
   {:else if schale.telefon}
     <div class="zuordnen telefon">
       <Segment name="Spalte" werte={[["drin", zuordnung.ziel.drinText], ["uebrig", "Bestand"]]} wert={sicht} onwahl={(w) => (sicht = w)} />

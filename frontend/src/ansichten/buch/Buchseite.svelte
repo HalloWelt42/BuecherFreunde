@@ -4,6 +4,7 @@
   import { rollstand } from "../../lib/rollstand";
   import { arten } from "../../lib/stand/arten.svelte";
   import { filter } from "../../lib/stand/filter.svelte";
+  import { ich } from "../../lib/stand/ich.svelte";
   import { wahl } from "../../lib/stand/wahl.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Zustand from "../../lib/teile/Zustand.svelte";
@@ -24,7 +25,7 @@
   let verwandt = $state<{ vom_autor: Buch[]; in_kategorie: Buch[] } | null>(null);
   let fehler = $state("");
   // Aus dem Kontextmenü eines Buchs kommt man mit ?bearbeiten gleich zum Bearbeiten (BF-42)
-  let bearbeitet = $state("bearbeiten" in route.params);
+  let bearbeitet = $state("bearbeiten" in route.params && ich.darf("bearbeiten"));
 
   async function laden() {
     fehler = "";
@@ -58,7 +59,7 @@
 <div class="werkzeug">
   <Knopf text="Bibliothek" symbol="arrow-left" klein href={filter.letzteAdresse} />
   <span class="reihe schiebt">
-    <Knopf text="Bearbeiten" symbol="pen" klein gedrueckt={bearbeitet} gesperrt={!buch} onclick={() => (bearbeitet = !bearbeitet)} />
+    {#if ich.darf("bearbeiten")}<Knopf text="Bearbeiten" symbol="pen" klein gedrueckt={bearbeitet} gesperrt={!buch} onclick={() => (bearbeitet = !bearbeitet)} />{/if}
     {#if buch}<Knopf text="Herunterladen" symbol="download" klein href={ladeUrl(buch.id)} download={buch.file_name || buch.title} />{/if}
   </span>
 </div>
