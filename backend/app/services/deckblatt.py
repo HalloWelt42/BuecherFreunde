@@ -2,7 +2,8 @@
 
 PDF: die erste Seite. EPUB: das Bild, das das Buch selbst als Umschlag nennt (Kennzeichen im Verzeichnis, Verweis "cover",
 Umschlagseite), nie ein beliebiges großes Bild aus dem Inneren; nennt es keins, wird die erste Seite gezeichnet. Eine leere
-Fläche ist nie ein Deckblatt, dann bleibt der gezeichnete Ersatz. Immer JPEG."""
+Fläche ist nie ein Deckblatt, dann bleibt der gezeichnete Ersatz. Immer JPEG. Dazu der Befund, ob ein Umschlag schlicht ist
+(`schlicht`, BF-59)."""
 
 from __future__ import annotations
 
@@ -26,6 +27,12 @@ VERHAELTNIS = (0.4, 1.35)              # Breite zu Höhe; breiter ist es ein Bil
 BILD = (".jpg", ".jpeg", ".png", ".gif", ".webp")
 SEITE = (420, 600)                     # so groß wird eine gezeichnete erste Seite gesetzt
 LEER_STREUUNG = 2.0                    # streut die Helligkeit weniger, ist die Fläche leer
+# Schlicht (BF-59): ein fast weißer Umschlag ohne Farbe, etwa die erste Seite eines PDFs mit nur dem Titel darauf. Solche
+# Bücher bekommen in der Oberfläche ein gestaltetes Deckblatt. Gemessen trifft das im Bestand 754 von 4.731 Umschlägen.
+SCHLICHT_GROESSE = (60, 90)            # so klein wird der Umschlag für den Befund
+SCHLICHT_HELL_UEBER = 230              # Helligkeit (0 bis 255), über der ein Bildpunkt als weiß gilt
+SCHLICHT_HELL_ANTEIL = 0.85            # so viele Bildpunkte müssen mindestens weiß sein
+SCHLICHT_SAETTIGUNG_UNTER = 0.08       # mittlere Sättigung (HSV, 0 bis 1), unter der der Umschlag als farblos gilt
 
 
 def von_datei(datei: Path, format_: str = "") -> bytes | None:
@@ -67,6 +74,20 @@ def _jpeg(bild: Image.Image) -> bytes:
 def leer(bild: Image.Image) -> bool:
     """Eine Fläche fast ohne Inhalt, etwa eine gezeichnete Seite, deren Bild in der Datei fehlt (BF-17)."""
     return ImageStat.Stat(bild.convert("L")).stddev[0] < LEER_STREUUNG
+
+
+def schlicht(daten: bytes) -> bool:
+    """Ob der Umschlag fast weiß und farblos ist. Ein Bild, das sich nicht lesen lässt, gilt wie ein fehlendes als schlicht."""
+    try:
+        with Image.open(io.BytesIO(daten)) as bild:
+            bild.draft("RGB", (max(1, bild.width // 4), max(1, bild.height // 4)))     # JPEG: gleich kleiner lesen
+            klein = bild.convert("RGB").resize(SCHLICHT_GROESSE, Image.Resampling.BICUBIC)
+    except Exception:                                       # noqa: BLE001 - kein lesbares Bild
+        return True
+    helligkeit = klein.convert("L").histogram()
+    weiss = sum(helligkeit[SCHLICHT_HELL_UEBER + 1:]) / (SCHLICHT_GROESSE[0] * SCHLICHT_GROESSE[1])
+    saettigung = ImageStat.Stat(klein.convert("HSV")).mean[1] / 255
+    return weiss >= SCHLICHT_HELL_ANTEIL and saettigung < SCHLICHT_SAETTIGUNG_UNTER
 
 
 def taugt(daten: bytes) -> Image.Image | None:

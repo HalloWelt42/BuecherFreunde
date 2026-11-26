@@ -247,8 +247,5 @@ async def test_systemtypen_abrufen(client: AsyncClient):
     response = await client.get("/api/collections/typen")
     assert response.status_code == 200
     typen = response.json()
-    assert len(typen) == 3
-    ids = [t["id"] for t in typen]
-    assert "heft" in ids
-    assert "katalog" in ids
-    assert "broschuere" in ids
+    assert [t["id"] for t in typen] == ["dokument", "heft", "katalog", "broschuere"]
+    assert typen[0] == {"id": "dokument", "name": "Dokument", "beschreibung": "Handbuch, Arbeit, Skript oder Beleg"}

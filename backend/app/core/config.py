@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     leitstelle_schluessel_datei: str = ""                     # Schlüssel der Anwendung (Datei, Modus 0600)
     ki_modell: str = "qwen/qwen3-next-80b"                    # Modellwahl der App; die Leitstelle wählt nie eins
     sprechdienst: str = "klangwerk-sprechen"                  # Vorlesen über diesen Dienst der Leitstelle; ohne: Stimmen des Geräts
+    # Gestaltete Deckblätter (BF-59): die Umschlagprüfung findet schlichte Umschläge, die lokale KI ordnet diese Bücher ein
+    umschlaege_pruefen_takt_s: float = Field(default=600, gt=0)   # so oft sieht die Umschlagprüfung nach neuen oder geänderten Umschlägen
+    einordnen_an: bool = True                                    # Art und Gattung schlichter Bücher von der lokalen KI vorschlagen lassen
+    einordnen_takt_s: float = Field(default=600, gt=0)          # so oft sieht das Einordnen von selbst nach offenen Büchern
+    einordnen_abstand_s: float = Field(default=20, ge=0)        # Pause zwischen zwei Anfragen an die KI
 
     # Quellen für Angaben zu Büchern und Autoren (backend/app/quellen), jede freiwillig und ohne Schlüssel.
     # Google Books antwortet seit 2026 nur noch mit eigenem Schlüssel

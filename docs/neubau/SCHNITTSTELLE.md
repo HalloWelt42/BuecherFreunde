@@ -92,3 +92,50 @@ Kennungen: `google_books` (nur mit `GOOGLE_BOOKS_API_KEY`), `open_library`, `dnb
 
 `GET /api/ausfuehren`, `POST /api/ausfuehren`, `GET /api/ausfuehren/funktionen/php`, `GET /api/books/{id}/codestellen`,
 `GET /api/ausfuehren/vorpruefung` mit `.../anhalten` und `.../fortsetzen`: Felder und Bedeutung in [AUSFUEHREN.md](AUSFUEHREN.md).
+
+## Gestaltete Deckblätter (BF-59)
+
+Bücher mit schlichtem Umschlag (fast weiß, ohne Farbe, oft die Titelseite eines PDFs) bekommen in der Oberfläche ein
+gestaltetes Deckblatt: Bücher nach Gattung, Dokumente, Hefte, Kataloge und Broschüren nach ihrer Art. Die gespeicherte
+Titelseite bleibt und ist je Buch wählbar.
+
+- Arten (`typ`, `GET /api/collections/typen`): leer ist ein Buch, dazu `dokument` (Handbuch, Arbeit, Skript oder Beleg),
+  `heft`, `katalog`, `broschuere`.
+- Gattungen (`gattung`, `GET /api/collections/gattungen` -> `[{id, name}]`, feste Reihenfolge): `krimi`, `thriller`,
+  `historisch`, `fantasy`, `liebesroman`, `roman`, `klassiker`, `sachbuch`, `ratgeber`, `informatik`, `mathematik`,
+  `fachbuch`, `wirtschaft`; leer: keine. Nur bei Büchern sinnvoll.
+
+Alle Antworten mit Büchern (`GET /api/books`, `GET /api/books/{id}`, `.../recently-read`, `.../aehnliche`) tragen dazu:
+
+| Feld | Bedeutung |
+|---|---|
+| `gattung` | eine der Gattungen oder leer |
+| `umschlag_wahl` | Wahl des Nutzers: leer (automatisch), `gestaltet`, `titelseite` |
+| `umschlag_schlicht` | Befund der Umschlagprüfung; `false`, solange nicht geprüft |
+| `umschlag` | was gezeigt wird, `gestaltet` oder `titelseite`: `umschlag_wahl`, wenn gesetzt, sonst `gestaltet` bei schlichtem Umschlag, sonst `titelseite` |
+
+`PATCH /api/books/{id}` nimmt zusätzlich `gattung` (geprüft wie `typ`, 422 `"Gattung: erlaubt ist leer oder krimi, ..."`)
+und `umschlag_wahl` (nur `""`, `"gestaltet"`, `"titelseite"`). Wer `typ` oder `gattung` setzt (auch `typ_setzen` in
+`POST /api/books/bulk`), hat von Hand eingeordnet: die KI fasst das Buch nie wieder an. `umschlag_wahl` ist eine Wahl der
+Darstellung und zählt nicht als Bearbeitung der Angaben (setzt weder `manuell_bearbeitet` noch `updated_at`).
+
+Zwei Läufe im Hintergrund, gestartet mit der App:
+
+- Umschläge prüfen (`services/umschlagpruefung.py`): beim Start und dann alle `UMSCHLAEGE_PRUEFEN_TAKT_S` (600) Sekunden jedes
+  Buch, dessen Befund fehlt oder zu einem älteren Umschlag gehört (Spalte `umschlag_geprueft` gegen den Stand des Umschlags).
+  Schlicht heißt: auf 60 x 90 verkleinert haben mindestens 85 % der Bildpunkte eine Helligkeit über 230 und die mittlere
+  Sättigung liegt unter 0,08 (`services/deckblatt.py`). Ohne Umschlagdatei gilt ein Buch als schlicht.
+- Einordnen mit der lokalen KI (`services/einordnung.py`): für schlichte Bücher, die noch niemand eingeordnet hat, schlägt die
+  KI über die Leitstelle Art und Gattung vor (aus Titel, Autor, Verlag, Jahr, ISBN, Format und dem Anfang des Volltexts),
+  ein Buch je Anfrage, mit `EINORDNEN_ABSTAND_S` (20) Sekunden Abstand, abschaltbar mit `EINORDNEN_AN` (true). Es sieht
+  nach jeder Umschlagprüfung mit schlichten Umschlägen nach, sonst alle `EINORDNEN_TAKT_S` (600) Sekunden. Antwortet die KI
+  zu einem Buch nichts Brauchbares, bleibt es offen und kommt in einer späteren Runde wieder dran; lehnt die Leitstelle ab,
+  hält das Einordnen an, bis es fortgesetzt wird.
+
+| Weg | Zweck |
+|---|---|
+| `GET /api/einordnung/stand` | `{an, bereit, laeuft, angehalten, grund, offen, erledigt}`: `bereit` heißt eingeschaltet und Leitstelle eingetragen, `offen` schlichte Bücher ohne Einordnung, `erledigt` von der KI eingeordnete, `grund` warum angehalten oder in der letzten Runde ein Buch offen blieb |
+| `POST /api/einordnung/fortsetzen` | nach einer Ablehnung der Leitstelle weiter einordnen; antwortet mit dem Stand |
+
+Spalten in `books`: `gattung`, `umschlag_wahl`, `umschlag_schlicht` (NULL noch nicht geprüft, 0, 1), `umschlag_geprueft`
+(Stand des geprüften Umschlags), `einordnung` (leer offen, `ki`, `hand`).

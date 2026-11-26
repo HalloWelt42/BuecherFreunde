@@ -26,7 +26,7 @@ BEZUG_FEHLT = "Ein genannter Eintrag fehlt"
 # Felder, wie sie in der Oberfläche heißen; was hier fehlt, erscheint mit seinem Namen
 FELDER = {
     "title": "Titel", "author": "Autor", "isbn": "ISBN", "publisher": "Verlag", "year": "Jahr", "language": "Sprache",
-    "description": "Beschreibung", "page_count": "Seiten", "typ": "Typ", "sammlung_id": "Sammlung", "band_nummer": "Band",
+    "description": "Beschreibung", "page_count": "Seiten", "typ": "Typ", "gattung": "Gattung", "umschlag_wahl": "Umschlag", "sammlung_id": "Sammlung", "band_nummer": "Band",
     "content": "Notiz", "page_reference": "Seite", "cfi_reference": "Stelle", "cfi_range": "Stelle", "color": "Farbe",
     "text_snippet": "Text", "label_name": "Etikett", "label_note": "Notiz", "name": "Name", "note": "Notiz",
     "position_percent": "Position", "icon": "Symbol", "sort_order": "Reihenfolge", "spezial": "Besonders",

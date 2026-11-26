@@ -31,7 +31,9 @@ async def ohne_ausnahmen(test_db, auth_headers):
     ("year", 12, "Jahr: mindestens 1000"),
     ("page_count", -1, "Seiten: mindestens 0"),
     ("isbn", "keine ISBN", "ISBN: hat nicht die erwartete Form"),
-    ("typ", "roman", "Typ: erlaubt ist leer oder heft, katalog, broschuere"),
+    ("typ", "roman", "Typ: erlaubt ist leer oder dokument, heft, katalog, broschuere"),
+    ("gattung", "heft", "Gattung: erlaubt ist leer oder krimi, thriller, historisch"),
+    ("umschlag_wahl", "bunt", 'Umschlag: erlaubt ist "", "gestaltet" oder "titelseite"'),
     ("sammlung_id", ZU_GROSS, "Sammlung: höchstens"),
 ])
 async def test_buch_aendern_mit_grenzen(ohne_ausnahmen, test_db, feld, wert, meldung):

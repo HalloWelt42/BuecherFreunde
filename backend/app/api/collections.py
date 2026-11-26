@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from backend.app.api import vorhanden
 from backend.app.core.auth import verify_token
 from backend.app.core.database import db
-from backend.app.models.book import TYPEN
+from backend.app.models.book import GATTUNGEN, TYPEN
 from backend.app.models.grenzen import Band, Farbe, Nr, Sammlungsbeschreibung, Sammlungsname
 
 router = APIRouter(prefix="/api/collections", tags=["Sammlungen"])
@@ -38,6 +38,12 @@ class BuchZuordnung(BaseModel):
 async def liste_typen(_: str = Depends(verify_token)):
     """Gibt die verfügbaren Systemtypen zurück."""
     return TYPEN
+
+
+@router.get("/gattungen")
+async def liste_gattungen(_: str = Depends(verify_token)):
+    """Die festen Gattungen eines Buchs, in der Reihenfolge, in der sie angeboten werden (BF-59)."""
+    return GATTUNGEN
 
 
 # --- Sammlungen CRUD ---

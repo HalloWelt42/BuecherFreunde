@@ -20,6 +20,7 @@ from backend.app.api.backup import router as backup_router
 from backend.app.api.books import router as books_router
 from backend.app.api.categories import router as categories_router
 from backend.app.api.config import router as config_router
+from backend.app.api.einordnung import router as einordnung_router
 from backend.app.api.gutenberg import router as gutenberg_router
 from backend.app.api.imports import router as imports_router
 from backend.app.api.metadata import router as metadata_router
@@ -43,7 +44,9 @@ from backend.app.codestellen.dienst import codestellen
 from backend.app.codestellen.vorpruefung import vorpruefer
 from backend.app.services import bedeutung, gespraech, nachschlagen, pflege
 from backend.app.services.ausfuehren import sandbox
+from backend.app.services.einordnung import einordner
 from backend.app.services.ki import ki
+from backend.app.services.umschlagpruefung import umschlagpruefung
 
 logger = logging.getLogger("buecherfreunde")
 
@@ -86,12 +89,17 @@ async def lifespan(app: FastAPI):
     codestellen.erkannt.append(vorpruefer.nach_erkennung)
     codestellen.starten()
     vorpruefer.starten()
+    umschlagpruefung.nach_runde.append(einordner.anstossen)
+    umschlagpruefung.starten()
+    einordner.starten()
     im_hintergrund = [asyncio.create_task(pflege.laufen()), asyncio.create_task(eingangsordner.laufen()), asyncio.create_task(nachschlagen.vorwaermen())]
     yield
     for lauf in im_hintergrund:
         lauf.cancel()
     await annahme.stoppen()
     await vorpruefer.stoppen()
+    await einordner.stoppen()
+    await umschlagpruefung.stoppen()
     await codestellen.stoppen()
     await sandbox.schliessen()
     await ki.schliessen()
@@ -125,6 +133,7 @@ app.include_router(books_router)
 app.include_router(categories_router)
 app.include_router(collections_router)
 app.include_router(config_router)
+app.include_router(einordnung_router)
 app.include_router(fundus_router)
 app.include_router(gutenberg_router)
 app.include_router(helfer_router)

@@ -17,7 +17,9 @@ from backend.app.core.auth import verify_token, verify_token_inhalt
 from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.api import vorhanden
-from backend.app.models.book import BookListResponse, BookListItem, BookResponse, BookUpdate, typ_pruefen
+from backend.app.models.book import (
+    DARSTELLUNG, FELDER_DER_EINORDNUNG, VON_HAND, BookListResponse, BookListItem, BookResponse, BookUpdate, typ_pruefen,
+)
 from backend.app.models.textansicht import TextBaustein, TextSeite, TextSeitenAntwort
 from backend.app.services.textansicht import Baustein, Codeteil, abbildung_png, seiten_lesen
 import fitz
@@ -30,6 +32,15 @@ from backend.app.services.storage import get_original_file, get_sidecar_path, sa
 from backend.app.models.grenzen import AUSWAHL_HOECHSTENS, GROESSTE_ZAHL, JAHR_BIS, LEBENSJAHR_AB, LISTENSEITE, SEITEN_HOECHSTENS, Index, Nr
 
 router = APIRouter(prefix="/api/books", tags=["Bücher"])
+
+# Die Spalten eines Buchs in der Liste (BookListItem), für jede Abfrage, die Listeneinträge liefert
+LISTENSPALTEN = ("id", "hash", "title", "author", "publisher", "file_format", "file_size", "cover_path", "page_count", "year", "isbn",
+                 "typ", "gattung", "umschlag_wahl", "umschlag_schlicht", "sammlung_id", "band_nummer", "created_at", "updated_at")
+
+
+def _listenspalten(tabelle: str = "b") -> str:
+    return ", ".join(f"{tabelle}.{s}" for s in LISTENSPALTEN)
+
 
 async def _get_book_categories(book_id: int) -> list[dict]:
     """Lädt Kategorien eines Buches."""
@@ -173,7 +184,7 @@ async def list_books(
     pro_seite: int = Query(24, ge=1, le=100, description="Einträge pro Seite"),
     kategorie: str | None = Query(None, description="Kategorie-ID(s), kommagetrennt"),
     sammlung: Nr | None = Query(None, description="Sammlungs-ID Filter"),
-    typ: str | None = Query(None, description="Typ-Filter (heft, katalog, broschuere)"),
+    typ: str | None = Query(None, description="Typ-Filter (dokument, heft, katalog, broschuere)"),
     favorit: bool | None = Query(None, description="Nur Favoriten"),
     zu_lesen: bool | None = Query(None, description="Nur Zum-Lesen"),
     bewertung_min: int | None = Query(None, ge=0, le=5, description="Mindestbewertung"),
@@ -307,9 +318,7 @@ async def list_books(
     offset = (seite - 1) * pro_seite
     ud_join = "LEFT JOIN user_book_data ud_sort ON ud_sort.book_id = b.id" if needs_ud_join else ""
     select_sql = f"""
-        SELECT b.id, b.hash, b.title, b.author, b.publisher, b.file_format,
-               b.file_size, b.cover_path, b.page_count, b.year, b.isbn,
-               b.typ, b.sammlung_id, b.band_nummer, b.created_at, b.updated_at
+        SELECT {_listenspalten()}
         FROM books b
         {ud_join}
         WHERE {where}
@@ -336,10 +345,8 @@ async def recently_read(
     limit: int = Query(10, ge=1, le=50),
 ):
     """Gibt die zuletzt gelesenen Bücher zurück."""
-    sql = """
-        SELECT b.id, b.hash, b.title, b.author, b.publisher, b.file_format,
-               b.file_size, b.cover_path, b.page_count, b.year, b.isbn,
-               b.typ, b.sammlung_id, b.band_nummer, b.created_at, b.updated_at
+    sql = f"""
+        SELECT {_listenspalten()}
         FROM books b
         JOIN user_book_data ud ON ud.book_id = b.id
         WHERE ud.last_read_at IS NOT NULL
@@ -373,10 +380,7 @@ async def similar_books(
         placeholders = ",".join("?" for _ in author_ids)
         ids = [a["author_id"] for a in author_ids]
         rows = await db.fetch_all(
-            f"""SELECT DISTINCT b.id, b.hash, b.title, b.author, b.publisher,
-                       b.file_format, b.file_size, b.cover_path, b.page_count,
-                       b.year, b.isbn, b.typ, b.sammlung_id, b.band_nummer,
-                       b.created_at, b.updated_at
+            f"""SELECT DISTINCT {_listenspalten()}
                 FROM books b
                 JOIN book_authors ba ON ba.book_id = b.id
                 WHERE ba.author_id IN ({placeholders}) AND b.id != ?
@@ -386,11 +390,9 @@ async def similar_books(
         result["vom_autor"] = await _batch_enrich_book_list(rows)
     elif book["author"]:
         rows = await db.fetch_all(
-            """SELECT id, hash, title, author, publisher, file_format,
-                      file_size, cover_path, page_count, year, isbn,
-                      typ, sammlung_id, band_nummer, created_at, updated_at
-               FROM books WHERE author = ? AND id != ?
-               ORDER BY title LIMIT ?""",
+            f"""SELECT {_listenspalten()}
+               FROM books b WHERE b.author = ? AND b.id != ?
+               ORDER BY b.title LIMIT ?""",
             (book["author"], book_id, limit),
         )
         result["vom_autor"] = await _batch_enrich_book_list(rows)
@@ -406,10 +408,7 @@ async def similar_books(
         placeholders = ",".join("?" for _ in regale)
         exclude_ph = ",".join("?" for _ in already)
         rows = await db.fetch_all(
-            f"""SELECT DISTINCT b.id, b.hash, b.title, b.author, b.publisher,
-                       b.file_format, b.file_size, b.cover_path, b.page_count,
-                       b.year, b.isbn, b.typ, b.sammlung_id, b.band_nummer,
-                       b.created_at, b.updated_at
+            f"""SELECT DISTINCT {_listenspalten()}
                 FROM books b
                 JOIN book_categories bc ON bc.book_id = b.id
                 WHERE bc.category_id IN ({placeholders}) AND b.id NOT IN ({exclude_ph})
@@ -458,12 +457,12 @@ async def update_book(
     if "sammlung_id" in updates:
         await vorhanden.eintrag("collections", updates["sammlung_id"], "Sammlung nicht gefunden", "id")
 
-    set_clause = ", ".join(f"{k} = ?" for k in updates)
-    values = list(updates.values()) + [book_id]
-    await db.execute(
-        f"UPDATE books SET {set_clause}, manuell_bearbeitet = 1, updated_at = datetime('now') WHERE id = ?",
-        tuple(values),
-    )
+    zuweisungen = [f"{k} = ?" for k in updates]
+    if updates.keys() - DARSTELLUNG:                 # die Wahl der Darstellung allein bearbeitet keine Angabe
+        zuweisungen += ["manuell_bearbeitet = 1", "updated_at = datetime('now')"]
+    if updates.keys() & FELDER_DER_EINORDNUNG:
+        zuweisungen.append(f"einordnung = '{VON_HAND}'")
+    await db.execute(f"UPDATE books SET {', '.join(zuweisungen)} WHERE id = ?", (*updates.values(), book_id))
 
     if "author" in updates:
         await autoren_verknuepfen(book_id, updates["author"])
@@ -554,7 +553,7 @@ async def bulk_action(
         typ_wert = _typ(action.wert)
         for bid in action.book_ids:
             betroffen += (await db.execute(
-                "UPDATE books SET typ = ? WHERE id = ?",
+                f"UPDATE books SET typ = ?, einordnung = '{VON_HAND}' WHERE id = ?",
                 (typ_wert, bid),
             )).rowcount
         await db.commit()

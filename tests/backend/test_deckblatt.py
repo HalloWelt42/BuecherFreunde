@@ -99,3 +99,45 @@ def test_leere_flaeche_ist_kein_deckblatt(tmp_path):
     leer = io.BytesIO()
     einfarbig((5, 5, 10)).save(leer, format="JPEG")
     assert deckblatt.taugt(leer.getvalue()) is None
+
+
+# -- Schlicht (BF-59): fast weiß und farblos bekommt ein gestaltetes Deckblatt ----------------------------------------------
+
+def titelseite(papier=(255, 255, 255), dunkel_anteil=0.1, art="JPEG") -> bytes:
+    """Eine Seite in der Farbe des Papiers, oben ein schwarzer Block für den Titel mit dem Anteil an der Fläche."""
+    b = einfarbig(papier)
+    ImageDraw.Draw(b).rectangle((0, 0, b.width - 1, round(b.height * dunkel_anteil) - 1), fill=(0, 0, 0))
+    p = io.BytesIO()
+    b.save(p, format=art, quality=95)
+    return p.getvalue()
+
+
+def streifen(weisse_spalten: int) -> bytes:
+    """Genau in der Größe des Befunds: links weiße Spalten, rechts schwarze (so zählt jeder Bildpunkt)."""
+    b = Image.new("RGB", deckblatt.SCHLICHT_GROESSE, (0, 0, 0))
+    ImageDraw.Draw(b).rectangle((0, 0, weisse_spalten - 1, b.height - 1), fill=(255, 255, 255))
+    p = io.BytesIO()
+    b.save(p, format="PNG")
+    return p.getvalue()
+
+
+@pytest.mark.parametrize(("daten", "erwartet"), [
+    pytest.param(titelseite(), True, id="weiß mit Titel"),
+    pytest.param(titelseite(art="PNG"), True, id="weiß mit Titel, PNG"),
+    pytest.param(titelseite((235, 235, 235)), True, id="hellgrau"),
+    pytest.param(titelseite((255, 240, 240)), True, id="ein Hauch Farbe"),              # mittlere Sättigung 0,06
+    pytest.param(titelseite(dunkel_anteil=0.2), False, id="zu viel Dunkles"),
+    pytest.param(titelseite((225, 225, 225)), False, id="nicht hell genug"),
+    pytest.param(titelseite((255, 225, 225)), False, id="hell, aber rosa"),             # mittlere Sättigung 0,1
+    pytest.param(titelseite((255, 250, 200)), False, id="hell und gelb"),
+    pytest.param(bild(ROT), False, id="rot"),
+    pytest.param(b"kein Bild", True, id="unlesbar wie fehlend"),
+])
+def test_schlicht(daten, erwartet):
+    assert deckblatt.schlicht(daten) is erwartet
+
+
+def test_schlicht_ab_85_prozent_weiss():
+    breite = deckblatt.SCHLICHT_GROESSE[0]
+    assert deckblatt.schlicht(streifen(round(breite * 0.85)))         # 51 von 60 Spalten
+    assert not deckblatt.schlicht(streifen(round(breite * 0.85) - 1))

@@ -366,6 +366,12 @@ NEUBAU_SPALTEN: tuple[tuple[str, str, str], ...] = (
     ("aufnahme", "quelle", "TEXT NOT NULL DEFAULT 'hochladen'"),   # hochladen, eingangsordner, ordner, extern, gemeinfrei
     ("aufnahme", "pfad", "TEXT DEFAULT NULL"),                     # die Datei auf dem Gerät (Ordner); bleibt, wo sie ist
     ("aufnahme", "herkunft", "TEXT DEFAULT NULL"),                 # JSON, etwa Nummer und Adresse eines gemeinfreien Buchs
+    # Gestaltete Deckblätter (BF-59), Bedeutung in models/book.py
+    ("books", "gattung", "TEXT NOT NULL DEFAULT ''"),              # eine aus GATTUNGEN, leer: keine
+    ("books", "umschlag_wahl", "TEXT NOT NULL DEFAULT ''"),        # Wahl des Nutzers: leer automatisch, gestaltet, titelseite
+    ("books", "umschlag_schlicht", "INTEGER DEFAULT NULL"),        # Befund der Umschlagprüfung: NULL noch nicht geprüft, 0, 1
+    ("books", "umschlag_geprueft", "INTEGER NOT NULL DEFAULT 0"),  # der umschlag_stand, zu dem der Befund gehört
+    ("books", "einordnung", "TEXT NOT NULL DEFAULT ''"),           # wer Art und Gattung bestimmt hat: leer offen, ki, hand
 )
 
 
