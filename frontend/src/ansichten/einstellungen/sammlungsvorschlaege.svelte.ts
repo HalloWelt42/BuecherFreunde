@@ -25,15 +25,15 @@ export function wegSymbol(weg: string): string {
   return /^(die\s+)?ki\b/i.test(weg.trim()) ? "robot" : "ruler-combined";
 }
 
-/** Der Satz der KI, als solcher erkennbar */
-export function kiSatz(ki: string): string {
+/** Der Satz der KI, als solcher erkennbar; hat sie nicht geprüft, steht ihr Grund für sich */
+export function kiSatz(ki: string, geprueft: boolean): string {
   const satz = ki.trim();
-  return !satz || /^(die\s+)?ki\b/i.test(satz) ? satz : `KI: ${satz}`;
+  return !satz || !geprueft || /^(die\s+)?ki\b/i.test(satz) ? satz : `KI: ${satz}`;
 }
 
 /** Was nach einem Lauf gemeldet wird */
 export function fundtext(gefunden: number): string {
-  return gefunden ? `${anzahl(gefunden, "Vorschlag", "Vorschläge")} für Sammlungen gefunden` : "Keine neuen Sammlungen gefunden";
+  return gefunden ? `${anzahl(gefunden, "Vorschlag", "Vorschläge")} für Sammlungen gefunden` : "Keine Sammlungen gefunden";
 }
 
 class Vorschlaege {
@@ -64,8 +64,7 @@ class Vorschlaege {
   async suche(): Promise<void> {
     if (this.laeuft) return;
     try {
-      await sucheVorschlaege();
-      this.stand = { laeuft: true, schritt: "", gefunden: 0, grund: "" };
+      this.stand = await sucheVorschlaege();
       void this.#verfolge();
     } catch (e) {
       melde.schlecht(e, "Suche nicht begonnen");

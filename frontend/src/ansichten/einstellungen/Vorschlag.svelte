@@ -10,7 +10,7 @@
   let { vorschlag, onanpassen }: { vorschlag: Sammlungsvorschlag; onanpassen: () => void } = $props();
 
   let reihe = $derived(umschlagreihe(vorschlag.buecher));
-  let ki = $derived(kiSatz(vorschlag.ki));
+  let ki = $derived(kiSatz(vorschlag.ki, vorschlag.ki_geprueft));
   let arbeitet = $derived(vorschlaege.arbeitet.has(vorschlag.id));
 </script>
 

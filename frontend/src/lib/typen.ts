@@ -162,17 +162,21 @@ export interface Sammlungsvorschlag {
   anzahl: number;
   /** Fundwege der Regeln, etwa "Reihenname mit Nummer" */
   wege: string[];
-  /** Was die lokale KI dazu sagt; leer ohne KI */
+  /** Satz der lokalen KI, oder warum sie nicht geprüft hat */
   ki: string;
+  /** Hat die KI den Fund geprüft? Sonst steht in ki der Grund */
+  ki_geprueft: boolean;
   buecher: Vorschlagsbuch[];
 }
 
-/** Stand des Suchlaufs (GET /api/collections/vorschlaege/stand) */
+/** Stand des Suchlaufs (GET /api/collections/vorschlaege/stand, auch die Antwort auf suchen) */
 export interface Vorschlagsstand {
   laeuft: boolean;
+  /** Was der Lauf gerade tut */
   schritt: string;
+  /** Offene Vorschläge; während des Laufs die bisher gefundenen */
   gefunden: number;
-  /** Warum der Lauf nicht oder nur halb ging; leer sonst */
+  /** Warum die KI nicht geprüft hat oder warum der Lauf endete; leer sonst */
   grund: string;
 }
 

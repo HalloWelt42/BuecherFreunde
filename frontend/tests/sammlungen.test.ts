@@ -190,15 +190,16 @@ describe("Vorschläge und Grenze", () => {
   it("gibt Fundwegen der KI ihr Zeichen und macht ihren Satz erkennbar", () => {
     expect(wegSymbol("Reihe und Band im Titel bei 8 Büchern")).toBe("ruler-combined");
     expect(wegSymbol("Die KI nennt die Reihe Sternenfahrt")).toBe("robot");
-    expect(kiSatz("eine Reihe, Name bestätigt")).toBe("KI: eine Reihe, Name bestätigt");
-    expect(kiSatz("KI nicht erreichbar")).toBe("KI nicht erreichbar");
-    expect(kiSatz(" ")).toBe("");
+    expect(kiSatz("eine Reihe, Name bestätigt", true)).toBe("KI: eine Reihe, Name bestätigt");
+    expect(kiSatz("Die KI nennt sie Sternenfahrt", true)).toBe("Die KI nennt sie Sternenfahrt");
+    expect(kiSatz("nicht geprüft, keine Verbindung", false)).toBe("nicht geprüft, keine Verbindung");
+    expect(kiSatz(" ", true)).toBe("");
   });
 
   it("meldet die Zahl der Funde", () => {
     expect(fundtext(3)).toBe("3 Vorschläge für Sammlungen gefunden");
     expect(fundtext(1)).toBe("1 Vorschlag für Sammlungen gefunden");
-    expect(fundtext(0)).toBe("Keine neuen Sammlungen gefunden");
+    expect(fundtext(0)).toBe("Keine Sammlungen gefunden");
   });
 
   it("nimmt als Grenze nur ganze Zahlen von 2 bis 1000", () => {

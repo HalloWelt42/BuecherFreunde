@@ -22,7 +22,8 @@ export const speichereSammlungseinstellungen = (werte: Sammlungseinstellungen): 
 
 // Gefundene Reihen als Vorschläge (BF-66)
 export const ladeVorschlaege = (): Promise<Sammlungsvorschlag[]> => get("/api/collections/vorschlaege");
-export const sucheVorschlaege = (): Promise<unknown> => post("/api/collections/vorschlaege/suchen");
+/** Beginnt den Suchlauf im Hintergrund; läuft schon einer, bleibt es bei ihm */
+export const sucheVorschlaege = (): Promise<Vorschlagsstand> => post("/api/collections/vorschlaege/suchen");
 export const vorschlagsstand = (): Promise<Vorschlagsstand> => get("/api/collections/vorschlaege/stand");
 /** Ohne Änderung so, wie gefunden; sonst mit eigenem Namen und nur den gewählten Büchern */
 export const legeVorschlagAn = (id: number, aenderung?: { name: string; book_ids: number[] }): Promise<Sammlung> => post(`/api/collections/vorschlaege/${id}/anlegen`, aenderung);
