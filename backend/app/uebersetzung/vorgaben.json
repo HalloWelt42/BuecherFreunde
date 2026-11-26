@@ -1,0 +1,21 @@
+{
+  "_hinweis": "Allgemeine Begriffsliste für alle Bücher (BF-71), im Format der Buchprojekte: englisch -> deutsch, leer heißt bleibt englisch. Kommt einmal je Fassung in die Tabelle begriff (Herkunft vorgabe) und ist danach dort änderbar; Regeln stehen in uebersetzung/anweisungen.py.",
+  "fassung": 1,
+  "begriffe": {},
+  "einheiten": {
+    "foot": "Fuß",
+    "feet": "Fuß",
+    "inch": "Zoll",
+    "inches": "Zoll",
+    "yard": "Yard",
+    "yards": "Yard",
+    "mile": "Meile",
+    "miles": "Meile",
+    "pound": "Pfund",
+    "pounds": "Pfund",
+    "ounce": "Unze",
+    "ounces": "Unze",
+    "gallon": "Gallone",
+    "gallons": "Gallone"
+  }
+}
