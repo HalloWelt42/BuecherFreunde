@@ -36,7 +36,9 @@
     "foliate-js": "^1.0.1",
     "hash-wasm": "^4.13.0",
     "highlight.js": "^11.11.1",
+    "hyphen": "^1.14.1",
     "mermaid": "^11.13.0",
-    "pdfjs-dist": "^5.5.207"
+    "pdfjs-dist": "^5.5.207",
+    "samtpfote": "github:HalloWelt42/samtpfote#4f07142"
   }
 }

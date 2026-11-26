@@ -1,0 +1,224 @@
+/* Kinderbereich (BF-78): eigene, kindgerechte Gestalt nach dem abgenommenen Entwurf (Runde 1, Katze nach Runde 2). Wenige große
+   Flächen, Symbole mit kurzem Wort, Tasten in der Größe der Stufe (--k-taste aus der Darstellung des Kindes), die Kinderschrift
+   Andika. Maße in rem, damit die Schriftstufe der App alles mitwachsen lässt. */
+
+.kind {
+  --k-grund: #fbf6ea;
+  --k-flaeche: #ffffff;
+  --k-tinte: #2b2a33;
+  --k-leise: #625f6a;
+  --k-linie: #e6dcc6;
+  --k-haupt: #2f6fb3;
+  --k-auf-haupt: #ffffff;
+  --k-warm: #e0893a;
+  --k-gruen: #3f8f5a;
+  --k-rot: #b3261e;
+  --k-zeile-hell: color-mix(in srgb, #ffd66b 45%, transparent);
+  --k-silbe-1: #2f6fb3;
+  --k-silbe-2: #c2410c;
+  --k-taste: 14mm;
+  --k-schrift: "Andika", system-ui, sans-serif;
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  background: var(--k-grund);
+  color: var(--k-tinte);
+  font-family: var(--k-schrift);
+  font-size: 1.125rem;
+  line-height: 1.35;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+:root[data-theme="dark"] .kind {
+  --k-grund: #1e2328;
+  --k-flaeche: #2a3036;
+  --k-tinte: #f1ede4;
+  --k-leise: #b9b5ad;
+  --k-linie: #3a424a;
+  --k-haupt: #6fa6e0;
+  --k-auf-haupt: #0f1d2e;
+  --k-rot: #ff8a80;
+  --k-zeile-hell: color-mix(in srgb, #ffd66b 22%, transparent);
+  --k-silbe-1: #8fbdf0;
+  --k-silbe-2: #f2a36b;
+}
+.kind.nacht {
+  --k-rot: #ff8a80;
+  --k-grund: #1d2440;
+  --k-tinte: #f3efe2;
+  --k-leise: #cdc8b8;
+  --k-linie: #3a4466;
+  --k-flaeche: #28315a;
+}
+.kind button { font: inherit; color: inherit; }
+.kind a { color: inherit; text-decoration: none; }
+.kind :focus-visible { outline: 3px solid var(--k-haupt); outline-offset: 3px; }
+
+/* Kopf: wer liest oder welches Buch, Lesezeit, Katze beim Lesen, Schloss oder Haus */
+.k-kopf { display: flex; align-items: center; gap: .75rem; padding: .75rem 1rem; min-width: 0; }
+.k-wer { display: flex; align-items: center; gap: .625rem; font-size: 1.375rem; font-weight: 700; min-width: 0; }
+.k-wer > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k-bild { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; border-radius: 50%; color: #fff; font-size: 1.25rem; }
+.k-buchname { display: flex; align-items: center; gap: .5rem; min-width: 0; flex: 1 1 auto; color: var(--k-leise); font-size: 1.125rem; }
+.k-buchname > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k-kopf .k-rechts { margin-left: auto; display: flex; align-items: center; gap: .75rem; flex: none; }
+.k-schloss { display: grid; place-items: center; flex: none; width: 3rem; height: 3rem; border-radius: 50%; border: 2px solid var(--k-linie); background: transparent; color: var(--k-leise); font-size: 1.125rem; cursor: pointer; }
+.k-kopf .k-taste.rund { width: var(--k-taste); height: var(--k-taste); min-height: 0; padding: 0; border-radius: 50%; }
+
+/* Mitte und Fuß */
+.k-mitte { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 0 1rem; }
+.k-fuss { display: grid; gap: .75rem; padding: .75rem 1rem 1rem; }
+.k-fuss.mit-katze { display: flex; justify-content: flex-end; align-items: flex-end; gap: .75rem; padding-top: .25rem; }
+
+/* Tasten: groß, mit Symbol und kurzem Wort, gleich hoch */
+.k-taste {
+  display: grid; place-items: center; align-content: center; gap: .25rem;
+  min-width: var(--k-taste); min-height: var(--k-taste); padding: .375rem .5rem;
+  border: 0; border-radius: .875rem; background: var(--k-flaeche); color: var(--k-tinte);
+  box-shadow: 0 .25rem 0 var(--k-linie), inset 0 0 0 2px var(--k-linie);
+  font-weight: 700; font-size: 1rem; line-height: 1.15; cursor: pointer; touch-action: manipulation;
+}
+.k-taste i { font-size: 1.625rem; }
+.k-taste.haupt { background: var(--k-haupt); color: var(--k-auf-haupt); box-shadow: 0 .25rem 0 color-mix(in srgb, var(--k-haupt) 60%, #000); }
+.k-taste.an { background: color-mix(in srgb, var(--k-warm) 22%, var(--k-flaeche)); box-shadow: 0 .25rem 0 var(--k-warm), inset 0 0 0 3px var(--k-warm); }
+.k-taste:active:not(:disabled) { transform: translateY(.125rem); box-shadow: 0 .125rem 0 var(--k-linie), inset 0 0 0 2px var(--k-linie); }
+.k-taste:disabled { opacity: .4; cursor: default; }
+.k-taste.quer { grid-auto-flow: column; justify-content: center; gap: .625rem; }
+.k-taste.quer i { font-size: 1.375rem; }
+.k-tasten .k-taste { white-space: nowrap; }
+@media (max-width: 34rem) { .k-tasten .k-taste { font-size: .875rem; padding-inline: .25rem; } }
+.k-tasten { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(max(var(--k-taste), 4.5rem), 1fr)); }
+
+/* Die Katze: eigene Spalte mit ihrer Nennung darunter, nie über anderem und nichts über ihr */
+.k-katze { display: inline-flex; flex-direction: column; align-items: center; gap: .25rem; flex: none; }
+.k-katze samt-pfote { width: var(--cat-size, 7rem); }
+.k-nennung { font-size: max(9px, .75rem); line-height: 1.2; color: var(--k-leise); white-space: nowrap; letter-spacing: .02em; font-family: system-ui, sans-serif; }
+.k-katzenname { display: inline-flex; align-items: center; gap: .5rem; align-self: center; }
+
+/* Die Lesezeit als Kinderuhr (Entwurf Runde 3): Zeigeruhr ohne Sekundenzeiger, die restliche Zeit als farbiges Stück bis zum
+   Punkt am Rand, daneben dezent Rest und Gesamtzeit. Ändert sich nur einmal je Minute. */
+.k-uhr { --uhr: clamp(4.5rem, 13vw, 8.5rem); --k-uhr-rest: color-mix(in srgb, var(--k-warm) 38%, transparent); display: inline-flex; align-items: center; gap: .75rem; flex: none; color: var(--k-leise); }
+.k-uhr svg { width: var(--uhr); height: auto; aspect-ratio: 1; display: block; flex: none; }
+.k-uhr-klein { --uhr: clamp(2.75rem, 5.4vw, 3.5rem); gap: .5rem; }
+.k-uhr .u-blatt { fill: var(--k-flaeche); stroke: var(--k-linie); stroke-width: 2.5; }
+.k-uhr .u-stueck { fill: var(--k-uhr-rest); }
+.k-uhr .u-strich { stroke: var(--k-tinte); stroke-width: .9; stroke-linecap: round; opacity: .45; }
+.k-uhr .u-strich.u-stunde { stroke-width: 2.4; opacity: .85; }
+.k-uhr .u-zahl { font-family: var(--k-schrift); font-size: 11.5px; font-weight: 700; fill: var(--k-tinte); }
+.k-uhr .u-punkt { fill: var(--k-warm); }
+.k-uhr .u-zeiger { stroke-linecap: round; transform-origin: 50px 50px; transition: transform .6s ease-in-out; }
+.k-uhr .u-std { stroke: var(--k-tinte); stroke-width: 5.5; }
+.k-uhr .u-min { stroke: var(--k-haupt); stroke-width: 3.4; }
+.k-uhr .u-achse { fill: var(--k-tinte); }
+.k-uhr .u-text { display: grid; gap: .125rem; line-height: 1.15; white-space: nowrap; }
+.k-uhr .u-text b { font-size: 1.125rem; font-weight: 700; }
+.k-uhr .u-text small { font-size: .875rem; }
+.k-uhr .u-text.bald b { color: var(--k-tinte); box-shadow: inset 0 -.35em 0 color-mix(in srgb, var(--k-warm) 35%, transparent); }
+.k-uhr-klein .u-text b { font-size: 1rem; }
+.k-uhr-klein .u-text small { font-size: .8125rem; }
+.k-katzenplatz { margin-left: auto; display: flex; align-items: flex-end; gap: .75rem; flex: none; }
+@media (max-width: 34rem) {
+  .k-kopf .k-uhr .u-text { display: none; }
+  /* Am Telefon steht der Name über der Katze und der Text der Uhr unter ihr, so passt der Fuß in die Breite */
+  .k-katzenplatz { flex-direction: column; align-items: center; gap: .375rem; }
+  .k-fuss .k-uhr { flex-direction: column; align-items: center; gap: .375rem; text-align: center; }
+}
+
+/* Regal */
+.k-regalkopf { display: grid; gap: .75rem; padding-bottom: 1rem; }
+.k-regalwahl { display: grid; gap: .75rem; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+@media (max-width: 40rem) { .k-regalwahl .k-taste.quer { grid-auto-flow: row; gap: .25rem; } .k-regalwahl .k-taste.quer i { font-size: 1.5rem; } }
+.k-suche { display: flex; align-items: center; gap: .75rem; padding: 0 1rem; min-height: 3.25rem; border-radius: .875rem; background: var(--k-flaeche); box-shadow: inset 0 0 0 2px var(--k-linie); color: var(--k-leise); }
+.k-suche input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--k-tinte); font: inherit; font-size: 1.25rem; padding: .5rem 0; }
+.k-suche input:focus { outline: none; }
+.k-suche:focus-within { box-shadow: inset 0 0 0 3px var(--k-haupt); }
+.k-regal { --spalten: 4; display: grid; gap: 1.5rem 1.25rem; grid-template-columns: repeat(var(--spalten), minmax(0, 1fr)); align-content: start; padding-bottom: 1rem; }
+.k-regal.gross { --spalten: 3; gap: 2rem; }
+.k-mitte.mit-regal { container-type: inline-size; }
+@container (max-width: 44rem) { .k-regal { --spalten: 3; } .k-regal.gross { --spalten: 2; } }
+@container (max-width: 30rem) { .k-regal { --spalten: 2; } }
+.k-buch { display: grid; gap: .5rem; justify-items: center; align-content: start; text-align: center; font-weight: 700; color: var(--k-tinte); background: none; border: 0; padding: 0; cursor: pointer; min-width: 0; }
+.k-buch .k-umschlag { width: 100%; aspect-ratio: 3 / 4; border-radius: .75rem; overflow: hidden; box-shadow: 0 .5rem 1rem -.375rem rgb(0 0 0 / .35); display: grid; }
+.k-buch .k-umschlag > * { width: 100%; height: 100%; }
+.k-buch .k-umschlag .umschlag { height: 100%; border-radius: inherit; }
+.k-buch .k-umschlag .umschlag img, .k-buch .k-umschlag .umschlag > svg { height: 100%; max-height: none; object-fit: cover; }
+.k-regal.gross .k-buch { font-size: 1.375rem; }
+.k-buch small { display: block; font-weight: 400; color: var(--k-leise); font-size: .875rem; }
+.k-leer { display: grid; justify-items: center; gap: 1rem; padding: 3rem 1rem; color: var(--k-leise); text-align: center; font-size: 1.25rem; }
+.k-leer i { font-size: 3rem; }
+
+/* Lesen */
+.k-blatt { height: 100%; min-height: 0; display: grid; gap: 1.5rem; padding: 0 1.5rem; align-items: center; justify-items: center; overflow: hidden; }
+.k-blatt.mit-bild.quer { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.k-blatt.mit-bild.hochkant { grid-template-rows: var(--bildhoehe) minmax(0, 1fr); align-items: start; }
+.k-blatt.nur-bild { grid-template-columns: minmax(0, 1fr); }
+.k-seitenbild { width: 100%; height: 100%; min-height: 0; display: grid; place-items: center; }
+.k-seitenbild img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: .875rem; }
+.k-lesetext {
+  font-family: var(--k-leseschrift); font-size: var(--k-groesse); font-weight: var(--k-gewicht);
+  letter-spacing: var(--k-buchstabe); word-spacing: var(--k-wort);
+  align-self: center; justify-self: center; width: var(--k-textbreite); max-width: 100%;
+}
+.k-zeile { display: block; height: var(--k-zeilenhoehe); line-height: var(--k-zeilenhoehe); white-space: nowrap; border-radius: .375em; transition: opacity .2s, background-color .2s; }
+.k-zeile.neu { margin-top: var(--k-absatz); }
+.k-zeile.titel { font-size: 1.25em; font-weight: 700; height: var(--k-titelhoehe); line-height: var(--k-titelhoehe); letter-spacing: 0; }
+.k-zeile:first-child { margin-top: 0; }
+.k-lesetext.mit-zeile .k-zeile { opacity: .3; cursor: pointer; }
+.k-lesetext.mit-zeile .k-zeile.hier { opacity: 1; background: var(--k-zeile-hell); box-shadow: 0 0 0 .35em var(--k-zeile-hell); }
+.k-w { border-radius: .3em; }
+.k-w.jetzt { background: color-mix(in srgb, var(--k-warm) 38%, transparent); box-shadow: 0 .12em 0 var(--k-warm); }
+.k-w.markiert { background: color-mix(in srgb, #ffd66b 60%, transparent); }
+:root[data-theme="dark"] .k-w.markiert { background: color-mix(in srgb, #ffd66b 30%, transparent); }
+.k-w.anfang { box-shadow: inset 0 -.18em 0 var(--k-haupt); }
+.s1 { color: var(--k-silbe-1); }
+.s2 { color: var(--k-silbe-2); }
+.k-schluss { display: grid; justify-items: center; align-content: center; gap: 1rem; height: 100%; text-align: center; }
+.k-schlusszeichen { font-size: 4rem; color: var(--k-gruen); }
+.k-schluss b { font-size: 2rem; }
+.k-schluss .k-buch { width: min(12rem, 40vw); }
+.k-hinweis { position: absolute; left: 50%; top: .5rem; transform: translateX(-50%); z-index: 2; display: inline-flex; align-items: center; gap: .625rem; padding: .625rem 1.25rem; border-radius: 99px; background: var(--k-flaeche); box-shadow: 0 .375rem 1.25rem -.5rem rgb(0 0 0 / .35), inset 0 0 0 2px var(--k-warm); font-size: 1.25rem; font-weight: 700; }
+.k-hinweis i { color: var(--k-warm); }
+.k-lesemitte { position: relative; min-height: 0; overflow: hidden; display: grid; }
+.k-notiz { margin: 0; display: flex; align-items: center; gap: .75rem; justify-content: space-between; padding: .75rem 1rem; border-radius: .875rem; background: var(--k-flaeche); box-shadow: inset 0 0 0 2px var(--k-linie); white-space: pre-wrap; overflow-wrap: anywhere; }
+.k-notiz .k-wahl { flex: none; }
+.k-notizfeld { width: 100%; box-sizing: border-box; font: inherit; font-size: 1.25rem; padding: .75rem 1rem; border: 0; border-radius: .875rem; background: var(--k-flaeche); color: var(--k-tinte); box-shadow: inset 0 0 0 2px var(--k-linie); resize: vertical; }
+.k-notizfeld:focus { outline: none; box-shadow: inset 0 0 0 3px var(--k-haupt); }
+
+/* Ruhe */
+.k-ruhe { display: grid; justify-items: center; align-content: center; gap: 1.25rem; text-align: center; padding: 1rem 2rem; min-height: 0; overflow: auto; }
+.k-ruhe .mond { font-size: 4.5rem; color: #f2d57a; }
+.k-ruhe b { font-size: 2rem; }
+.k-ruhe p { margin: 0; font-size: 1.375rem; color: var(--k-leise); max-width: 32rem; }
+
+/* Namen geben */
+.k-namensfeld { display: grid; justify-items: center; align-content: center; gap: 1.5rem; padding: 1rem; min-height: 100%; }
+.k-namensfeld input { width: min(24rem, 100%); font: inherit; font-size: 2rem; font-weight: 700; text-align: center; padding: .5rem 1rem; border: 0; border-radius: .875rem; background: var(--k-flaeche); color: var(--k-tinte); box-shadow: inset 0 0 0 3px var(--k-linie); }
+.k-namensfeld input:focus { outline: none; box-shadow: inset 0 0 0 3px var(--k-haupt); }
+.k-vorschlaege { display: grid; gap: .75rem; width: min(40rem, 100%); grid-template-columns: repeat(auto-fit, minmax(max(var(--k-taste), 9rem), 1fr)); }
+.k-vorschlaege .k-taste { font-size: 1.25rem; }
+
+/* Dialog für Eltern */
+.k-dialog { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 1rem; background: rgb(0 0 0 / .45); }
+.k-dialog > div { width: min(26rem, 100%); max-height: 100%; overflow: auto; display: grid; gap: 1rem; padding: 1.25rem; border-radius: 1.25rem; background: var(--k-grund); color: var(--k-tinte); box-shadow: 0 1rem 3rem -1rem rgb(0 0 0 / .5); }
+.k-dialogkopf { display: flex; align-items: center; gap: .75rem; font-size: 1.375rem; font-weight: 700; }
+.k-dialogkopf .k-schloss { margin-left: auto; }
+.k-pinstellen { display: flex; justify-content: center; gap: .75rem; min-height: 1.5rem; }
+.k-pinstellen span { width: 1.125rem; height: 1.125rem; border-radius: 50%; border: 2px solid var(--k-leise); }
+.k-pinstellen span.voll { background: var(--k-tinte); border-color: var(--k-tinte); }
+.k-pinstellen.falsch span { border-color: var(--k-rot); animation: k-wackeln .35s; }
+.k-pinfeld { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .625rem; }
+.k-pinfeld .k-taste { min-height: 3.5rem; font-size: 1.5rem; }
+.k-dialogzeile { display: grid; gap: .5rem; }
+.k-dialogzeile > span { font-weight: 700; }
+.k-wahl { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: .5rem; }
+.k-wahl .k-taste { min-height: 3rem; font-size: .9375rem; }
+.k-fehler { color: var(--k-rot); font-weight: 700; text-align: center; }
+
+@keyframes k-wackeln { 25% { transform: translateX(-.375rem); } 75% { transform: translateX(.375rem); } }
+@media (prefers-reduced-motion: reduce) {
+  .kind *, .k-dialog * { animation: none !important; transition: none !important; }
+}
