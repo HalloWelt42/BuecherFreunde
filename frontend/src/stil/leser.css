@@ -86,7 +86,9 @@
 .textLayer > :not(.markedContent), .textLayer .markedContent span:not(.markedContent) { z-index: 1; --font-height: 0; font-size: calc(var(--text-scale-factor) * var(--font-height)); --scale-x: 1; --rotate: 0deg; transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv)); }
 .textLayer .markedContent { display: contents; }
 /* Die Fundstelle nie unter den Leisten */
-.textLayer [data-markierung] { scroll-margin-block: 6rem; }
+.textLayer span { scroll-margin-block: 6rem; }
+/* Ohne Hervorhebungs-Schnittstelle: Rechtecke über dem Bild der Seite, unter der Textebene */
+.pdfseite > .hervorhebungen { z-index: 1; }
 .textLayer ::selection { background: rgb(0 100 255 / .4); }
 /* EPUB */
 .epubflaeche { position: absolute; inset: 4.25rem var(--rand-seite); max-width: var(--lesebreite); margin-inline: auto; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgb(0 0 0 / .14), 0 18px 40px -18px rgb(0 0 0 / .6); }

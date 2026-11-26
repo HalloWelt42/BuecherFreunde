@@ -5,7 +5,7 @@
   import { blaettergesten } from "../../lib/leser/blaettergesten";
   import { PdfAnzeige } from "../../lib/leser/pdf/anzeige";
   import type { PdfBuch } from "../../lib/leser/pdf/dokument";
-  import { leereEbene, zeichneFundstelle, zeichneMarkierungen } from "../../lib/leser/pdf/markierung";
+  import { Pdfmarkierungen } from "../../lib/leser/pdf/markierung";
   import { einpassen, geblaettert, nachbarn, sichtbareSeiten, type Ansicht, type Seitenrest } from "../../lib/leser/pdf/zoom";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { schreibweise } from "../../lib/leser/typen";
@@ -67,13 +67,14 @@
     meldeRest();
   }
 
+  // Markierungen und Fundstelle zeichengenau, je gezeichneter Seite (BF-38)
+  const markierungen = new Pdfmarkierungen();
+
   function beschrifte(nr: number, ebene: HTMLElement) {
-    zeichneMarkierungen(ebene, nr, sitzung.markierungen);
-    if (!fundstelle || nr !== fundseite) return;
-    const erstes = zeichneFundstelle(ebene, fundstelle);
-    if (!erstes || gerolltZurFundstelle || blaettert) return;
+    const fund = markierungen.beschrifte(nr, ebene, sitzung.markierungen, nr === fundseite ? fundstelle : "");
+    if (!fund || gerolltZurFundstelle || blaettert) return;
     gerolltZurFundstelle = true;
-    erstes.scrollIntoView({ block: "nearest" });
+    fund.startContainer.parentElement?.scrollIntoView({ block: "nearest" });
   }
 
   function gezeichnet(nr: number, ebene: HTMLElement) {
@@ -82,10 +83,7 @@
   }
 
   export function zeichne() {
-    anzeige?.zeichneErneut((nr, ebene) => {
-      leereEbene(ebene);
-      beschrifte(nr, ebene);
-    });
+    anzeige?.zeichneErneut(beschrifte);
   }
 
   function gelesen(nr: number) {
@@ -101,6 +99,7 @@
     return () => {
       anzeige?.zerstoere();
       mitlauf?.zerstoere();
+      markierungen.leere();
     };
   });
 
@@ -121,6 +120,9 @@
     gezeigt = nr;
     if (!blaettert) return anzeige.zeige(nr);
     await tick();
+    // Die vorab gezeichneten Seiten sind jetzt umgeordnet; ein verschobener Knoten nimmt jedem Bereich darin die Zeichen
+    // (das DOM lässt Bereiche beim Herausnehmen zusammenfallen), darum ihre Markierungen und den Vorlesesatz neu legen
+    anzeige.zeichneErneut(gezeichnet);
     if (flaeche) flaeche.scrollTop = kante === "oben" ? 0 : flaeche.scrollHeight;
     void anzeige.blaettere(nr);
     meldeRest();
@@ -199,7 +201,7 @@
     if (!flaeche || !r || !seiteImBlick(nr)) return null;
     const s = sichtVon(flaeche);
     if (e.art === "Markierung") {
-      const q = r.querySelector(`[data-markierung="${(e.quelle as { id: number }).id}"]`)?.getBoundingClientRect();
+      const q = markierungen.bereich((e.quelle as { id: number }).id)?.getBoundingClientRect();
       if (q && q.bottom > s.oben && q.top < s.unten) return q.top;
     }
     return Math.max(r.getBoundingClientRect().top + 16, s.oben);

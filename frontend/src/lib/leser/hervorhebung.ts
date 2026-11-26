@@ -33,15 +33,22 @@ export const kannHervorheben = (dok: Document = document): boolean => {
   return !!f?.CSS?.highlights && typeof f.Highlight === "function";
 };
 
-/** Hebt Bereiche einer Art hervor; leer nimmt sie weg */
-export function hebeHervor(dok: Document, art: Hervorhebungsart, bereiche: Range[], ersatz?: Rechteckschicht): void {
-  if (!kannHervorheben(dok)) return ersatz?.setze(art, bereiche);
+/** Hebt Bereiche einer Art hervor; leer nimmt sie weg. Liefert die gesetzte Hervorhebung (nur mit der Schnittstelle). */
+export function hebeHervor(dok: Document, art: Hervorhebungsart, bereiche: Range[], ersatz?: Rechteckschicht): Highlight | null {
+  if (!kannHervorheben(dok)) {
+    ersatz?.setze(art, bereiche);
+    return null;
+  }
   const f = dok.defaultView as Fenster;
-  if (!bereiche.length) return void f.CSS.highlights.delete(art.name);
+  if (!bereiche.length) {
+    f.CSS.highlights.delete(art.name);
+    return null;
+  }
   regel(dok, art);
   const h = new f.Highlight!(...bereiche);
   h.priority = art.rang;
   f.CSS.highlights.set(art.name, h);
+  return h;
 }
 
 /** Ersatz: Rechtecke in einer eigenen Schicht hinter dem Text; nach jeder Bewegung des Satzes neu zu zeichnen */

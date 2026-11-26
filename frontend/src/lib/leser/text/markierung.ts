@@ -12,7 +12,8 @@ export function textknoten(flaeche: Node): Text[] {
   return aus;
 }
 
-function bereich(von: { knoten: Text; versatz: number }, bis: { knoten: Text; versatz: number }): Range {
+/** Bereich zwischen zwei Zeichenstellen */
+export function bereichAus(von: { knoten: Text; versatz: number }, bis: { knoten: Text; versatz: number }): Range {
   const r = document.createRange();
   r.setStart(von.knoten, von.versatz);
   r.setEnd(bis.knoten, bis.versatz);
@@ -20,7 +21,8 @@ function bereich(von: { knoten: Text; versatz: number }, bis: { knoten: Text; ve
 }
 
 export const TREFFER: Hervorhebungsart = { name: "bf-treffer", farbe: "rgba(255, 152, 0, 0.45)", rang: 2 };
-const stift = (farbe: string): Hervorhebungsart => ({ name: `bf-stift-${farbe.replace(/[^0-9a-z]/gi, "")}`, farbe: durchsichtig(farbe, 0.4), rang: 1 });
+/** Art eines Stifts: je Farbe eine, in allen Ansichten gleich benannt */
+export const stiftart = (farbe: string): Hervorhebungsart => ({ name: `bf-stift-${farbe.replace(/[^0-9a-z]/gi, "")}`, farbe: durchsichtig(farbe, 0.4), rang: 1 });
 /** Welche Arten von Stiften gerade gemalt sind, je Fläche, damit sie wieder weggehen */
 const GEMALT = new WeakMap<Document, Hervorhebungsart[]>();
 
@@ -41,9 +43,9 @@ export function zeichneMarkierungen(flaeche: HTMLElement, markierungen: Markieru
     const p = prozentVon(m.cfi_range);
     const ort = findeZeichen(knotenVon.get(w)!, m.text_snippet ?? "", p === null ? null : p / 100);
     if (!ort) continue;
-    const r = bereich(ort.von, ort.bis);
+    const r = bereichAus(ort.von, ort.bis);
     aus.set(m.id, r);
-    const art = stift(m.color || VORGABE_STIFT);
+    const art = stiftart(m.color || VORGABE_STIFT);
     const gruppe = je.get(art.name) ?? { art, bereiche: [] };
     gruppe.bereiche.push(r);
     je.set(art.name, gruppe);
@@ -58,7 +60,7 @@ export function zeichneMarkierungen(flaeche: HTMLElement, markierungen: Markieru
 /** Ein Wortlaut, auch über mehrere Textknoten */
 export function zeichneWortlaut(flaeche: HTMLElement, wortlaut: string, ersatz?: Rechteckschicht): Range | null {
   const ort = findeZeichen(textknoten(flaeche), wortlaut.replace(/^"|"$/g, ""), null);
-  const r = ort && bereich(ort.von, ort.bis);
+  const r = ort && bereichAus(ort.von, ort.bis);
   hebeHervor(flaeche.ownerDocument, TREFFER, r ? [r] : [], ersatz);
   return r;
 }
@@ -70,7 +72,7 @@ export function zeichneTreffer(flaeche: HTMLElement, wort: string, hoechstens = 
   if (gesucht.length >= 2) {
     for (const k of textknoten(flaeche)) {
       const klein = k.data.toLowerCase();
-      for (let i = klein.indexOf(gesucht); i >= 0 && aus.length < hoechstens; i = klein.indexOf(gesucht, i + gesucht.length)) aus.push(bereich({ knoten: k, versatz: i }, { knoten: k, versatz: i + gesucht.length }));
+      for (let i = klein.indexOf(gesucht); i >= 0 && aus.length < hoechstens; i = klein.indexOf(gesucht, i + gesucht.length)) aus.push(bereichAus({ knoten: k, versatz: i }, { knoten: k, versatz: i + gesucht.length }));
     }
   }
   hebeHervor(flaeche.ownerDocument, TREFFER, aus, ersatz);
