@@ -39,9 +39,9 @@ class Angemeldet(BaseModel):
 
 
 def _eigene() -> EigeneAnmeldung:
-    if not isinstance(anmeldung, EigeneAnmeldung):
+    if anmeldung.eigene is None:
         raise HTTPException(409, "Konten verwaltet hier die Kellerwolke")
-    return anmeldung
+    return anmeldung.eigene
 
 
 def _http(f: AnmeldungsFehler) -> HTTPException:
@@ -50,8 +50,8 @@ def _http(f: AnmeldungsFehler) -> HTTPException:
 
 @router.get("/app", response_model=AppAngaben)
 async def app_angaben() -> AppAngaben:
-    if isinstance(anmeldung, EigeneAnmeldung):
-        return AppAngaben(name="BücherFreunde", art="eigen", kellerwolke="", eingerichtet=await anmeldung.eingerichtet())
+    if anmeldung.eigene is not None:
+        return AppAngaben(name="BücherFreunde", art="eigen", kellerwolke="", eingerichtet=await anmeldung.eigene.eingerichtet())
     name = await eigener_zugang.erfragen()
     return AppAngaben(name=name or "BücherFreunde", art=anschluesse().anmeldung, kellerwolke=settings.kellerwolke_url, besitzer=eigener_zugang.besitzer,
                       eingerichtet=bool(name))

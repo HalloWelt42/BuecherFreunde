@@ -12,6 +12,7 @@ from typing import Any
 
 import httpx
 
+from backend.app.core import schluessel
 from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.wolke")
@@ -32,11 +33,8 @@ def _pruefung() -> ssl.SSLContext | bool:
 
 
 def _schluessel() -> str:
-    try:
-        return Path(settings.kellerwolke_schluessel_datei).read_text(encoding="utf-8").strip() if settings.kellerwolke_schluessel_datei else ""
-    except OSError as f:
-        logger.warning("App-Zugang der Kellerwolke nicht lesbar: %s", f)
-        return ""
+    """Der App-Zugang aus dem Schlüsselbund (eingetragen in der App oder Datei der Einrichtung)."""
+    return schluessel.lesen(schluessel.Art.KELLERWOLKE)
 
 
 def app_kopf() -> dict[str, str]:
@@ -109,6 +107,16 @@ class Wolke:
             return await self.client.send(self.client.build_request("GET", f"/api/v1/ablage/knoten/{knoten}/inhalt", headers=kopf), stream=True)
         except httpx.HTTPError as f:
             raise WolkeFehler(f"Die Kellerwolke antwortet nicht ({type(f).__name__})") from f
+
+    async def inhalt(self, knoten: str) -> bytes:
+        """Eine kleine Datei ganz (Auszug, Profile, BF-82); große holt `holen` im Faden."""
+        try:
+            r = await self.client.get(f"/api/v1/ablage/knoten/{knoten}/inhalt")
+        except httpx.HTTPError as f:
+            raise WolkeFehler(f"Die Kellerwolke antwortet nicht ({type(f).__name__})") from f
+        if r.status_code >= 400:
+            raise WolkeFehler(f"Die Datei fehlt in der Kellerwolke ({r.status_code})", r.status_code)
+        return r.content
 
     async def knoten(self, kennung: str) -> dict:
         return await self.rufe("GET", f"/api/v1/ablage/knoten/{kennung}")
@@ -193,12 +201,17 @@ class Wolke:
             raise
         return True
 
+    async def begleiter_setzen(self, knoten: str, rolle: str, zusatz: str, inhalt: bytes, art: str) -> str:
+        """Ein Begleiter mit dieser Rolle neben dem Original, aus Bytes; ein vorhandener bekommt eine neue Version. Rollen nur aus
+        `[a-z_]`, der Zusatz aus Kleinbuchstaben, Ziffern, `_` und `-` je Teil."""
+        alt = next((b for b in await self.begleiter(knoten) if b["rolle"] == rolle), None)
+        kopf = {"Content-Type": art, **({"If-Match": f'"{alt["etag"]}"'} if alt else {"If-None-Match": "*"})}
+        d = await self.rufe("PUT", f"/api/v1/ablage/knoten/{knoten}/begleiter/{rolle}", params={"zusatz": zusatz}, content=inhalt, headers=kopf)
+        return d["id"]
+
     async def auszug_schreiben(self, knoten: str, inhalt: bytes) -> str:
         """Der Begleiter "auszug" (Umschlag, Volltext, Angaben) neben dem Original; vorhandener bekommt eine neue Version."""
-        alt = next((b for b in await self.begleiter(knoten) if b["rolle"] == "auszug"), None)
-        kopf = {"Content-Type": "application/zip", **({"If-Match": f'"{alt["etag"]}"'} if alt else {"If-None-Match": "*"})}
-        d = await self.rufe("PUT", f"/api/v1/ablage/knoten/{knoten}/begleiter/auszug", params={"zusatz": ".auszug.zip"}, content=inhalt, headers=kopf)
-        return d["id"]
+        return await self.begleiter_setzen(knoten, "auszug", ".auszug.zip", inhalt, "application/zip")
 
 
 wolke = Wolke()

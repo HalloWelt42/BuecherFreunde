@@ -61,7 +61,9 @@ def test_erste_sicherung_ist_geschlossen_auch_mit_wal(datenbank, monkeypatch):
     # Änderungszeit ist der Beginn der Kopie, nicht ihr Ende: was währenddessen geschrieben wird, gilt als Änderung.
     assert abs(lauf.datei.stat().st_mtime - beginn) < 0.01
     with zipfile.ZipFile(lauf.datei) as zf:
-        assert set(zf.namelist()) == {"database/buecherfreunde.db", "VERSION", "metadata/ab/abc/metadata.json"}
+        assert set(zf.namelist()) == {"database/buecherfreunde.db", "VERSION", "inhalt.json", "metadata/ab/abc/metadata.json"}
+        # seit BF-82: Fassung und Zahlen ohne auszupacken; die Probe kennt weder Bücher noch Profile
+        assert sicherung.inhalt(lauf.datei) == sicherung.Inhalt(settings.version, None, None)
         kopie = settings.database_dir / "kopie.db"
         kopie.write_bytes(zf.read("database/buecherfreunde.db"))
     with sqlite3.connect(kopie) as v:

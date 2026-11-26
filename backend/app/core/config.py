@@ -142,6 +142,22 @@ class Settings(BaseSettings):
     sicherung_vor_ausrollen_ab_stunden: int = 24
     sicherung_behalten: int = Field(default=3, ge=1)
 
+    # Ersteinrichtung (BF-82, backend/app/einrichtung, docs/neubau/EINRICHTUNG.md); was in den Einstellungen steht, gilt vor diesen Vorgaben
+    schluessel_datei: Path = Path("")                        # eigene Schlüsseldatei der App (Modus 0600); leer: schluessel.json beim Bestand
+    sicherung_in_kellerwolke: bool = True                    # Sicherungen auch in der Kellerwolke ablegen (Apps/BücherFreunde/Sicherung)
+    persoenlich_in_kellerwolke: bool = True                  # Persönliches je Buch und Profil als Begleiter "persoenlich", dazu die Profile
+    persoenlich_ruhe_s: float = Field(default=30, ge=0)      # so lange nach der letzten Änderung wartet das Nachführen eines Buchs
+    persoenlich_takt_s: float = Field(default=60, gt=0)      # so oft sieht das Nachführen nach, auch ohne Anstoß
+    persoenlich_je_runde: int = Field(default=50, ge=1)      # höchstens so viele Begleiter je Runde
+    persoenlich_abstand_s: float = Field(default=0.5, ge=0)  # Pause zwischen zwei Begleitern, damit die Kellerwolke frei bleibt
+    wiederherstellen_mb_hoechstens: int = Field(default=4096, ge=1)   # so groß darf eine Sicherung ausgepackt sein
+    einrichtung_abstand_s: float = Field(default=0.1, ge=0)  # Pause je Buch in Prüfung, Neuaufbau und Kopieren der Originale
+    einrichtung_pruefungen_je_minute: int = Field(default=6, ge=1)   # vor dem ersten Konto: so viele Anfragen an Adressen je Minute
+    umzug_code_gilt_min: int = Field(default=15, ge=1)       # so lange gilt der Einmalcode des Umzugs
+    umzug_versuche: int = Field(default=5, ge=1)             # so viele falsche Codes, dann gilt der Umzug nicht mehr
+    umzug_sitzung_stunden: int = Field(default=72, ge=1)     # so lange darf das neue Gerät nach dem Code Originale holen
+    umzug_nur_https: bool = True                             # das neue Gerät spricht mit dem alten nur über https
+
     # Logging
     log_level: str = "info"
 
@@ -179,6 +195,11 @@ class Settings(BaseSettings):
     def backup_dir(self) -> Path:
         return self.database_dir / "backups"
 
+    @property
+    def schluessel_pfad(self) -> Path:
+        """Die eigene Schlüsseldatei (core/schluessel.py): ohne Angabe neben der Datenbank, nie in einer Sicherung."""
+        return self.schluessel_datei if self.schluessel_datei.name else self.database_dir / "schluessel.json"
+
     def public_config(self) -> dict:
         """Gibt die öffentlich sichtbaren Konfigurationswerte zurück (ohne Token)."""
         return {
@@ -206,7 +227,7 @@ class Settings(BaseSettings):
             },
             # KI über die Leitstelle; der Feldname ist der, den die Oberfläche liest
             "lm_studio": {
-                "aktiviert": bool(self.leitstelle_adresse.strip() and self.leitstelle_schluessel_datei),
+                "aktiviert": bool(self.leitstelle_adresse.strip() and _schluessel_da("leitstelle")),
                 "url": self.leitstelle_adresse,
                 "modell": self.ki_modell,
             },
@@ -217,6 +238,12 @@ class Settings(BaseSettings):
                 "datenbank": str(self.database_dir),
             },
         }
+
+
+def _schluessel_da(art: str) -> bool:
+    from backend.app.core import schluessel        # liest selbst die Einstellungen; erst beim Aufruf, nie beim Laden
+
+    return schluessel.stand(schluessel.Art(art)).eingetragen
 
 
 settings = Settings()

@@ -149,6 +149,13 @@ class Buchdatei(BaseModel):
     haupt: bool                                     # das Original, aus dem Text und Umschlag stammen
 
 
+class Originalhinweis(BaseModel):
+    """Das Original fehlt laut der letzten Prüfung der Originale (BF-82, einrichtung/pruefung.py); das Buch bleibt im Bestand."""
+
+    text: str
+    geprueft_am: str
+
+
 class BookResponse(Umschlagangaben):
     """Vollständige Buchdetails."""
 
@@ -186,6 +193,7 @@ class BookResponse(Umschlagangaben):
     alter_quelle: str = ""                          # Kennung der Quelle; hand: von Hand
     dateien: list[Buchdatei] = Field(default_factory=list)   # das Original zuerst, dann weitere Formate (BF-80)
     material: int = 0                               # so viele Dateien Begleitmaterial (BF-81)
+    original: Originalhinweis | None = None         # das Original fehlt (Prüfung der Originale, BF-82); leer: erreichbar oder ungeprüft
     created_at: str = ""
     updated_at: str = ""
 

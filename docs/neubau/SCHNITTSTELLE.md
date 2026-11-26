@@ -755,3 +755,260 @@ tut `backend/app/familie/`, die Wege stehen in `backend/app/api/familie.py`, Stu
   ..."`. Ein Buch oder eine Fassung im Pfad, die das Profil nicht sieht, ist 404 wie ein fehlendes. Sammelaktionen behandeln
   verborgene Bücher wie fehlende. Andere Apps (Fundus) sehen keine privaten Bücher; Lesestand und Notizen dort sind die des ersten
   Profils Verwaltung.
+
+## Ersteinrichtung (BF-82)
+
+Plan und Entscheidungen in [EINRICHTUNG.md](EINRICHTUNG.md); gebaut in `backend/app/einrichtung/` (`zustand.py` Zustand und
+Schritte aus `schritte.json`, `zugang.py` wer darf, `orte.py`, `anschluesse.py`, `katalog_schritt.py`, `wartung.py` Änderungen
+erst nach Bestätigung, `wiederherstellen.py`, `pruefung.py`, `neuaufbau.py`, `profildatei.py`, `umzug.py`, `kopieren.py`,
+`nachfuehren.py`, `hochladen.py`, `auftrag.py`, Formen in `modelle.py`, Tabellen in `schema.py`), der Schlüsselbund in
+`core/schluessel.py`, der Auszug in `ablage/auszug.py`, der Begleiter mit dem Persönlichen in `ablage/persoenlich.py`, Sicherungen in
+der Kellerwolke in `ablage/sicherungen.py`, Wege in `backend/app/api/einrichtung.py` (und `api/backup.py` für das Zurückspielen).
+
+**Neu oder laufend**: neu ist eine Installation nur, wenn beim ersten Start der Bestand leer war und keine Markerdatei trug
+(`ablage/orte.py`); gemerkt einmal in der Tabelle `einrichtung` (`modus` `neu`). Jede andere bekommt beim ersten Start mit dieser
+Fassung `aus` und sieht den Assistenten nie von selbst; Wege, die nur die Ersteinrichtung kennt, antworten dort 409.
+
+**Wer darf**: solange eine neue Installation kein Konto hat (kein eigenes Konto angelegt, keine Kellerwolke mit App-Zugang
+eingetragen), sind die Wege unter `/api/einrichtung` ohne Anmeldung erreichbar, wie das Anlegen des ersten Kontos. Danach braucht
+jeder Weg die Anmeldung mit Profil und die Fähigkeit `einstellungen` (401, 403). `GET /api/einrichtung` geht immer; ohne Anmeldung
+und auf einer eingerichteten Installation kommt nur `{modus: "aus", zeigen: false}`.
+
+**Wege, die eine Adresse ansprechen** (`.../anschluesse/{art}/pruefen`, `PUT .../anschluesse/{art}`, `.../konto/kellerwolke`,
+`.../umzug/verbinden`), nehmen vor dem ersten Konto nur `https` mit einem Namen an: keine IP-Adresse, nicht `localhost` oder
+`*.localhost`, kein Port unter 1024 außer 443 (422 `"Adresse: ..."`), und höchstens `EINRICHTUNG_PRUEFUNGEN_JE_MINUTE` (6) in der
+Minute (429 mit `Retry-After`). Nach dem ersten Konto gelten sie nur angemeldet, ohne diese Grenzen.
+
+**Schritte** (`schritte.json`, eine Datei, keine Regeln im Code):
+
+| Ausgangslage | Schritte |
+|---|---|
+| `neu` (Neu beginnen) | `konto`, `orte`, `anschluesse`, `katalog`, `familie`, `buecher`, `abschluss` |
+| `sicherung` (Aus Sicherung wiederherstellen) | `orte`, `sicherung`, `pruefung`, `abschluss` |
+| `kellerwolke` (Ablage in der Kellerwolke übernehmen) | `konto`, `orte`, `ordner`, `neuaufbau`, `abschluss` |
+| `umzug` (Umzug von einer anderen Installation) | `verbinden`, `orte`, `originale`, `pruefung`, `abschluss` |
+| Wartung (wieder geöffnet) | `orte`, `anschluesse`, `katalog`, `familie`, `buecher`, `abschluss` |
+
+Pflicht sind `konto`, `orte`, `sicherung`, `ordner`, `neuaufbau`, `verbinden`, `originale`, `pruefung` und `abschluss`; die übrigen
+lassen sich überspringen. `konto` ist erledigt, sobald es ein Konto gibt. Beim Wiederherstellen und beim Umzug gibt es keinen
+Schritt Konto: Konto und Profile kommen aus der Sicherung (bringt sie keins mit, verlangt der Abschluss eins, 409). `originale`
+entfällt mit Kellerwolke (`stand` `entfaellt`). `sicherung` und `verbinden` sind erledigt, wenn der Auftrag "Sicherung einspielen"
+fertig ist, `ordner` und `originale`, sobald sie gelaufen sind; `pruefung` und `neuaufbau` erst, wenn ihr Auftrag fertig ist und man
+Weiter wählt.
+
+```
+Einrichtung: { modus: "neu" | "wartung" | "aus", zeigen, ausgangslage, schritt, schritte: [Schritt], ausgangslagen: [Ausgangslage],
+               konto, anmeldung: "eigen" | "kellerwolke", aenderungen, begonnen_am, abgeschlossen_am }
+Schritt:     { schluessel, name, pflicht, stand: "offen" | "erledigt" | "uebersprungen" | "entfaellt", text, weiter, grund }
+Ausgangslage:{ schluessel, name, beschreibung, schritte: [str] }
+```
+
+`zeigen`: die Oberfläche öffnet den Assistenten statt der Anmeldung (neue Installation) oder als Bühne (Wartung). `schritt`: der
+erste offene Schritt, dort geht es nach einem Neustart weiter. `weiter` false mit `grund`, wenn Weiter gesperrt ist (etwa eine
+Platte fehlt). `text` sagt, was eingerichtet ist ("Leer begonnen") oder dass übersprungen wurde, für die Übersicht am Ende.
+
+| Weg | Zweck |
+|---|---|
+| `GET /api/einrichtung` | der Zustand (siehe oben) |
+| `POST /api/einrichtung/ausgangslage` `{ausgangslage}` | wählen; wechseln geht, solange nichts aus Sicherung, Umzug oder Kellerwolke übernommen ist und keine Bücher da sind (sonst 409) |
+| `POST /api/einrichtung/schritte/{schritt}` `{aktion: "erledigt" \| "ueberspringen"}` | Weiter oder Überspringen; Pflicht überspringen 422, gesperrtes Weiter 409 mit Grund, `konto` und `abschluss` von Hand 422, ein Schritt außerhalb der Ausgangslage 404 |
+| `POST /api/einrichtung/abschliessen` | nur, wenn jede Pflicht erledigt ist (sonst 409 "Noch offen: ..."); danach `modus` `aus`. Mit Katalog "aus dem Bestand" und Büchern beginnt der Entwurf aus dem Bestand |
+| `GET /api/einrichtung/uebersicht` | `[Schritt]`: was eingerichtet und was übersprungen ist, auch nach dem Abschluss |
+| `GET /api/einrichtung/orte` | `{orte: [{kennung, name, pfad, belegt, frei, stand, dauerhaft, marker, text}], weiter, grund}`; misst jedes Mal neu ("Neu suchen"). `stand` `schlecht` mit `text`: Ordner fehlt, nicht schreibbar, ohne Markerdatei. Die Pfade kommen aus der Einrichtung (.env), ändern sich nur mit einem Neustart |
+| `POST /api/einrichtung/konto/kellerwolke` `{adresse, schluessel}` | Schritt Konto mit der Kellerwolke: prüft den App-Zugang, trägt Adresse und Schlüssel ein und stellt die Anmeldung auf die Kellerwolke um (ohne Neustart); Antwort `{anmeldung, app, besitzer}`. Danach meldet man sich mit `POST /api/anmeldung` an. Nur ohne Konto (sonst 409); Prüfung gescheitert 422 `"Verbindung: ..."`. Das eigene Konto legt wie bisher `POST /api/anmeldung/einrichten` an |
+
+### Anschlüsse
+
+```
+Anschluss: { art: "kellerwolke" | "leitstelle" | "nachschlag", name, adresse, herkunft: "app" | "einrichtung" | "",
+             schluessel: { eingetragen, herkunft: "app" | "einrichtung" | "", vorgemerkt } | null, hinweis, pruefung: Verbindungspruefung | null }
+Verbindungspruefung: { ok, text, grund, am }
+```
+
+`herkunft` der Adresse: `app` in der App eingetragen (`app_settings` `anschluss_<art>`, gilt vor der .env), `einrichtung` aus der
+.env, leer keine. `schluessel` null: dieser Anschluss hat keinen (Nachschlag; er kennt die App über ihren Zugang der Kellerwolke).
+`hinweis` bei der Kellerwolke: dass Persönliches je Buch dort liegt und wer die Kellerwolke verwaltet, es lesen könnte. `pruefung`:
+die letzte Prüfung seit dem Start; `text` etwa `"BücherFreunde, Konto mira"`, `"KI mit 2 Modellen, Sprechdienst mit 18 Stimmen"`,
+`"12 Lexika und Handbücher"`, `grund` etwa `"Die Kellerwolke kennt diesen App-Zugang nicht"`.
+
+| Weg | Zweck |
+|---|---|
+| `GET /api/einrichtung/anschluesse` | `[Anschluss]`, nie ein Schlüssel |
+| `POST /api/einrichtung/anschluesse/{art}/pruefen` `{adresse?, schluessel?}` | "Verbindung prüfen" mit den genannten Werten, sonst den eingetragenen; merkt nichts als das Ergebnis |
+| `PUT /api/einrichtung/anschluesse/{art}` `{adresse, schluessel?}` | eintragen: erst prüfen, nur bei Erfolg gilt es (sonst 422 `"Verbindung: <grund>"`, der alte Schlüssel bleibt). Ohne `schluessel` gilt der eingetragene; der Nachschlag nimmt keinen (422). Antwort `Vorgemerkt` |
+
+**Schlüsseldatei** (`core/schluessel.py`): ein Schlüssel aus der App liegt in der eigenen Schlüsseldatei des Servers
+(`SCHLUESSEL_DATEI`, ohne Angabe `schluessel.json` beim Bestand; JSON, Modus 0600, geschrieben über eine Teildatei, nie in einer
+Sicherung) und gilt vor der Datei aus der Einrichtung (`KELLERWOLKE_SCHLUESSEL_DATEI`, `LEITSTELLE_SCHLUESSEL_DATEI`). Ohne Eintrag
+in der App gilt die Datei der Einrichtung wie bisher; Kellerwolke, Anmeldung und Leitstelle lesen beide über dieselbe Stelle. Kein
+Weg gibt einen Schlüssel zurück, die Oberfläche zeigt nur "eingetragen" und "Ersetzen".
+
+### Katalog und Familie
+
+| Weg | Zweck |
+|---|---|
+| `POST /api/einrichtung/katalog` `{wahl: "standard" \| "leer" \| "bestand"}` | der mitgelieferte Katalog, leer, oder der mitgelieferte mit Entwurf aus dem Bestand nach dem Abschluss; angenommen wie unter Einstellungen, Katalog (gleicher Schlüssel ändert, gelöscht wird nichts) |
+| `POST /api/einrichtung/familie/profile` | wie `POST /api/familie/profile` (`ProfilNeu`); PIN und Bild-PIN danach über `PUT /api/familie/profile/{id}/pin` |
+| `PUT /api/einrichtung/familie/stimme` `{stimme}` | wie `PUT /api/familie/stimme` |
+
+Die drei brauchen das Konto (sonst 409). Erste Bücher kommen über die vorhandenen Wege (Vorschau, Eingangsordner, Ordner,
+gemeinfreie Bücher); der Schritt wird mit `.../schritte/buecher` erledigt oder übersprungen.
+
+`Vorgemerkt`: `{angewandt, aenderung: Aenderung | null}`; auf einer neuen Installation gilt alles sofort (`angewandt` true), unter
+Wartung nur vorgemerkt (siehe Wartung).
+
+### Wiederherstellen aus Sicherung
+
+In der Ersteinrichtung nur in den Ausgangslagen `sicherung` und `umzug` und bei leerem Bestand (sonst 409); überschrieben wird nie
+ein Buch, gelöscht nichts. Immer erst die Folgen, dann mit ihrem `stand` der Auftrag "Sicherung einspielen"; das Einspielen läuft
+nie in der Anfrage. Eine Sicherung trägt seit BF-82 `inhalt.json` (Fassung, Zahl der Bücher und Profile); ältere werden zum Zählen
+einmal ausgepackt. Abschnitte des Auftrags: `holen`, `pruefen` (ZIP, Datenbank, `integrity_check`, Tabelle `books`, in die Form
+dieser Fassung gebracht in einem eigenen Ordner neben dem Bestand), `vorher` (nur beim Ersetzen: Sicherung des jetzigen Stands),
+`einspielen` (über die Sicherung von SQLite in den laufenden Bestand, dazu die Angaben je Buch aus `metadata/`; der Stand der
+Einrichtung bleibt der dieses Geräts), `danach` (Suchindex neu, Anschlüsse der Sicherung anwenden). Danach beginnt der Auftrag
+"Originale prüfen" (beim Umzug ohne Kellerwolke erst nach der Wahl, wie die Originale kommen).
+
+```
+Sicherung:            { quelle: "datei" | "geraet" | "kellerwolke", kennung, name, groesse, angelegt_am, buecher, profile, version }
+Hochladestand:        { id, name, groesse, sha256, empfangen, teil_groesse, fertig }
+Wiederherstellfolgen: { sicherung: Sicherung, ersetzt: [Satz], vorher_sichern, stand }
+```
+
+| Weg | Zweck |
+|---|---|
+| `GET /api/einrichtung/sicherungen?quelle=geraet\|kellerwolke` | `{quelle, bereit, grund, sicherungen: [Sicherung]}`, neueste zuerst; `kennung` ist auf dem Gerät der Name, in der Kellerwolke der Knoten. Ohne Kellerwolke `bereit` false mit Grund |
+| `POST /api/einrichtung/sicherungen/hochladen` `{name, groesse, sha256}` | eine Sicherung in Teilen hochladen, wie bei der Annahme; gleicher Name, Größe und Prüfsumme finden den angefangenen Stand wieder. Antwort `Hochladestand`; zu groß 413 (`WIEDERHERSTELLEN_MB_HOECHSTENS`) |
+| `PATCH /api/einrichtung/sicherungen/hochladen/{id}` Kopf `Upload-Offset`, Körper roh | das nächste Teil (höchstens `teil_groesse`); 409 `{detail, empfangen}` nennt den wahren Stand, 413 bei mehr Daten als angesagt, 400 wenn das Teil nicht ganz ankam (dann gilt, was vorher da war). Beim letzten Teil prüft der Server die Prüfsumme: stimmt sie nicht, 422 und der Stand ist wieder 0 |
+| `GET /api/einrichtung/sicherungen/hochladen/{id}` | der Stand, dort geht es weiter |
+| `GET /api/einrichtung/wiederherstellen/folgen?quelle=datei\|geraet\|kellerwolke&kennung=` | was die Sicherung enthält und was sie ersetzt, als Sätze: gibt es schon ein eigenes Konto, `"Das Konto X wird durch das aus der Sicherung ersetzt"`, gibt es schon mehrere Profile, auch sie. `kennung` bei `datei` ist die `id` des Hochladens (409, solange es nicht fertig ist) |
+| `POST /api/einrichtung/wiederherstellen` `{quelle, kennung, stand}` | nur mit dem `stand` der Folgen (422 ohne, 409, wenn sich seither etwas geändert hat); Antwort der `Auftragsstand` von "Sicherung einspielen" |
+| `GET /api/einrichtung/wiederherstellen` | `{auftrag, ergebnis: {name, buecher, profile, version, vorher} \| null}` |
+
+**Zurückspielen unter Einstellungen** (`api/backup.py`, Fähigkeit `einstellungen`, nicht während der Ersteinrichtung): dieselben
+Folgen und derselbe Auftrag, die Sicherung ersetzt dann einen Bestand. `GET /api/backup/restore/folgen?quelle=&kennung=` nennt dazu
+den Bestand (`"Der Bestand mit N Büchern, M Profilen, ... wird durch den der Sicherung ersetzt"`) und dass vorher eine Sicherung des
+jetzigen Stands entsteht (`vorher_sichern` true); `POST /api/backup/restore` `{quelle, kennung, stand}` beginnt den Auftrag und
+antwortet mit seinem Stand. Eine Datei kommt vorher in Teilen über `.../sicherungen/hochladen`. Die frühere Form (multipart, die
+Datenbank sofort überschrieben) gibt es nicht mehr; die Oberfläche nutzte sie nicht.
+
+**Sicherungen in der Kellerwolke**: jede neue Sicherung (regelmäßig, von Hand, beim Umzug) kommt auch nach
+`Apps/BücherFreunde/Sicherung`, solange eingeschaltet (`sicherungen_ablegen`, Vorgabe `SICHERUNG_IN_KELLERWOLKE`), mit Bücher,
+Profile und Fassung in den Feldern der Datei. Dort wird nie etwas gelöscht.
+
+### Aufträge, Prüfung der Originale, Neuaufbau
+
+```
+Auftragsstand: { art, was, stand: "" | "wartet" | "laeuft" | "pause" | "fertig" | "fehler", gesamt, fertig,
+                 teile: [{schluessel, name, gesamt, fertig}], aktuell, grund, begonnen, geaendert, fertig_am }
+```
+
+Jeder Auftrag arbeitet ein Stück nach dem anderen ab (`EINRICHTUNG_ABSTAND_S` Pause), lässt sich anhalten und fortsetzen und geht
+nach einem Neustart am nächsten offenen Stück weiter. Antwortet eine Gegenstelle nicht, ruht er (`pause`) mit Grund. `stand` leer:
+noch nie gelaufen. `teile` je Auftrag:
+
+| `art` | `was` | `teile` |
+|---|---|---|
+| `einspielen` | Sicherung einspielen | `holen`, `pruefen`, `vorher` (nur beim Ersetzen), `einspielen`, `danach` |
+| `pruefung` | Originale prüfen | `erreichbar`, `wiedergefunden`, `fehlt`, `texte` (Volltext oder Umschlag kamen aus dem Auszug) |
+| `neuaufbau` | Neuaufbau aus der Kellerwolke | `buecher`, `angaben`, `volltext`, `umschlaege`, `persoenliches` |
+| `kopieren` | Originale kopieren | `dateien`, `groesse` (Bytes), `fehler` (Prüfsumme stimmt nicht) |
+| `nachfuehren` | Persönliches nachführen | `buecher`, `bytes` (so viel ging seit dem Start hinaus) |
+
+| Weg | Zweck |
+|---|---|
+| `GET /api/einrichtung/auftraege` | alle fünf |
+| `POST /api/einrichtung/auftraege/{art}/pause`, `.../fortsetzen` | für `einspielen`, `pruefung`, `neuaufbau`, `kopieren`; fortgesetzt wird an derselben Stelle (beim Einspielen am nächsten Abschnitt) |
+| `POST /api/einrichtung/pruefung` `{pruefsummen}` | Prüfung von vorn (der alte Bericht fällt weg, Bücher bleiben); `pruefsummen` liest auch Originale auf dem Gerät ganz. Nur in der Ersteinrichtung (sonst 409), weil sie wiedergefundene Orte einträgt |
+| `GET /api/einrichtung/pruefung/bericht?herunterladen=` | `{auftrag, erreichbar, wiedergefunden, fehlt, texte, eintraege: [{buch_id, titel, autor, ergebnis, ort, pfad, text}]}`; `eintraege` nur wiedergefundene und fehlende, nur Bücher, die das Profil sieht; mit `herunterladen` als `pruefbericht.json` |
+| `POST /api/einrichtung/neuaufbau/ordner` `{pfad}` | Ordner der Bücher unter dem Ordner der App (Vorgabe `Bücher`): `{pfad, buecher, mit_auszug, ohne_auszug, mit_persoenlichem, schon_da, groesse, profile: [Namen aus der Datei der Profile], profile_datei}`; legt die Liste für den Auftrag an, in der Kellerwolke ändert sich nichts; unbekannter Ordner 404 |
+| `POST /api/einrichtung/neuaufbau` | den Neuaufbau beginnen (braucht das Konto und eine geprüfte Liste) |
+| `GET /api/einrichtung/neuaufbau/bericht` | `{auftrag, buecher, mit_auszug, ohne_auszug: [{buch_id, name, pfad}], fehler: [...], profile}` |
+
+**Prüfung**: in der Kellerwolke zählt der Knoten mit derselben Prüfsumme (nichts wird geladen), auf dem Gerät die Datei. Fehlt ein
+Original am alten Ort, sucht der Auftrag es über `GET /api/v1/ablage/pruefsumme/{sha256}` der Kellerwolke und trägt den neuen Ort
+in `ablage_datei` ein (`wiedergefunden`). Fehlen auf dem Gerät Volltext, Umschlag oder Angaben, kommen sie aus dem Auszug zurück,
+der Volltext auch in die Suche. Fehlende Bücher bleiben im Bestand; ihr Befund steht in `original_befund`, und `GET /api/books/{id}`
+trägt dann `original: {text, geprueft_am}` (sonst `null`), damit die Buchseite den Hinweis zeigt.
+
+**Neuaufbau**: Original ist jede Buchdatei ohne Rolle, ihre Begleiter `auszug` und `persoenlich`. Zuerst kommen die Profile aus
+`Apps/BücherFreunde/profile.json` (ohne PIN und Bild-PIN; das Profil Verwaltung des Kontos übernimmt das erste Verwaltungsprofil der
+Datei, sein Name bleibt der des Kontos), ohne Katalog der mitgelieferte. Je Buch dann aus dem Auszug: die Zeile in `books` (die
+Nummer bleibt, wenn sie frei ist), Volltext, Seiten, Umschlag, Angaben, Regale nach Namen (fehlende als Regal); aus dem Begleiter
+`persoenlich` das Persönliche je Profil, ohne ihn, was ein alter Auszug davon trägt (nur für Profile, die es gibt; Daten ohne Profil
+aus alten Auszügen gehören dem ersten Profil Verwaltung). Ein Original ohne
+Auszug kommt mit Titel, Autor und Nummer aus seinem Namen (`Titel - Autor [Nummer]`); Volltext und Angaben entstehen dann über
+"Bibliothek ergänzen". Ein Buch mit derselben Prüfsumme bleibt, wie es ist. Am Ende die Freigaben ganzer Kategorien aus der Datei.
+
+### Umzug mit Einmalcode
+
+Altes Gerät (`/api/umzug`, Fähigkeit `einstellungen`, außer den Wegen für das neue Gerät):
+
+| Weg | Zweck |
+|---|---|
+| `POST /api/umzug/vorbereiten` | frische Sicherung (auch in der Kellerwolke, wenn eingeschaltet) und Einmalcode: `{code: "ABCD-EFGH", gilt_bis, sicherung, groesse}`; der Code steht nur hier, gemerkt ist seine Prüfsumme. Ein früher vorbereiteter Umzug gilt danach nicht mehr |
+| `GET /api/umzug` | `{vorbereitet, gilt_bis, versuche_frei, sicherung, eingeloest_am, sitzung_bis, gesperrt}` |
+| `DELETE /api/umzug` | Code und Sitzung gelten nicht mehr; Bestand und Sicherung bleiben |
+| `POST /api/umzug/einloesen` `{code}` | für das neue Gerät, ohne Konto: einmal, nur `UMZUG_CODE_GILT_MIN` Minuten, `UMZUG_VERSUCHE` falsche Codes, dann gesperrt; jeder Fehler 403 mit Grund (`"Der Code stimmt nicht"`, `"... schon eingelöst"`, `"... abgelaufen ..."`, `"Zu viele falsche Codes ..."`). Antwort `{sitzung, sitzung_bis, sicherung, groesse, sha256, schluessel: {kellerwolke?, leitstelle?}, anschluesse: {art: adresse}, originale: {ort, anzahl, groesse}}` |
+| `GET /api/umzug/sicherung`, Kopf `X-Umzug-Sitzung` | die Sicherung des Umzugs |
+| `GET /api/umzug/originale`, Kopf `X-Umzug-Sitzung` | `[{hash, name, groesse}]`: die Originale auf dem Gerät |
+| `GET /api/umzug/originale/{pruefsumme}`, Kopf `X-Umzug-Sitzung` | ein Original, mit Bereichen (`Range`) |
+
+Die Sitzung gilt `UMZUG_SITZUNG_STUNDEN`; ohne gültige 403. Das alte Gerät behält Bestand, Schlüssel und Einstellungen.
+
+Neues Gerät (Ausgangslage `umzug`):
+
+| Weg | Zweck |
+|---|---|
+| `POST /api/einrichtung/umzug/verbinden` `{adresse, code}` | nur über https (`UMZUG_NUR_HTTPS`, sonst 422), Zertifikat geprüft wie bei der Kellerwolke (`KELLERWOLKE_CA`); gibt es schon ein Konto, 409 (das Konto kommt vom alten Gerät). Löst den Code ein, holt die Sicherung gestreamt mit Prüfsumme, legt die Schlüssel und die Sitzung nur in die Schlüsseldatei und beginnt den Auftrag "Sicherung einspielen"; nach dem Tausch trägt er die Adressen der Anschlüsse ein, wo die Sicherung keine nennt. Antwort `{sicherung, einstellungen: [art], schluessel: [art], originale: {ort, anzahl, groesse}, einspielen: Auftragsstand}`; mit Kellerwolke folgt danach gleich die Prüfung der Originale. Fehler des alten Geräts 403 oder 502 mit Grund |
+| `POST /api/einrichtung/originale` `{weg: "kopieren" \| "ort"}` | ohne Kellerwolke: `kopieren` holt jedes Original mit Prüfsumme (Auftrag `kopieren`, eine unterbrochene Datei setzt an ihrem Ende fort, danach die Prüfung); `ort` prüft nur den übernommenen Ort mit Prüfsummen (Auftrag `pruefung`). Mit Kellerwolke 409 |
+
+### Wartung: wieder öffnen
+
+Unter Einstellungen, Wartung (Fähigkeit `einstellungen`). Der Assistent zeigt nur die Schritte von "Neu beginnen" ohne Konto. Was
+`PUT .../anschluesse/{art}`, `POST .../katalog`, `POST .../familie/profile` und `PUT .../familie/stimme` dort ändern würden, wird nur
+vorgemerkt (`Vorgemerkt.angewandt` false), ein neuer Schlüssel vorgemerkt in der Schlüsseldatei; je Ziel gilt die neueste.
+
+```
+Aenderung: { id, schritt, art: "anschluss" | "katalog" | "profil" | "stimme", was, alt, neu }
+```
+
+| Weg | Zweck |
+|---|---|
+| `POST /api/einrichtung/oeffnen` | öffnet unter Wartung (während der Ersteinrichtung 409) |
+| `GET /api/einrichtung/aenderungen` | `{aenderungen: [Aenderung], unveraendert: [Name des Schritts], stand}`; `was` ist ein Satz wie `"Leitstelle: Adresse https://... und neuer Schlüssel"` |
+| `POST /api/einrichtung/uebernehmen` `{stand, ids}` | wendet nur die genannten an, nur mit dem `stand` der Liste (409 sonst, 404 für eine unbekannte); die übrigen fallen weg, der Assistent ist danach geschlossen. Antwort `{uebernommen: [Aenderung], verworfen}` |
+| `POST /api/einrichtung/schliessen` | ohne Übernehmen; alles Vorgemerkte fällt weg, auch vorgemerkte Schlüssel |
+
+Gelöscht oder ersetzt wird dabei nur, was die Liste nennt und angehakt ist; Bücher, Profile und Daten bleiben.
+
+### Persönliches in der Kellerwolke und die Datei der Profile
+
+Das Persönliche je Buch steht in einem eigenen kleinen Begleiter des Originals (`ablage/persoenlich.py`): Rolle `persoenlich`, Name
+wie das Original mit `.persoenlich.json`, Form `buecherfreunde-persoenlich/1` `{art, buch, hash, profile: {<profil_id>: {lesestand,
+vorlesestelle, notizen, markierungen, etiketten, privat, freigegeben}}}` (`freigegeben`: einem Kind einzeln freigegeben). Ein paar
+hundert Byte; der Auszug mit Volltext und Umschlag wird dafür nie neu geschrieben. Der Auszug bleibt in Form `buecherfreunde-angaben/1`
+(`buch`, `kategorien`; `lesen`, `notizen`, `markierungen`, `labels` leer); was ältere Auszüge darin an Persönlichem tragen, wird
+weiter gelesen.
+
+Trigger merken jede Änderung am Persönlichen eines Buchs (`nachfuehren`, art `buch`); der Auftrag "Persönliches nachführen" schreibt
+nach einer ruhigen Weile ohne neue Änderung (`PERSOENLICH_RUHE_S`, 30) den Begleiter einmal neu, höchstens `PERSOENLICH_JE_RUNDE`
+(50) je Runde mit `PERSOENLICH_ABSTAND_S` Pause, im Takt `PERSOENLICH_TAKT_S`. Ein Lesestand, der sich beim Lesen zehnmal ändert,
+ist so ein Schreiben (gemessen: 370 Byte gegen etwa 880 KB für einen Auszug mit 3 MB Volltext). Ein Begleiter, dessen Persönliches
+ganz entfernt wurde, bekommt eine leere neue Fassung. Beim ersten Start mit dieser Fassung werden einmal nur die Bücher vorgemerkt,
+zu denen es schon Persönliches gibt, dazu die Datei der Profile (Merker `persoenlich_nachgetragen` in `app_settings`, nie
+wiederholt); alle Bücher schreibt kein Start.
+
+Die Profile stehen in `Apps/BücherFreunde/profile.json` (`buecherfreunde-profile/1`: `profile` mit id, name, zeichen, farbe, rolle,
+geburtsjahr, stufe, einstellungen, sortierung; `freigaben` ganzer Kategorien mit Schlüssel und Name; `stimme` der Familie), nie
+PIN oder Bild-PIN; neu geschrieben nach jeder Änderung an Profilen, Freigaben von Kategorien oder der Stimme. Titel und andere Angaben
+im Auszug führt die Pflege nachts nach wie bisher.
+
+| Weg | Zweck |
+|---|---|
+| `GET /api/kellerwolke/einstellungen` | `{persoenlich, sicherungen_ablegen}` (Vorgaben `PERSOENLICH_IN_KELLERWOLKE`, `SICHERUNG_IN_KELLERWOLKE`) |
+| `PUT /api/kellerwolke/einstellungen` `{persoenlich?, sicherungen_ablegen?, entfernen?, stand?}` | Einschalten nur mit `stand` aus den Folgen; es schreibt den Begleiter jedes Buchs mit Persönlichem und die Datei der Profile, keine anderen. Ausschalten lässt in der Kellerwolke alles, wie es ist; mit `entfernen` (ebenso nur mit `stand`) kommen die Begleiter und die Datei der Profile in den Papierkorb der Kellerwolke (dort zurückzuholen), alte Auszüge mit Persönlichem darin werden ohne neu geschrieben. Ohne `stand` 422, geändert seit der Vorschau 409 |
+| `GET /api/kellerwolke/persoenlich/folgen` | `{buecher, profile_datei, profile: [{id, name, buecher}], lesestaende, vorlesestellen, notizen, markierungen, etiketten, private, freigaben, stand}`: was Einschalten schreibt und Ausschalten mit Entfernen wegnimmt; in der App bleibt alles |
+| `GET /api/kellerwolke/persoenlich/stand` | der Auftrag "Persönliches nachführen" |
+
+Tabellen: `einrichtung`, `einrichtung_schritt`, `einrichtung_aenderung`, `einrichtung_auftrag`, `original_befund`, `neuaufbau_datei`,
+`umzug` (altes Gerät), `umzug_kopie` (neues Gerät), `nachfuehren` (`einrichtung/schema.py`).

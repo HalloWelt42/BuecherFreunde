@@ -22,6 +22,7 @@ from backend.app.api.books import router as books_router
 from backend.app.api.categories import router as categories_router
 from backend.app.api.config import router as config_router
 from backend.app.api.einordnung import router as einordnung_router
+from backend.app.api.einrichtung import kellerwolke_router, router as einrichtung_router, umzug_router
 from backend.app.api.familie import router as familie_router
 from backend.app.api.katalog import router as katalog_router
 from backend.app.api.gutenberg import router as gutenberg_router
@@ -48,6 +49,9 @@ from backend.app.core.einheiten import Einheiten
 from backend.app.core.database import db
 from backend.app.familie.ansagelauf import ansagelauf
 from backend.app.codestellen.dienst import codestellen
+from backend.app.einrichtung import anschluesse as einrichtung_anschluesse, zustand as einrichtung_zustand
+from backend.app.einrichtung.auftrag import auftraege as einrichtung_auftraege
+from backend.app.einrichtung.nachfuehren import nachfuehren
 from backend.app.codestellen.vorpruefung import vorpruefer
 from backend.app.services import bedeutung, gespraech, nachschlagen, pflege
 from backend.app.services.ausfuehren import sandbox
@@ -94,12 +98,14 @@ async def lifespan(app: FastAPI):
     )
     logger.info("BuecherFreunde v%s wird gestartet", settings.version)
 
-    orte.einrichten()
-    if settings.kellerwolke_url and not await eigener_zugang.erfragen():
-        logger.warning("Kein App-Zugang der Kellerwolke: Anmelden geht erst nach der Einrichtung "
-                       "(KELLERWOLKE_URL, KELLERWOLKE_SCHLUESSEL_DATEI)")
+    neu = orte.einrichten()                           # leerer Bestand ohne Markerdatei: die Ersteinrichtung erscheint (BF-82)
     _ensure_directories()
     await db.connect()
+    await einrichtung_zustand.erkennen(neu)
+    await einrichtung_anschluesse.anwenden()          # Adressen, die in der App eingetragen sind, gelten vor der .env (BF-82)
+    if settings.kellerwolke_url and not await eigener_zugang.erfragen():
+        logger.warning("Kein App-Zugang der Kellerwolke: Anmelden geht erst nach der Einrichtung "
+                       "(KELLERWOLKE_URL, KELLERWOLKE_SCHLUESSEL_DATEI oder Ersteinrichtung)")
     await ki.wahl_laden()
     await anleitung_nachziehen()                      # einmal je Bestand: die Anleitung als Art neben dem Dokument (BF-80)
     annahme.starten()
@@ -118,6 +124,10 @@ async def lifespan(app: FastAPI):
     uebersetzungslauf.starten()
     ansagelauf.starten()                              # Ansagen erstellen: was fehlt, auch nach einem Neustart (BF-78)
     luecken_nachschlagen.starten()                    # Lücken nachschlagen: je Sammlung und Sprache einmal, mit dem Offenen weiter (BF-75)
+    await nachfuehren.beim_start()
+    nachfuehren.starten()                             # Persönliches im Auszug laufend nachführen (BF-82)
+    for auftrag in einrichtung_auftraege().values():  # Prüfung, Neuaufbau, Kopieren gehen nach einem Neustart weiter (BF-82)
+        await auftrag.nach_neustart()
     im_hintergrund = [asyncio.create_task(pflege.laufen()), asyncio.create_task(eingangsordner.laufen()), asyncio.create_task(nachschlagen.vorwaermen())]
     yield
     for lauf in im_hintergrund:
@@ -133,6 +143,9 @@ async def lifespan(app: FastAPI):
     await uebersetzungslauf.stoppen()
     await ansagelauf.stoppen()
     await luecken_nachschlagen.stoppen()
+    await nachfuehren.stoppen()
+    for auftrag in einrichtung_auftraege().values():
+        await auftrag.stoppen()
     await sammlungsfinder.stoppen()
     await umschlagpruefung.stoppen()
     await codestellen.stoppen()
@@ -169,6 +182,9 @@ app.include_router(categories_router)
 app.include_router(collections_router)
 app.include_router(config_router)
 app.include_router(einordnung_router)
+app.include_router(einrichtung_router)
+app.include_router(umzug_router)
+app.include_router(kellerwolke_router)
 app.include_router(familie_router)
 app.include_router(katalog_router)
 app.include_router(fundus_router)

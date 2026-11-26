@@ -1,0 +1,28 @@
+{
+  "schritte": {
+    "konto": {"name": "Konto", "pflicht": true, "erledigt": "Ein Konto meldet dieses Gerät an"},
+    "orte": {"name": "Speicherorte", "pflicht": true, "erledigt": "Jeder Ort ist da und trägt seine Markerdatei"},
+    "anschluesse": {"name": "Anschlüsse", "pflicht": false, "erledigt": "Anschlüsse eingetragen"},
+    "katalog": {"name": "Katalog", "pflicht": false, "erledigt": "Katalog gewählt"},
+    "familie": {"name": "Familie und Kinder", "pflicht": false, "erledigt": "Profile eingerichtet"},
+    "buecher": {"name": "Erste Bücher", "pflicht": false, "erledigt": "Erste Bücher hinzugefügt"},
+    "sicherung": {"name": "Sicherung", "pflicht": true, "erledigt": "Sicherung wiederhergestellt, mit Konto und Profilen"},
+    "ordner": {"name": "Ordner der Bücher", "pflicht": true, "erledigt": "Ordner in der Kellerwolke geprüft"},
+    "neuaufbau": {"name": "Neuaufbau", "pflicht": true, "erledigt": "Bibliothek aus den Auszügen aufgebaut"},
+    "verbinden": {"name": "Altes Gerät", "pflicht": true, "erledigt": "Sicherung, Einstellungen und Schlüssel vom alten Gerät übernommen"},
+    "originale": {"name": "Originale", "pflicht": true, "wenn": "ohne_kellerwolke", "erledigt": "Originale geholt oder ihr Ort übernommen"},
+    "pruefung": {"name": "Prüfung der Originale", "pflicht": true, "erledigt": "Originale geprüft"},
+    "abschluss": {"name": "Abschluss", "pflicht": true, "erledigt": "Eingerichtet"}
+  },
+  "ausgangslagen": [
+    {"schluessel": "neu", "name": "Neu beginnen", "beschreibung": "Eine leere Bibliothek, Schritt für Schritt eingerichtet",
+     "schritte": ["konto", "orte", "anschluesse", "katalog", "familie", "buecher", "abschluss"]},
+    {"schluessel": "sicherung", "name": "Aus Sicherung wiederherstellen", "beschreibung": "Datei, Sicherungsordner des Geräts oder Kellerwolke",
+     "schritte": ["orte", "sicherung", "pruefung", "abschluss"]},
+    {"schluessel": "kellerwolke", "name": "Ablage in der Kellerwolke übernehmen", "beschreibung": "Neuaufbau ohne Sicherung, aus dem Auszug je Buch",
+     "schritte": ["konto", "orte", "ordner", "neuaufbau", "abschluss"]},
+    {"schluessel": "umzug", "name": "Umzug von einer anderen Installation", "beschreibung": "Vom alten Gerät mit Adresse und Einmalcode",
+     "schritte": ["verbinden", "orte", "originale", "pruefung", "abschluss"]}
+  ],
+  "wartung": ["orte", "anschluesse", "katalog", "familie", "buecher", "abschluss"]
+}

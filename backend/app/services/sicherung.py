@@ -17,8 +17,10 @@ Aufruf: python -m backend.app.services.sicherung regelmaessig|aktualisieren|hand
 """
 
 import argparse
+import json
 import logging
 import os
+import shutil
 import sqlite3
 import sys
 import time
@@ -28,18 +30,30 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from backend.app.core.config import settings
 
 logger = logging.getLogger("buecherfreunde.sicherung")
 
 MUSTER = "buecherfreunde_backup_*.zip"
+DATENBANK = "database/buecherfreunde.db"     # so heißt die Datenbank in jeder Sicherung
+INHALT = "inhalt.json"                       # seit BF-82: Fassung und Zahl der Bücher und Profile, ohne auszupacken
 
 
 class Anlass(StrEnum):
     REGELMAESSIG = "regelmaessig"
     AKTUALISIEREN = "aktualisieren"
     HAND = "hand"
+
+
+@dataclass(frozen=True)
+class Inhalt:
+    """Was eine Sicherung enthält; None, wenn sich eine Zahl nicht bestimmen lässt."""
+
+    version: str
+    buecher: int | None
+    profile: int | None
 
 
 @dataclass(frozen=True)
@@ -127,11 +141,41 @@ def _datenbank_kopieren(ziel: Path) -> None:
         quelle.backup(kopie)
 
 
+def _zaehlen(datenbank: Path) -> tuple[int | None, int | None]:
+    """Nur an einer eigenen Kopie: die letzte Verbindung räumt beim Schließen ihr Protokoll (-wal) weg."""
+    with closing(sqlite3.connect(datenbank)) as v:
+        def zahl(tabelle: str) -> int | None:
+            try:
+                return v.execute(f"SELECT COUNT(*) FROM {tabelle}").fetchone()[0]
+            except sqlite3.Error:
+                return None
+        return zahl("books"), zahl("profil")
+
+
+def inhalt(datei: Path) -> Inhalt:
+    """Fassung, Bücher und Profile einer Sicherung; ältere ohne `inhalt.json` werden dafür einmal ausgepackt."""
+    with zipfile.ZipFile(datei) as zf:
+        namen = set(zf.namelist())
+        if INHALT in namen:
+            d = json.loads(zf.read(INHALT))
+            return Inhalt(str(d.get("version") or ""), d.get("buecher"), d.get("profile"))
+        version = zf.read("VERSION").decode("utf-8", "replace").strip() if "VERSION" in namen else ""
+        if DATENBANK not in namen:
+            return Inhalt(version, None, None)
+        with TemporaryDirectory() as tmp:
+            kopie = Path(tmp) / "bestand.db"
+            with zf.open(DATENBANK) as quelle, kopie.open("wb") as z:
+                shutil.copyfileobj(quelle, z)
+            return Inhalt(version, *_zaehlen(kopie))
+
+
 def _packen(ziel: Path, datenbank: Path) -> None:
-    """Aufbau wie gehabt, damit das Zurückspielen in den Einstellungen jede Sicherung versteht."""
+    """Aufbau wie gehabt, damit das Zurückspielen in den Einstellungen jede Sicherung versteht; dazu `inhalt.json`."""
+    buecher, profile = _zaehlen(datenbank)
     with zipfile.ZipFile(ziel, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.write(datenbank, "database/buecherfreunde.db")
+        zf.write(datenbank, DATENBANK)
         zf.writestr("VERSION", settings.version + "\n")
+        zf.writestr(INHALT, json.dumps({"version": settings.version, "buecher": buecher, "profile": profile}))
         speicher = settings.storage_dir
         if speicher.exists():
             for meta in speicher.rglob("metadata.json"):

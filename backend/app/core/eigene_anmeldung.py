@@ -57,6 +57,11 @@ class EigeneAnmeldung:
         self._uhr = uhr
         self._versuche: dict[str, tuple[int, float]] = {}
 
+    @property
+    def eigene(self) -> EigeneAnmeldung:
+        """Wie bei der Weiche (core/anmeldung.py): die eigenen Konten gelten."""
+        return self
+
     async def eingerichtet(self) -> bool:
         return await db.fetch_one("SELECT id FROM nutzer LIMIT 1") is not None
 

@@ -37,6 +37,7 @@ from backend.app.ablage import formate
 from backend.app.ablage.antwort import FEHLT, original_antwort
 from backend.app.material import dienst as material_dienst
 from backend.app.annahme.eintragen import autoren_verknuepfen
+from backend.app.einrichtung import pruefung as original_pruefung
 from backend.app.services import buch_loeschen, buchliste, buchsuche, deckblatt, sammlungen, schnellfilter
 from backend.app.katalog import kategorien as katalog_kategorien
 from backend.app.katalog.merkmale import IN_KATEGORIE
@@ -527,6 +528,7 @@ async def get_book(book_id: Nr, p: Profil = Depends(profil)):
         privat=bool(await sichtbar.private(p.id, [book_id])),
         dateien=await formate.dateien(book_id),
         material=(await material_dienst.anzahlen([book_id])).get(book_id, 0),
+        original=await original_pruefung.hinweis(book_id),
     )
 
 

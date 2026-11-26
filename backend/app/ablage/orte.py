@@ -36,8 +36,9 @@ def alle() -> list[Ort]:
             Ort("zwischen", "Zwischenspeicher", settings.zwischen_dir, False)]
 
 
-def einrichten() -> None:
-    """Legt fehlende Ordner an und prüft die Marker. Die Datenbank ohne Marker heißt: Platte nicht eingehängt."""
+def einrichten() -> bool:
+    """Legt fehlende Ordner an und prüft die Marker. Die Datenbank ohne Marker heißt: Platte nicht eingehängt. Antwortet, ob
+    die Installation neu ist (leerer Bestand ohne Markerdatei); nur dann erscheint die Ersteinrichtung (BF-82)."""
     neu = not (settings.database_path.exists() or (settings.storage_dir / MARKER).exists())
     for ort in alle():
         ort.pfad.mkdir(parents=True, exist_ok=True)
@@ -47,8 +48,14 @@ def einrichten() -> None:
         leer = not any(ort.pfad.iterdir())
         if not neu and leer:
             raise RuntimeError(f"ABBRUCH: {ort.name} ({ort.pfad}) ist leer und trägt keine Markerdatei. Ist die Platte eingehängt?")
-        marker.write_text("BücherFreunde: diese Datei nicht löschen, sie zeigt, dass die Platte eingehängt ist.\n", encoding="utf-8")
-        logger.info("Marker angelegt: %s", marker)
+        marker_setzen(ort)
+    return neu
+
+
+def marker_setzen(ort: Ort) -> None:
+    marker = ort.pfad / MARKER
+    marker.write_text("BücherFreunde: diese Datei nicht löschen, sie zeigt, dass die Platte eingehängt ist.\n", encoding="utf-8")
+    logger.info("Marker angelegt: %s", marker)
 
 
 def belegt(pfad: Path) -> int:

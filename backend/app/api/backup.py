@@ -2,16 +2,19 @@
 
 import asyncio
 import logging
-import zipfile
 from datetime import datetime
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 
+from backend.app.ablage import sicherungen
 from backend.app.core.auth import braucht, verify_token, verify_token_inhalt
 from backend.app.core.config import settings
+from backend.app.einrichtung import wiederherstellen
+from backend.app.einrichtung.modelle import Auftragsstand, Wiederherstellen, Wiederherstellfolgen
+from backend.app.einrichtung.zustand import Einrichtungsfehler
 from backend.app.services import sicherung
 
 logger = logging.getLogger("buecherfreunde")
@@ -29,6 +32,8 @@ def _backup_dir() -> Path:
 async def erstelle_backup(_: str = Depends(verify_token)):
     """Sichert von Hand nach der Sicherungsregel: sofort, aber nie ohne Änderung seit der jüngsten Sicherung."""
     lauf = await asyncio.to_thread(sicherung.sichern, sicherung.Anlass.HAND)
+    if lauf.neu:
+        await sicherungen.ablegen(lauf.datei)          # auch in die Kellerwolke, wenn eingeschaltet (BF-82)
     return {
         "message": "Backup erstellt" if lauf.neu else f"Keine neue Sicherung nötig: {lauf.grund}",
         "filename": lauf.datei.name,
@@ -79,57 +84,24 @@ async def download_backup(
     )
 
 
-@router.post("/restore", dependencies=[Depends(braucht("einstellungen"))])
-async def restore_backup(
-    file: UploadFile, _: str = Depends(verify_token)
-):
-    """Backup wiederherstellen."""
-    with TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp) / "backup.zip"
-        content = await file.read()
+@router.get("/restore/folgen", response_model=Wiederherstellfolgen, dependencies=[Depends(braucht("einstellungen"))])
+async def restore_folgen(quelle: Literal["datei", "geraet", "kellerwolke"], kennung: str) -> Wiederherstellfolgen:
+    """Vor dem Zurückspielen (BF-82): was die Sicherung enthält und was sie ersetzt (Bestand, Konto), mit `stand`. Eine Datei
+    kommt vorher in Teilen über `POST /api/einrichtung/sicherungen/hochladen`."""
+    try:
+        return await wiederherstellen.folgen(quelle, kennung, ersetzen=True)
+    except Einrichtungsfehler as f:
+        raise HTTPException(f.status, f.meldung) from f
 
-        # Größenlimit prüfen (1 GB)
-        if len(content) > 1024 * 1024 * 1024:
-            raise HTTPException(status_code=413, detail="Backup-Datei zu groß (max 1 GB)")
 
-        with open(tmp_path, "wb") as f:
-            f.write(content)
-
-        if not zipfile.is_zipfile(tmp_path):
-            raise HTTPException(status_code=400, detail="Keine gültige ZIP-Datei")
-
-        with zipfile.ZipFile(tmp_path, "r") as zf:
-            # Zip-Bomb-Schutz: entpackte Größe prüfen
-            total_size = sum(info.file_size for info in zf.infolist())
-            if total_size > 2 * 1024 * 1024 * 1024:  # 2 GB Limit
-                raise HTTPException(status_code=400, detail="ZIP-Inhalt zu groß (max 2 GB)")
-
-            # Datenbank wiederherstellen
-            if "database/buecherfreunde.db" in zf.namelist():
-                db_data = zf.read("database/buecherfreunde.db")
-                settings.database_path.parent.mkdir(
-                    parents=True, exist_ok=True
-                )
-                with open(settings.database_path, "wb") as db_file:
-                    db_file.write(db_data)
-
-            # Metadaten wiederherstellen (mit Zip Slip Schutz)
-            storage_resolved = settings.storage_dir.resolve()
-            for name in zf.namelist():
-                if name.startswith("metadata/"):
-                    rel = name[len("metadata/"):]
-                    if rel:
-                        target = (settings.storage_dir / rel).resolve()
-                        # Zip Slip: Pfad muss innerhalb des Storage bleiben
-                        if not target.is_relative_to(storage_resolved):
-                            logger.warning("Zip Slip Versuch blockiert: %s", name)
-                            continue
-                        target.parent.mkdir(parents=True, exist_ok=True)
-                        with open(target, "wb") as mf:
-                            mf.write(zf.read(name))
-
-    logger.info("Backup wiederhergestellt: %s", file.filename)
-    return {"message": "Backup wiederhergestellt"}
+@router.post("/restore", response_model=Auftragsstand, dependencies=[Depends(braucht("einstellungen"))])
+async def restore_backup(w: Wiederherstellen) -> Auftragsstand:
+    """Zurückspielen nur mit dem `stand` der Folgen, als Auftrag "Sicherung einspielen" wie in der Ersteinrichtung; vorher entsteht
+    eine Sicherung des jetzigen Stands, gelöscht wird nichts."""
+    try:
+        return await wiederherstellen.beginnen(w.quelle, w.kennung, w.stand, ersetzen=True)
+    except Einrichtungsfehler as f:
+        raise HTTPException(f.status, f.meldung) from f
 
 
 @router.get("/storage-info", dependencies=[Depends(braucht("einstellungen"))])

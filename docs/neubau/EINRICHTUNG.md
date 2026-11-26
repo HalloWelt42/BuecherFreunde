@@ -75,5 +75,8 @@ Entwurf Runde 1 abgenommen ("Passt, bauen"), mit diesen Antworten:
 
 1. Entwurf zur Abnahme: Ausgangslage, Schritte, Umzug mit Einmalcode, Bericht nach dem Wiederherstellen, Abschluss.
 2. Server: Erkennen der neuen Installation, Schritte als Schnittstelle, Schlüsseldatei, Wiederherstellen aus drei
-   Quellen, Neuaufbau aus dem Auszug, persönliche Daten im Auszug, Umzug mit Einmalcode, Prüfung der Originale.
+   Quellen, Neuaufbau aus dem Auszug, persönliche Daten im Auszug, Umzug mit Einmalcode, Prüfung der Originale. Gebaut in
+   `backend/app/einrichtung/`, alle Wege und Felder in [SCHNITTSTELLE.md](SCHNITTSTELLE.md), Abschnitt "Ersteinrichtung". Nacharbeit
+   (26.11.2026): das Persönliche steht nicht im Auszug, sondern in einem eigenen kleinen Begleiter `persoenlich` je Buch, damit
+   der Lesestand beim Lesen nicht den ganzen Auszug neu schreibt; der Auszug bleibt ohne Persönliches.
 3. Oberfläche nach dem Entwurf, Handbuch, Prüfung an Prüfinstallationen.

@@ -1,6 +1,6 @@
-"""Eine nachgebaute Kellerwolke für Tests (BF-80, BF-81): Ordner, Dateien, fortsetzbares Hochladen, Begleiter mit Rolle und
-Namen nach den Regeln der Kellerwolke (Stamm der Hauptdatei und Zusatz, sonst der volle Name davor, sonst 409) und ein
-Papierkorb. Alles liegt im Speicher, nichts geht ins Netz; die echte Kellerwolke wird nie gefragt."""
+"""Eine nachgebaute Kellerwolke für Tests (BF-80, BF-81, BF-82): Ordner, Dateien, fortsetzbares Hochladen, Begleiter mit Rolle
+und Namen nach den Regeln der Kellerwolke (Stamm der Hauptdatei und Zusatz, sonst der volle Name davor, sonst 409), Felder,
+neue Versionen mit Stand, Suche nach Prüfsumme und ein Papierkorb. Alles liegt im Speicher, nichts geht ins Netz; die echte Kellerwolke wird nie gefragt."""
 
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ class Kellerwolke:
         self.knoten: dict[str, dict] = {}
         self.inhalt: dict[str, bytes] = {}
         self.uploads: dict[str, dict] = {}
+        self.geschrieben: list[tuple[str, int]] = []     # je Schreiben eines Begleiters: Rolle und Größe in Byte
         self._nr = itertools.count(1)
         self.wurzel = self._neu("ordner", "Apps", None)
 
@@ -46,7 +47,9 @@ class Kellerwolke:
 
     def ansicht(self, k: str) -> dict:
         z = self.knoten[k]
-        aus = {key: z[key] for key in ("id", "typ", "name", "parent_id", "haupt_id", "rolle")} | {"pfad": self.pfad(k), "etag": "e1"}
+        aus = {key: z[key] for key in ("id", "typ", "name", "parent_id", "haupt_id", "rolle")} | {"pfad": self.pfad(k), "etag": f"e{z.get('version', 1)}"}
+        if z.get("felder"):
+            aus["felder"] = dict(z["felder"])
         if k in self.inhalt:
             aus |= {"groesse": len(self.inhalt[k]), "sha256": hashlib.sha256(self.inhalt[k]).hexdigest()}
         return aus
@@ -130,14 +133,43 @@ class Kellerwolke:
         async def nichts(*_a, **_b):
             return {}
 
-        async def auszug(_s, haupt, inhalt):
-            alt = next((b for b in w.begleiter(haupt) if b["rolle"] == "auszug"), None)
+        async def felder(_s, k, felder_):
+            w.knoten[k].setdefault("felder", {}).update(felder_)
+
+        async def begleiter_lesen(_s, haupt):
+            return w.begleiter(haupt)
+
+        async def inhalt(_s, k):
+            if k not in w.inhalt or w.knoten[k]["geloescht"]:
+                raise WolkeFehler("Die Datei fehlt in der Kellerwolke (404)", 404)
+            return w.inhalt[k]
+
+        async def inhalt_ersetzen(_s, k, quelle: Path, etag):
+            if etag != w.ansicht(k)["etag"]:
+                raise WolkeFehler("Die Datei hat sich geändert", 412)
+            w.inhalt[k] = quelle.read_bytes()
+            w.knoten[k]["version"] = w.knoten[k].get("version", 1) + 1
+            return w.ansicht(k)
+
+        async def gibt_es(_s, sha256):
+            return [w.ansicht(k) for k, z in w.knoten.items() if not z["geloescht"] and k in w.inhalt
+                    and hashlib.sha256(w.inhalt[k]).hexdigest() == sha256]
+
+        async def begleiter_setzen(_s, haupt, rolle, zusatz, inhalt, _art):
+            if not ROLLE.match(rolle):
+                raise WolkeFehler(f"Rolle {rolle} ungültig", 422)
+            w.geschrieben.append((rolle, len(inhalt)))
+            alt = next((b for b in w.begleiter(haupt) if b["rolle"] == rolle), None)
             if alt:
                 w.inhalt[alt["id"]] = inhalt
+                w.knoten[alt["id"]]["version"] = w.knoten[alt["id"]].get("version", 1) + 1
                 return alt["id"]
-            k = w._neu("datei", w._begleiter_name(haupt, ".auszug.zip"), w.knoten[haupt]["parent_id"], inhalt)
-            w.knoten[k] |= {"haupt_id": haupt, "rolle": "auszug"}
+            k = w._neu("datei", w._begleiter_name(haupt, zusatz), w.knoten[haupt]["parent_id"], inhalt)
+            w.knoten[k] |= {"haupt_id": haupt, "rolle": rolle}
             return k
+
+        async def auszug(_s, haupt, inhalt):
+            return await begleiter_setzen(_s, haupt, "auszug", ".auszug.zip", inhalt, "application/zip")
 
         async def begleiter_anhaengen(_s, haupt, rolle, k, zusatz):
             w._rolle_frei(haupt, rolle)
@@ -192,7 +224,9 @@ class Kellerwolke:
 
         monkeypatch.setattr(Wolke, "bereit", property(lambda _s: True))
         for name, tun in {"ordner": ordner, "kinder": kinder, "knoten": knoten, "datei_schreiben": datei_schreiben, "umziehen": umziehen,
-                          "felder": nichts, "auszug_schreiben": auszug, "begleiter_anhaengen": begleiter_anhaengen,
+                          "felder": felder, "auszug_schreiben": auszug, "begleiter_anhaengen": begleiter_anhaengen,
+                          "begleiter": begleiter_lesen, "inhalt": inhalt, "inhalt_ersetzen": inhalt_ersetzen, "gibt_es": gibt_es,
+                          "begleiter_setzen": begleiter_setzen,
                           "begleiter_schreiben": begleiter_schreiben, "papierkorb": papierkorb, "rufe": rufe, "holen": holen,
                           "upload_anlegen": upload_anlegen, "upload_stand": upload_stand, "upload_teil": upload_teil,
                           "upload_abbrechen": upload_abbrechen}.items():

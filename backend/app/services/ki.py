@@ -17,7 +17,6 @@ import logging
 import re
 import time
 from collections.abc import Awaitable, Callable
-from pathlib import Path
 from typing import Any, Literal
 
 import httpx
@@ -28,6 +27,7 @@ from appkern.leitstelle import (
 from pydantic import BaseModel, Field
 
 from backend.app.ablage.wolke import _pruefung
+from backend.app.core import schluessel
 from backend.app.core.config import settings
 from backend.app.core.database import db
 
@@ -103,14 +103,8 @@ class Ki:
 
     @staticmethod
     def _schluessel() -> str:
-        datei = settings.leitstelle_schluessel_datei
-        if not datei:
-            return ""
-        try:
-            return Path(datei).read_text(encoding="utf-8").strip()
-        except OSError as f:
-            logger.warning("Schlüssel der Leitstelle nicht lesbar: %s", f)
-            return ""
+        """Aus dem Schlüsselbund (eingetragen in der App oder Datei der Einrichtung, BF-82)."""
+        return schluessel.lesen(schluessel.Art.LEITSTELLE)
 
     @property
     def bereit(self) -> bool:

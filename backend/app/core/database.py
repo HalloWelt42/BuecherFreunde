@@ -20,6 +20,7 @@ import aiosqlite
 from backend.app.ablage import formate_umbau
 from backend.app.core import suchindex
 from backend.app.core.config import settings
+from backend.app.einrichtung import schema as einrichtung_schema
 from backend.app.familie import umbau as familie_umbau
 
 logger = logging.getLogger("buecherfreunde.db")
@@ -620,6 +621,7 @@ class Database:
         await asyncio.to_thread(formate_umbau.umbauen, self.db_path)   # jedes Buch mit genau einer Datei (BF-80)
         # die gemeinsame Verbindung: außerhalb einer Einheit gilt jede Anweisung für sich
         self._connection = await self._oeffnen(isolation_level=None)
+        await self._connection.executescript(einrichtung_schema.SQL)   # Ersteinrichtung (BF-82), Trigger an den Tabellen der Familie
         logger.info("Datenbank verbunden: %s", self.db_path)
 
     async def _oeffnen(self, **art: object) -> aiosqlite.Connection:
