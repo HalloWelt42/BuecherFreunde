@@ -16,7 +16,8 @@
     file_format?: string;
     umschlag?: Umschlagart;
   }
-  let { buch, sofort = false, format = false }: { buch: Buchbild; sofort?: boolean; format?: boolean } = $props();
+  /** klasse: Lage im Stapel einer Sammlung (BF-66) */
+  let { buch, sofort = false, format = false, klasse = "" }: { buch: Buchbild; sofort?: boolean; format?: boolean; klasse?: string } = $props();
 
   let adresse = $derived(coverUrl(buch.id, buch.cover_stand || buch.updated_at));
   let fertig = $state("");
@@ -38,7 +39,7 @@
   }
 </script>
 
-<span class="umschlag" class:leer={!gestaltet && fertig !== adresse}>
+<span class="umschlag {klasse}" class:leer={!gestaltet && fertig !== adresse}>
   {#if gestaltet}
     <Deckblatt {buch} />
   {:else}

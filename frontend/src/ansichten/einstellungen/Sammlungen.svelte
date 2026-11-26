@@ -1,6 +1,6 @@
 <script lang="ts">
   // Sammlungen verwalten
-  import { loescheSammlung } from "../../lib/api/collections";
+  import { ladeSammlungseinstellungen, loescheSammlung, speichereSammlungseinstellungen } from "../../lib/api/collections";
   import { anzahl, zahl } from "../../lib/format";
   import { bestand } from "../../lib/stand/bestand.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
@@ -9,8 +9,36 @@
   import Knopf from "../../lib/teile/Knopf.svelte";
   import type { Sammlung } from "../../lib/typen";
   import Sammlungsformular from "./Sammlungsformular.svelte";
+  import { GRENZE_AB, GRENZE_BIS, grenzeAus } from "./sammlungsgrenze";
 
   let offen = $state<Sammlung | "neu" | null>(null);
+  /** Ab so vielen Büchern steht eine Sammlung als ein Eintrag in der Bibliothek (BF-66) */
+  let grenze = $state<number | null>(null);
+  let gespeichert: number | null = null;
+
+  $effect(() => {
+    ladeSammlungseinstellungen()
+      .then((e) => (grenze = gespeichert = e.als_eintrag_ab))
+      .catch((e) => melde.schlecht(e, "Grenze nicht geladen"));
+  });
+
+  async function speichereGrenze() {
+    const n = grenzeAus(grenze);
+    if (n === null) {
+      melde.warn(`Eine ganze Zahl von ${GRENZE_AB} bis ${GRENZE_BIS}`);
+      grenze = gespeichert;
+      return;
+    }
+    if (n === gespeichert) return;
+    try {
+      grenze = gespeichert = (await speichereSammlungseinstellungen({ als_eintrag_ab: n })).als_eintrag_ab;
+      melde.gut(`Sammlungen ab ${n} Büchern als ein Eintrag`);
+      bestand.geaendert();
+    } catch (e) {
+      melde.schlecht(e, "Nicht gespeichert");
+      grenze = gespeichert;
+    }
+  }
 
   async function loesche(s: Sammlung) {
     const ja = await frage({
@@ -31,6 +59,7 @@
 
 <Karte titel="Sammlungen" symbol="layer-group" id="sammlungen">
   {#snippet neben()}<Knopf text="Neue Sammlung" symbol="plus" klein onclick={() => (offen = "neu")} />{/snippet}
+  <label class="reihe grenzfeld">Sammlung als ein Eintrag ab <input class="eingabe" type="number" min={GRENZE_AB} max={GRENZE_BIS} step="1" disabled={grenze === null} bind:value={grenze} onchange={() => void speichereGrenze()} /> Büchern</label>
   <div class="verwaltung">
     {#each bestand.sammlungen as s (s.id)}
       <div class="stelle regalzeile">

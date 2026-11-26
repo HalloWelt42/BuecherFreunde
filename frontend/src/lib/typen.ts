@@ -108,14 +108,72 @@ export interface BuchEinzeln extends Buch {
   authors: AutorKurz[];
 }
 
+/** Eine große Sammlung als ein Eintrag der Bibliothek (BF-66) */
+export interface Sammlungseintrag {
+  id: number;
+  name: string;
+  /** Bücher der Sammlung */
+  anzahl: number;
+  autor: string;
+  /** Bis drei Bücher für den Stapel, das vorderste zuerst */
+  umschlaege: Buch[];
+}
+
+/** Ein Eintrag der Bibliothek: ein Buch oder eine zusammengefasste Sammlung */
+export type Eintrag = { art: "buch"; buch: Buch } | { art: "sammlung"; sammlung: Sammlungseintrag };
+
 export interface BuchListe {
+  /** Mit zusammenfassen nur die einzeln gezeigten Bücher */
   buecher: Buch[];
+  /** Bücher, auch die in zusammengefassten Sammlungen */
   gesamt: number;
   seite: number;
   pro_seite: number;
   seiten_gesamt: number;
   /** Nur mit Schnellfilter: wie viele es ohne ihn wären */
   gesamt_ohne_suche?: number | null;
+  /** Nur mit zusammenfassen (BF-66): Bücher und Sammlungen in Anzeigereihenfolge */
+  eintraege?: Eintrag[];
+  /** Nur mit zusammenfassen: Einträge insgesamt, danach wird geblättert */
+  gesamt_eintraege?: number;
+  /** Nur mit zusammenfassen: Bücher in den zusammengefassten Sammlungen */
+  in_sammlungen?: number;
+  /** Nur mit zusammenfassen: wie viele Sammlungen als ein Eintrag stehen */
+  sammlungen_zusammengefasst?: number;
+}
+
+/** GET/PUT /api/collections/einstellungen */
+export interface Sammlungseinstellungen {
+  /** Ab so vielen Büchern steht eine Sammlung als ein Eintrag in der Liste */
+  als_eintrag_ab: number;
+}
+
+/** Ein Buch eines Vorschlags mit der Bandnummer, die der Fund ihm gibt */
+export interface Vorschlagsbuch extends Buch {
+  /** Leer ohne Nummer */
+  band: string;
+}
+
+/** Eine gefundene Reihe, die noch keine Sammlung ist (GET /api/collections/vorschlaege) */
+export interface Sammlungsvorschlag {
+  id: number;
+  name: string;
+  autor: string;
+  anzahl: number;
+  /** Fundwege der Regeln, etwa "Reihenname mit Nummer" */
+  wege: string[];
+  /** Was die lokale KI dazu sagt; leer ohne KI */
+  ki: string;
+  buecher: Vorschlagsbuch[];
+}
+
+/** Stand des Suchlaufs (GET /api/collections/vorschlaege/stand) */
+export interface Vorschlagsstand {
+  laeuft: boolean;
+  schritt: string;
+  gefunden: number;
+  /** Warum der Lauf nicht oder nur halb ging; leer sonst */
+  grund: string;
 }
 
 export interface Zahlen {

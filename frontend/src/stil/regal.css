@@ -34,6 +34,16 @@
 .schnell button[aria-pressed="true"] { color: #ffd27a; }
 .regal.gross .schnell { bottom: 13.25rem; }
 .regal.nur .schnell { display: none; }
+/* Sammlung als ein Band (BF-66): gestapelte Umschläge, Anzahl oben rechts, auf dem Schild "Sammlung" */
+.umschlagstapel { position: relative; display: block; width: 100%; }
+.umschlagstapel > .umschlag { position: relative; z-index: 3; }
+.umschlagstapel > .umschlag.hinten { position: absolute; inset: 0; z-index: 1; transform: translate(9px, -9px) rotate(2.5deg); opacity: .9; }
+.umschlagstapel > .umschlag.mitte { position: absolute; inset: 0; z-index: 2; transform: translate(4.5px, -4.5px) rotate(1.2deg); }
+.umschlagstapel > .umschlag:is(.hinten, .mitte) :is(img, svg) { height: 100%; max-height: none; }
+.umschlagstapel .anzahl { position: absolute; z-index: 4; right: -4px; top: -10px; min-width: 2rem; height: 1.625rem; padding: 0 .5rem; display: grid; place-items: center; border-radius: 999px; background: var(--messing-flaeche); color: var(--auf-messing); font-size: .8125rem; font-weight: 700; box-shadow: 0 2px 6px rgb(0 0 0 / .3); }
+.band .sammlungszeile { display: flex; align-items: center; gap: .375rem; color: var(--messing); font-size: .75rem; font-weight: 600; }
+/* Im eigenen Regal einer Sammlung steht über dem Titel der Band */
+.bandnr { font-size: .75rem; font-variant-numeric: tabular-nums; }
 /* Listen */
 .zeile { color: inherit; text-decoration: none; display: grid; grid-template-columns: 2.5rem minmax(0, 2.4fr) minmax(0, 1.3fr) 4rem 5rem 5.5rem 4rem; gap: .75rem; align-items: center; width: 100%; padding: .3125rem .5rem; border-radius: var(--r2); font-size: .9375rem; text-align: left; position: relative; }
 .zeile:nth-child(even) { background: var(--streifen); }
@@ -45,6 +55,11 @@
 .zeile.kopfzeile button { font-weight: 600; color: inherit; }
 .zeile.kopfzeile button:hover { color: var(--tinte); }
 .zeile .haken { left: -.25rem; top: -.25rem; width: 1.375rem; height: 1.375rem; font-size: .75rem; }
+/* Der Stapel einer Sammlung in den Listen: klein versetzt, die Anzahl knapp */
+.zeile .umschlagstapel > .umschlag.hinten { transform: translate(4px, -4px) rotate(2.5deg); }
+.zeile .umschlagstapel > .umschlag.mitte { transform: translate(2px, -2px) rotate(1.2deg); }
+.zeile .umschlagstapel .anzahl { right: -.5rem; top: -.375rem; min-width: 1.5rem; height: 1.25rem; padding: 0 .3125rem; font-size: .75rem; }
+.zeile .sammlungszeichen { color: var(--messing); }
 .zeile[aria-current="true"], .zeile[aria-pressed="true"] { background: var(--messing-hauch); }
 .zeile.mehr { grid-template-columns: 4.25rem minmax(0, 1fr) auto; align-items: start; padding: .625rem .5rem; }
 .zeile.mehr > * { white-space: normal; overflow: visible; }

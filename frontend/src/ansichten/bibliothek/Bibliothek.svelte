@@ -20,7 +20,7 @@
   import Werkzeugzeile from "./Werkzeugzeile.svelte";
 
   let art = $derived(regalansicht.art);
-  let leer = $derived(buecher.geladen && !buecher.laedt && !buecher.fehler && !buecher.liste.length);
+  let leer = $derived(buecher.geladen && !buecher.laedt && !buecher.fehler && !buecher.eintraege.length);
   let wort = $derived(filter.wert("q"));
 
   // Andere Filter: Liste von vorn. Beim Zurückkommen steht dieselbe Liste schon da und wird nur aufgefrischt.
@@ -57,12 +57,12 @@
     <Zustand text="Kein Buch passt zu diesen Filtern."><Knopf text="Filter aufheben" symbol="xmark" klein onclick={() => filter.leere()} /></Zustand>
   {:else if leer}
     <Zustand text="Die Bibliothek ist noch leer."><Knopf text="Bücher hinzufügen" symbol="plus" klein haupt href="/import" /></Zustand>
-  {:else if !buecher.liste.length}
+  {:else if !buecher.eintraege.length}
     <Zustand art="laedt" text="Bücher werden geladen" />
   {/if}
 
-  {#if buecher.liste.length}
-    {#if art === "list"}<Liste liste={buecher.liste} />{:else if art === "detail-list"}<Detailliste liste={buecher.liste} />{:else}<Regal liste={buecher.liste} {art} />{/if}
-    <Nachlader geladen={buecher.liste.length} gesamt={buecher.gesamt} laedt={buecher.laedt} onmehr={() => void buecher.mehr()} />
+  {#if buecher.eintraege.length}
+    {#if art === "list"}<Liste eintraege={buecher.eintraege} />{:else if art === "detail-list"}<Detailliste eintraege={buecher.eintraege} />{:else}<Regal eintraege={buecher.eintraege} {art} />{/if}
+    <Nachlader geladen={buecher.eintraege.length} gesamt={buecher.gesamtEintraege} laedt={buecher.laedt} onmehr={() => void buecher.mehr()} />
   {/if}
 </div>

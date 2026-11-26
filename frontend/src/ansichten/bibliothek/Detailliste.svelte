@@ -6,14 +6,17 @@
   import Sterne from "../../lib/teile/Sterne.svelte";
   import Symbol from "../../lib/teile/Symbol.svelte";
   import Umschlag from "../../lib/teile/Umschlag.svelte";
-  import type { Buch } from "../../lib/typen";
+  import { eintragsschluessel } from "../../lib/stand/eintraege";
+  import type { Buch, Eintrag, Sammlungseintrag } from "../../lib/typen";
   import Grossbild from "./Grossbild.svelte";
+  import { baende, sammlungshinweis, sammlungsweg } from "./sammlungseintrag";
+  import Stapel from "./Stapel.svelte";
   import { beimKlick } from "./oeffnen";
   import { kontext } from "../../lib/stand/kontextmenue.svelte";
   import { buchmenue } from "./buchmenue";
   import { ziehauswahl } from "./ziehauswahl";
 
-  let { liste }: { liste: Buch[] } = $props();
+  let { eintraege }: { eintraege: Eintrag[] } = $props();
   let gross = $state<{ buch: Buch; an: HTMLElement } | null>(null);
 
   function angaben(b: Buch): string {
@@ -32,11 +35,23 @@
   <span class="zeichen-rechts"><Sterne wert={buch.rating} /> {#if buch.is_favorite}<Symbol name="heart" />{/if} {#if buch.is_to_read}<Symbol name="couch" />{/if}</span>
 {/snippet}
 
+<!-- Eine Sammlung ist kein Buch (BF-66): eine Zeile zum Öffnen, auch im Bearbeitungsmodus nicht anhakbar -->
+{#snippet sammlungszeile(s: Sammlungseintrag)}
+  <a class="zeile mehr" data-sammlung={s.id} href={sammlungsweg(s.id)} title={sammlungshinweis(s)} draggable="false">
+    <span class="bild"><Stapel sammlung={s} /></span>
+    <span class="text"><b>{s.name}</b><br />{s.autor}<br /><span class="leise">Sammlung, {baende(s.anzahl)}</span></span>
+    <span class="zeichen-rechts"></span>
+  </a>
+{/snippet}
+
 <div use:ziehauswahl={{ an: auswahl.bearbeiten, art: "zeilen" }}>
-  {#each liste as buch (buch.id)}
-    {#if auswahl.bearbeiten}
+  {#each eintraege as eintrag (eintragsschluessel(eintrag))}
+    {#if eintrag.art === "sammlung"}{@render sammlungszeile(eintrag.sammlung)}
+    {:else if auswahl.bearbeiten}
+      {@const buch = eintrag.buch}
       <button type="button" class="zeile mehr" data-buch={buch.id} use:kontext={buchmenue(buch)} aria-pressed={auswahl.hat(buch.id)} onclick={() => auswahl.schalte(buch.id)}>{@render inhalt(buch)}</button>
     {:else}
+      {@const buch = eintrag.buch}
       <a class="zeile mehr" data-buch={buch.id} use:kontext={buchmenue(buch)} href="/book/{buch.id}" aria-current={wahl.buch?.id === buch.id ? "true" : undefined} draggable="false" onclick={(e) => beimKlick(e, buch)}>{@render inhalt(buch)}</a>
     {/if}
   {/each}

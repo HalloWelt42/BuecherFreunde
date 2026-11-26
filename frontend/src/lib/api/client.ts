@@ -218,6 +218,17 @@ export async function patch<T = any>(path: string, body?: unknown): Promise<T> {
 }
 
 /**
+ * PUT-Request mit JSON-Body: ersetzt einen Wert ganz.
+ */
+export async function put<T = any>(path: string, body?: unknown): Promise<T> {
+  const response = await anfrage(path, {
+    method: "PUT",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  return response.json();
+}
+
+/**
  * DELETE-Request.
  */
 export async function del<T = any>(path: string): Promise<T> {

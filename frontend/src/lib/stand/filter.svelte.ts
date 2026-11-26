@@ -20,6 +20,8 @@ class Filter {
     return aus;
   });
 
+  /** Welche Filter gesetzt sind, der Schnellfilter q eingeschlossen */
+  schluessel = $derived([...this.#werte.keys()]);
   /** Ist ein Filter der Ansicht gesetzt? Der Schnellfilter zählt nicht mit, er grenzt die Ansicht nur ein */
   aktiv = $derived([...this.#werte.keys()].some((k) => k !== "q"));
   /** Adressteil ohne Fragezeichen, stabil sortiert: ändert er sich, lädt die Liste neu */

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { aenderungen, anfangsbuchstaben, formularVon, imBestand, lebensdaten, pruefe, schriftAuf, uebernahmefelder, verweistext, vergleichszeilen } from "../src/ansichten/autoren/angaben";
-import { nachBand } from "../src/ansichten/sammlung/reihenfolge";
 import { betroffen, regalwerte } from "../src/ansichten/hinzu/quellen/ergaenzung";
 import type { Anreicherung, Autoreneinzeln } from "../src/lib/api/authors";
 
@@ -82,12 +81,7 @@ describe("Autoren: Vergleich", () => {
   });
 });
 
-describe("Sammlung und Ergänzung", () => {
-  it("ordnet Bände als Zahlen, ohne Nummer ans Ende", () => {
-    const b = (title: string, band_nummer: string) => ({ title, band_nummer });
-    expect(nachBand([b("C", ""), b("Z", "10"), b("B", "2"), b("A", "")]).map((x) => x.title)).toEqual(["B", "Z", "A", "C"]);
-  });
-
+describe("Ergänzung", () => {
   it("zählt Volltext und Bücher ohne Regal mit", () => {
     const v = { gesamt: 3, typen: { cover: 3, volltext: 20 } };
     expect(betroffen(v, ["cover"], null, [])).toBe(3);

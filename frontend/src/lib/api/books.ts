@@ -23,7 +23,10 @@ export const aehnlicheBuecher = (id: number): Promise<{ vom_autor: Buch[]; in_ka
 export const loeschfolgen = (id: number): Promise<Loeschfolgen> => get(`/api/books/${id}/loeschfolgen`);
 export const loescheBuch = (id: number): Promise<{ geloescht: boolean; id: number }> => del(`/api/books/${id}`);
 export const aktualisiereBuch = (id: number, daten: Record<string, unknown>): Promise<BuchEinzeln> => patch(`/api/books/${id}`, daten);
-export const bulkAction = (buecher: number[], aktion: string, wert: unknown): Promise<{ betroffen: number }> => post("/api/books/bulk", { book_ids: buecher, aktion, wert });
+/** Was POST /api/books/bulk mit mehreren Büchern tut; wert ist je nach Aktion Regal, Sammlung, Art oder ein Schalter */
+export type Sammelaktion = "loeschen" | "favorit" | "zu_lesen" | "typ_setzen" | "kategorie_zuweisen" | "kategorie_entfernen" | "sammlung_zuweisen" | "sammlung_entfernen";
+
+export const bulkAction = (buecher: number[], aktion: Sammelaktion, wert: unknown): Promise<{ betroffen: number }> => post("/api/books/bulk", { book_ids: buecher, aktion, wert });
 export const umschlagNeu = (id: number): Promise<any> => post(`/api/books/${id}/cover/neu-extrahieren`);
 export const isbnScan = (id: number): Promise<any> => post(`/api/books/${id}/isbn-scan`);
 export const textSeiten = (id: number, ab: number, anzahl: number): Promise<any> => get(`/api/books/${id}/textseiten`, { ab, anzahl });

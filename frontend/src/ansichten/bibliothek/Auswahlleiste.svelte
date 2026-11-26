@@ -1,6 +1,6 @@
 <script lang="ts">
   // Stapelaktionen für die gewählten Bücher
-  import { bulkAction } from "../../lib/api/books";
+  import { bulkAction, type Sammelaktion } from "../../lib/api/books";
   import { beiEsc, schreibtGerade } from "../../lib/flucht";
   import { anzahl } from "../../lib/format";
   import { auswahl } from "../../lib/stand/auswahl.svelte";
@@ -26,7 +26,7 @@
     if (!leer) return beiEsc(() => auswahl.leere());
   });
 
-  async function tun(aktion: string, wert: unknown, text: string) {
+  async function tun(aktion: Sammelaktion, wert: unknown, text: string) {
     laeuft = true;
     try {
       await bulkAction(auswahl.ids, aktion, wert);

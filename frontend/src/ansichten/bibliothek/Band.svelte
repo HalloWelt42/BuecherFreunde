@@ -13,13 +13,23 @@
   import { beimKlick } from "./oeffnen";
   import { kontext } from "../../lib/stand/kontextmenue.svelte";
   import { buchmenue } from "./buchmenue";
+  import { bandText, kurztitel } from "../sammlung/angaben";
 
-  let { buch, gross = false, ongross = undefined }: { buch: Buch; gross?: boolean; ongross?: (buch: Buch | null, an?: HTMLElement) => void } = $props();
+  interface Eigenschaften {
+    buch: Buch;
+    gross?: boolean;
+    ongross?: (buch: Buch | null, an?: HTMLElement) => void;
+    /** Im eigenen Regal einer Sammlung (BF-66): Name und Kopf der Reihe; das Schild zeigt dann "Band N" und den Titel ohne sie */
+    reihe?: string[];
+  }
+  let { buch, gross = false, ongross = undefined, reihe = undefined }: Eigenschaften = $props();
 
   let stand = $derived(lesestand(buch));
   let gewaehlt = $derived(auswahl.bearbeiten ? auswahl.hat(buch.id) : wahl.buch?.id === buch.id);
   let einzelheiten = $derived([buch.year, buch.page_count ? `${zahl(buch.page_count)} Seiten` : "", groesse(buch.file_size)].filter(Boolean).join(", "));
   let regale = $derived(buch.categories.slice(0, 2).map((c) => c.name).join(", ") + (buch.categories.length > 2 ? `, ${buch.categories.length - 2} weitere` : ""));
+  let band = $derived(reihe === undefined ? "" : bandText(buch.band_nummer));
+  let titel = $derived(reihe === undefined ? buch.title : kurztitel(buch.title, reihe, buch.band_nummer));
   let hinweis = $derived([buch.title, buch.author, einzelheiten, regale, buch.isbn ? `ISBN ${buch.isbn}` : ""].filter(Boolean).join("\n"));
 </script>
 
@@ -27,8 +37,14 @@
   <span class="stand"><Umschlag {buch} /></span>
   <span class="boden"></span>
   <span class="schild">
-    <b>{buch.title}</b>
-    <span class="wer"><span>{buch.author}</span><span>{formatName(buch.file_format)}</span></span>
+    {#if reihe === undefined}
+      <b>{buch.title}</b>
+      <span class="wer"><span>{buch.author}</span><span>{formatName(buch.file_format)}</span></span>
+    {:else}
+      {#if band}<span class="bandnr">{band}</span>{/if}
+      <b>{titel}</b>
+      <span class="wer"><span>{buch.author}</span></span>
+    {/if}
     {#if gross}
       <span class="mehr">
         <span class="reihe eng"><Sterne wert={buch.rating} />{#if buch.is_favorite}<Symbol name="heart" />{/if}{#if buch.is_to_read}<Symbol name="couch" />{/if}</span>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { anzahl, vonGesamt } from "../../lib/format";
+  import { vonGesamt } from "../../lib/format";
   import Schnellfilterchip from "../../lib/schale/Schnellfilterchip.svelte";
   import Suchfeld from "../../lib/schale/Suchfeld.svelte";
   import { auswahl } from "../../lib/stand/auswahl.svelte";
@@ -16,6 +16,7 @@
   import { regalfilter } from "./schnellfilter";
   import { schale } from "../../lib/stand/schale.svelte";
   import { titelDerFilter } from "./titel";
+  import { zahlzeile } from "./sammlungseintrag";
 
   let filterOffen = $state(false);
   let filterKnopf = $state<HTMLElement | null>(null);
@@ -23,6 +24,8 @@
   const texte = ["txt", "md"];
   let mitText = $derived(texte.every((f) => filter.hat("file_format", f)));
   // Was im Feld "Mehr Filter" gesetzt ist, zählt am Knopf mit
+  // Ein einzelnes Regal lässt sich von Hand füllen (BF-67)
+  let regal = $derived(filter.werte("category").length === 1 ? filter.werte("category")[0] : "");
   let weitere = $derived(filter.werte("category").length + (["sammlung", "min_rating", "hat_labels", "hat_highlights"].filter((k) => filter.wert(k)).length) + (filter.hat("file_format", "mobi") ? 1 : 0));
 
   function schalteText() {
@@ -41,7 +44,7 @@
 <div class="werkzeug">
   <Suchfeld id="suchfeld-m" klasse="suchfeld-mobil" />
   <h1>{titelDerFilter()}</h1>
-  <span class="leise zahl">{!buecher.geladen ? "" : filter.wert("q") ? vonGesamt(buecher.gesamt, buecher.ohneSuche) : anzahl(buecher.gesamt, "Buch", "Bücher")}</span>
+  <span class="leise zahl">{!buecher.geladen ? "" : filter.wert("q") ? vonGesamt(buecher.gesamt, buecher.ohneSuche) : zahlzeile(buecher.gesamt, buecher.inSammlungen, buecher.sammlungen)}</span>
   <!-- Am Telefon (BF-68): Formate als kurze Wörter, Favoriten, Lesesofa, Mehr und Bearbeiten als Zeichen, alles in einer Rasterzeile -->
   <span class="filter reihe" class:raster={schale.telefon}>
     {#if !schale.telefon}<Schnellfilterchip ziel={regalfilter} />{/if}
@@ -52,7 +55,7 @@
     <Chip text="Lesesofa" symbol="couch" nur={schale.telefon} gedrueckt={filter.hat("is_to_read", "true")} onclick={() => filter.schalte("is_to_read", "true")} />
     {#if schale.telefon}
       {@render mehr()}{@render bearbeiten()}
-      <span class="zusatz reihe"><Schnellfilterchip ziel={regalfilter} />{#if filter.aktiv}<Chip text="Filter aufheben" symbol="xmark" onclick={() => filter.leere()} />{/if}</span>
+      <span class="zusatz reihe"><Schnellfilterchip ziel={regalfilter} />{#if regal}<Chip text="Zuordnen" symbol="right-left" href="/zuordnen/regal/{regal}" />{/if}{#if filter.aktiv}<Chip text="Filter aufheben" symbol="xmark" onclick={() => filter.leere()} />{/if}</span>
     {:else if filter.aktiv}<Chip text="Filter aufheben" symbol="xmark" onclick={() => filter.leere()} />{/if}
   </span>
   {#if !schale.telefon}{@render mehr()}{/if}
@@ -62,6 +65,7 @@
       <Knopf text={buecher.richtung === "asc" ? "Aufsteigend, umdrehen" : "Absteigend, umdrehen"} symbol={buecher.richtung === "asc" ? "arrow-up-short-wide" : "arrow-down-wide-short"} nur klein onclick={() => buecher.dreheRichtung()} />
     </span>
     <Segment name="Ansicht" nurSymbole werte={regalarten} wert={regalansicht.art} onwahl={(w) => (regalansicht.art = w)} />
+    {#if !schale.telefon && regal}<Knopf text="Zuordnen" symbol="right-left" klein href="/zuordnen/regal/{regal}" />{/if}
     {#if !schale.telefon}{@render bearbeiten()}{/if}
   </span>
   {#if auswahl.bearbeiten}<Auswahlleiste />{/if}

@@ -94,6 +94,8 @@
   .meldungen { bottom: 4.75rem; }
   .auswahl select, .auswahl.klein select, .eingabe, .feld input:not([type="checkbox"]), .feld textarea { font-size: 1rem; min-height: 2.75rem; }
   .haekchen { min-height: 2.75rem; }
+  .vorschlagsstufen { grid-template-columns: minmax(0, 1fr); }
+  .zuordnungszeile { min-height: 2.75rem; }
   .buehne .suchfeld-mobil { display: flex; }
 }
 /* Sehr große Schrift am Telefon: das Zeichen trägt allein */

@@ -58,3 +58,19 @@
 .ueber-app { display: grid; grid-template-columns: 3.5rem minmax(0, 1fr); gap: .875rem; align-items: start; }
 .ueber-app .symbol svg { display: block; width: 100%; height: auto; }
 .ueber-app > div { display: grid; gap: .5rem; }
+/* Sammlungen (BF-66): Grenze für den Eintrag in der Bibliothek, Vorschläge mit Fundwegen und Umschlägen */
+.grenzfeld { font-size: .9375rem; }
+.grenzfeld .eingabe { width: 5.5rem; }
+.vorschlaege { display: grid; gap: .75rem; }
+.vorschlag { display: grid; gap: .625rem; padding: .875rem 1rem; }
+.vorschlag .kopf { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+.vorschlag .kopf b { font-size: 1.0625rem; }
+.vorschlag .wege { display: flex; flex-wrap: wrap; gap: .375rem; }
+.vorschlagsumschlaege { display: grid; grid-template-columns: repeat(10, minmax(0, 3.25rem)); gap: .375rem; }
+.vorschlagsumschlaege .umschlag { border-radius: 2px; aspect-ratio: 2 / 3; }
+.vorschlagsumschlaege .umschlag :is(img, svg) { height: 100%; max-height: none; }
+.vorschlagsrest { display: grid; place-items: center; aspect-ratio: 2 / 3; border-radius: 2px; background: var(--vertieft); font-weight: 600; font-size: .875rem; box-shadow: inset 0 0 0 1px var(--linie); }
+.vorschlagsstufen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; max-width: 60rem; }
+.vorschlagsstufen > div { padding: .625rem .75rem; display: grid; gap: .25rem; align-content: start; }
+.vorschlagsstufen b { font-size: .875rem; }
+.vorschlagsstufen span { font-size: .8125rem; }
