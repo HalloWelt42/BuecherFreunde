@@ -46,6 +46,7 @@ from backend.app.services import bedeutung, gespraech, nachschlagen, pflege
 from backend.app.services.ausfuehren import sandbox
 from backend.app.services.einordnung import einordner
 from backend.app.services.ki import ki
+from backend.app.services.sammlungsfinder import sammlungsfinder
 from backend.app.services.umschlagpruefung import umschlagpruefung
 
 logger = logging.getLogger("buecherfreunde")
@@ -99,6 +100,7 @@ async def lifespan(app: FastAPI):
     await annahme.stoppen()
     await vorpruefer.stoppen()
     await einordner.stoppen()
+    await sammlungsfinder.stoppen()
     await umschlagpruefung.stoppen()
     await codestellen.stoppen()
     await sandbox.schliessen()

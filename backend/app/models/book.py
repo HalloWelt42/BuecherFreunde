@@ -184,13 +184,41 @@ class BookUpdate(BaseModel):
     band_nummer: Band | None = None
 
 
+class Sammlungsstapel(BaseModel):
+    """Eine Sammlung als ein Eintrag der Liste (BF-66), gezählt unter dem Filter."""
+
+    id: int
+    name: str
+    anzahl: int                                     # ihre Bücher unter dem Filter
+    autor: str                                      # ihr häufigster Autor
+    umschlaege: list[BookListItem]                  # die ersten Bücher nach Band, für den Stapel
+
+
+class BuchEintrag(BaseModel):
+    art: Literal["buch"] = "buch"
+    buch: BookListItem
+
+
+class SammlungsEintrag(BaseModel):
+    art: Literal["sammlung"] = "sammlung"
+    sammlung: Sammlungsstapel
+
+
+Listeneintrag = Annotated[BuchEintrag | SammlungsEintrag, Field(discriminator="art")]
+
+
 class BookListResponse(BaseModel):
     """Paginierte Buchliste."""
 
-    buecher: list[BookListItem]
-    gesamt: int
+    buecher: list[BookListItem]                     # zusammengefasst: nur die einzeln gezeigten Bücher der Seite
+    gesamt: int                                     # Bücher unter dem Filter, auch zusammengefasst
     seite: int
     pro_seite: int
-    seiten_gesamt: int
+    seiten_gesamt: int                              # zusammengefasst: Seiten der Einträge
     # Nur mit Schnellfilter: wie viele die Liste ohne ihn hätte
     gesamt_ohne_suche: int | None = None
+    # Nur mit zusammenfassen=true (BF-66): die Seite in Anzeigereihenfolge und ihre Zahlen
+    eintraege: list[Listeneintrag] | None = None
+    gesamt_eintraege: int | None = None             # Einträge unter dem Filter, für das Blättern
+    in_sammlungen: int | None = None                # Bücher in zusammengefassten Sammlungen
+    sammlungen_zusammengefasst: int | None = None

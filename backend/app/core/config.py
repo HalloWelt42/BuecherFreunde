@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     einordnen_an: bool = True                                    # Art und Gattung schlichter Bücher von der lokalen KI vorschlagen lassen
     einordnen_takt_s: float = Field(default=600, gt=0)          # so oft sieht das Einordnen von selbst nach offenen Büchern
     einordnen_abstand_s: float = Field(default=20, ge=0)        # Pause zwischen zwei Anfragen an die KI
+    # Sammlungen finden (BF-66): Reihen aus Titeln und Dateinamen, geprüft von der lokalen KI
+    sammlung_vorschlag_ab: int = Field(default=3, ge=2)          # ab so vielen Büchern einer Reihe ein Vorschlag
+    sammlungen_finden_abstand_s: float = Field(default=5, ge=0)  # Pause zwischen zwei Anfragen an die KI
 
     # Quellen für Angaben zu Büchern und Autoren (backend/app/quellen), jede freiwillig und ohne Schlüssel.
     # Google Books antwortet seit 2026 nur noch mit eigenem Schlüssel

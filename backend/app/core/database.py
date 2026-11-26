@@ -356,6 +356,25 @@ CREATE TABLE IF NOT EXISTS vorlesestelle (          -- wo das Vorlesen je Buch s
     ort TEXT NOT NULL DEFAULT '',                    -- wie die Stelle heißt, etwa "Seite 12"
     gemerkt_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
+CREATE TABLE IF NOT EXISTS sammlung_vorschlag (      -- gefundene Reihen (services/sammlungsfinder.py, BF-66)
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    schluessel TEXT NOT NULL UNIQUE,                 -- die Schlüssel der Regelfunde (Reihe|Autor, normiert), je Zeile einer
+    name TEXT NOT NULL,
+    autor TEXT NOT NULL DEFAULT '',
+    wege TEXT NOT NULL DEFAULT '[]',                 -- JSON: wie die Reihe gefunden wurde, kurze deutsche Sätze
+    ki TEXT NOT NULL DEFAULT '',                     -- Satz der KI, oder warum sie nicht geprüft hat
+    ki_geprueft INTEGER NOT NULL DEFAULT 0,
+    stand TEXT NOT NULL DEFAULT 'offen',             -- offen, angelegt, verworfen; angelegt und verworfen kommen nie wieder
+    sammlung_id INTEGER DEFAULT NULL REFERENCES collections(id) ON DELETE SET NULL,
+    gefunden_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    geaendert_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+CREATE TABLE IF NOT EXISTS sammlung_vorschlag_buch ( -- die Bücher eines Vorschlags mit erkannter Bandnummer
+    vorschlag_id INTEGER NOT NULL REFERENCES sammlung_vorschlag(id) ON DELETE CASCADE,
+    buch_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    band TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (vorschlag_id, buch_id)
+);
 CREATE INDEX IF NOT EXISTS idx_aufnahme_stand ON aufnahme(stand);
 CREATE INDEX IF NOT EXISTS idx_aufnahme_sha ON aufnahme(sha256);
 """

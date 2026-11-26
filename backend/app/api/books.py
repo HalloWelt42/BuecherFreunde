@@ -18,7 +18,8 @@ from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.api import vorhanden
 from backend.app.models.book import (
-    DARSTELLUNG, FELDER_DER_EINORDNUNG, VON_HAND, BookListResponse, BookListItem, BookResponse, BookUpdate, typ_pruefen,
+    DARSTELLUNG, FELDER_DER_EINORDNUNG, VON_HAND, BookListResponse, BookListItem, BookResponse, BookUpdate, BuchEintrag,
+    Listeneintrag, SammlungsEintrag, Sammlungsstapel, typ_pruefen,
 )
 from backend.app.models.textansicht import TextBaustein, TextSeite, TextSeitenAntwort
 from backend.app.services.textansicht import Baustein, Codeteil, abbildung_png, seiten_lesen
@@ -27,7 +28,7 @@ import fitz
 from backend.app.codestellen.dienst import codestellen
 from backend.app.ablage.antwort import FEHLT, original_antwort
 from backend.app.annahme.eintragen import autoren_verknuepfen
-from backend.app.services import buch_loeschen, buchsuche, deckblatt, schnellfilter
+from backend.app.services import buch_loeschen, buchliste, buchsuche, deckblatt, sammlungen, schnellfilter
 from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover, save_fulltext
 from backend.app.models.grenzen import AUSWAHL_HOECHSTENS, GROESSTE_ZAHL, JAHR_BIS, LEBENSJAHR_AB, LISTENSEITE, SEITEN_HOECHSTENS, Index, Nr
 
@@ -38,7 +39,7 @@ LISTENSPALTEN = ("id", "hash", "title", "author", "publisher", "file_format", "f
                  "typ", "gattung", "umschlag_wahl", "umschlag_schlicht", "sammlung_id", "band_nummer", "created_at", "updated_at")
 
 
-def _listenspalten(tabelle: str = "b") -> str:
+def listenspalten(tabelle: str = "b") -> str:
     return ", ".join(f"{tabelle}.{s}" for s in LISTENSPALTEN)
 
 
@@ -114,8 +115,8 @@ async def _enrich_book_list_item(book: dict) -> BookListItem:
     )
 
 
-async def _batch_enrich_book_list(rows: list[dict]) -> list[BookListItem]:
-    """Reichert eine Liste von Buechern per Batch-Queries an (statt N+1)."""
+async def listenbuecher(rows: list[dict]) -> list[BookListItem]:
+    """Buchzeilen als Listeneinträge, die Relationen je Art in einer Abfrage für alle (statt N+1)."""
     if not rows:
         return []
 
@@ -199,8 +200,9 @@ async def list_books(
     jahr_von: int | None = Query(None, ge=LEBENSJAHR_AB, le=JAHR_BIS, description="Erscheinungsjahr ab"),
     jahr_bis: int | None = Query(None, ge=LEBENSJAHR_AB, le=JAHR_BIS, description="Erscheinungsjahr bis"),
     suche: str | None = Query(None, description="Schnellfilter: jedes Wort in Titel, Autor, ISBN oder Etikett"),
-    sortierung: str = Query("titel", description="Sortierung: titel, autor, datum, bewertung, größe, jahr, verlag"),
+    sortierung: str = Query("titel", description="Sortierung: titel, autor, datum, bewertung, groesse, jahr, verlag, band"),
     richtung: str = Query("asc", description="Sortierrichtung: asc, desc"),
+    zusammenfassen: bool = Query(False, description="Große Sammlungen als ein Eintrag (BF-66)"),
 ):
     """Listet Bücher paginiert und filterbar auf. Jeder Schalter filtert in beide Richtungen: true nur die mit, false nur
     die ohne."""
@@ -295,19 +297,9 @@ async def list_books(
         where = f"{where} AND {filter_sql}"
         params.extend(filter_werte)
 
-    # Sortierung
-    sort_map = {
-        "titel": "b.title COLLATE NOCASE",
-        "autor": "b.author COLLATE NOCASE",
-        "datum": "b.created_at",
-        "groesse": "b.file_size",
-        "jahr": "b.year",
-        "verlag": "b.publisher COLLATE NOCASE",
-        "bewertung": "COALESCE(ud_sort.rating, 0)",
-    }
-    sort_col = sort_map.get(sortierung, sort_map["titel"])
-    sort_dir = "DESC" if richtung.lower() == "desc" else "ASC"
-    needs_ud_join = sortierung == "bewertung"
+    o = buchliste.ordnung(sortierung, richtung)
+    if zusammenfassen:
+        return await _zusammengefasst(where, tuple(params), o, seite, pro_seite, gesamt_ohne_suche)
 
     # Gesamt zählen
     count_sql = f"SELECT COUNT(*) as total FROM books b WHERE {where}"
@@ -316,18 +308,17 @@ async def list_books(
 
     # Seite abfragen
     offset = (seite - 1) * pro_seite
-    ud_join = "LEFT JOIN user_book_data ud_sort ON ud_sort.book_id = b.id" if needs_ud_join else ""
     select_sql = f"""
-        SELECT {_listenspalten()}
+        SELECT {listenspalten()}
         FROM books b
-        {ud_join}
+        {o.verbindung}
         WHERE {where}
-        ORDER BY {sort_col} {sort_dir}, b.title COLLATE NOCASE, b.id
+        ORDER BY {o.sql()}
         LIMIT ? OFFSET ?
     """
     rows = await db.fetch_all(select_sql, tuple(params) + (pro_seite, offset))
 
-    buecher = await _batch_enrich_book_list(rows)
+    buecher = await listenbuecher(rows)
 
     return BookListResponse(
         buecher=buecher,
@@ -339,6 +330,48 @@ async def list_books(
     )
 
 
+async def buecher_mit_nummern(nummern: list[int]) -> dict[int, BookListItem]:
+    """Die Bücher mit diesen Nummern als Listeneinträge, je Nummer."""
+    if not nummern:
+        return {}
+    zeilen = await db.fetch_all(f"SELECT {listenspalten()} FROM books b WHERE b.id IN ({','.join('?' * len(nummern))})", tuple(nummern))
+    return {b.id: b for b in await listenbuecher(zeilen)}
+
+
+async def _stapel(where: str, werte: tuple, seite: list[buchliste.Eintrag]) -> dict[int, Sammlungsstapel]:
+    """Die Sammlungseinträge der Seite mit ihren ersten Umschlägen."""
+    eintraege = [e for e in seite if e.art == "sammlung"]
+    roh = await buchliste.stapel(where, werte, [e.nr for e in eintraege], listenspalten())
+    umschlaege = await listenbuecher([z for e in eintraege for z in roh.get(e.nr, [])])
+    return {e.nr: Sammlungsstapel(id=e.nr, name=e.name, anzahl=e.anzahl, autor=e.autor,
+                                  umschlaege=[b for b in umschlaege if b.sammlung_id == e.nr]) for e in eintraege}
+
+
+async def _zusammengefasst(where: str, werte: tuple, o: buchliste.Ordnung, seite: int, pro_seite: int,
+                           gesamt_ohne_suche: int | None) -> BookListResponse:
+    """Die Liste mit großen Sammlungen als je einem Eintrag (BF-66); `buecher` trägt nur die einzeln gezeigten."""
+    ab = await sammlungen.als_eintrag_ab()
+    zahlen = await buchliste.zahlen(where, werte, ab)
+    seite_ = await buchliste.eintraege(where, werte, o, ab, pro_seite, (seite - 1) * pro_seite)
+    einzeln = [e.nr for e in seite_ if e.art == "buch"]
+    buecher = await buecher_mit_nummern(einzeln)
+    stapel = await _stapel(where, werte, seite_)
+    eintraege: list[Listeneintrag] = [BuchEintrag(buch=buecher[e.nr]) if e.art == "buch" else SammlungsEintrag(sammlung=stapel[e.nr])
+                                      for e in seite_]
+    return BookListResponse(
+        buecher=[buecher[n] for n in einzeln],
+        eintraege=eintraege,
+        gesamt=zahlen.buecher,
+        gesamt_eintraege=zahlen.eintraege,
+        in_sammlungen=zahlen.in_sammlungen,
+        sammlungen_zusammengefasst=zahlen.sammlungen,
+        seite=seite,
+        pro_seite=pro_seite,
+        seiten_gesamt=math.ceil(zahlen.eintraege / pro_seite),
+        gesamt_ohne_suche=gesamt_ohne_suche,
+    )
+
+
 @router.get("/recently-read", response_model=list[BookListItem])
 async def recently_read(
     _token: str = Depends(verify_token),
@@ -346,7 +379,7 @@ async def recently_read(
 ):
     """Gibt die zuletzt gelesenen Bücher zurück."""
     sql = f"""
-        SELECT {_listenspalten()}
+        SELECT {listenspalten()}
         FROM books b
         JOIN user_book_data ud ON ud.book_id = b.id
         WHERE ud.last_read_at IS NOT NULL
@@ -354,7 +387,7 @@ async def recently_read(
         LIMIT ?
     """
     rows = await db.fetch_all(sql, (limit,))
-    return await _batch_enrich_book_list(rows)
+    return await listenbuecher(rows)
 
 
 @router.get("/{book_id}/aehnliche")
@@ -380,22 +413,22 @@ async def similar_books(
         placeholders = ",".join("?" for _ in author_ids)
         ids = [a["author_id"] for a in author_ids]
         rows = await db.fetch_all(
-            f"""SELECT DISTINCT {_listenspalten()}
+            f"""SELECT DISTINCT {listenspalten()}
                 FROM books b
                 JOIN book_authors ba ON ba.book_id = b.id
                 WHERE ba.author_id IN ({placeholders}) AND b.id != ?
                 ORDER BY b.title LIMIT ?""",
             (*ids, book_id, limit),
         )
-        result["vom_autor"] = await _batch_enrich_book_list(rows)
+        result["vom_autor"] = await listenbuecher(rows)
     elif book["author"]:
         rows = await db.fetch_all(
-            f"""SELECT {_listenspalten()}
+            f"""SELECT {listenspalten()}
                FROM books b WHERE b.author = ? AND b.id != ?
                ORDER BY b.title LIMIT ?""",
             (book["author"], book_id, limit),
         )
-        result["vom_autor"] = await _batch_enrich_book_list(rows)
+        result["vom_autor"] = await listenbuecher(rows)
 
     # Im selben Regal; "Ungeordnet" ist keins
     cat_ids = await db.fetch_all(
@@ -408,14 +441,14 @@ async def similar_books(
         placeholders = ",".join("?" for _ in regale)
         exclude_ph = ",".join("?" for _ in already)
         rows = await db.fetch_all(
-            f"""SELECT DISTINCT {_listenspalten()}
+            f"""SELECT DISTINCT {listenspalten()}
                 FROM books b
                 JOIN book_categories bc ON bc.book_id = b.id
                 WHERE bc.category_id IN ({placeholders}) AND b.id NOT IN ({exclude_ph})
                 ORDER BY b.title COLLATE NOCASE LIMIT ?""",
             (*regale, *already, limit),
         )
-        result["in_kategorie"] = await _batch_enrich_book_list(rows)
+        result["in_kategorie"] = await listenbuecher(rows)
 
     return result
 

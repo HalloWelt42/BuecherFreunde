@@ -52,6 +52,8 @@ SORTIERUNG = 1_000_000
 LISTENSEITE = 1_000_000                  # Seiten einer Liste (Blättern)
 VERSATZ = 100_000_000                    # Einträge überspringen
 AUSWAHL_HOECHSTENS = 10_000              # so viele Nummern in einer Anfrage (Sammelaktionen, Zuordnungen)
+SAMMLUNG_ALS_EINTRAG_AB = 2              # ab so vielen Büchern darf eine Sammlung in der Liste ein Eintrag sein (BF-66)
+SAMMLUNG_ALS_EINTRAG_BIS = 1000          # die größte Grenze, die man dafür einstellen kann
 
 
 def _bis_naechstes_jahr(jahr: int) -> int:
@@ -84,6 +86,7 @@ Lebensjahr = Annotated[int, Ge(LEBENSJAHR_AB), AfterValidator(_bis_naechstes_jah
 Seiten = Annotated[int, Ge(0), Le(SEITEN_HOECHSTENS)]
 Prozent = Annotated[float, Ge(0), Le(100)]
 Sortierung = Annotated[int, Ge(-SORTIERUNG), Le(SORTIERUNG)]
+AlsEintragAb = Annotated[int, Ge(SAMMLUNG_ALS_EINTRAG_AB), Le(SAMMLUNG_ALS_EINTRAG_BIS)]
 
 # Formen
 Farbe = Annotated[str, AfterValidator(_farbe)]
