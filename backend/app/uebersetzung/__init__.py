@@ -5,6 +5,10 @@
 - codeabsaetze.py: Code in einfachen Absätzen erkennen (Zäune, Codezeilen, Festbreitenschrift)
 - bloecke.py: Textläufe eines Dokuments als Blöcke mit Vorlage
 - zerlegen_epub.py: ein EPUB in Kapitel und Blöcke mit fester Kennung
+- zerlegen_pdf.py: ein PDF über ein englisches EPUB mit demselben Aufbau in dieselben Blöcke, mit Seite und Lage im Original
+  (pdf_lesen.py: Seiten, Zeilen, Code, Tabellen, Abbildungen, Lesefolge; pdf_aufbau.py: Überschriften, Absätze, Listen,
+  Fußnoten, Kapitel; pdf_epub.py: das EPUB mit Seitenmarken)
+- werk.py: EPUB und PDF hinter einer Schnittstelle (zerlegen, Blöcke, setzen)
 - setzen.py: die deutsche Fassung, in denselben Dateien mit demselben Markup, nur der Text tauscht
 - zahlen.py, zeichen.py, sprache.py, anrede.py: Bausteine der festen Prüfungen
 - pruefen.py: die zehn festen Prüfungen je Block

@@ -25,7 +25,8 @@ class Befund(BaseModel):
 
 
 class Block(BaseModel):
-    """Ein Block zum Übersetzen. Die Kennung verbindet Original und Übersetzung: Kapitel und Stelle im Kapitel."""
+    """Ein Block zum Übersetzen. Die Kennung verbindet Original und Übersetzung: Kapitel und Stelle im Kapitel. Aus einem PDF
+    kennt er seine Seite (Dateiseite), deren gedruckte Beschriftung und seine Lage dort (links, oben, rechts, unten)."""
     kennung: str                                     # etwa "3.17"
     kapitel: int
     nr: int                                          # ab 1 im Kapitel
@@ -33,6 +34,9 @@ class Block(BaseModel):
     stufe: int = 0
     vorlage: str                                     # Text mit Marken
     woerter: int = 0
+    seite: int | None = None
+    gedruckt: str = ""
+    lage: tuple[float, float, float, float] | None = None
 
     @property
     def pruefsumme(self) -> str:

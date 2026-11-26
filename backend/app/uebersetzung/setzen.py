@@ -37,6 +37,7 @@ class Hinweis(BaseModel):
     pruefmodell: str = ""
     datum: str                                       # wie für Menschen, etwa "26.11.2026"
     im_original: int = 0                             # so viele Stellen stehen noch im Original
+    seitenmarken: bool = False                       # das Original ist ein PDF: die Marken zeigen seine Seiten
 
 
 class Uebersetzt(BaseModel):
@@ -139,6 +140,8 @@ def hinweisblatt(h: Hinweis) -> str:
     if h.im_original:
         saetze.append(f"{h.im_original} {'Stelle steht' if h.im_original == 1 else 'Stellen stehen'} noch im Original; "
                       f"{'sie ist' if h.im_original == 1 else 'sie sind'} hell hinterlegt.")
+    if h.seitenmarken:
+        saetze.append('Das Original ist ein PDF. Marken wie "Seite 12" zeigen, wo dort eine neue Seite beginnt.')
     absaetze = "\n".join(f"<p>{s}</p>" for s in saetze)
     return ('<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE html>\n'
             '<html xmlns="http://www.w3.org/1999/xhtml" lang="de" xml:lang="de">\n'
