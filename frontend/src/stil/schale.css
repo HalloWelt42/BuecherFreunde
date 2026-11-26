@@ -40,7 +40,9 @@
 .farbe { width: .625rem; height: .625rem; border-radius: 50%; flex: none; margin: 0 .25rem; }
 .leiste-fuss { border-top: 1px solid var(--linie); padding: .375rem; display: grid; gap: .125rem; font-size: .8125rem; color: var(--tinte-2); }
 .lampen { display: flex; flex-wrap: wrap; gap: .125rem .75rem; padding: .25rem .5rem .125rem; }
-.lampe { display: flex; align-items: center; gap: .4375rem; }
+.lampe { display: flex; align-items: center; gap: .4375rem; min-width: 0; }
+.lampe .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lampen.raster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .led { width: .5625rem; height: .5625rem; border-radius: 50%; flex: none; background: var(--led-aus); box-shadow: 0 0 0 1px rgb(var(--schatten) / .25); }
 .led.gut { background: var(--led-gut); box-shadow: 0 0 0 1px rgb(var(--schatten) / .25), 0 0 7px color-mix(in srgb, var(--led-gut) 70%, transparent); }
 .led.warn { background: var(--led-warn); box-shadow: 0 0 0 1px rgb(var(--schatten) / .25), 0 0 7px color-mix(in srgb, var(--led-warn) 70%, transparent); }

@@ -3,8 +3,9 @@
   import Lampe from "../teile/Lampe.svelte";
 </script>
 
-<span class="lampen">
-  {#each verbindungen.liste as v (v.kennung)}<Lampe stand={v.stand} text={v.name} titel={v.text} />{/each}
+<!-- Zwei feste Spalten (BF-64): Punkte und Namen stehen untereinander, ein zu langer Name wird gekürzt und steht im Hinweis -->
+<span class="lampen raster">
+  {#each verbindungen.liste as v (v.kennung)}<Lampe stand={v.stand} text={v.name} titel="{v.name}: {v.text}" />{/each}
   {#if verbindungen.app.stand === "schlecht" || !verbindungen.liste.length}<Lampe stand={verbindungen.app.stand} text="App" titel={verbindungen.app.text} />{/if}
 </span>
 <span class="lampen leise">

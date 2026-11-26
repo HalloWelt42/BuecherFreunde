@@ -51,12 +51,13 @@
 {#if !liste.length}
   <Zustand art="laedt" text="Dienste werden geprüft" />
 {:else if dienst}
-  <div class="reihe" role="group" aria-label="Dienste">
+  <!-- Raster mit gleich breiten Spalten (BF-65): die Knöpfe fluchten, ein langer Name wird gekürzt und steht im Hinweis -->
+  <div class="dienstwahl" role="group" aria-label="Dienste">
     {#each liste as d (d.kennung)}
-      <Chip symbol={d.symbol} gedrueckt={d.kennung === dienst.kennung} titel={d.wort} onclick={() => (gewaehlt = d.kennung)}>{d.name} <span class="led {d.stand}"></span></Chip>
+      <Chip symbol={d.symbol} gedrueckt={d.kennung === dienst.kennung} titel="{d.name}: {d.wort}" onclick={() => (gewaehlt = d.kennung)}><span class="name">{d.name}</span><span class="led {d.stand}"></span></Chip>
     {/each}
-    <span class="schiebt"><Knopf text="Neu prüfen" symbol="arrows-rotate" klein laeuft={prueft} titel={dienst.quelle ? "Fragt diese Quelle jetzt, höchstens einmal in der Minute" : undefined} onclick={() => void pruefe(dienst)} /></span>
   </div>
+  <div class="reihe"><span class="schiebt"><Knopf text="Neu prüfen" symbol="arrows-rotate" klein laeuft={prueft} titel={dienst.quelle ? "Fragt diese Quelle jetzt, höchstens einmal in der Minute" : undefined} onclick={() => void pruefe(dienst)} /></span></div>
   <div class="dienst">
     <p><span class="marke-text {dienst.stand === 'aus' ? 'leise' : dienst.stand}">{dienst.wort}</span>{#if dienst.text}{" "}<span class="leise">{dienst.text}</span>{/if}</p>
     {#if dienst.zahlen}<p class="leise klein zahl">{dienst.zahlen}</p>{/if}

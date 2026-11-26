@@ -12,6 +12,13 @@ export interface Dienststand {
 }
 
 const PRUEFT: Dienststand = { stand: "aus", text: "wird geprüft" };
+// Reihenfolge nach Bedeutung (BF-64): erst was die App zum Laufen braucht, dann die Zusätze; Unbekanntes hinten, wie geliefert
+const RANG = ["kellerwolke", "leitstelle", "rechner", "fundus", "codeschmiede"];
+
+export function nachRang(liste: Verbindung[]): Verbindung[] {
+  const platz = (v: Verbindung) => (RANG.includes(v.kennung) ? RANG.indexOf(v.kennung) : RANG.length);
+  return liste.map((v, i) => ({ v, i })).sort((a, b) => platz(a.v) - platz(b.v) || a.i - b.i).map(({ v }) => v);
+}
 // Der Server fragt dabei auch den Rechner nach der Bedeutung: selten genug, dass er schlafen darf, und nur im Vordergrund
 const TAKT_MS = 300_000;
 
@@ -52,7 +59,7 @@ class Verbindungen {
   }
 
   async #listeLaden(): Promise<void> {
-    this.liste = await ladeVerbindungen();
+    this.liste = nachRang(await ladeVerbindungen());
   }
 
   async #fassungLaden(): Promise<void> {
