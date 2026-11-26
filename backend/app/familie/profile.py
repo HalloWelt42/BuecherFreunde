@@ -151,16 +151,18 @@ async def katze_benennen(p: Profil, name: str) -> Profil:
     return await noetig(p.id)
 
 
-async def pin_setzen(pid: str, eingabe: PinSetzen, von: Profil) -> Profil:
-    """PIN oder Bild-PIN, je nur eine; setzt sie jemand anders, enden die Sitzungen dieses Profils."""
+async def pin_setzen(pid: str, eingabe: PinSetzen, von: Profil, eigene_sitzung: str = "") -> Profil:
+    """PIN oder Bild-PIN, je nur eine. Danach enden alle Sitzungen dieses Profils außer der, die gerade setzt
+    (`eigene_sitzung`, die Prüfsumme ihres Schlüssels): Wer vorher ohne PIN hineinkam, etwa ein Tab aus dem Einzelbetrieb,
+    muss neu wählen. Setzt jemand anders die PIN, enden alle."""
     ziel = await noetig(pid)
     if not rechte.darf_pin_setzen(von, ziel):
         raise NichtErlaubt("Diese PIN setzt die Verwaltung zurück")
     wert = await pin.wert(eingabe.pin) if eingabe.pin else ""
     bild = await pin.wert(pin.bilder_text(eingabe.bild_pin)) if eingabe.bild_pin else ""
     await db.execute("UPDATE profil SET pin = ?, bild_pin = ? WHERE id = ?", (wert, bild, pid))
-    if von.id != pid:
-        await db.execute("DELETE FROM profil_sitzung WHERE profil_id = ?", (pid,))
+    bleibt = eigene_sitzung if von.id == pid else ""
+    await db.execute("DELETE FROM profil_sitzung WHERE profil_id = ? AND pruefsumme != ?", (pid, bleibt))
     pin.versuche.gelungen(pid)
     return await noetig(pid)
 

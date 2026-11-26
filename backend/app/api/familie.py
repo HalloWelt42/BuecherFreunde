@@ -207,9 +207,11 @@ async def profil_aendern(pid: str, a: ProfilAenderung, p: Profil = Depends(profi
 
 
 @router.put("/profile/{pid}/pin", response_model=ProfilEintrag)
-async def pin_setzen(pid: str, eingabe: PinSetzen, p: Profil = Depends(profil)) -> ProfilEintrag:
+async def pin_setzen(pid: str, eingabe: PinSetzen, request: Request, p: Profil = Depends(profil)) -> ProfilEintrag:
+    schluessel = sitzung.schluessel_aus(request, inhalt=True)
+    eigene = sitzung.pruefsumme(schluessel) if schluessel else ""
     try:
-        return ich.eintrag(await profile.pin_setzen(pid, eingabe, p), mit_angaben=True)
+        return ich.eintrag(await profile.pin_setzen(pid, eingabe, p, eigene), mit_angaben=True)
     except Familienfehler as f:
         raise _http(f) from f
 

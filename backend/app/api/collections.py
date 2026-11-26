@@ -158,14 +158,17 @@ async def verwirf_vorschlag(vorschlag_id: Nr, _: Profil = Depends(BEARBEITEN)) -
 
 @router.get("")
 async def liste_sammlungen(p: Profil = Depends(profil)):
-    """Alle Sammlungen mit der Zahl der Bücher, die das Profil sieht; ein Kind nur die mit freigegebenen."""
+    """Alle Sammlungen mit der Zahl der Bücher, die das Profil sieht; ein Kind nur die mit freigegebenen. Eine Sammlung,
+    deren Bücher alle für dieses Profil unsichtbar sind (etwa nur private Bücher eines anderen), fehlt für alle; eine leere
+    Sammlung ohne Bücher bleibt für Erwachsene sichtbar, damit man sie füllen kann."""
     bedingung, werte = Sicht.von(p).bedingung("b.id")
+    leer_erlaubt = "" if p.kind else " OR NOT EXISTS (SELECT 1 FROM books x WHERE x.sammlung_id = c.id)"
     rows = await db.fetch_all(f"""
         SELECT c.*, COUNT(b.id) AS buch_anzahl
         FROM collections c
         LEFT JOIN books b ON b.sammlung_id = c.id AND {bedingung}
         GROUP BY c.id
-        {'HAVING COUNT(b.id) > 0' if p.kind else ''}
+        HAVING COUNT(b.id) > 0{leer_erlaubt}
         ORDER BY c.sort_order, c.name
     """, werte)
     return [dict(r) for r in rows]
@@ -200,8 +203,8 @@ async def hole_sammlung(
         WHERE b.sammlung_id = ? AND {bedingung}
         ORDER BY {BANDORDNUNG.sql()}
     """, (collection_id, *werte))
-    if p.kind and not buecher:
-        raise HTTPException(status_code=404, detail=FEHLT)
+    if not buecher and (p.kind or await db.fetch_one("SELECT 1 FROM books WHERE sammlung_id = ? LIMIT 1", (collection_id,))):
+        raise HTTPException(status_code=404, detail=FEHLT)              # Bücher da, aber keins für dieses Profil sichtbar
 
     result = dict(sammlung)
     result["books"] = [dict(b) for b in buecher]

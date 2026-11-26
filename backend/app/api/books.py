@@ -732,45 +732,6 @@ async def delete_books_by_category(
     return {"geloescht": len(rows), "kategorie_id": category_id}
 
 
-@router.delete("/alle")
-async def delete_all_books(
-    datei_loeschen: bool = Query(False, description="Auch Dateien im Speicher löschen"),
-    bestaetigung: str = Query(..., description="Muss 'ALLE LOESCHEN' sein"),
-    _p: Profil = Depends(braucht("einstellungen")),
-):
-    """Löscht ALLE Bücher aus der Datenbank.
-
-    Erfordert explizite Bestätigung mit bestaetigung='ALLE LOESCHEN'.
-    """
-    if bestaetigung != "ALLE LOESCHEN":
-        raise HTTPException(
-            status_code=400,
-            detail="Sicherheitsbestätigung fehlt. Sende bestaetigung='ALLE LOESCHEN'",
-        )
-
-    if datei_loeschen:
-        from backend.app.services.storage import delete_stored_file
-
-        rows = await db.fetch_all("SELECT hash FROM books")
-        for row in rows:
-            try:
-                delete_stored_file(row["hash"])
-            except Exception:
-                pass
-
-    result = await db.execute("DELETE FROM books")
-    await db.execute("DELETE FROM book_categories")
-    await db.execute("DELETE FROM book_authors")
-    await db.execute("DELETE FROM user_book_data")
-    await db.execute("DELETE FROM book_highlights")
-    await db.execute("DELETE FROM book_labels")
-    await db.execute("DELETE FROM book_notes")
-    await db.execute("DELETE FROM import_tasks")
-    await db.commit()
-
-    return {"geloescht": True, "hinweis": "Alle Bücher und zugehörige Daten gelöscht"}
-
-
 def _platzhalter_cover_svg(title: str, file_format: str) -> str:
     """Erzeugt ein schlichtes Platzhalter-Cover als SVG (immer verfügbar)."""
     titel = (title or "Ohne Titel").strip() or "Ohne Titel"

@@ -101,6 +101,17 @@ def _werte(daten: object) -> list[str]:
     return [str(daten)]
 
 
+async def test_eigene_pin_beendet_die_anderen_sitzungen_des_profils(client, test_db):
+    f = await familie_anlegen(client, test_db)
+    zweiter_tab = await waehlen(client, f.ids["ada"])                 # Ada ohne PIN, ein zweites Gerät oder Tab
+    assert (await client.get("/api/familie/ich", headers=zweiter_tab)).status_code == 200
+    r = await client.put(f"/api/familie/profile/{f.ids['ada']}/pin", json={"pin": "2580"}, headers=f.kopf["ada"])
+    assert r.status_code == 200
+    assert (await client.get("/api/familie/ich", headers=f.kopf["ada"])).status_code == 200     # wer setzt, bleibt
+    weg = await client.get("/api/familie/ich", headers=zweiter_tab)
+    assert weg.status_code == 401 and weg.json()["code"] == "profil_waehlen"                  # alle anderen wählen neu
+
+
 async def test_fremde_pin_setzt_nur_die_verwaltung_und_beendet_die_sitzungen(client, test_db):
     f = await familie_anlegen(client, test_db)
     r = await client.put(f"/api/familie/profile/{f.ids['ada']}/pin", json={"pin": "9999"}, headers=f.kopf["bert"])

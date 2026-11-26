@@ -233,3 +233,28 @@ async def test_sammelaktion_behandelt_verborgenes_wie_fehlendes(client, test_db)
                           headers=f.kopf["ada"])
     assert r.json()["betroffen"] == 1
     assert (await test_db.fetch_one("SELECT typ FROM books WHERE id = ?", (f.buch["zebra"],)))["typ"] == ""
+
+
+async def test_sammlung_nur_mit_fremden_privaten_buechern_bleibt_verborgen(client, test_db):
+    f = await familie_anlegen(client, test_db)
+    sid = (await test_db.execute("INSERT INTO collections (name) VALUES ('Geheime Reihe')")).lastrowid
+    await test_db.execute("UPDATE books SET sammlung_id = ? WHERE id = ?", (sid, f.buch["zebra"]))
+    await test_db.execute("INSERT INTO collections (name) VALUES ('Leere Reihe')")
+
+    async def namen(wer: str) -> list[str]:
+        return [s["name"] for s in (await client.get("/api/collections", headers=f.kopf[wer])).json()]
+
+    assert "Geheime Reihe" not in await namen("ada")
+    assert (await client.get(f"/api/collections/{sid}", headers=f.kopf["ada"])).status_code == 404
+    assert "Geheime Reihe" in await namen("bert")                        # Bert sieht sein privates Buch darin
+    assert "Leere Reihe" in await namen("ada")                           # leere Sammlungen bleiben zum Füllen da
+
+
+
+async def test_es_gibt_keinen_weg_alle_buecher_zu_loeschen(client, test_db):
+    """Ein Weg ohne Folgenvorschau, der alle Bücher löscht, gibt es nicht (er war unerreichbar und ist entfernt)."""
+    f = await familie_anlegen(client, test_db)
+    vorher = (await test_db.fetch_one("SELECT COUNT(*) AS n FROM books"))["n"]
+    r = await client.delete("/api/books/alle", params={"bestaetigung": "ALLE LOESCHEN"}, headers=f.kopf["ada"])
+    assert r.status_code in (404, 422)
+    assert (await test_db.fetch_one("SELECT COUNT(*) AS n FROM books"))["n"] == vorher
