@@ -2,6 +2,46 @@
 
 Selbst gehostete Buchverwaltung für 50.000+ Bücher. Läuft per Docker auf Raspberry Pi 5 und Mac.
 
+## Höhepunkte
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/bilder/regal-hell.png" alt="Regal im hellen Modus"><br>Das Regal zeigt alle Bücher mit Umschlag und Format, rechts stehen die Angaben zum gewählten Buch.</td>
+    <td width="50%"><img src="docs/bilder/regal-dunkel.png" alt="Regal im dunklen Modus"><br>Hell, Dunkel und System lassen sich jederzeit umschalten, die Wahl bleibt gespeichert.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/bilder/buchseite.png" alt="Buchseite"><br>Die Buchseite sammelt Angaben, Regale, die Suche im Buch und alles, was markiert und notiert ist.</td>
+    <td><img src="docs/bilder/leser-original.png" alt="PDF im Original"><br>Ein PDF im Original steht Seite für Seite wie gedruckt, mit Markierungen und Marken am Rand.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/bilder/leser-text.png" alt="PDF als Text"><br>Dasselbe Buch als Text ist ruhig gesetzt, mit Abbildungen, hier auf dunklem Papier.</td>
+    <td><img src="docs/bilder/vorlesen-vollbild.png" alt="Vorlesen im Vollbild"><br>Vorlesen im Vollbild hebt den gesprochenen Satz hervor, ein schmaler Spieler bleibt in Reichweite.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/bilder/fokus-und-hilfen.png" alt="Fokus und Lesehilfen"><br>Fokus und Lesehilfen führen mit einem Lineal durch die Zeilen und dunkeln den Rest ab.</td>
+    <td><img src="docs/bilder/marken-am-rand.png" alt="Marken am Rand"><br>Marken am Rand stehen auf Höhe ihrer Stelle und klappen beim Überfahren zur Karte auf.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/bilder/ausfuehren-debugger.png" alt="Ausführen mit Debugger"><br>Listings aus dem Buch laufen in der Sandbox, Schritt für Schritt mit Haltepunkten, Variablen und Ausgabe.</td>
+    <td><img src="docs/bilder/nachschlagen.png" alt="Nachschlagen"><br>Ein markiertes Wort lässt sich nachschlagen, der Artikel öffnet sich im Fenster neben dem Buch.</td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td width="25%"><img src="docs/bilder/telefon-regal-hell.png" alt="Regal am Telefon, hell"><br>Am Telefon passt sich das Regal der schmalen Breite an.</td>
+    <td width="25%"><img src="docs/bilder/telefon-leser-hell.png" alt="Reader am Telefon, hell"><br>Der Reader zeigt die Seite in voller Breite, Original und Text liegen einen Tipp auseinander.</td>
+    <td width="25%"><img src="docs/bilder/telefon-vorlesen-hell.png" alt="Vorlesen am Telefon, hell"><br>Vorlesen bringt Spieler, Stimme, Tempo und Schlafuhr mit.</td>
+    <td width="25%"><img src="docs/bilder/telefon-ausfuehren-hell.png" alt="Ausführen am Telefon, hell"><br>Listings laufen auch unterwegs, als Blatt mit Schritten und Variablen.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/bilder/telefon-regal-dunkel.png" alt="Regal am Telefon, dunkel"><br>Im dunklen Modus bleibt das Regal ruhig und gut lesbar.</td>
+    <td><img src="docs/bilder/telefon-leser-dunkel.png" alt="Reader am Telefon, dunkel"><br>Auch das Original folgt dem dunklen Papier.</td>
+    <td><img src="docs/bilder/telefon-vorlesen-dunkel.png" alt="Vorlesen am Telefon, dunkel"><br>Der gesprochene Satz bleibt im Text markiert.</td>
+    <td><img src="docs/bilder/telefon-ausfuehren-dunkel.png" alt="Ausführen am Telefon, dunkel"><br>Ein Tipp auf die Zeilennummer setzt einen Haltepunkt.</td>
+  </tr>
+</table>
+
 ## Features
 
 - **Bibliothek**: Grid/Listenansicht mit Filtern, Kategorien, Tags, Sammlungen
