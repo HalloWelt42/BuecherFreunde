@@ -32,9 +32,9 @@ Original (EPUB, PDF, Scan)
   -> Lesen: Flaggenlabels, gemeinsamer Lesestand          Oberfläche nach Entwurf
 ```
 
-Der ganze Lauf ist ein fortsetzbarer Auftrag: Jede Portion wird mit ihrem Ergebnis und ihren Befunden gespeichert, ein
-Neustart oder ein Ausrollen setzt an der letzten Portion fort. Grundlage sind die Aufträge des Appkerns wie in Nachschlag;
-BücherFreunde zieht dafür seinen Appkern-Stand nach.
+Der ganze Lauf ist ein fortsetzbarer Auftrag: Jeder Block wird mit Ergebnis, Befunden und Stand in der Datenbank
+gespeichert, ein Hintergrundlauf (wie Einordnen und Umschlagprüfung) nimmt nach einem Neustart oder Ausrollen jede Fassung
+mit Stand "läuft" wieder auf und setzt am ersten offenen Block fort. Dafür braucht es keinen neuen Appkern-Stand.
 
 ## Blöcke
 
@@ -143,9 +143,26 @@ nur erfundene Texte.
 6. Probe mit drei echten Büchern (siehe Abmachungen): Prüfberichte und Stichproben nebeneinander zur Abnahme, erst dann
    gibt es die Taste für alle.
 
+## Schnittstelle
+
+| Weg | Inhalt |
+|---|---|
+| `GET /api/books/{id}/fassungen` | `[{id, sprache, original, stand, kapitel_fertig, kapitel_gesamt, fertig_gegen, modell, pruefmodell, angelegt, geaendert}]`; das Original steht immer zuerst (`id` null, `original` true) |
+| `GET /api/books/{id}/fassungen/de/folgen` | Rückfrage vor dem Start: `{seiten, kapitel, bloecke, begriffe, abbildungen, dauer_s, fertig_gegen, tempo_s_je_seite, ablage, geht, grund}`; `geht` false mit Grund, wenn das Buch nicht englisch ist oder das Format noch nicht übersetzt wird |
+| `POST /api/books/{id}/fassungen/de` | startet (oder setzt fort), Antwort Stand |
+| `GET /api/fassungen/{fid}/stand` | `{stand, begonnen, bisher_s, noch_s, fertig_gegen, tempo_s_je_seite, kapitel_jetzt, block_jetzt, stationen: [{name, stand, text}], kapitel: [{nr, titel, stand, dauer_s, geschaetzt, bloecke, fertig, geprueft, nachgearbeitet, offen}], zahlen: {bloecke, uebersetzt, bestanden, nachgearbeitet, offen}, grund}`; Stationen in fester Folge: Zerlegen, Begriffe, Übersetzen, Prüfen, Nacharbeit, Setzen; Stand je Station: wartet, laeuft, fertig |
+| `POST /api/fassungen/{fid}/pause`, `.../fortsetzen`, `.../abbrechen` | Stand; Abbrechen behält Fertiges, die Fassung bleibt "teilweise" |
+| `GET /api/fassungen/{fid}/bericht` | `{zahlen, offen: [{kennung, kapitel, ort, seite_original, original, deutsch, befunde: [{art, quelle, text, stelle}]}]}`; `quelle` pruefung oder ki; `stelle` das beanstandete Stück im deutschen Text |
+| `POST /api/fassungen/{fid}/bloecke/{kennung}` | `{aktion: "neu" \| "annehmen" \| "setzen", text?}`; "setzen" nimmt deinen Text, wenn er die festen Prüfungen besteht, sonst 422 mit Befunden |
+| `GET /api/books/{id}/begriffe`, `POST`, `PATCH /api/begriffe/{bid}`, `DELETE` | Begriffsliste je Buch `[{id, englisch, deutsch, bleibt, herkunft, stellen, grund}]`; `GET /api/begriffe` die Liste für alle Bücher |
+| `GET /api/fassungen/{fid}/datei` | die deutsche Fassung als EPUB für den Leser, auch teilweise (offene Blöcke im Original mit Marke) |
+
+Geschätzt wird aus dem Tempo dieses Rechners: vor dem ersten Lauf aus einer festen Vorgabe (`UEBERSETZEN_S_JE_SEITE`,
+Vorgabe 30 mit Prüfung), danach aus dem gleitenden Mittel der letzten Läufe, im Lauf aus dem Tempo dieses Laufs.
+
 ## Reihenfolge
 
-1. Appkern nachziehen, Aufträge fortsetzbar (Grundlage für jeden langen Lauf).
+1. Fortsetzbarer Lauf über eigene Tabellen und einen Hintergrundlauf.
 2. EPUB: Zerlegen, Begriffsliste, Übersetzen, Prüfkette, Zusammensetzen, Tests 1, 2, 4, 5.
 3. Probe mit dem EPUB-Fachbuch, Prüfbericht zur Abnahme.
 4. PDF: Blöcke aus der Seitenstruktur, Seitenmarken, Test 3, Probe mit dem technischen PDF.
