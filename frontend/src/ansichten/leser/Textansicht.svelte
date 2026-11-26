@@ -280,6 +280,12 @@
                 {#if b.titel}<b>{b.titel}</b>{/if}
                 {#each b.inhalt as t, j (j)}{#if t.art === "bild"}{@render abbildung(s.nr, t, "")}{:else}<p>{t.text}</p>{/if}{/each}
               </aside>
+            {:else if b.art === "code"}
+              <!-- Codestelle als Code statt als Bildausschnitt; den Titel trägt nur der erste Teil -->
+              <div class="codeteil" data-kennung={b.kennung} data-teil={b.teil}>
+                {#if !b.teil && b.titel}<b class="codetitel">{b.titel}</b>{/if}
+                <pre><code>{(b.zeilen ?? []).join("\n")}</code></pre>
+              </div>
             {:else}<p>{b.text}</p>{/if}
           {/each}
         </section>
@@ -327,6 +333,30 @@
     display: block;
     margin: 1em auto;
     cursor: zoom-in;
+  }
+  /* Code wie im Text der Bücher (Markdown): Festbreite, dunkel hinterlegt; Zeilen und Einrückung bleiben, wie gedruckt,
+     zu lange Zeilen rollen im Block */
+  .codeteil {
+    margin: 1em 0;
+  }
+  .codetitel {
+    display: block;
+    margin-bottom: 0.25em;
+    font: 600 0.85em var(--schrift);
+    hyphens: none;
+  }
+  .codeteil pre {
+    margin: 0;
+    padding: 0.875em 1em;
+    border-radius: var(--r2);
+    background: #14201e;
+    color: #e8efe9;
+    font: 400 0.88em/1.5 var(--codeschrift);
+    white-space: pre;
+    overflow-x: auto;
+    hyphens: none;
+    font-variant-ligatures: none;
+    tab-size: 4;
   }
   .abbildung img {
     display: block;

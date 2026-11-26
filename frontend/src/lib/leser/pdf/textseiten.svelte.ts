@@ -2,13 +2,19 @@
 import { textSeiten } from "../../api/books";
 
 export interface Baustein {
-  art: "ueberschrift" | "absatz" | "unterschrift" | "bild" | "kasten";
+  art: "ueberschrift" | "absatz" | "unterschrift" | "bild" | "kasten" | "code";
   text: string;
   titel: string;
   inhalt: Baustein[];
   bild: number | null;
   verhaeltnis: number | null;
   breite_em: number | null;
+  /** Codestelle (BF-29): Zeilen dieses Teils, Sprache, Kennung der Stelle, der wievielte Teil von wie vielen */
+  zeilen?: string[];
+  sprache?: string | null;
+  kennung?: string;
+  teil?: number | null;
+  teile?: number | null;
 }
 
 export interface Textseite {
