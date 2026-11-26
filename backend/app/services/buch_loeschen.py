@@ -75,7 +75,7 @@ async def folgen(buch: int) -> Folgen | None:
         lesestand=bool(await _zahl("SELECT count(*) AS n FROM user_book_data WHERE book_id = ? AND COALESCE(reading_position, '') != ''", buch)),
         vorlesestelle=bool(await _zahl("SELECT count(*) AS n FROM vorlesestelle WHERE buch_id = ?", buch)),
         regale=await _zahl("SELECT count(*) AS n FROM book_categories x JOIN categories c ON c.id = x.category_id "
-                           "WHERE x.book_id = ? AND COALESCE(c.spezial, 0) = 0", buch),          # "Ungeordnet" ist keins
+                           "WHERE x.book_id = ? AND c.slug != 'ungeordnet'", buch),          # "Ungeordnet" ist keins (wie api/books.py)
         datei=datei,
         abschnitte=stand["abschnitte"] if stand else None,
     )
