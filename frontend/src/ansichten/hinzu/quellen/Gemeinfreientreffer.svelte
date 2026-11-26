@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Fundbuch } from "../../../lib/api/gutenberg";
   import { formatName, sprache, zahl } from "../../../lib/format";
-  import Ersatzumschlag from "../../../lib/teile/Ersatzumschlag.svelte";
+  import Deckblatt from "../../../lib/teile/Deckblatt.svelte";
   import Symbol from "../../../lib/teile/Symbol.svelte";
 
   let { buch, gewaehlt, onschalte }: { buch: Fundbuch; gewaehlt: boolean; onschalte: () => void } = $props();
@@ -12,7 +12,7 @@
 <button type="button" class="treffer-karte platte" class:gewaehlt aria-pressed={gewaehlt} onclick={onschalte}>
   <span class="umschlag">
     {#if buch.cover_url && kaputt !== buch.cover_url}<img src={buch.cover_url} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={() => (kaputt = buch.cover_url)} />
-    {:else}<Ersatzumschlag buch={{ id: buch.gutenberg_id, title: buch.titel, author: buch.autor }} />{/if}
+    {:else}<Deckblatt buch={{ id: buch.gutenberg_id, title: buch.titel, author: buch.autor }} />{/if}
   </span>
   <span class="text"><b>{buch.titel}</b><span class="klein">{buch.autor}</span><span class="leise zahl">{angaben}</span></span>
   <span class="marke" class:an={gewaehlt}><Symbol name="check" /></span>

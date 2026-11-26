@@ -25,12 +25,9 @@ class Wahl {
     return this.#farben[id];
   }
 
-  kenntFarben(id: number): boolean {
-    return id in this.#farben;
-  }
-
+  /** Gleiche Farben schreiben nichts: das Licht bleibt ruhig, wenn mehrere Umschläge desselben Buchs sie melden */
   merkeFarben(id: number, farben: Dreiklang): void {
-    this.#farben[id] = farben;
+    if (this.#farben[id]?.join() !== farben.join()) this.#farben[id] = farben;
   }
 
   /** Ein gelöschtes Buch steht nicht mehr in der Vorschau (BF-60); die nächste Liste wählt neu */

@@ -2,6 +2,7 @@
   import { route } from "../../lib/router.svelte";
   import { aehnlicheBuecher, holeBuch, ladeUrl } from "../../lib/api/books";
   import { rollstand } from "../../lib/rollstand";
+  import { arten } from "../../lib/stand/arten.svelte";
   import { filter } from "../../lib/stand/filter.svelte";
   import { wahl } from "../../lib/stand/wahl.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
@@ -40,6 +41,9 @@
     void id;
     void laden();
   });
+
+  // Namen für Art und Gattung in Angaben, Chips und Bearbeiten (BF-59)
+  $effect(() => void arten.laden());
 </script>
 
 <div class="werkzeug">

@@ -1,6 +1,7 @@
 <script lang="ts">
   // Regale, Typ und Sammlung eines Buchs: antippen filtert die Bibliothek, der Stift nimmt heraus
   import { entferneBuch, ordneBuchZu } from "../../lib/api/categories";
+  import { arten } from "../../lib/stand/arten.svelte";
   import { bestand } from "../../lib/stand/bestand.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
   import Chip from "../../lib/teile/Chip.svelte";
@@ -9,7 +10,6 @@
   import Regalwahl from "../../lib/teile/Regalwahl.svelte";
   import Symbol from "../../lib/teile/Symbol.svelte";
   import type { BuchEinzeln, Regal, RegalKurz } from "../../lib/typen";
-  import { TYPEN } from "./typen";
 
   let { buch, ongeaendert }: { buch: BuchEinzeln; ongeaendert: () => void } = $props();
 
@@ -50,7 +50,7 @@
     {/if}
   {/each}
   {#if rest > 0}<Chip text="{rest} weitere" onclick={() => (alle = true)} />{/if}
-  {#if buch.typ}<Chip text={TYPEN[buch.typ] ?? buch.typ} />{/if}
+  {#if buch.typ}<Chip text={arten.typName(buch.typ)} />{/if}
   {#if buch.sammlung}<Chip text="{buch.sammlung.name}{buch.band_nummer ? `, Band ${buch.band_nummer}` : ''}" farbe={buch.sammlung.color} href="/?sammlung={buch.sammlung.id}" titel="Bibliothek nach dieser Sammlung filtern" />{/if}
   <Knopf text="Regal dazu" symbol="plus" klein frei aufgeklappt={wahlOffen} bind:element={knopf} onclick={() => (wahlOffen = !wahlOffen)} />
   {#if buch.categories.length}<Knopf text={aendern ? "Fertig" : "Regale ändern"} symbol={aendern ? "check" : "pen"} nur={!aendern} klein frei gedrueckt={aendern} onclick={() => (aendern = !aendern)} />{/if}

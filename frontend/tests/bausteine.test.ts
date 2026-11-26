@@ -6,7 +6,7 @@ import { navigate, route } from "../src/lib/router.svelte";
 import type { Buch } from "../src/lib/typen";
 
 const buch: Buch = {
-  id: 5, hash: "", title: "Der Steppenwolf", author: "Hermann Hesse", publisher: "", file_format: "epub", file_size: 1, cover_path: "", page_count: 250, year: 1927, isbn: "", typ: "", sammlung_id: null, band_nummer: "",
+  id: 5, hash: "", title: "Der Steppenwolf", author: "Hermann Hesse", publisher: "", file_format: "epub", file_size: 1, cover_path: "", page_count: 250, year: 1927, isbn: "", typ: "", gattung: "", umschlag: "titelseite", umschlag_schlicht: false, umschlag_wahl: "", sammlung_id: null, band_nummer: "",
   is_favorite: false, is_to_read: false, rating: 4, reading_position: "", last_read_at: null, categories: [], sammlung: null, created_at: "", updated_at: "",
 };
 

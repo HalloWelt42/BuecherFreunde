@@ -1,13 +1,15 @@
 <script lang="ts">
   import { datum, formatName, groesse, sprache, tagWort, zahl } from "../../lib/format";
   import { leseAdresse, leseKnopf, lesestand, leseweise, schriftprobe, standText } from "../../lib/lesestand";
+  import { arten } from "../../lib/stand/arten.svelte";
   import { merkmale } from "../../lib/stand/merkmale.svelte";
   import Balken from "../../lib/teile/Balken.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Merkmalsknoepfe from "../../lib/teile/Merkmalsknoepfe.svelte";
+  import Segment from "../../lib/teile/Segment.svelte";
   import Sterne from "../../lib/teile/Sterne.svelte";
   import Umschlag from "../../lib/teile/Umschlag.svelte";
-  import type { BuchEinzeln } from "../../lib/typen";
+  import type { BuchEinzeln, Umschlagart } from "../../lib/typen";
   import Regalchips from "./Regalchips.svelte";
   import { buchLoeschen } from "./loeschen";
 
@@ -17,8 +19,15 @@
   let probe = $derived(schriftprobe(buch.reading_position));
   let standzeile = $derived([standText(buch), buch.last_read_at ? `zuletzt ${tagWort(buch.last_read_at)}` : "", ...leseweise(buch.reading_position)].filter(Boolean).join(", "));
 
+  const UMSCHLAEGE: [Umschlagart, string][] = [["gestaltet", "Gestaltet"], ["titelseite", "Titelseite"]];
+  let waehlt = $state(false);
+  // Die Wahl gibt es, wo die Titelseite fast weiß ist oder schon gewählt wurde (BF-59)
+  let mitWahl = $derived(buch.umschlag_schlicht || !!buch.umschlag_wahl);
+
   let angaben = $derived(
     ([
+      ["Art", arten.typName(buch.typ)],
+      ["Gattung", buch.gattung ? arten.gattungName(buch.gattung) : ""],
       ["Format", `${formatName(buch.file_format)}, ${groesse(buch.file_size)}`],
       ["Seiten", buch.page_count ? zahl(buch.page_count) : ""],
       ["ISBN", buch.isbn],
@@ -34,10 +43,20 @@
   async function bewerte(n: number) {
     onneu(await merkmale.sterne(buch, n));
   }
+
+  async function waehleUmschlag(art: Umschlagart) {
+    if (art === buch.umschlag) return;
+    waehlt = true;
+    onneu(await merkmale.umschlag(buch, art));
+    waehlt = false;
+  }
 </script>
 
 <section class="buchkopf platte">
-  <div><Umschlag {buch} sofort /></div>
+  <div>
+    <Umschlag {buch} sofort />
+    {#if mitWahl}<div class="umschlagwahl"><Segment name="Umschlag" werte={UMSCHLAEGE} wert={buch.umschlag} gesperrt={waehlt} onwahl={(w) => void waehleUmschlag(w)} /></div>{/if}
+  </div>
   <div class="zwei">
     <div class="rechts">
       <div>
@@ -71,6 +90,11 @@
 </section>
 
 <style>
+  .umschlagwahl {
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: center;
+  }
   /* Abstand, damit man Löschen nicht statt Gelesen trifft; ausgelöst wird ohnehin erst nach der Rückfrage (BF-60) */
   .loeschen {
     margin-left: 0.5rem;

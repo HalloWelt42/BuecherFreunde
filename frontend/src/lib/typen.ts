@@ -34,6 +34,22 @@ export interface AutorKurz {
   name: string;
 }
 
+/** Welches Blatt ein Buch zeigt (BF-59): das gestaltete oder die Titelseite aus der Datei */
+export type Umschlagart = "gestaltet" | "titelseite";
+
+/** Art eines Eintrags (GET /api/collections/typen); leer heißt Buch */
+export interface Art {
+  id: string;
+  name: string;
+  beschreibung?: string;
+}
+
+/** Gattung eines Buchs (GET /api/collections/gattungen) */
+export interface Gattung {
+  id: string;
+  name: string;
+}
+
 export interface Buch {
   id: number;
   hash: string;
@@ -48,6 +64,14 @@ export interface Buch {
   year: number | null;
   isbn: string;
   typ: string;
+  /** Kennung der Gattung, leer ohne */
+  gattung: string;
+  /** Was der Umschlag zeigt, vom Server bestimmt aus Titelseite und Wahl */
+  umschlag: Umschlagart;
+  /** Die Titelseite ist fast weiß; dann gibt es die Wahl */
+  umschlag_schlicht: boolean;
+  /** Eigene Wahl; leer folgt dem Server */
+  umschlag_wahl: "" | Umschlagart;
   sammlung_id: number | null;
   band_nummer: string;
   is_favorite: boolean;

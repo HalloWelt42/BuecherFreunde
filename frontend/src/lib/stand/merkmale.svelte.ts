@@ -1,6 +1,7 @@
-// Favorit, Lesesofa, Gelesen, Sterne: eine Stelle ändert am Server und zieht Liste, Vorschau und Zahlen nach
+// Favorit, Lesesofa, Gelesen, Sterne, Umschlag: eine Stelle ändert am Server und zieht Liste, Vorschau und Zahlen nach
+import { aktualisiereBuch } from "../api/books";
 import { setzeBewertung, toggleFavorit, toggleGelesen, toggleZumLesen } from "../api/user-data";
-import type { Buch } from "../typen";
+import type { Buch, Umschlagart } from "../typen";
 import { bestand } from "./bestand.svelte";
 import { buecher } from "./buecher.svelte";
 import { melde } from "./meldungen.svelte";
@@ -13,11 +14,11 @@ function verteile(id: number, neu: Partial<Buch>): void {
   wahl.aktualisiere(id, neu);
 }
 
-async function aendere(buch: Merkbar, tun: () => Promise<Partial<Buch>>): Promise<Partial<Buch>> {
+/** Ändert, verteilt und gibt das Geänderte zurück; scheitert es, eine Meldung und nichts */
+async function aendere(id: number, tun: () => Promise<Partial<Buch>>): Promise<Partial<Buch>> {
   try {
     const neu = await tun();
-    verteile(buch.id, neu);
-    void bestand.laden();
+    verteile(id, neu);
     return neu;
   } catch (e) {
     melde.schlecht(e, "Nicht gespeichert");
@@ -25,25 +26,38 @@ async function aendere(buch: Merkbar, tun: () => Promise<Partial<Buch>>): Promis
   }
 }
 
+/** Wie aendere, danach ziehen die Zahlen der Leiste nach */
+async function mitZahlen(buch: Merkbar, tun: () => Promise<Partial<Buch>>): Promise<Partial<Buch>> {
+  const neu = await aendere(buch.id, tun);
+  if (Object.keys(neu).length) void bestand.laden();
+  return neu;
+}
+
 export const merkmale = {
   favorit: (buch: Merkbar) =>
-    aendere(buch, async () => {
+    mitZahlen(buch, async () => {
       const a = await toggleFavorit(buch.id);
       return { is_favorite: a.ist_favorit ?? !buch.is_favorite };
     }),
   sofa: (buch: Merkbar) =>
-    aendere(buch, async () => {
+    mitZahlen(buch, async () => {
       const a = await toggleZumLesen(buch.id);
       return { is_to_read: a.zu_lesen ?? !buch.is_to_read };
     }),
   gelesen: (buch: Merkbar) =>
-    aendere(buch, async () => {
+    mitZahlen(buch, async () => {
       const a = await toggleGelesen(buch.id);
       return { last_read_at: (a.gelesen ?? !buch.last_read_at) ? new Date().toISOString() : null };
     }),
   sterne: (buch: Merkbar, wert: number) =>
-    aendere(buch, async () => {
+    mitZahlen(buch, async () => {
       const a = await setzeBewertung(buch.id, wert);
       return { rating: a.bewertung ?? wert };
+    }),
+  /** Gestaltetes Blatt oder Titelseite (BF-59); was der Umschlag dann zeigt, sagt der Server */
+  umschlag: (buch: Pick<Buch, "id">, art: Umschlagart) =>
+    aendere(buch.id, async () => {
+      const b = await aktualisiereBuch(buch.id, { umschlag_wahl: art });
+      return { umschlag: b.umschlag, umschlag_wahl: b.umschlag_wahl, umschlag_schlicht: b.umschlag_schlicht };
     }),
 };

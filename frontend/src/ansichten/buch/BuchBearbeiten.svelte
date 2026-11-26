@@ -4,6 +4,7 @@
   import { aktualisiereBuch } from "../../lib/api/books";
   import { buchAusSammlung, buchZuordnen } from "../../lib/api/collections";
   import { beiEsc } from "../../lib/flucht";
+  import { arten } from "../../lib/stand/arten.svelte";
   import { bestand } from "../../lib/stand/bestand.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
   import Auswahl from "../../lib/teile/Auswahl.svelte";
@@ -11,14 +12,13 @@
   import Umschlag from "../../lib/teile/Umschlag.svelte";
   import type { BuchEinzeln } from "../../lib/typen";
   import Isbnsuche from "./Isbnsuche.svelte";
-  import { TYPEN } from "./typen";
 
   let { buch, onabbruch, onfertig }: { buch: BuchEinzeln; onabbruch: () => void; onfertig: () => void } = $props();
 
   let eingabe = $state(
     untrack(() => ({
       title: buch.title, author: buch.author, isbn: buch.isbn, year: buch.year ? String(buch.year) : "", publisher: buch.publisher, language: buch.language,
-      page_count: buch.page_count ? String(buch.page_count) : "", typ: buch.typ, sammlung: buch.sammlung_id ? String(buch.sammlung_id) : "", band: buch.band_nummer, description: buch.description,
+      page_count: buch.page_count ? String(buch.page_count) : "", typ: buch.typ, gattung: buch.gattung ?? "", sammlung: buch.sammlung_id ? String(buch.sammlung_id) : "", band: buch.band_nummer, description: buch.description,
     })),
   );
   let speichert = $state(false);
@@ -26,7 +26,8 @@
 
   $effect(() => beiEsc(() => onabbruch()));
 
-  const typen: [string, string][] = [["", "Buch"], ...Object.entries(TYPEN)];
+  let typen = $derived(arten.typWerte(eingabe.typ));
+  let gattungen = $derived(arten.gattungWerte(eingabe.gattung));
   let sammlungen = $derived<[string, string][]>([["", "keine"], ...bestand.sammlungen.map((s): [string, string] => [String(s.id), s.name])]);
 
   function alsZahl(text: string, feld: string): number | null {
@@ -37,7 +38,7 @@
 
   function aenderungen(): Record<string, unknown> {
     const daten: Record<string, unknown> = {};
-    for (const k of ["title", "author", "isbn", "publisher", "language", "typ", "description"] as const) {
+    for (const k of ["title", "author", "isbn", "publisher", "language", "typ", "gattung", "description"] as const) {
       if (eingabe[k] !== (buch[k] ?? "")) daten[k] = eingabe[k];
     }
     if (!eingabe.title.trim()) throw new Error("Der Titel fehlt");
@@ -76,7 +77,8 @@
 </script>
 
 <form class="buchkopf platte" onsubmit={speichere}>
-  <div><Umschlag {buch} sofort /></div>
+  <!-- Art und Gattung zeigen sich am Blatt schon vor dem Speichern -->
+  <div><Umschlag buch={{ ...buch, typ: eingabe.typ, gattung: eingabe.gattung }} sofort /></div>
   <div class="felder">
     <div class="zweifeld">
       <label class="feld ganz">Titel<input bind:value={eingabe.title} /></label>
@@ -85,7 +87,8 @@
       <label class="feld">Jahr<input bind:value={eingabe.year} inputmode="numeric" maxlength="4" /></label>
       <label class="feld">Sprache<input bind:value={eingabe.language} placeholder="de, en" /></label>
       <label class="feld">Seiten<input bind:value={eingabe.page_count} inputmode="numeric" maxlength="5" /></label>
-      <div class="feld">Typ<Auswahl name="Typ" werte={typen} wert={eingabe.typ} onwahl={(w) => (eingabe.typ = w)} /></div>
+      <div class="feld">Art<Auswahl name="Art" werte={typen} wert={eingabe.typ} onwahl={(w) => (eingabe.typ = w)} /></div>
+      <div class="feld">Gattung<Auswahl name="Gattung" werte={gattungen} wert={eingabe.gattung} onwahl={(w) => (eingabe.gattung = w)} /></div>
       <div class="feld">Sammlung<Auswahl name="Sammlung" werte={sammlungen} wert={eingabe.sammlung} onwahl={(w) => (eingabe.sammlung = w)} /></div>
       <label class="feld">Band<input bind:value={eingabe.band} disabled={!eingabe.sammlung} /></label>
       <div class="ganz"><Isbnsuche {buch} wert={eingabe.isbn} onwert={(w) => (eingabe.isbn = w)} /></div>

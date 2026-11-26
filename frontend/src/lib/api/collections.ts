@@ -1,6 +1,9 @@
-// Sammlungen
+// Sammlungen, dazu die festen Listen der Arten und Gattungen
 import { del, get, patch, post } from "./client";
-import type { Buch, Sammlung } from "../typen";
+import type { Art, Buch, Gattung, Sammlung } from "../typen";
+
+export const ladeTypen = (): Promise<Art[]> => get("/api/collections/typen");
+export const ladeGattungen = (): Promise<Gattung[]> => get("/api/collections/gattungen");
 
 export const ladeSammlungen = (): Promise<Sammlung[]> => get("/api/collections");
 export const holeSammlung = (id: number): Promise<Sammlung & { buecher?: Buch[] }> => get(`/api/collections/${id}`);

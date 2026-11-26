@@ -89,6 +89,10 @@ Aufbau: `frontend/src/stil` (Marken, Glas, Schale, Teile, je Ansicht eine Datei,
 | Bewertung, Favorit, Lesesofa, Gelesen | Buchkopf, Vorschau | ja |
 | Buch löschen (BF-60): Taste mit Abstand hinter Gelesen, Rückfrage mit allen Folgen des Buchs vom Server, Datei in den Papierkorb der Kellerwolke, danach zurück zur Bibliothek samt Filter | Buchkopf, `buch/loeschen` | Tests, Betrieb mit eigenem Probebuch |
 | Bearbeiten: alle Felder, Typ, Sammlung, Band; Eingaben bleiben bei Fehlern (5) | `BuchBearbeiten` | ja |
+| Gestaltete Deckblätter (BF-59): Bücher mit fast weißer Titelseite (`umschlag` vom Server) zeigen ein Blatt nach Art und Gattung wie in der Stilprobe, Dokumente als Ordnerrücken; Titel eingepasst, alles aus den Daten maskiert, keine Kennungen im SVG. Dasselbe Blatt steht für reine Textdateien, wenn das Bild ausbleibt, und bei gemeinfreien Treffern; der gezeichnete Ersatz ist entfallen | `lib/umschlag` (`gestaltet`, `muster`, `satz`, `zuordnung`), `teile/Deckblatt`, `teile/Umschlag` | Tests, Blätter mit Grenzfällen gerendert; im Betrieb nein |
+| Farben des Blatts für Licht und Regalwand (BF-59): das Blatt meldet seine drei Farben wie ein Bild beim Laden, es gilt, was zuletzt zu sehen war | `schale/regalfarben` (`nimm`), `stand/wahl` | Tests; im Betrieb nein |
+| Umschlag wählen (BF-59): unter dem Umschlag "Gestaltet" oder "Titelseite", nur bei fast weißer Titelseite oder schon getroffener Wahl; frischt Buchseite, Liste und Vorschau | Buchkopf, `stand/merkmale` | Test; im Betrieb nein |
+| Art und Gattung (BF-59): bei den Angaben; Bearbeiten mit Gattung, die Art kennt Dokument, das Blatt wechselt schon vor dem Speichern mit; beide Listen nur vom Server | Buchkopf, `BuchBearbeiten`, `Regalchips`, `stand/arten` | Test der Angaben; Bearbeiten im Betrieb nein |
 | ISBN im Text suchen und übernehmen | `Isbnsuche` | Suche ja, Übernehmen nein (keine ISBN im Probebestand) |
 | Einordnung durch die KI mit Prozenten | Fenster "Vorschlag der KI" | Fehlerweg ja, Vorschläge nein |
 | Vergleich aus drei Quellen, Umschlag, Regale, "Alle Daten" | `Angabenvergleich`, `Vergleichstabelle` | nachgebaut |
