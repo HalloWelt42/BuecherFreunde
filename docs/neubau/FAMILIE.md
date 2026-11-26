@@ -43,9 +43,73 @@ von heute gehören nach dem Umbau dem ersten Profil (Verwaltung). Kein Kinderpro
 | Bedienung | Symbole statt Text, immer sichtbar, Rückmeldung mit Bild und Ton, Fehler zeigen statt schreiben |
 | Nicht | Spiele im Buch, Punkte, Serien, Push-Hinweise, Werbung, Verweise nach außen ohne Elternhürde |
 
+## Aufbau
+
+Eine Wahrheit je Sache: Die Bibliothek (Bücher, Dateien, Katalog, Regale, Sammlungen, Fassungen, Begriffe) gibt es einmal
+für die Familie. Was einer Person gehört, hängt an ihrem Profil. Welche Bücher ein Profil sieht und was es darf, entscheidet
+der Server an einer Stelle; die Oberfläche zeigt nur, was er erlaubt.
+
+```
+Anmeldung des Geräts (Konto der Kellerwolke oder eigenes Konto der App), wie bisher
+  -> Profil wählen (PIN, Bild-PIN, oder ohne, wenn es nur ein Profil ohne PIN gibt)    backend/app/familie/profile.py
+  -> Profilschlüssel im Kopf X-Profil, je Anfrage aufgelöst                           familie/sitzung.py, core/auth.py
+  -> Rechte aus Rolle und Stufe (stufen.json, eine Datei, keine Regeln im Code)       familie/rechte.py
+  -> Sichtbarkeit: privat anderer Profile weg, Kinder nur Freigegebenes               familie/sichtbar.py, in buchliste, Suche, Buch, Datei, Umschlag, Text
+  -> Daten je Profil: Nutzerdaten je Buch, Notizen, Etiketten, Markierungen, Vorlesestelle, Lesestand der Übersetzung
+```
+
+### Daten
+
+| Tabelle | Inhalt |
+|---|---|
+| `profil` | `id` (UUID), name, zeichen, farbe, rolle (verwaltung, erwachsen, kind), pin (scrypt, leer: ohne), bild_pin (scrypt der drei Bilder, leer: ohne), geburtsjahr, stufe (vorlesen, erstes_lesen, lesen_lernen, schule, jugend; nur Kind), einstellungen (JSON: lesehilfen, lesezeit, katze), sortierung, angelegt_am |
+| `profil_sitzung` | Prüfsumme des Profilschlüssels, profil_id, geraet, angelegt_am, zuletzt_am; ein Schlüssel gilt, bis gewechselt oder abgemeldet wird |
+| `geraet_bindung` | geraet (zufällige Kennung des Browsers), profil_id; ein gebundenes Gerät zeigt nur dieses Profil, verlassen nur mit Eltern-PIN |
+| `buch_privat` | profil_id, book_id: nur dieses Profil sieht das Buch |
+| `freigabe` | profil_id (Kind), art (buch, kategorie), ziel_id, von_profil, angelegt_am |
+| `lesezeit` | profil_id, tag, sekunden, vorlesen_sekunden |
+| Daten je Profil | `profil_id` an `user_book_data` (Schlüssel profil_id und book_id), `book_notes`, `book_labels`, `book_highlights`, `vorlesestelle` (Schlüssel profil_id und buch_id), `fassung_lesestand`; bestehende Zeilen gehören dem ersten Profil |
+
+Beim ersten Start nach dem Umbau legt der Server das Profil Verwaltung an (Name aus dem Konto des Geräts, ohne PIN),
+sichert die Datenbank vorher als Datei und ordnet alle bestehenden persönlichen Daten diesem Profil zu. Nichts wird
+gelöscht. Solange es nur dieses eine Profil ohne PIN gibt, sieht und bedient man die App wie bisher.
+
+`backend/app/familie/stufen.json` beschreibt je Stufe: Fähigkeiten (lesen, vorlesen, lesezeichen, suche, favoriten,
+markierungen, notizen, etiketten, sammeln), Darstellung (Schrift, Größe, Wörter je Zeile, Tippflächen), Vorgaben für
+Lesezeit nach Alter, Einblick der Eltern, Vorgabe aus dem Geburtsjahr. Rollen Verwaltung und Erwachsen stehen dort
+ebenso, mit ihren Fähigkeiten (hinzufuegen, bearbeiten, loeschen, einstellungen, profile, freigeben, ki).
+
+### Schnittstelle
+
+| Weg | Inhalt |
+|---|---|
+| `GET /api/familie` | `{profile: [{id, name, zeichen, farbe, rolle, stufe, hat_pin, hat_bild_pin}], braucht_wahl, geraet: {gebunden_an}}`; ohne Geheimnisse |
+| `GET /api/familie/stufen` | die Stufen aus stufen.json (Namen, Alter, Fähigkeiten, Darstellung, Vorgaben) für die Oberfläche |
+| `POST /api/familie/wahl` | `{profil_id, pin?, bild_pin?: [drei Bildschlüssel]}`, Antwort `{schluessel, profil: Ich}`; fünf Fehlversuche, dann Wartezeit |
+| `POST /api/familie/verlassen` | Profil verlassen; auf einem gebundenen Gerät nur mit `{eltern_pin}` |
+| `GET /api/familie/ich` | `Ich`: `{profil, faehigkeiten, darstellung, lesezeit: {heute_s, rest_s, ruht, ruhe_bis, hinweis_ab_s}, katze: {an, name, schnurren}}` |
+| `PATCH /api/familie/ich/katze` | `{name}`; auch für Kinder erlaubt |
+| `POST /api/familie/lesezeit` | `{sekunden, vorlesen}` vom Leser im Takt; Antwort der Lesezeitstand |
+| `POST /api/familie/profile`, `PATCH /api/familie/profile/{id}` | anlegen und ändern (Verwaltung; Erwachsene nur sich selbst und ihre Kinder): `{name, zeichen, farbe, rolle, geburtsjahr, stufe, einstellungen}` |
+| `PUT /api/familie/profile/{id}/pin` | `{pin}` oder `{bild_pin}` oder `{entfernen: true}`; die Verwaltung setzt fremde PINs zurück |
+| `GET /api/familie/profile/{id}/loeschfolgen`, `DELETE /api/familie/profile/{id}` | Folgenvorschau (Notizen, Markierungen, Etiketten, Lesestände, Freigaben, private Bücher), Löschen nur danach; das letzte Profil Verwaltung nie |
+| `GET /api/familie/profile/{id}/freigaben` | `{kategorien: [{id, name, zeichen, anzahl}], buecher: [Buchzeile mit Altersangabe]}` |
+| `POST /api/familie/profile/{id}/freigaben` | `{art, ziel_ids}`; `DELETE` mit denselben Angaben nimmt zurück |
+| `POST /api/familie/geraet` | `{profil_id, eltern_pin}` bindet dieses Gerät; `DELETE /api/familie/geraet` mit `{eltern_pin}` löst |
+| `GET /api/familie/profile/{id}/einblick` | nach Stufe: `[{buch, fortschritt, lesezeit_heute_s?, zuletzt?}]` und `sichtbar: [was die Eltern sehen]`; ab Jugend nur Geteiltes |
+| `PUT /api/books/{id}/privat` | `{privat}` für das aktive Profil |
+
+Altersangaben der Bücher: soweit die Quellen sie liefern (Lesealter, Interessenalter), mit Herkunft am Buch
+(`alter_von`, `alter_bis`, `alter_quelle`), von Verwaltung oder Erwachsenen überschreibbar; sie sind nur Hilfe beim
+Freigeben, nie eine Freigabe.
+
+Für Kinder schaltet der Server alle Wege ab, die ihre Stufe nicht erlaubt (403), und alle KI-Wege immer (Assistent,
+Suche nach Bedeutung, Vorschläge, Übersetzen starten). Kein Kinderprofil schickt etwas an fremde Dienste; Vorlesen läuft
+wie bisher über die eigene Leitstelle.
+
 ## Reihenfolge
 
-1. Entwurf zur Abnahme: Profilwahl mit Bild-PIN, Kinderregal und Lesen in Stufe Vorlesen und Lesen und Lernen
+1. Entwurf zur Abnahme (abgenommen 26.11.2026, Anhang kinder-1.html an BF-78): Profilwahl mit Bild-PIN, Kinderregal und Lesen in Stufe Vorlesen und Lesen und Lernen
    nebeneinander, Elternbereich (Profile, Stufen, Freigaben, Lesezeit, Einblick), die Katze.
 2. Datenmodell: Profile, Rollen, Daten je Profil (Lesestand, Notizen, Markierungen, Etiketten, Favoriten, Sterne,
    Vorlesestelle), private Bücher, Freigaben; Umzug der heutigen Daten ins erste Profil.
