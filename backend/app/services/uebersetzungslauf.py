@@ -7,6 +7,11 @@ Kapitel für Kapitel Übersetzen (Portionen, Zwischenspeicher), Prüfen (KI-Prü
 Rest bleibt offen im Original), zuletzt Setzen und Ablegen. Fertige Kapitel sind sofort lesbar: die Datei für den Leser
 wird bis dahin aus den Blöcken gesetzt (api/uebersetzung.py).
 
+Ändern sich die festen Prüfungen (fassungen.geprueft_mit), prüft der nächste Durchgang alles neu, was die KI schon
+übersetzt hat, ohne neue Anfrage: was besteht, bleibt bestanden (eine offene Stelle, die nur an den festen Prüfungen
+scheiterte, geht zum Prüfer); was neu durchfällt, geht mit vollen Nacharbeiten in die Nacharbeit. Texte und Annahmen des
+Nutzers bleiben unberührt.
+
 Anhalten (Pause, Abbrechen, Herunterfahren) wirkt sofort, auch mitten in einer Anfrage; deren Ergebnis fehlt dann und die
 Portion kommt beim Fortsetzen neu. Ist die Leitstelle weg, länger als die Geduld reicht, oder das Original gerade nicht zu
 holen, endet nur die Runde (Grund am Stand); lehnt die Leitstelle ab, steht die Fassung auf "fehler", bis ein Mensch sie
@@ -27,14 +32,14 @@ from appkern.leitstelle.arbeit import LAUFENDE_ARBEIT
 
 from backend.app.ablage.wolke import WolkeFehler
 from backend.app.core.config import settings
-from backend.app.models.fassung import Stationsname
+from backend.app.models.fassung import NACHZUPRUEFEN, Stationsname
 from backend.app.services import begriffsliste, fassung_ablage, fassungen
 from backend.app.services.anhalten import Anhalter
 from backend.app.services.fassungen import BlockZeile, Buchangaben, FassungZeile, KapitelZeile
 from backend.app.services.ki import Ki, KiFehler, fehler as ki_fehler, ki
 from backend.app.uebersetzung import anweisungen, begriffe, marken
 from backend.app.uebersetzung.anweisungen import FASSUNG as ANWEISUNG
-from backend.app.uebersetzung.modelle import Befund, Begriff, Unbrauchbar
+from backend.app.uebersetzung.modelle import Anrede, Befund, Begriff, Unbrauchbar
 from backend.app.uebersetzung.pruefen import pruefen
 from backend.app.uebersetzung.pruefer import pruefen_lassen
 from backend.app.uebersetzung.uebersetzen import Auftrag, nacharbeiten, portionen, speicherschluessel, uebersetzen
@@ -104,15 +109,31 @@ def _nach_mangel(z: BlockZeile) -> str:
     return "nacharbeit" if z.nacharbeiten < settings.uebersetzen_nacharbeiten else "offen"
 
 
-def geprueft(z: BlockZeile, text: str | None, gilt: list[Begriff]) -> BlockZeile:
+def geprueft(z: BlockZeile, text: str | None, gilt: list[Begriff], anrede: Anrede) -> BlockZeile:
     """Nach einer Antwort der KI: die festen Prüfungen. Bestanden wartet auf den Prüfer, sonst Nacharbeit, oder offen,
     wenn keine Nacharbeit mehr bleibt. Ohne brauchbare Antwort bleibt die frühere Übersetzung für den Bericht stehen."""
     if text is None:
         return z.model_copy(update={"stand": _nach_mangel(z), "versuche": z.versuche + 1,
                                     "befunde": [Befund(art="antwort", quelle="pruefung", text=KEINE_ANTWORT)]})
-    befunde = pruefen(z.vorlage, text, gilt, fassungen.grenzen())
+    befunde = pruefen(z.vorlage, text, gilt, fassungen.grenzen(), anrede)
     return z.model_copy(update={"uebersetzung": text, "befunde": befunde, "versuche": z.versuche + 1,
                                 "stand": "uebersetzt" if not befunde else _nach_mangel(z)})
+
+
+def nachgeprueft(z: BlockZeile, gilt: list[Begriff], anrede: Anrede) -> BlockZeile | None:
+    """Ein Block, den die KI übersetzt hat, nach geänderten Prüfungen noch einmal fest geprüft, ohne neue Anfrage; None,
+    wenn alles bleibt. Rohe Zeichen einer früheren Antwort (<, &) werden dabei sicher geschrieben. Besteht er, bleibt sein
+    Stand; eine offene Stelle, die nur an den festen Prüfungen scheiterte, geht zum Prüfer. Fällt er durch, geht er mit
+    vollen Nacharbeiten in die Nacharbeit. Eine Stelle ohne Übersetzung oder mit einem Mangel des Prüfers bleibt offen."""
+    if not z.uebersetzung:
+        return None
+    text = marken.gesichert(z.uebersetzung, z.vorlage)
+    befunde = pruefen(z.vorlage, text, gilt, fassungen.grenzen(), anrede)
+    if befunde:
+        return z.model_copy(update={"uebersetzung": text, "befunde": befunde, "stand": "nacharbeit", "nacharbeiten": 0})
+    if z.stand == "offen" and not any(b.quelle == "ki" for b in z.befunde):
+        return z.model_copy(update={"uebersetzung": text, "befunde": [], "stand": "uebersetzt", "geprueft": False})
+    return z.model_copy(update={"uebersetzung": text}) if text != z.uebersetzung else None
 
 
 class Uebersetzungslauf:
@@ -223,6 +244,8 @@ class Uebersetzungslauf:
             if not f.begriffe_fertig:
                 await self._begriffe(f, b)
             await self._modelle_merken(f)
+            if f.geprueft_mit != fassungen.geprueft_mit():
+                await self._nachpruefen(f)
             for kap in await fassungen.kapitel(f.id):
                 if await fassungen.bloecke(f.id, kap.nr, ("wartet", "uebersetzt", "nacharbeit")):
                     await self._kapitel(f, b, kap, uhr)
@@ -247,6 +270,16 @@ class Uebersetzungslauf:
             raise ki_fehler(e, self.ki.modell()) from e
         await fassungen.aendern(f.id, modell=modell, pruefmodell=pruefmodell, anweisung=ANWEISUNG)
 
+    async def _nachpruefen(self, f: FassungZeile) -> None:
+        """Die festen Prüfungen haben sich geändert: was die KI übersetzt hat, wird ohne neue Anfrage noch einmal geprüft."""
+        self.jetzt = Jetzt(f.id, "Prüfen")
+        gilt = await begriffsliste.gelten(f.buch_id)
+        neu = [n for z in await fassungen.bloecke(f.id, staende=NACHZUPRUEFEN) if (n := nachgeprueft(z, gilt, f.anrede)) is not None]
+        await fassungen.bloecke_merken(f.id, neu)
+        await fassungen.aendern(f.id, geprueft_mit=fassungen.geprueft_mit())
+        if neu:
+            logger.info("Fassung %d nach geänderten Prüfungen neu geprüft: %d Blöcke geändert", f.id, len(neu))
+
     # -- Begriffe --------------------------------------------------------------------------------------------------------
     async def _begriffe(self, f: FassungZeile, b: Buchangaben) -> None:
         self.jetzt = Jetzt(f.id, "Begriffe")
@@ -260,7 +293,8 @@ class Uebersetzungslauf:
         try:
             roh = await self._anfrage(anweisungen.begriffe(begriffe.VORSCHLAG_HOECHSTENS), nachricht, schema_name="begriffe",
                                       schema=begriffe.SCHEMA_VORSCHLAG, titel=f"Begriffe: {b.title[:80]}")
-            vorschlaege = begriffe.vorschlaege_aus(roh, [marken.klartext(x.vorlage) for x in bloecke], vorhanden)
+            vorschlaege = begriffe.vorschlaege_aus(roh, [marken.klartext(x.vorlage) for x in bloecke], vorhanden,
+                                                   begriffsliste.alltagswoerter())
             text = f"{nach_regeln} nach Regeln, {await begriffsliste.kandidaten_merken(f.buch_id, vorschlaege)} von der KI"
         except (Unbrauchbar, ValueError) as e:
             text = f"{nach_regeln} nach Regeln; ohne Vorschlag der KI: {e}"
@@ -271,7 +305,7 @@ class Uebersetzungslauf:
         await uhr.merken()
         uhr.kapitel = kap.nr
         gilt = await begriffsliste.gelten(f.buch_id)
-        auftrag = Auftrag(kapitel=kap.titel, begriffe=gilt, anrede=settings.uebersetzen_anrede,
+        auftrag = Auftrag(kapitel=kap.titel, begriffe=gilt, anrede=f.anrede,
                           titel=f"Übersetzen: {b.title[:60]}, {kap.titel[:40]}")
         pruefauftrag = auftrag.model_copy(update={"titel": f"Prüfen: {b.title[:60]}, {kap.titel[:40]}",
                                                   "modell": settings.uebersetzen_pruefmodell})
@@ -286,7 +320,7 @@ class Uebersetzungslauf:
         gefunden = []
         for z in await fassungen.bloecke(f.id, kap.nr, ("wartet",)):
             text = await fassungen.speicher_holen(speicherschluessel(z.vorlage, auftrag, f.sprache))
-            if text is not None and not pruefen(z.vorlage, text, auftrag.begriffe, fassungen.grenzen()):
+            if text is not None and not pruefen(z.vorlage, text, auftrag.begriffe, fassungen.grenzen(), auftrag.anrede):
                 gefunden.append(z.model_copy(update={"uebersetzung": text, "stand": "bestanden", "befunde": [], "geprueft": True}))
         await fassungen.bloecke_merken(f.id, gefunden)
 
@@ -300,7 +334,7 @@ class Uebersetzungslauf:
             self.jetzt = Jetzt(f.id, "Übersetzen", kap.nr, portion[0].kennung)
             texte = await uebersetzen(self._anfrage, portion, auftrag, [z.als_block() for z in alle if z.nr < portion[0].nr])
             je = {z.kennung: z for z in wartend}
-            await fassungen.bloecke_merken(f.id, [geprueft(je[k], text, auftrag.begriffe) for k, text in texte.items()])
+            await fassungen.bloecke_merken(f.id, [geprueft(je[k], text, auftrag.begriffe, auftrag.anrede) for k, text in texte.items()])
             await uhr.merken()
 
     async def _pruefen(self, f: FassungZeile, kap: KapitelZeile, pruefauftrag: Auftrag, auftrag: Auftrag, uhr: Uhr) -> bool:
@@ -337,7 +371,8 @@ class Uebersetzungslauf:
             self.jetzt = Jetzt(f.id, "Nacharbeit", kap.nr, z.kennung)
             text = await nacharbeiten(self._anfrage, z.als_block(), z.uebersetzung, z.befunde, auftrag,
                                       [y.als_block() for y in alle if y.nr < z.nr])
-            await fassungen.bloecke_merken(f.id, [geprueft(z.model_copy(update={"nacharbeiten": z.nacharbeiten + 1}), text, auftrag.begriffe)])
+            await fassungen.bloecke_merken(f.id, [geprueft(z.model_copy(update={"nacharbeiten": z.nacharbeiten + 1}), text, auftrag.begriffe,
+                                                           auftrag.anrede)])
             await uhr.merken()
         return True
 

@@ -6,7 +6,8 @@ Antwort ist ein JSON-Schema mit genau so vielen Texten wie Blöcken. Gleiche Bl�
 Passt die Antwort nicht (Anzahl, Form), wird die Portion halbiert, bis einzelne Blöcke übrig sind; liefert die KI auch für
 einen einzelnen nichts Brauchbares, steht er ohne Übersetzung da (None) und geht in die Nacharbeit.
 
-Jede Übersetzung kommt mit geraden Zeichen zurück (zeichen.gerade); geprüft wird sie vom Rufer (pruefen.py)."""
+Das Modell sieht den Text als Zeichen (marken.fuer_modell); jede Übersetzung kommt mit geraden Zeichen (zeichen.gerade) in
+der Schreibweise der Vorlagen zurück (marken.aus_modell); geprüft wird sie vom Rufer (pruefen.py)."""
 
 from __future__ import annotations
 
@@ -18,7 +19,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.uebersetzung import anweisungen, marken
 from backend.app.uebersetzung.begriffe import fuer_text
-from backend.app.uebersetzung.modelle import Anfrage, Befund, Begriff, Block, Unbrauchbar
+from backend.app.uebersetzung.modelle import Anfrage, Anrede, Befund, Begriff, Block, Unbrauchbar
 from backend.app.uebersetzung.sprache import saetze
 from backend.app.uebersetzung.zeichen import gerade
 
@@ -27,7 +28,7 @@ class Auftrag(BaseModel):
     """Was jede Anfrage zu einem Kapitel mitbekommt."""
     kapitel: str                                     # die Überschrift des Kapitels
     begriffe: list[Begriff] = Field(default_factory=list)       # die Liste, die für das Buch gilt
-    anrede: anweisungen.Anrede = "du"
+    anrede: Anrede = "du"
     titel: str = "Übersetzen"                        # so heißt die Anfrage in der Leitstelle
     modell: str = ""                                 # leer: das Modell, das gilt
 
@@ -56,11 +57,11 @@ def zusammenhang(vorher: Sequence[Block], saetze_: int = 2) -> str:
 
 
 def begriffsangaben(begriffe: list[Begriff], texte: Sequence[str]) -> dict[str, dict[str, str]]:
-    """Die Begriffe, die in den Texten vorkommen, im Format der Buchprojekte."""
+    """Die Begriffe, die in den Texten vorkommen, im Format der Buchprojekte; mit der vereinbarten Form (der ersten)."""
     text = "\n".join(marken.klartext(t) for t in texte)
     gilt = fuer_text(begriffe, text)
-    return {"begriffe": {b.englisch: "bleibt englisch" if b.bleibt else b.deutsch for b in gilt if b.art == "begriff"},
-            "einheiten": {b.englisch: b.deutsch for b in gilt if b.art == "einheit" and b.deutsch}}
+    return {"begriffe": {b.englisch: "bleibt englisch" if b.bleibt else b.vereinbart for b in gilt if b.art == "begriff"},
+            "einheiten": {b.englisch: b.vereinbart for b in gilt if b.art == "einheit" and b.vereinbart}}
 
 
 def speicherschluessel(vorlage: str, auftrag: Auftrag, sprache: str = "de") -> str:
@@ -73,7 +74,7 @@ def speicherschluessel(vorlage: str, auftrag: Auftrag, sprache: str = "de") -> s
 
 def _nachricht(auftrag: Auftrag, vorlagen: list[str], vorher: Sequence[Block], beanstandet: dict | None = None) -> str:
     daten: dict = {"kapitel": auftrag.kapitel, "zusammenhang": zusammenhang(vorher), **begriffsangaben(auftrag.begriffe, vorlagen),
-                   "bloecke": vorlagen}
+                   "bloecke": [marken.fuer_modell(v) for v in vorlagen]}
     if beanstandet is not None:
         daten["beanstandet"] = beanstandet
     return json.dumps(daten, ensure_ascii=False)
@@ -95,7 +96,7 @@ async def uebersetzen(anfrage: Anfrage, bloecke: Sequence[Block], auftrag: Auftr
         roh = await anfrage(anweisungen.uebersetzen(len(eindeutig), auftrag.anrede), _nachricht(auftrag, eindeutig, vorher),
                             schema_name="uebersetzung", schema=anweisungen.schema_texte(len(eindeutig)), titel=auftrag.titel,
                             modell=auftrag.modell)
-        je_vorlage = dict(zip(eindeutig, texte_aus(roh, len(eindeutig))))
+        je_vorlage = {v: marken.aus_modell(t, v) for v, t in zip(eindeutig, texte_aus(roh, len(eindeutig)))}
     except Unbrauchbar:
         if len(eindeutig) == 1:
             return {b.kennung: None for b in bloecke}
@@ -110,11 +111,12 @@ async def uebersetzen(anfrage: Anfrage, bloecke: Sequence[Block], auftrag: Auftr
 async def nacharbeiten(anfrage: Anfrage, block: Block, frueher: str, befunde: list[Befund], auftrag: Auftrag,
                        vorher: Sequence[Block] = ()) -> str | None:
     """Ein Block noch einmal, mit der früheren Übersetzung und ihren Mängeln im Auftrag; None, wenn nichts Brauchbares kam."""
-    beanstandet = {"uebersetzung": frueher, "maengel": [b.text + (f" (Stelle: {b.stelle})" if b.stelle else "") for b in befunde]}
+    beanstandet = {"uebersetzung": marken.fuer_modell(frueher),
+                   "maengel": [b.text + (f" (Stelle: {b.stelle})" if b.stelle else "") for b in befunde]}
     try:
         roh = await anfrage(anweisungen.uebersetzen(1, auftrag.anrede, nacharbeit=True),
                             _nachricht(auftrag, [block.vorlage], vorher, beanstandet), schema_name="nacharbeit",
                             schema=anweisungen.schema_texte(1), titel=auftrag.titel, modell=auftrag.modell)
-        return texte_aus(roh, 1)[0]
+        return marken.aus_modell(texte_aus(roh, 1)[0], block.vorlage)
     except Unbrauchbar:
         return None

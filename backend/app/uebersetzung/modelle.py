@@ -9,9 +9,11 @@ from pydantic import BaseModel, Field
 
 from backend.app.uebersetzung.bloecke import Art
 
-#: Arten von Befunden: die neun festen Prüfungen, eine unbrauchbare Antwort, die Arten des KI-Prüfers
+#: Arten von Befunden: die zehn festen Prüfungen, eine unbrauchbare Antwort, die Arten des KI-Prüfers
 Befundart = Literal["marken", "zahlen", "einheiten", "bezeichner", "begriffe", "sprache", "laenge", "vollstaendigkeit", "zeichen",
-                    "antwort", "sinn", "ausgelassen", "hinzugefuegt", "begriff", "grammatik", "pruefer"]
+                    "anrede", "antwort", "sinn", "ausgelassen", "hinzugefuegt", "begriff", "grammatik", "pruefer"]
+#: wie der Leser angesprochen wird; ein Buch bleibt durchgehend bei einer
+Anrede = Literal["du", "Sie"]
 KI_ARTEN: tuple[Befundart, ...] = ("sinn", "ausgelassen", "hinzugefuegt", "begriff", "grammatik")
 
 
@@ -41,12 +43,28 @@ def pruefsumme(vorlage: str) -> str:
     return hashlib.sha256(vorlage.encode("utf-8")).hexdigest()
 
 
+FORMEN_TRENNER = "|"
+
+
+def formen_von(deutsch: str) -> list[str]:
+    """Die erlaubten deutschen Formen eines Eintrags, mit | getrennt; die erste ist die vereinbarte."""
+    return [f.strip() for f in deutsch.split(FORMEN_TRENNER) if f.strip()]
+
+
 class Begriff(BaseModel):
-    """Ein Eintrag der Begriffsliste: bleibt englisch, oder hat eine vereinbarte deutsche Form."""
+    """Ein Eintrag der Begriffsliste: bleibt englisch, oder hat eine vereinbarte deutsche Form. Mehrere erlaubte Formen stehen
+    mit | getrennt ("KI | künstliche Intelligenz"); die erste ist die vereinbarte, die das Modell bekommt."""
     englisch: str
     deutsch: str = ""
     bleibt: bool = False
     art: Literal["begriff", "einheit"] = "begriff"
+
+    def formen(self) -> list[str]:
+        return formen_von(self.deutsch)
+
+    @property
+    def vereinbart(self) -> str:
+        return next(iter(self.formen()), "")
 
 
 class Kandidat(BaseModel):

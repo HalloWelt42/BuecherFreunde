@@ -64,8 +64,11 @@ def test_zerlegen_in_kapitel_und_bloecke():
 
 
 def test_klassen_die_nie_uebersetzt_werden_sind_einstellbar():
-    mit = " ".join(b.vorlage for b in zerlegen(probe_epub(), frozenset()).bloecke())
-    assert 'print("stays as it is")' in mit or "stays as it is" in mit
+    """Die Klassen gelten für alles darin, auch für Text; Code in einem solchen Kasten fällt zudem als Code heraus."""
+    prosa = probe_epub({KAPITEL1: KAPITEL_1.replace('print("stays as it is")', "The garden stays as it is.")})
+    assert "The garden stays as it is." in " ".join(b.vorlage for b in zerlegen(prosa, frozenset()).bloecke())
+    assert "stays as it is" not in " ".join(b.vorlage for b in zerlegen(prosa, NIE).bloecke())
+    assert "stays as it is" not in " ".join(b.vorlage for b in zerlegen(probe_epub(), frozenset()).bloecke())
 
 
 def test_nicht_lesbar():
@@ -174,6 +177,16 @@ def test_passt_die_vorlage_nicht_mehr_bleibt_der_block_im_original():
     s = Satz(deutsch={"2.1": Uebersetzt(pruefsumme=pruefsumme("Something else"), text="Erste Schritte")})
     k1 = dateien(setzen(original, z, s))[KAPITEL1].decode()
     assert f'title="{ORIGINAL_ANDERS}"' in k1 and ">Getting Started</span></h1>" in k1
+
+
+def test_anders_zerlegt_gilt_die_uebersetzung_derselben_vorlage():
+    """Wurde mit anderen Regeln zerlegt, verschieben sich Kennungen; eine Übersetzung findet ihren Block über die Vorlage."""
+    original = probe_epub()
+    z = zerlegen(original, NIE)
+    vorlage = next(b.vorlage for b in z.bloecke() if b.kennung == "2.1")
+    s = Satz(deutsch={"2.7": Uebersetzt(pruefsumme=pruefsumme(vorlage), text="Erste Schritte")})
+    k1 = dateien(setzen(original, z, s))[KAPITEL1].decode()
+    assert '<h1 id="h1">Erste Schritte</h1>' in k1 and "before the first run" in k1
 
 
 # -- XHTML lesen --------------------------------------------------------------------------------------------------------------

@@ -2,6 +2,7 @@
 Stationen und Kapiteln, Pause, Fortsetzen, Abbrechen, Bericht, Blöcke von Hand, Datei für den Leser, Begriffsliste."""
 
 import asyncio
+import json
 
 from backend.app.core.config import settings
 from backend.app.services import begriffsliste, fassungen
@@ -51,7 +52,8 @@ async def test_folgen_vor_dem_start(client, test_db, uebersetzer):
     woerter = sum(x.woerter for x in zerlegen(probe_epub(), fassungen.nie_klassen()).bloecke())
     assert f["dauer_s"] == round(woerter / settings.uebersetzen_woerter_je_seite * 30, 1) and f["fertig_gegen"].endswith("Z")
     assert f["ablage"] == {"ort": "geraet", "pfad": str(settings.storage_dir / b.hash[:2] / b.hash[2:4] / b.hash / "Fassungen" / "de" / "Garten.epub")}
-    assert f["begriffe"] == 14                                       # die Einheiten der Liste für alle
+    assert f["begriffe"] == 16                                       # Einheiten und Begriffe (AI) der Liste für alle
+    assert f["anrede"] == "du"                                       # die Vorgabe für eine neue Fassung
     assert (await client.get(f"/api/books/{buch}/fassungen/fr/folgen")).status_code == 404     # nur Deutsch als Ziel
 
 
@@ -93,6 +95,30 @@ async def test_start_und_stand(client, test_db, uebersetzer):
     assert s["zahlen"] == {"bloecke": 25, "uebersetzt": 25, "bestanden": 25, "nachgearbeitet": 0, "offen": 0}
     assert s["kapitel_jetzt"] is None and s["block_jetzt"] is None
     assert (await client.get("/api/fassungen/999/stand")).status_code == 404
+
+
+async def test_anrede_je_buch_beim_start(client, test_db, uebersetzer, leitstelle):  # noqa: F811
+    """Die Anrede gilt für die ganze Fassung: beim Start wählbar, in der Rückfrage und der Liste genannt, im Auftrag an die
+    KI, und die feste Prüfung "Anrede" hält sie ein. Eine bestehende Fassung wechselt sie nicht."""
+    buch = await probebuch(test_db)
+    s = await client.post(f"/api/books/{buch}/fassungen/de", json={"anrede": "Sie"})
+    assert s.status_code == 200
+    fid = s.json()["id"]
+    assert (await client.get(f"/api/books/{buch}/fassungen/de/folgen")).json()["anrede"] == "Sie"
+    r = await client.post(f"/api/books/{buch}/fassungen/de", json={"anrede": "du"})
+    assert r.status_code == 409 and "spricht den Leser mit Sie an" in r.json()["detail"]
+    assert (await client.post(f"/api/books/{buch}/fassungen/de", json={})).status_code == 200
+    assert (await client.post(f"/api/books/{buch}/fassungen/de", json={"anrede": "ihr"})).status_code == 422
+
+    await Uebersetzungslauf(ki).runde()
+    [_, eintrag] = (await client.get(f"/api/books/{buch}/fassungen")).json()
+    assert eintrag["anrede"] == "Sie"
+    systeme = [json.loads(r.content)["messages"][0]["content"] for r in leitstelle.anfragen if r.url.path == "/v1/chat/completions"]
+    assert any('mit "Sie" an' in t for t in systeme) and not any('mit "du" an' in t for t in systeme)
+    # der Satz mit du besteht die Prüfung Anrede nicht, auch nicht nach den Nacharbeiten
+    [offen] = (await client.get(f"/api/fassungen/{fid}/bericht")).json()["offen"]
+    assert offen["kennung"] == "2.3" and [b["art"] for b in offen["befunde"]] == ["anrede"]
+    assert offen["befunde"][0]["text"] == 'Der Leser wird mit "Sie" angesprochen, hier steht "du"'
 
 
 async def test_pause_fortsetzen_abbrechen(client, test_db, uebersetzer):
@@ -201,6 +227,13 @@ async def test_bericht_und_bloecke_annehmen_setzen_neu(client, test_db, ueberset
     assert (await fassungen.block(fid, "3.2")).stand == "bestanden" and (await fassungen.holen(fid)).stand == "fertig"
     datei = dateien((await client.get(f"/api/fassungen/{fid}/datei?herunterladen=true")).content)
     assert "ungefähr 3 GB Protokolle" in datei["OEBPS/text/kapitel 1.xhtml"].decode()
+
+    # von Hand dürfen Zeichen roh stehen; fremde Auszeichnung nicht
+    roh = "Rufe <x1/> auf, bevor du die <t2>Pumpe</t2> startest, & lies im <t3>nächsten Kapitel</t3> die Einzelheiten."
+    r = await client.post(f"/api/fassungen/{fid}/bloecke/2.3", json={"aktion": "setzen", "text": roh})
+    assert r.status_code == 200 and r.json()["deutsch"] == roh.replace("& lies", "&amp; lies")
+    r = await client.post(f"/api/fassungen/{fid}/bloecke/2.3", json={"aktion": "setzen", "text": roh.replace("du die", "du <b>die</b>")})
+    assert r.status_code == 422 and [b["art"] for b in r.json()["befunde"]] == ["marken"]
 
     assert (await client.post(f"/api/fassungen/{fid}/bloecke/9.9", json={"aktion": "neu"})).status_code == 404
     r = await client.post(f"/api/fassungen/{fid}/bloecke/2.2", json={"aktion": "setzen"})

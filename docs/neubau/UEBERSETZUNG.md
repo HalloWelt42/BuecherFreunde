@@ -16,6 +16,7 @@ KI nur über die Leitstelle, Texterkennung als Werkzeug ohne Modell am Mac.
 | Texterkennung | Seiten ohne Textschicht zuerst erkennen; Schrift in Abbildungen erkennen, übersetzen, über das Bild legen, Umschalter Englisch und Deutsch |
 | Lesestand und Notizen | Lesestand gemeinsam; Notizen und Markierungen hängen am Absatz und erscheinen in beiden Fassungen |
 | Start und Stand | auf der Buchseite "Ins Deutsche übersetzen", Lauf als Auftrag, fertige Kapitel sofort lesbar |
+| Anrede | ein Buch bleibt durchgehend bei einer: vorbelegt "du" (`UEBERSETZEN_ANREDE`), je Buch beim Start wählbar, die Fassung speichert sie |
 | Erste Probe | drei Arten: Fachbuch als EPUB mit Code, technisches PDF mit Tabellen und Abbildungen, Scan ohne Textschicht |
 
 ## Aufbau
@@ -49,6 +50,17 @@ Lesestand, Notizen, Markierungen und die Seitenmarken des PDF.
 - **EPUB:** je XHTML-Datei des Buchs die Blöcke wie in Nachschlag (zerlegen.py); `pre`, `code`, `math` und alles mit
   `translate="no"` bleibt draußen. Die Liste der Klassen, die nie übersetzt werden, ist einstellbar. Zusammengesetzt wird
   in dieselbe Datei mit demselben Markup, `lang="de"`, nur der Text tauscht.
+- **Code in einfachen Absätzen** (codeabsaetze.py): Manche Bücher setzen Code als gewöhnliche Absätze, Zeile für Zeile,
+  oft zwischen Zäunen aus Markdown ("```python" bis "```"). Solche Absätze werden keine Blöcke und bleiben Zeichen für
+  Zeichen im Original. Merkmale: Zäune (ein Zaun mit Sprache schließt nie, das Ende ist "```"), Zeilen, die von vorn bis
+  hinten Code sind (Zuweisung, Aufruf, Kopf eines Blocks, import, Befehl mit Argument, Pfad, JSON, die Merkmale der
+  Codestellen mit Anker am Zeilenanfang), schwache Merkmale nur zwischen Code, Festbreitenschrift aus Klasse, CSS oder Stil.
+  Prosa mit einzelnen Codewörtern bleibt Text (Satzzeichen am Ende, kleine englische Wörter, lange Wortfolgen).
+- **Code in Backticks** (`` `print` ``) geht wie `code` als Platzhalter durch; ebenso Auszeichnungen mit Klassen für Code
+  (literal, filename ...) und solche in Festbreitenschrift, deren Text wie Code aussieht.
+- **Zeichen:** Das Modell sieht Text als Zeichen (`if age < 18`), nur die Marken sind Auszeichnung; die Antwort kommt
+  wieder in die Schreibweise der Vorlagen (`&lt;`). Was darin wie eine Auszeichnung aussieht und nicht als Text im
+  Original steht, bleibt roh und fällt in der Prüfung "Marken" auf.
 - **PDF:** Blöcke aus der Seitenstruktur: Überschriften nach Schriftgröße und Gewicht, Code nach der vorhandenen Erkennung
   der Codestellen (Festbreite, BF-29), Tabellen nach Zellen, Abbildungen mit Bildunterschrift, Kopf- und Fußzeilen und
   Seitenzahlen fallen weg, Silbentrennung am Zeilenende wird aufgelöst. Jeder Block merkt sich Seite und Lage. Die deutsche
@@ -64,9 +76,15 @@ Bücher.
    Dateinamen, Befehle, Versionen und Produktnamen (gleich geschrieben über das ganze Buch, groß am Satzanfang und mitten
    im Satz) bleiben.
 2. **KI-Vorschlag:** Aus Inhaltsverzeichnis, Stichwortverzeichnis und Stichproben schlägt die KI Fachbegriffe vor, je mit
-   "bleibt englisch" oder "auf Deutsch: ..." und kurzem Grund (Thread bleibt, Listing bleibt, Event Loop bleibt).
+   "bleibt englisch" oder "auf Deutsch: ..." und kurzem Grund (Thread bleibt, Listing bleibt, Event Loop bleibt). Englisch
+   bleiben nur Fachbegriffe und Namen von Produkten, Bibliotheken, Befehlen und Dateien; gewöhnliche Wörter werden
+   übersetzt. Ein Vorschlag "bleibt englisch" aus lauter Alltagswörtern (`alltagswoerter` in vorgaben.json) wird verworfen.
 3. **Pflege:** Die Liste ist an der Buchseite einsehbar und änderbar. Eine Änderung markiert nur die betroffenen Blöcke zum
    Neuübersetzen.
+
+Eine deutsche Form darf mehrere erlaubte Formen tragen, mit `|` getrennt ("KI | künstliche Intelligenz"); die erste ist die
+vereinbarte, die das Modell bekommt, die Prüfung nimmt jede. Abkürzungen mit üblicher deutscher Entsprechung (AI: KI) stehen
+in der Liste für alle Bücher; andere Abkürzungen bleiben.
 
 ## Übersetzen
 
@@ -86,12 +104,18 @@ Bücher.
 | Marken | jede Marke genau einmal, gleiche Schachtelung, keine fremde Auszeichnung |
 | Zahlen | dieselben Zahlen, nach Angleichen der Tausender- und Dezimalzeichen (16,000 = 16.000; 1.5 = 1,5) |
 | Einheiten | dieselben Einheiten, keine von selbst zugefügte Umrechnung |
-| Bezeichner | Inline-Code, Bezeichner, Adressen und Dateinamen unverändert |
-| Begriffe | jeder Begriff mit "bleibt" steht unverändert da, jeder mit Übersetzung in der vereinbarten Form |
-| Sprache | kein englischer Satz übrig (Stoppwörter je Satz, Begriffe und Code ausgenommen) |
+| Bezeichner | Inline-Code, Bezeichner, Adressen und Dateinamen unverändert; eine Abkürzung nur, wenn sie keine deutsche Form in der Begriffsliste hat; Wörter aus zwei großen Wörtern in Überschriftzeilen (ein verlorener Bindestrich: CrossPlatform) nicht |
+| Begriffe | jeder Begriff mit "bleibt" steht da, jeder mit Übersetzung in einer erlaubten Form, gebeugt (ansprechender Spiele) oder als Teil eines zusammengesetzten Worts (Spieleplattformen); kurze Stämme nur an Wortgrenzen |
+| Sprache | kein englischer Satz übrig (Stoppwörter je Satz, Begriffe, Code und Namen mit ihrer Abkürzung ausgenommen) |
 | Länge | Verhältnis Deutsch zu Englisch zwischen 0,8 und 1,8 je Block |
 | Vollständigkeit | gleiche Zahl an Sätzen, nichts ausgelassen, nichts hinzugefügt (Abweichung höchstens eins) |
-| Zeichen | echte Umlaute, gerade Anführungszeichen, keine Sonderstriche |
+| Zeichen | echte Umlaute, gerade Anführungszeichen, keine Sonderstriche, keine Zeichenreferenz als Text (`&lt;` statt `<`) |
+| Anrede | durchgehend die Anrede der Fassung: bei du kein Sie, Ihnen, Ihr im Satzinneren (am Satzanfang nur, wenn das Original den Leser anspricht und ein Verb in der Mehrzahl folgt), bei Sie kein du, dich, dir, dein |
+
+Ändert sich die Fassung der festen Prüfungen (`pruefen.FASSUNG`, mit den Grenzen der Länge in `fassung.geprueft_mit`),
+prüft der nächste Durchgang alles, was die KI übersetzt hat, ohne neue Anfrage noch einmal: was besteht, bleibt; eine
+offene Stelle, die nur an den festen Prüfungen scheiterte, geht zum KI-Prüfer; was neu durchfällt, geht mit vollen
+Nacharbeiten in die Nacharbeit. Texte und Annahmen des Nutzers bleiben. Eine fertige Fassung läuft dafür beim Start wieder.
 
 **KI-Prüfer:** Nach den festen Prüfungen bekommt eine zweite Anfrage, nach Möglichkeit mit einem anderen Modell, Original
 und Übersetzung satzweise und urteilt je Block: in Ordnung, oder Mangel mit Art (Sinn, ausgelassen, hinzugefügt, Begriff,
@@ -113,7 +137,8 @@ erkannt ist, bleibt englisch und steht im Bericht.
 ## Ablage und Kennzeichnung
 
 - Tabelle `fassung`: Buch, Sprache, aus Sprache, Stand (läuft, teilweise, fertig, Fehler), Datei in der Kellerwolke,
-  Modell für Übersetzen und Prüfen, Fassung der Anweisung, angelegt, geändert, Zahlen aus dem Prüfbericht.
+  Modell für Übersetzen und Prüfen, Fassung der Anweisung, Anrede, womit fest geprüft ist, angelegt, geändert, Zahlen aus
+  dem Prüfbericht.
 - Tabelle `uebersetzung_block`: Fassung, Kennung, Prüfsumme des Originals, Übersetzung, Stand, Befunde, Versuche.
 - Die Datei liegt in der Kellerwolke neben dem Original unter `Fassungen/de/`. Ohne Kellerwolke liegt sie im lokalen
   Bestand (wie die Begleiter).
@@ -149,15 +174,15 @@ nur erfundene Texte.
 
 | Weg | Inhalt |
 |---|---|
-| `GET /api/books/{id}/fassungen` | `[{id, sprache, original, stand, kapitel_fertig, kapitel_gesamt, fertig_gegen, modell, pruefmodell, angelegt, geaendert, gewaehlt}]`; das Original steht immer zuerst (`id` null, `original` true); `gewaehlt` die Fassung, die "Lesen" öffnet |
+| `GET /api/books/{id}/fassungen` | `[{id, sprache, original, stand, kapitel_fertig, kapitel_gesamt, fertig_gegen, modell, pruefmodell, angelegt, geaendert, gewaehlt, anrede}]`; das Original steht immer zuerst (`id` null, `original` true, `anrede` null); `gewaehlt` die Fassung, die "Lesen" öffnet |
 | `PUT /api/books/{id}/fassungen/wahl` | `{sprache}` (null: das Original) wählt, was "Lesen" öffnet, je Buch auf jedem Gerät (`user_book_data.fassung_wahl`); Antwort die Fassungen |
 | `GET /api/fassungen` | Fassungen in Arbeit (läuft, Pause, Fehler) für die Aufträge: `[{id, buch_id, titel, sprache, stand, anteil, kapitel_fertig, kapitel_gesamt, fertig_gegen, grund}]` |
-| `GET /api/books/{id}/fassungen/de/folgen` | Rückfrage vor dem Start: `{seiten, kapitel, bloecke, begriffe, abbildungen, dauer_s, fertig_gegen, tempo_s_je_seite, ablage: {ort, pfad}, geht, grund}`; `ort` kellerwolke oder geraet; `geht` false mit Grund, wenn das Buch nicht englisch ist oder das Format noch nicht übersetzt wird |
-| `POST /api/books/{id}/fassungen/de` | startet (oder setzt fort), Antwort Stand |
+| `GET /api/books/{id}/fassungen/de/folgen` | Rückfrage vor dem Start: `{seiten, kapitel, bloecke, begriffe, abbildungen, dauer_s, fertig_gegen, tempo_s_je_seite, ablage: {ort, pfad}, anrede, geht, grund}`; `ort` kellerwolke oder geraet; `anrede` die der Fassung, ohne Fassung die Vorgabe; `geht` false mit Grund, wenn das Buch nicht englisch ist oder das Format noch nicht übersetzt wird |
+| `POST /api/books/{id}/fassungen/de` | startet (oder setzt fort, auch eine fertige mit geänderten Prüfungen), Antwort Stand; Körper optional `{anrede: "du" \| "Sie"}` für eine neue Fassung, ohne Angabe die Vorgabe; eine andere Anrede für eine bestehende Fassung gibt 409 |
 | `GET /api/fassungen/{fid}/stand` | `{id, stand, begonnen, bisher_s, noch_s, fertig_gegen, tempo_s_je_seite, kapitel_jetzt, block_jetzt, stationen: [{name, stand, text}], kapitel: [{nr, titel, stand, dauer_s, geschaetzt, bloecke, fertig, geprueft, nachgearbeitet, offen}], zahlen: {bloecke, uebersetzt, bestanden, nachgearbeitet, offen}, grund}`; Stationen in fester Folge: Zerlegen, Begriffe, Übersetzen, Prüfen, Nacharbeit, Setzen; Stand je Station: wartet, laeuft, fertig |
 | `POST /api/fassungen/{fid}/pause`, `.../fortsetzen`, `.../abbrechen` | Stand; Abbrechen behält Fertiges, die Fassung bleibt "teilweise" |
 | `GET /api/fassungen/{fid}/bericht` | `{zahlen, offen: [{kennung, kapitel, ort, seite_original, original, deutsch, befunde: [{art, quelle, text, stelle}]}]}`; `quelle` pruefung oder ki; `stelle` das beanstandete Stück im deutschen Text |
-| `POST /api/fassungen/{fid}/bloecke/{kennung}` | `{aktion: "neu" \| "annehmen" \| "setzen", text?}`; "setzen" nimmt deinen Text, wenn er die festen Prüfungen besteht, sonst 422 mit Befunden |
+| `POST /api/fassungen/{fid}/bloecke/{kennung}` | `{aktion: "neu" \| "annehmen" \| "setzen", text?}`; "setzen" nimmt deinen Text (Marken wie im Bericht, Zeichen wie < und & dürfen roh stehen), wenn er die festen Prüfungen besteht, sonst 422 mit Befunden |
 | `GET /api/books/{id}/begriffe`, `POST`, `PATCH /api/begriffe/{bid}`, `DELETE` | Begriffsliste je Buch `[{id, englisch, deutsch, bleibt, herkunft, stellen, grund, art}]`; `art` begriff oder einheit, `herkunft` regel, ki, hand oder vorgabe; `GET /api/begriffe` und `POST /api/begriffe` die Liste für alle Bücher |
 | `GET /api/fassungen/{fid}/datei` | die deutsche Fassung als EPUB für den Leser, auch teilweise (offene Blöcke im Original mit Marke) |
 | `GET`, `PATCH /api/fassungen/{fid}/leseposition` | `{position, gelesen_am}`, Body `{position}`: der Lesestand dieser Fassung, bis zum gemeinsamen Lesestand getrennt vom Original (Tabelle `fassung_lesestand`); Lesestand, Vorlesestelle, Notizen und Markierungen des Originals bleiben unberührt |

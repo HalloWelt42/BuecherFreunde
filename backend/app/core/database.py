@@ -519,6 +519,9 @@ NEUBAU_SPALTEN: tuple[tuple[str, str, str], ...] = (
     ("categories", "teil_von", "TEXT NOT NULL DEFAULT ''"),        # Kategorie: Schlüssel der großen, deren Teil sie ist
     # Bücher übersetzen (BF-71): welche Fassung "Lesen" auf der Buchseite öffnet; leer das Original, sonst ihre Sprache
     ("user_book_data", "fassung_wahl", "TEXT NOT NULL DEFAULT ''"),
+    # Übersetzung (BF-71, services/fassungen.py)
+    ("fassung", "anrede", "TEXT NOT NULL DEFAULT 'du'"),           # du, Sie: so spricht die Fassung den Leser an, durchgehend
+    ("fassung", "geprueft_mit", "TEXT NOT NULL DEFAULT ''"),       # womit die Blöcke fest geprüft sind; weicht es ab: neu prüfen
 )
 
 

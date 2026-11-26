@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 
-from backend.app.uebersetzung import anweisungen
+from backend.app.uebersetzung import anweisungen, marken
 from backend.app.uebersetzung.modelle import KI_ARTEN, Anfrage, Befund, Block, Unbrauchbar
 from backend.app.uebersetzung.uebersetzen import Auftrag, begriffsangaben
 
@@ -41,10 +41,11 @@ async def pruefen_lassen(anfrage: Anfrage, paare: Sequence[tuple[Block, str]], a
     if not paare:
         return {}
     daten = {"kapitel": auftrag.kapitel, **begriffsangaben(auftrag.begriffe, [b.vorlage for b, _ in paare]),
-             "paare": [{"original": b.vorlage, "deutsch": d} for b, d in paare]}
+             "paare": [{"original": marken.fuer_modell(b.vorlage), "deutsch": marken.fuer_modell(d)} for b, d in paare]}
     try:
-        roh = await anfrage(anweisungen.pruefen(len(paare)), json.dumps(daten, ensure_ascii=False), schema_name="pruefung",
-                            schema=anweisungen.schema_urteile(len(paare)), titel=auftrag.titel, modell=auftrag.modell)
+        roh = await anfrage(anweisungen.pruefen(len(paare), auftrag.anrede), json.dumps(daten, ensure_ascii=False),
+                            schema_name="pruefung", schema=anweisungen.schema_urteile(len(paare)), titel=auftrag.titel,
+                            modell=auftrag.modell)
         return {b.kennung: u for (b, _), u in zip(paare, urteile_aus(roh, len(paare)))}
     except Unbrauchbar:
         if len(paare) == 1:

@@ -1,30 +1,35 @@
-"""Die neun festen Prüfungen je Block (BF-71). Alle müssen bestehen; jede liefert Befunde mit einem deutschen Satz und dem
-Stück im deutschen Text, an dem es auffiel.
+"""Die zehn festen Prüfungen je Block (BF-71). Alle müssen bestehen; jede liefert Befunde mit einem deutschen Satz und dem
+Stück im deutschen Text, an dem es auffiel. `FASSUNG` zählt die Prüfungen: steigt sie, prüft der Lauf, was schon übersetzt
+ist, ohne neue Anfrage noch einmal (services/uebersetzungslauf.py).
 
 | Prüfung | bestanden, wenn |
 |---|---|
 | Marken | jede Marke genau einmal, gleiche Schachtelung, keine fremde Auszeichnung |
 | Zahlen | dieselben Zahlen nach Angleichen der Tausender- und Dezimalzeichen (zahlen.py) |
 | Einheiten | dieselben Einheiten, keine von selbst zugefügte Umrechnung; englische Einheitennamen in der vereinbarten Form |
-| Bezeichner | Adressen, Dateinamen, Pfade, Aufrufe, Bezeichner, Optionen, Versionen und Abkürzungen unverändert |
-| Begriffe | jeder Begriff mit "bleibt" steht da, jeder mit deutscher Form in dieser Form |
+| Bezeichner | Adressen, Dateinamen, Pfade, Aufrufe, Bezeichner, Optionen, Versionen und Abkürzungen unverändert (außer sie stehen mit deutscher Form in der Begriffsliste) |
+| Begriffe | jeder Begriff mit "bleibt" steht da, jeder mit deutscher Form in dieser Form, gebeugt oder in einem zusammengesetzten Wort |
 | Sprache | kein englischer Satz übrig (Begriffe und Bezeichner ausgenommen), nichts unübersetzt stehen gelassen |
 | Länge | Verhältnis Deutsch zu Englisch in den Grenzen, ab einer Mindestlänge des Originals |
 | Vollständigkeit | gleich viele Sätze, Abweichung höchstens eins |
-| Zeichen | echte Umlaute, gerade Anführungszeichen, keine Sonderstriche (zeichen.py) |
+| Zeichen | echte Umlaute, gerade Anführungszeichen, keine Sonderstriche, keine Zeichenreferenz als Text (zeichen.py) |
+| Anrede | der Leser durchgehend mit der Anrede der Fassung angesprochen, du oder Sie (anrede.py) |
 
-Inline-Code geht als Platzhalter nie ans Modell und kommt Zeichen für Zeichen zurück; die Prüfung "Bezeichner" gilt dem, was
-im Fließtext steht."""
+Inline-Code (auch in Backticks) geht als Platzhalter nie ans Modell und kommt Zeichen für Zeichen zurück; die Prüfung
+"Bezeichner" gilt dem, was im Fließtext steht. Ein Wort in Binnenmajuskeln (CrossPlatform) fordert sie nicht, wenn es aus
+zwei gewöhnlichen Wörtern besteht und in einer Zeile mit lauter großen Wörtern steht (einer Überschrift, deren Bindestrich
+beim Umwandeln des Buchs verloren ging) oder das Original es auch klein schreibt."""
 
 from __future__ import annotations
 
 import re
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
+from backend.app.uebersetzung import anrede as anreden
 from backend.app.uebersetzung import marken, zahlen, zeichen
 from backend.app.uebersetzung.begriffe import fuer_text, im_deutschen, muster_deutsch, muster_einheit, muster_englisch
-from backend.app.uebersetzung.modelle import Befund, Befundart, Begriff, Laengengrenzen
+from backend.app.uebersetzung.modelle import Anrede, Befund, Befundart, Begriff, Laengengrenzen
 from backend.app.uebersetzung.sprache import STOPP_EN, englischer_satz, saetze, woerter
 
 DATEIENDUNGEN = ("py|pyc|js|mjs|ts|tsx|jsx|json|yaml|yml|toml|ini|cfg|conf|txt|md|rst|html|htm|xhtml|css|scss|xml|csv|tsv|sh|"
@@ -43,7 +48,14 @@ BEZEICHNER = (
     re.compile(r"(?<![\w-])--?[A-Za-z][\w-]*"),                                              # Option
     re.compile(r"\bv\d+(?:\.\d+)+\b|\b\d+\.\d+\.\d+(?:[-+.]\w+)*\b"),                         # Version
 )
+FASSUNG = 2
 ABKUERZUNG = re.compile(r"\b[A-Z][A-Z0-9]{1,9}s?\b")
+#: ein Wort aus zwei groß geschriebenen gewöhnlichen Wörtern (CrossPlatform, InGame), wie es ein verlorener Bindestrich hinterlässt
+ZWEI_WOERTER = re.compile(r"[A-Z][a-z]{1,}[A-Z][a-z]{1,}")
+WORT_EN = re.compile(r"[A-Za-z][A-Za-z'-]*")
+#: ein Name mit seiner Abkürzung dahinter: Global Game Jam (GGJ); die Anfangsbuchstaben ergeben die Abkürzung
+NAME_MIT_KUERZEL = re.compile(r"((?:[A-Z][\w'-]*\s+){1,8})\(([A-Z]{2,6})\)")
+ZEILENGRENZEN = (":", ". ", "! ", "? ", "(", ")")
 EINHEITEN_MEHR = ("km", "cm", "mm", "\u00b5m", "\u03bcm", "nm", "kg", "mg", "ms", "\u00b5s", "\u03bcs", "ns", "min", "Hz", "kHz", "MHz", "GHz", "KB", "kB",
                   "MB", "GB", "TB", "PB", "KiB", "MiB", "GiB", "TiB", "kbit", "Mbit", "Gbit", "bps", "kbps", "Mbps", "Gbps", "mV", "kV",
                   "mA", "mAh", "kW", "MW", "Wh", "kWh", "°C", "°F", "px", "pt", "dpi", "ppi", "ft", "mi", "lb", "lbs", "oz", "mph", "psi",
@@ -90,11 +102,11 @@ def pruefe_einheiten(original: str, deutsch: str, begriffe: list[Begriff], **_: 
     aus = [_befund("einheiten", f"Die Einheit {e} fehlt", "") for e in sorted(vorher - nachher)]
     aus += [_befund("einheiten", f"Die Einheit {e} ist hinzugekommen (umgerechnet?)", e) for e in sorted(nachher - vorher)]
     for b in begriffe:
-        if b.art != "einheit" or not b.deutsch:
+        if b.art != "einheit" or not b.formen():
             continue
         n = len(muster_einheit(b.englisch).findall(en))
-        if n and len(muster_deutsch(b.deutsch).findall(de)) < n:
-            aus.append(_befund("einheiten", f"Die Einheit {b.englisch} steht nicht als {b.deutsch} da", ""))
+        if n and max(len(muster_deutsch(f).findall(de)) for f in b.formen()) < n:
+            aus.append(_befund("einheiten", f"Die Einheit {b.englisch} steht nicht als {b.vereinbart} da", ""))
     return aus
 
 
@@ -119,11 +131,34 @@ def _gezaehlt(token: str, text: str) -> int:
     return len(re.findall(r"(?<![\w])" + re.escape(token) + r"(?![\w])", text))
 
 
+def _zeile_aus_grossen_woertern(text: str, stelle: int) -> bool:
+    """Ob die Zeile um eine Stelle (bis Doppelpunkt, Klammer oder Satzende) aus lauter groß geschriebenen Wörtern besteht;
+    kleine Wörter (of, and, the) zählen nicht."""
+    anfang = max(text.rfind(z, 0, stelle) for z in ZEILENGRENZEN) + 1
+    ende = min([i for z in ZEILENGRENZEN if (i := text.find(z, stelle)) >= 0] + [len(text)])
+    woerter = [w for w in WORT_EN.findall(text[anfang:ende]) if w.lower() not in STOPP_EN]
+    return len(woerter) >= 2 and all(w[0].isupper() for w in woerter)
+
+
+def gefordert(text: str) -> list[str]:
+    """Die Bezeichner, die die Übersetzung tragen muss: ohne Wörter aus zwei gewöhnlichen Wörtern, die nur ein verlorener
+    Bindestrich zusammenschrieb (in einer Zeile aus großen Wörtern, oder das Original schreibt sie auch klein)."""
+    aus = []
+    for token in bezeichner(text):
+        if ZWEI_WOERTER.fullmatch(token):
+            stellen = [m.start() for m in re.finditer(rf"(?<![\w]){re.escape(token)}(?![\w])", text)]
+            klein = re.search(rf"(?<![\w]){re.escape(token.lower())}(?![\w])", text)
+            if klein or (stellen and all(_zeile_aus_grossen_woertern(text, s) for s in stellen)):
+                continue
+        aus.append(token)
+    return aus
+
+
 def pruefe_bezeichner(original: str, deutsch: str, begriffe: list[Begriff], **_: object) -> list[Befund]:
     en, de = marken.klartext(original), marken.klartext(deutsch)
     namen = {b.englisch.lower() for b in begriffe}
     aus = []
-    for token, n in Counter(bezeichner(en)).items():
+    for token, n in Counter(gefordert(en)).items():
         if token.lower() not in namen and _gezaehlt(token, de) < n:
             aus.append(_befund("bezeichner", f"{token} fehlt oder ist verändert", ""))
     return aus
@@ -135,16 +170,29 @@ def pruefe_begriffe(original: str, deutsch: str, begriffe: list[Begriff], **_: o
     for b in fuer_text([b for b in begriffe if b.art == "begriff"], marken.klartext(original)):
         if b.bleibt and not im_deutschen(b.englisch, de):
             aus.append(_befund("begriffe", f"Der Begriff {b.englisch} bleibt englisch, steht aber nicht da", ""))
-        elif not b.bleibt and b.deutsch and not im_deutschen(b.deutsch, de):
-            aus.append(_befund("begriffe", f"Der Begriff {b.englisch} heißt hier {b.deutsch}", ""))
+        elif not b.bleibt and b.formen() and not im_deutschen(b.deutsch, de):
+            aus.append(_befund("begriffe", f"Der Begriff {b.englisch} heißt hier {' oder '.join(b.formen())}", ""))
     return aus
 
 
-def _ohne_festes(text: str, begriffe: list[Begriff]) -> str:
-    """Der Text ohne Begriffe, die englisch bleiben, und ohne Bezeichner: was dann englisch klingt, ist unübersetzt."""
+def namen_mit_kuerzel(text: str) -> list[str]:
+    """Namen, hinter denen ihre Abkürzung steht (Game Developers Conference (GDC)): sie dürfen bleiben, wie sie sind."""
+    aus = []
+    for m in NAME_MIT_KUERZEL.finditer(text):
+        woerter, kuerzel = m.group(1).split(), m.group(2)
+        if len(woerter) >= len(kuerzel) and "".join(w[0] for w in woerter[-len(kuerzel):]) == kuerzel:
+            aus.append(" ".join(woerter[-len(kuerzel):]))
+    return aus
+
+
+def _ohne_festes(text: str, begriffe: list[Begriff], namen: Sequence[str] = ()) -> str:
+    """Der Text ohne Begriffe, die englisch bleiben, ohne Namen mit ihrer Abkürzung und ohne Bezeichner: was dann englisch
+    klingt, ist unübersetzt."""
     for b in begriffe:
         if b.bleibt:
             text = muster_englisch(b.englisch).sub(" ", text)
+    for name in sorted(namen, key=len, reverse=True):
+        text = text.replace(name, " ")
     for token in sorted(set(bezeichner(text)), key=len, reverse=True):
         text = text.replace(token, " ")
     return text
@@ -163,11 +211,12 @@ def _uebernommene_klammern(original: str, deutsch: str) -> list[str]:
 
 def pruefe_sprache(original: str, deutsch: str, begriffe: list[Begriff], **_: object) -> list[Befund]:
     en, de = marken.klartext(original), marken.klartext(deutsch)
-    rest = _ohne_festes(de, begriffe)
+    namen = namen_mit_kuerzel(en)
+    rest = _ohne_festes(de, begriffe, namen)
     for uebernommen in sorted(_uebernommene_klammern(original, deutsch), key=len, reverse=True):
         rest = rest.replace(uebernommen, " ")
     aus = [_befund("sprache", "Ein englischer Satz ist übrig", s) for s in saetze(rest) if englischer_satz(s)]
-    if not aus and en == de and len(woerter(_ohne_festes(en, begriffe))) >= UNUEBERSETZT_AB:
+    if not aus and en == de and len(woerter(_ohne_festes(en, begriffe, namen))) >= UNUEBERSETZT_AB:
         aus.append(_befund("sprache", "Der Block ist unübersetzt", de[:120]))
     return aus
 
@@ -195,18 +244,24 @@ def pruefe_vollstaendigkeit(original: str, deutsch: str, **_: object) -> list[Be
     return [_befund("vollstaendigkeit", f"Die Zahl der Sätze weicht ab: {vorher} im Original, {nachher} in der Übersetzung", "")]
 
 
+def pruefe_anrede(original: str, deutsch: str, anrede: Anrede, **_: object) -> list[Befund]:
+    return [_befund("anrede", text, stelle) for text, stelle in anreden.befunde(marken.klartext(original), marken.klartext(deutsch), anrede)]
+
+
 def pruefe_zeichen(original: str, deutsch: str, **_: object) -> list[Befund]:
-    return [_befund("zeichen", text, stelle) for text, stelle in zeichen.befunde(deutsch)]
+    befunde = zeichen.befunde(deutsch) + zeichen.referenzen(marken.klartext(original), marken.klartext(deutsch))
+    return [_befund("zeichen", text, stelle) for text, stelle in befunde]
 
 
 PRUEFUNGEN: tuple[Callable[..., list[Befund]], ...] = (
     pruefe_marken, pruefe_zahlen, pruefe_einheiten, pruefe_bezeichner, pruefe_begriffe, pruefe_sprache, pruefe_laenge,
-    pruefe_vollstaendigkeit, pruefe_zeichen,
+    pruefe_vollstaendigkeit, pruefe_zeichen, pruefe_anrede,
 )
 
 
-def pruefen(original: str, deutsch: str, begriffe: list[Begriff], grenzen: Laengengrenzen) -> list[Befund]:
-    """Alle festen Prüfungen; leer heißt bestanden. `original` ist die Vorlage, `deutsch` die Übersetzung mit Marken."""
+def pruefen(original: str, deutsch: str, begriffe: list[Begriff], grenzen: Laengengrenzen, anrede: Anrede) -> list[Befund]:
+    """Alle festen Prüfungen; leer heißt bestanden. `original` ist die Vorlage, `deutsch` die Übersetzung mit Marken, beide in
+    der Schreibweise der Vorlagen."""
     if not deutsch.strip():
         return [_befund("vollstaendigkeit", "Die Übersetzung ist leer")]
-    return [b for p in PRUEFUNGEN for b in p(original=original, deutsch=deutsch, begriffe=begriffe, grenzen=grenzen)]
+    return [b for p in PRUEFUNGEN for b in p(original=original, deutsch=deutsch, begriffe=begriffe, grenzen=grenzen, anrede=anrede)]

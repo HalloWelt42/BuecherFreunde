@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+from functools import lru_cache
 from pathlib import Path
 
 from backend.app.core.database import db
@@ -22,6 +23,12 @@ logger = logging.getLogger("buecherfreunde.begriffsliste")
 VORGABEN = Path(__file__).resolve().parent.parent / "uebersetzung" / "vorgaben.json"
 VORGABEN_STAND = "begriffe_vorgaben"                 # Schlüssel in app_settings: die zuletzt eingespielte Fassung
 SPALTEN = "id, englisch, deutsch, bleibt, herkunft, stellen, grund, art"
+
+
+@lru_cache(maxsize=1)
+def alltagswoerter() -> frozenset[str]:
+    """Gewöhnliche englische Wörter aus vorgaben.json: ein Vorschlag "bleibt englisch" nur aus ihnen wird verworfen."""
+    return frozenset(w.lower() for w in json.loads(VORGABEN.read_text(encoding="utf-8")).get("alltagswoerter", []))
 
 
 def _eintrag(z: dict) -> BegriffEintrag:

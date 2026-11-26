@@ -79,13 +79,16 @@ def _einsetzen(text: str, ersetzungen: list[tuple[int, int, str]]) -> str:
     return text
 
 
-def _dokument(dok: Dokument, satz: Satz) -> str:
+def _dokument(dok: Dokument, satz: Satz, je_vorlage: dict[str, Uebersetzt]) -> str:
     quelle = dok.quelle.text
     ersetzungen: list[tuple[int, int, str]] = []
     for nr, lauf in enumerate(dok.laeufe, 1):
         kennung = dok.kennung(nr)
+        summe = pruefsumme(lauf.vorlage)
         u = satz.deutsch.get(kennung)
-        if u is not None and u.pruefsumme == pruefsumme(lauf.vorlage):
+        if u is None or u.pruefsumme != summe:                # anders zerlegt: die Übersetzung derselben Vorlage
+            u = je_vorlage.get(summe, u)
+        if u is not None and u.pruefsumme == summe:
             baum = marken.lesen(marken.plan(lauf.vorlage), u.text)
             ersetzungen.append((lauf.anfang, lauf.ende, darstellen(lauf, quelle, baum)))
         elif u is not None and dok.rolle != "ncx":
@@ -153,8 +156,11 @@ def _freier_name(namen: set[str], ordner: str) -> str:
 
 
 def setzen(original: bytes, zerlegung: Zerlegung, satz: Satz) -> bytes:
-    """Das EPUB mit dem Satz; die Reihenfolge der Dateien und ihre Art der Ablage im Archiv bleiben."""
-    neu: dict[str, bytes] = {d.pfad: d.quelle.bytes_aus(_dokument(d, satz)) for d in zerlegung.dokumente}
+    """Das EPUB mit dem Satz; die Reihenfolge der Dateien und ihre Art der Ablage im Archiv bleiben. Passt eine Kennung nicht
+    mehr zu ihrer Vorlage (das Original wurde mit anderen Regeln zerlegt), gilt die Übersetzung eines Blocks mit derselben
+    Vorlage; sonst bleibt der Block im Original."""
+    je_vorlage = {u.pruefsumme: u for u in satz.deutsch.values()}
+    neu: dict[str, bytes] = {d.pfad: d.quelle.bytes_aus(_dokument(d, satz, je_vorlage)) for d in zerlegung.dokumente}
     ziel = io.BytesIO()
     with zipfile.ZipFile(io.BytesIO(original)) as archiv, zipfile.ZipFile(ziel, "w") as aus:
         namen = set(archiv.namelist())

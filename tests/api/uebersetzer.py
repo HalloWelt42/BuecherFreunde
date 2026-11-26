@@ -18,13 +18,13 @@ from backend.app.services.storage import get_storage_path
 from tests.api.conftest import buch_erstellen
 from tests.uebersetzung_probe import probe_epub
 
-#: Vorlage -> Übersetzung für jeden Block des Probebuchs
+#: Vorlage, wie das Modell sie sieht (Text als Zeichen), -> seine Übersetzung für jeden Block des Probebuchs
 DEUTSCH = {
     "Getting Started": "Erste Schritte",
     "A small machine can water <t1>16,000</t1> plants in 1.5 hours, which is about 3\u00a0GB of logs.<x2/>":
         "Eine kleine Maschine kann <t1>16.000</t1> Pflanzen in 1,5 Stunden gießen, das sind etwa 3\u00a0GB Protokolle.<x2/>",
-    "Call <x1/> before you start the <t2>pump</t2> &amp; check the <t3>next chapter</t3> for details.":
-        "Rufe <x1/> auf, bevor du die <t2>Pumpe</t2> startest, &amp; lies im <t3>nächsten Kapitel</t3> die Einzelheiten.",
+    "Call <x1/> before you start the <t2>pump</t2> & check the <t3>next chapter</t3> for details.":
+        "Rufe <x1/> auf, bevor du die <t2>Pumpe</t2> startest, & lies im <t3>nächsten Kapitel</t3> die Einzelheiten.",
     "The garden\u2019s soil is <x1/> in our notes.": "Die Erde des Gartens heißt in unseren Notizen <x1/>.",
     "Fill the tank": "Fülle den Tank",
     "use clean water": "nimm sauberes Wasser",

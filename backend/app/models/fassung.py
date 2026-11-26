@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, StringConstraints, model_validator
 
 from backend.app.models.grenzen import BEGRIFF, BEGRIFF_GRUND, BLOCKTEXT, Leseposition
-from backend.app.uebersetzung.modelle import Befund
+from backend.app.uebersetzung.modelle import Anrede, Befund
 
 Stand = Literal["laeuft", "pause", "teilweise", "fertig", "fehler"]
 Zielsprache = Literal["de"]                          # Sprachen, in die übersetzt wird
@@ -23,6 +23,8 @@ MIT_DEUTSCH: tuple[Blockstand, ...] = ("bestanden", "nachgearbeitet", "angenomme
 IN_ARBEIT: tuple[Blockstand, ...] = ("wartet", "uebersetzt", "nacharbeit")
 #: Blöcke, die die KI hervorgebracht hat; eine Änderung der Begriffsliste setzt nur sie zurück
 VON_DER_KI: tuple[Blockstand, ...] = ("uebersetzt", "nacharbeit", "bestanden", "nachgearbeitet", "offen")
+#: Blöcke der KI mit einem Urteil der festen Prüfungen; ändern sich die Prüfungen, werden sie neu geprüft
+NACHZUPRUEFEN: tuple[Blockstand, ...] = ("uebersetzt", "bestanden", "nachgearbeitet", "offen")
 
 
 class FassungEintrag(BaseModel):
@@ -38,6 +40,7 @@ class FassungEintrag(BaseModel):
     angelegt: str
     geaendert: str
     gewaehlt: bool = False                           # diese Fassung öffnet "Lesen" auf der Buchseite
+    anrede: Anrede | None = None                     # so spricht die Fassung den Leser an; beim Original None
 
 
 class Fassungswahl(BaseModel):
@@ -69,6 +72,11 @@ class LesestandNeu(BaseModel):
     position: Leseposition
 
 
+class FassungStart(BaseModel):
+    """Was der Start annehmen kann: die Anrede für eine neue Fassung; ohne Angabe die Vorgabe (UEBERSETZEN_ANREDE)."""
+    anrede: Anrede | None = None
+
+
 class Ablageort(BaseModel):
     ort: Literal["kellerwolke", "geraet"]
     pfad: str                                        # in der Kellerwolke, sonst auf dem Gerät
@@ -85,6 +93,7 @@ class Folgen(BaseModel):
     fertig_gegen: str | None = None
     tempo_s_je_seite: float = 0
     ablage: Ablageort | None = None
+    anrede: Anrede = "du"                            # die Vorgabe für eine neue Fassung, sonst die der Fassung
     geht: bool
     grund: str = ""
 

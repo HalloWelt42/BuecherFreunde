@@ -12,8 +12,8 @@ from fastapi.responses import JSONResponse
 from backend.app.core.auth import verify_token, verify_token_inhalt
 from backend.app.core.database import db
 from backend.app.models.fassung import (
-    BegriffAenderung, BegriffEintrag, BegriffNeu, Bericht, BlockAktion, BlockAntwort, FassungEintrag, FassungStand, Fassungswahl, Folgen,
-    LaufEintrag, Lesestand, LesestandNeu, Zielsprache,
+    BegriffAenderung, BegriffEintrag, BegriffNeu, Bericht, BlockAktion, BlockAntwort, FassungEintrag, FassungStand, FassungStart,
+    Fassungswahl, Folgen, LaufEintrag, Lesestand, LesestandNeu, Zielsprache,
 )
 from backend.app.models.grenzen import Nr
 from backend.app.services import begriffsliste, fassung_ablage, fassung_lesen, fassungen, fassungsstand
@@ -80,16 +80,21 @@ async def fassung_folgen(buch_id: Nr, sprache: Zielsprache) -> Folgen:
 
 
 @router.post("/api/books/{buch_id}/fassungen/{sprache}", response_model=FassungStand, dependencies=[Depends(verify_token)])
-async def fassung_starten(buch_id: Nr, sprache: Zielsprache) -> FassungStand:
-    """Startet die Übersetzung oder setzt sie fort (aus Pause, abgebrochen oder nach einem Fehler)."""
+async def fassung_starten(buch_id: Nr, sprache: Zielsprache, eingabe: FassungStart | None = None) -> FassungStand:
+    """Startet die Übersetzung oder setzt sie fort (aus Pause, abgebrochen, nach einem Fehler, oder fertig mit geänderten
+    Prüfungen). `anrede` gilt für eine neue Fassung; eine bestehende bleibt bei ihrer (sonst 409)."""
     b = await _buch(buch_id)
     f = await fassungen.zum_buch(buch_id, sprache)
+    anrede = eingabe.anrede if eingabe is not None else None
     if f is None:
         folgen = await fassungsstand.folgen(b, sprache)
         if not folgen.geht:
             raise HTTPException(status_code=422, detail=folgen.grund)
-        f = await fassungen.anlegen(buch_id, sprache, "en")
-    elif f.stand in ("pause", "teilweise", "fehler") or (f.stand == "fertig" and await fassungen.offen_in_arbeit(f.id)):
+        f = await fassungen.anlegen(buch_id, sprache, "en", anrede or fassungen.anrede_vorgabe())
+    elif anrede is not None and anrede != f.anrede:
+        raise HTTPException(status_code=409, detail=f"Diese Fassung spricht den Leser mit {f.anrede} an; ein Buch bleibt bei einer "
+                                                    "Anrede")
+    elif f.stand in ("pause", "teilweise", "fehler") or (f.stand == "fertig" and await fassungen.noch_zu_tun(f)):
         await fassungen.stand_setzen(f.id, "laeuft")
     await _gebucht_und_angestossen()
     return await fassungsstand.stand(await _fassung(f.id))

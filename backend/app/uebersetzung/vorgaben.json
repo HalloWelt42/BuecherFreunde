@@ -1,7 +1,10 @@
 {
-  "_hinweis": "Allgemeine Begriffsliste für alle Bücher (BF-71), im Format der Buchprojekte: englisch -> deutsch, leer heißt bleibt englisch. Kommt einmal je Fassung in die Tabelle begriff (Herkunft vorgabe) und ist danach dort änderbar; Regeln stehen in uebersetzung/anweisungen.py.",
-  "fassung": 1,
-  "begriffe": {},
+  "_hinweis": "Allgemeine Begriffsliste für alle Bücher (BF-71), im Format der Buchprojekte: englisch -> deutsch, leer heißt bleibt englisch; mehrere erlaubte Formen mit | getrennt, die erste ist die vereinbarte. Kommt einmal je Fassung in die Tabelle begriff (Herkunft vorgabe) und ist danach dort änderbar; Regeln stehen in uebersetzung/anweisungen.py. Abkürzungen stehen nur hier, wenn das Deutsche eine übliche Entsprechung hat (AI: KI); sonst bleiben sie. alltagswoerter: gewöhnliche englische Wörter; ein Vorschlag der KI 'bleibt englisch' nur aus solchen Wörtern wird verworfen.",
+  "fassung": 2,
+  "begriffe": {
+    "AI": "KI | künstliche Intelligenz",
+    "artificial intelligence": "künstliche Intelligenz | KI"
+  },
   "einheiten": {
     "foot": "Fuß",
     "feet": "Fuß",
@@ -17,5 +20,14 @@
     "ounces": "Unze",
     "gallon": "Gallone",
     "gallons": "Gallone"
-  }
+  },
+  "alltagswoerter": [
+    "advanced", "answer", "appendix", "basic", "basics", "beginner", "book", "chapter", "common", "concept", "conclusion",
+    "create", "creating", "critical", "developer", "development", "easy", "engaging", "essential", "essentials", "example",
+    "exercise", "fundamental", "fundamentals", "further", "game", "general", "getting", "guide", "handbook", "important",
+    "intermediate", "introduction", "language", "manual", "note", "overview", "part", "practical", "principle", "programming",
+    "project", "question", "quick", "quickly", "reading", "resource", "section", "simple", "solution", "start", "started",
+    "step", "strategy", "summary", "technique", "tip", "tutorial", "understanding", "use", "using", "way", "work", "working",
+    "world"
+  ]
 }

@@ -86,7 +86,7 @@ async def eintraege(b: Buchangaben, angelegt: str, wahl: str = "") -> list[Fassu
         k = _Kapitelzahlen(await fassungen.bloecke(f.id), await tempo(f))
         aus.append(FassungEintrag(id=f.id, sprache=f.sprache, original=False, stand=f.stand, kapitel_fertig=k.fertig, kapitel_gesamt=k.gesamt,
                                   fertig_gegen=_um(k.noch_s) if f.stand == "laeuft" else None, modell=f.modell, pruefmodell=f.pruefmodell,
-                                  angelegt=f.angelegt_am, geaendert=f.geaendert_am, gewaehlt=f.sprache == wahl))
+                                  angelegt=f.angelegt_am, geaendert=f.geaendert_am, gewaehlt=f.sprache == wahl, anrede=f.anrede))
     if not any(e.gewaehlt for e in aus):
         aus[0].gewaehlt = True
     return aus
@@ -110,18 +110,20 @@ async def laeufe() -> list[LaufEintrag]:
 # -- Rückfrage vor dem Start --------------------------------------------------------------------------------------------------
 
 async def folgen(b: Buchangaben, sprache: str = "de") -> Folgen:
-    """Was das Übersetzen bedeutet; liest und zerlegt dafür das Original."""
+    """Was das Übersetzen bedeutet; liest und zerlegt dafür das Original. `anrede` ist die der Fassung, sonst die Vorgabe."""
+    f = await fassungen.zum_buch(b.id, sprache)
+    anrede = f.anrede if f is not None else fassungen.anrede_vorgabe()
     if b.file_format.lower().lstrip(".") not in FORMATE:
-        return Folgen(geht=False, grund=f"Das Format {b.file_format.upper() or 'ohne Endung'} wird noch nicht übersetzt, bisher nur EPUB")
+        return Folgen(geht=False, anrede=anrede, grund=f"Das Format {b.file_format.upper() or 'ohne Endung'} wird noch nicht übersetzt, bisher nur EPUB")
     if not ki.bereit:
-        return Folgen(geht=False, grund="Keine Leitstelle eingetragen: ohne KI wird nicht übersetzt")
+        return Folgen(geht=False, anrede=anrede, grund="Keine Leitstelle eingetragen: ohne KI wird nicht übersetzt")
     original = await fassungen.original_lesen(b)
     if original is None:
-        return Folgen(geht=False, grund="Das Original ist gerade nicht zu holen")
+        return Folgen(geht=False, anrede=anrede, grund="Das Original ist gerade nicht zu holen")
     try:
         zerlegung = await asyncio.to_thread(fassungen.zerlegung_aus, original)
     except NichtLesbar as e:
-        return Folgen(geht=False, grund=str(e))
+        return Folgen(geht=False, anrede=anrede, grund=str(e))
     bloecke = zerlegung.bloecke()
     probe, summe = [], 0
     for x in bloecke:
@@ -130,8 +132,8 @@ async def folgen(b: Buchangaben, sprache: str = "de") -> Folgen:
         probe.append(marken.klartext(x.vorlage))
         summe += x.woerter
     if not buch_ist_englisch(b.language or zerlegung.sprache, " ".join(probe)):
-        return Folgen(geht=False, grund=f"Das Buch ist nicht englisch (Sprache: {kuerzel(b.language or zerlegung.sprache) or 'nach dem Text'})")
-    f = await fassungen.zum_buch(b.id, sprache)
+        return Folgen(geht=False, anrede=anrede,
+                      grund=f"Das Buch ist nicht englisch (Sprache: {kuerzel(b.language or zerlegung.sprache) or 'nach dem Text'})")
     if f is not None and f.zerlegt == fassungen.zerlegt_mit():
         offen = sum(z.woerter for z in await fassungen.bloecke(f.id, staende=IN_ARBEIT))
     else:
@@ -142,7 +144,7 @@ async def folgen(b: Buchangaben, sprache: str = "de") -> Folgen:
     return Folgen(seiten=math.ceil(_seiten(sum(x.woerter for x in bloecke))), kapitel=len(zerlegung.mit_bloecken()), bloecke=len(bloecke),
                   begriffe=len(vorhanden) + len(begriffe.namen(bloecke, vorhanden)), abbildungen=zerlegung.abbildungen,
                   dauer_s=round(dauer, 1), fertig_gegen=_um(dauer), tempo_s_je_seite=round(s_je_seite, 1),
-                  ablage=await fassung_ablage.ort(sprache, b), geht=True)
+                  ablage=await fassung_ablage.ort(sprache, b), anrede=anrede, geht=True)
 
 
 # -- Stand --------------------------------------------------------------------------------------------------------------------

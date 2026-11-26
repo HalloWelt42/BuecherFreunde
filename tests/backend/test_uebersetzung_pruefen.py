@@ -1,12 +1,13 @@
-"""Die neun festen Prüfungen beim Übersetzen (BF-71): je Prüfung Gut- und Schlechtfälle, dazu ihre Bausteine (Zahlen,
-Sätze, Sprache, Zeichen). Alle Texte sind erfunden."""
+"""Die zehn festen Prüfungen beim Übersetzen (BF-71): je Prüfung Gut- und Schlechtfälle, dazu ihre Bausteine (Zahlen,
+Sätze, Sprache, Zeichen, Anrede, Zeichen für das Modell). Alle Texte sind erfunden."""
 
 import pytest
 
 from backend.app.uebersetzung import zahlen
+from backend.app.uebersetzung.marken import aus_modell, fuer_modell, gesichert
 from backend.app.uebersetzung.modelle import Begriff, Laengengrenzen
 from backend.app.uebersetzung.pruefen import (
-    bezeichner, pruefe_begriffe, pruefe_bezeichner, pruefe_einheiten, pruefe_laenge, pruefe_marken, pruefe_sprache,
+    bezeichner, pruefe_anrede, pruefe_begriffe, pruefe_bezeichner, pruefe_einheiten, pruefe_laenge, pruefe_marken, pruefe_sprache,
     pruefe_vollstaendigkeit, pruefe_zahlen, pruefe_zeichen, pruefen,
 )
 from backend.app.uebersetzung.sprache import buch_ist_englisch, englischer_satz, ist_englisch, saetze
@@ -49,6 +50,47 @@ def test_marken_gut(deutsch):
 def test_marken_schlecht(deutsch, grund, stelle):
     [befund] = pruefe_marken(VORLAGE, deutsch)
     assert befund.art == "marken" and grund in befund.text and befund.stelle == stelle
+
+
+# -- Zeichen für das Modell ---------------------------------------------------------------------------------------------------
+
+def test_das_modell_sieht_zeichen_und_seine_antwort_wird_wieder_maskiert():
+    vorlage = "Water the bed if moisture &lt; 30 &amp; the <t1>pump</t1> is on."
+    assert fuer_modell(vorlage) == "Water the bed if moisture < 30 & the <t1>pump</t1> is on."
+    antwort = "Gieße das Beet, wenn die Feuchte < 30 ist & die <t1>Pumpe</t1> läuft."
+    gespeichert = aus_modell(antwort, vorlage)
+    assert gespeichert == "Gieße das Beet, wenn die Feuchte &lt; 30 ist &amp; die <t1>Pumpe</t1> läuft."
+    assert pruefe_marken(vorlage, gespeichert) == [] and pruefe_zeichen(vorlage, gespeichert) == []
+    assert fuer_modell("Write &lt;t1&gt; by hand.") == "Write &lt;t1&gt; by hand."          # sähe als Zeichen wie eine Marke aus
+
+
+def test_fremde_auszeichnung_bleibt_roh_text_aus_dem_original_nicht():
+    vorlage = "Use the &lt;div&gt; element for each bed."
+    assert aus_modell("Nimm das <div>-Element für jedes Beet.", vorlage) == "Nimm das &lt;div&gt;-Element für jedes Beet."
+    roh = aus_modell("Nimm das <b>Element</b> für jedes Beet.", vorlage)
+    assert roh == "Nimm das <b>Element</b> für jedes Beet."
+    [befund] = pruefe_marken(vorlage, roh)
+    assert "Fremde Auszeichnung" in befund.text and befund.stelle == "<b>"
+    assert aus_modell("Gieße, wenn x <t1>klein</t1> ist.", "Water if x is <t1>small</t1>.") == "Gieße, wenn x <t1>klein</t1> ist."
+
+
+def test_eine_fruehere_antwort_mit_rohen_zeichen_wird_sicher_geschrieben():
+    """Frühere Antworten (oder Text von Hand) können rohe Zeichen und Zeichenreferenzen mischen; das Ergebnis besteht die
+    Prüfung Marken und ändert sich beim zweiten Mal nicht mehr."""
+    vorlage = "<x1/>: Less than, if a &lt; b &amp;&amp; c."
+    alt = "<x1/>: Kleiner als, wenn a < b &amp;& c."
+    neu = gesichert(alt, vorlage)
+    assert neu == "<x1/>: Kleiner als, wenn a &lt; b &amp;&amp; c." and gesichert(neu, vorlage) == neu
+    assert pruefe_marken(vorlage, alt) != [] and pruefe_marken(vorlage, neu) == []
+
+
+def test_zeichenreferenz_als_text_faellt_auf():
+    """Schreibt das Modell &lt; statt <, steht nach dem Maskieren &amp;lt; da, also "&lt;" als Text im Buch."""
+    vorlage = "Water if moisture &lt; 30."
+    [befund] = pruefe_zeichen(vorlage, aus_modell("Gieße, wenn die Feuchte &lt; 30 ist.", vorlage))
+    assert befund.art == "zeichen" and "&lt;" in befund.text
+    buch_ueber_html = "Write &amp;lt; for a less-than sign."                         # das Original führt sie selbst als Text
+    assert pruefe_zeichen(buch_ueber_html, aus_modell("Schreibe &lt; für ein Kleiner-Zeichen.", buch_ueber_html)) == []
 
 
 # -- Zahlen -------------------------------------------------------------------------------------------------------------------
@@ -144,10 +186,35 @@ def test_bezeichner_schlecht(original, deutsch, token):
     assert befund.art == "bezeichner" and befund.text.startswith(token)
 
 
+@pytest.mark.parametrize("original, deutsch", [
+    # ein verlorener Bindestrich in einer Zeile aus großen Wörtern: kein Bezeichner
+    ("2. MultiPlayer Modes: The engine is ready for many players.", "2. Mehrspieler-Modi: Die Engine ist für viele Spieler bereit."),
+    ("4. InApp Shop (WellKnown Patterns):", "4. Laden in der App (bekannte Muster):"),
+    ("The SetUp Guide", "Die Anleitung zur Einrichtung"),
+    # das Original schreibt das Wort auch klein
+    ("The PlugIn system makes the tool a plugin host.", "Das System für Erweiterungen macht das Werkzeug zum Erweiterungswirt."),
+    # eine Abkürzung mit deutscher Form in der Begriffsliste fordert keiner
+    ("Game AI and route finding", "Spiele-KI und Wegfindung"),
+])
+def test_bezeichner_gut_ohne_verlorene_bindestriche(original, deutsch):
+    begriffe = [*BEGRIFFE, Begriff(englisch="AI", deutsch="KI | künstliche Intelligenz")]
+    assert pruefe_bezeichner(original, deutsch, begriffe=begriffe) == []
+
+
+@pytest.mark.parametrize("original, deutsch, token", [
+    ("Call the GameState object first.", "Rufe zuerst das Objekt Spielzustand auf.", "GameState"),        # im Satz: Bezeichner
+    ("Using the HttpRequestHandler Class", "Die Klasse für Anfragen nutzen", "HttpRequestHandler"),      # drei Teile
+    ("Game AI and route finding", "Spiel und Wegfindung", "AI"),                                          # ohne Begriff
+])
+def test_bezeichner_schlecht_trotz_ueberschrift(original, deutsch, token):
+    [befund] = pruefe_bezeichner(original, deutsch, begriffe=BEGRIFFE)
+    assert befund.text.startswith(token)
+
+
 def test_code_im_satz_geht_als_platzhalter_durch():
     """Inline-Code steht als Platzhalter in der Vorlage; was darin steht, prüft keiner nach, er kommt unverändert zurück."""
-    assert pruefen("Call <x1/> to start the pump today.", "Rufe <x1/> auf, um die Pumpe heute zu starten.", BEGRIFFE, GRENZEN) == []
-    assert arten(pruefen("Call <x1/> to start the pump today.", "Rufe auf, um die Pumpe heute zu starten.", BEGRIFFE, GRENZEN)) == ["marken"]
+    assert pruefen("Call <x1/> to start the pump today.", "Rufe <x1/> auf, um die Pumpe heute zu starten.", BEGRIFFE, GRENZEN, "du") == []
+    assert arten(pruefen("Call <x1/> to start the pump today.", "Rufe auf, um die Pumpe heute zu starten.", BEGRIFFE, GRENZEN, "du")) == ["marken"]
 
 
 # -- Begriffe -----------------------------------------------------------------------------------------------------------------
@@ -173,6 +240,48 @@ def test_begriffe_schlecht(original, deutsch, im_text):
     assert befund.art == "begriffe" and im_text in befund.text
 
 
+GEBEUGT = [Begriff(englisch="engaging games", deutsch="ansprechende Spiele"), Begriff(englisch="platforms", deutsch="Plattformen"),
+           Begriff(englisch="critical reviews", deutsch="kritische Rezensionen"), Begriff(englisch="directory", deutsch="Verzeichnis"),
+           Begriff(englisch="operators", deutsch="Operatoren"), Begriff(englisch="game", deutsch="Spiel"),
+           Begriff(englisch="AI", deutsch="KI | künstliche Intelligenz"), Begriff(englisch="obstacles", deutsch="Hindernisse")]
+
+
+@pytest.mark.parametrize("original, deutsch", [
+    ("The world of engaging games is large.", "Die Welt ansprechender Spiele ist groß."),                 # Beugung
+    ("It builds engaging games.", "Es baut ansprechende Spiele."),
+    ("Publish on platforms like these.", "Veröffentliche auf solchen Spieleplattformen."),                # hinten im Wort
+    ("Platforms differ.", "Plattformen unterscheiden sich."),
+    ("Only short critical reviews are allowed.", "Erlaubt sind nur kurze Zitate in kritischen Rezensionen."),
+    ("Open the project directory.", "Öffne das Projektverzeichnis."),
+    ("Name the directory.", "Benenne den Namen des Verzeichnisses."),                                    # Genitiv auf -ses
+    ("Assignment operators change a value.", "Zuweisungsoperatoren ändern einen Wert."),
+    ("The game starts.", "Das Spiel beginnt."),
+    ("The game starts.", "Die Spielrunde beginnt."),                                                     # vorn im Wort
+    ("AI routines help.", "KI-Routinen helfen."),                                                        # Abkürzung im Wort
+    ("AI is everywhere.", "Künstliche Intelligenz ist überall."),                                        # die zweite Form
+    ("Avoid the obstacles.", "Weiche den Hindernissen aus."),
+])
+def test_begriffe_gebeugt_und_zusammengesetzt(original, deutsch):
+    assert pruefe_begriffe(original, deutsch, begriffe=GEBEUGT) == []
+
+
+@pytest.mark.parametrize("original, deutsch, im_text", [
+    ("The world of engaging games is large.", "Die Welt guter Spiele ist groß.", "heißt hier ansprechende Spiele"),
+    ("Publish on platforms like these.", "Veröffentliche auf solchen Bühnen.", "heißt hier Plattformen"),
+    ("The game starts.", "Ein Beispiel beginnt.", "heißt hier Spiel"),                     # kurzer Stamm steckt nicht in Beispiel
+    ("AI is everywhere.", "Das Kino ist überall.", "heißt hier KI oder künstliche Intelligenz"),
+    ("AI is everywhere.", "AI ist überall.", "heißt hier KI oder künstliche Intelligenz"),
+    ("Avoid the obstacles.", "Weiche den Hindernis aus.", None),                           # Einzahl statt Mehrzahl: erlaubt
+])
+def test_begriffe_schlecht_trotz_beugung(original, deutsch, im_text):
+    befunde = pruefe_begriffe(original, deutsch, begriffe=GEBEUGT)
+    if im_text is None:
+        assert befunde == []
+    else:
+        [befund] = befunde
+        assert im_text in befund.text
+
+
 # -- Sprache ------------------------------------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("original, deutsch", [
@@ -195,6 +304,12 @@ def test_sprache_gut(original, deutsch):
 def test_sprache_schlecht(original, deutsch, stelle):
     [befund] = pruefe_sprache(original, deutsch, begriffe=BEGRIFFE)
     assert befund.art == "sprache" and befund.stelle == stelle
+
+
+def test_namen_mit_abkuerzung_duerfen_bleiben():
+    assert pruefe_sprache("1. Spring Garden Days (SGD):", "1. Spring Garden Days (SGD):", begriffe=[]) == []
+    [befund] = pruefe_sprache("Garden Watering Helpers:", "Garden Watering Helpers:", begriffe=[])   # kein Name: unübersetzt
+    assert befund.text == "Der Block ist unübersetzt"
 
 
 def test_sprache_eines_buchs():
@@ -262,13 +377,50 @@ def test_zeichen_schlecht(deutsch, im_text):
     assert befunde and befunde[0].art == "zeichen" and im_text in befunde[0].text
 
 
+# -- Anrede -------------------------------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("original, deutsch", [
+    ("You water the beds.", "Du gießt die Beete."),
+    ("Install the pump first.", "Installiere zuerst die Pumpe."),
+    ("The pump is old. It still works.", "Die Pumpe ist alt. Sie läuft noch."),                     # dritte Person am Satzanfang
+    ("Pumps are cheap. They last long.", "Pumpen sind billig. Sie halten lange."),                  # ohne Anrede im Original
+    ("You need the pumps. They work hard.", "Du brauchst die Pumpen. Sie arbeiten viel."),          # du im Block: Sie ist sie
+    ("The gardener lost her key.", "Die Gärtnerin hat ihren Schlüssel verloren."),                 # ihr klein: dritte Person
+    ("The note says: Sie gießen hier.", "Der Zettel sagt: Sie gießen hier."),                         # steht so im Original
+])
+def test_anrede_du_gut(original, deutsch):
+    assert pruefe_anrede(original, deutsch, anrede="du") == []
+
+
+@pytest.mark.parametrize("original, deutsch, form, stelle", [
+    ("Install the pump first.", "Installieren Sie zuerst die Pumpe.", "Sie", "Installieren Sie"),
+    ("This helps you.", "Das hilft Ihnen.", "Ihnen", "hilft Ihnen"),
+    ("Check your pump.", "Prüfe Ihre Pumpe.", "Ihre", "Prüfe Ihre"),
+    ("Well done! You can water now.", "Gut gemacht! Sie können jetzt gießen.", "Sie", "gemacht! Sie"),   # Satzanfang, you
+])
+def test_anrede_du_schlecht(original, deutsch, form, stelle):
+    [befund] = pruefe_anrede(original, deutsch, anrede="du")
+    assert befund.art == "anrede" and f'hier steht "{form}"' in befund.text and befund.stelle == stelle
+
+
+def test_anrede_sie():
+    assert pruefe_anrede("Install the pump first.", "Installieren Sie zuerst die Pumpe.", anrede="Sie") == []
+    assert pruefe_anrede("Use the DIR command.", "Nutze den Befehl DIR.", anrede="Sie") == []                # Großbuchstaben
+    assert pruefe_anrede("Type dir to list it.", "Tippe dir, um es zu zeigen.", anrede="Sie") == []          # Original: dir
+    befunde = pruefe_anrede("You water your beds.", "Du gießt deine Beete, dann ruhst du dich aus.", anrede="Sie")
+    assert [b.stelle for b in befunde] == ["Du", "gießt deine", "du dich"]                    # je Form einmal
+    assert {b.text for b in befunde} == {'Der Leser wird mit "Sie" angesprochen, hier steht "Du"',
+                                         'Der Leser wird mit "Sie" angesprochen, hier steht "deine"',
+                                         'Der Leser wird mit "Sie" angesprochen, hier steht "dich"'}
+
+
 # -- Alle zusammen ------------------------------------------------------------------------------------------------------------
 
 def test_alle_pruefungen_bestanden_und_leer():
     original = "A small machine can water <t1>16,000</t1> plants in 1.5 hours, which is about 3\u00a0GB of logs.<x2/>"
     deutsch = "Eine kleine Maschine kann <t1>16.000</t1> Pflanzen in 1,5 Stunden gießen, das sind etwa 3\u00a0GB Protokolle.<x2/>"
-    assert pruefen(original, deutsch, BEGRIFFE, GRENZEN) == []
-    assert arten(pruefen(original, "  ", BEGRIFFE, GRENZEN)) == ["vollstaendigkeit"]
+    assert pruefen(original, deutsch, BEGRIFFE, GRENZEN, "du") == []
+    assert arten(pruefen(original, "  ", BEGRIFFE, GRENZEN, "du")) == ["vollstaendigkeit"]
     schlecht = pruefen(original, "A small machine can water <t1>16,000</t1> plants in 1.5 hours, which is about 3 MB of logs.",
-                       BEGRIFFE, GRENZEN)
+                       BEGRIFFE, GRENZEN, "du")
     assert {"marken", "zahlen", "einheiten", "sprache"} <= set(arten(schlecht))

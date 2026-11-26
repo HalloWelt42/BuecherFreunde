@@ -8,7 +8,9 @@ Stand eines Blocks: wartet, uebersetzt (feste Prüfungen bestanden, wartet auf d
 nachgearbeitet, offen (im Original, im Bericht), angenommen (offen und vom Nutzer angenommen), gesetzt (Text des Nutzers).
 
 `aenderungen` zählt jede Änderung an Blöcken, `gesetzt` den Stand, den die abgelegte Datei zeigt; weichen sie ab, wird neu
-gesetzt und abgelegt. Das Original bleibt immer unverändert."""
+gesetzt und abgelegt. `geprueft_mit` nennt die Fassung der festen Prüfungen samt Grenzen, mit der die Blöcke geprüft sind;
+weicht sie ab, prüft der Lauf neu (uebersetzungslauf.py). Jede Fassung spricht den Leser mit ihrer `anrede` an, beim Anlegen
+gewählt. Das Original bleibt immer unverändert."""
 
 from __future__ import annotations
 
@@ -25,13 +27,14 @@ from backend.app.services.storage import get_original_file
 from backend.app.uebersetzung import marken
 from backend.app.uebersetzung.anweisungen import FASSUNG as ANWEISUNG
 from backend.app.uebersetzung.begriffe import kommt_vor
-from backend.app.uebersetzung.modelle import Befund, Begriff, Block, Laengengrenzen
+from backend.app.uebersetzung.modelle import Anrede, Befund, Begriff, Block, Laengengrenzen
+from backend.app.uebersetzung.pruefen import FASSUNG as PRUEF_FASSUNG
 from backend.app.uebersetzung.pruefen import pruefen
 from backend.app.uebersetzung.setzen import Hinweis, Satz, Uebersetzt, setzen
 from backend.app.uebersetzung.zeichen import gerade
 from backend.app.uebersetzung.zerlegen_epub import Zerlegung, zerlegen
 
-ZERLEGEN_FASSUNG = 1                        # steigt sie (andere Regeln beim Zerlegen), wird jede Fassung neu zerlegt
+ZERLEGEN_FASSUNG = 2                        # steigt sie (andere Regeln beim Zerlegen), wird jede Fassung neu zerlegt
 NOCH_NICHT = "Im Original: noch nicht übersetzt"
 NICHT_BESTANDEN = "Im Original: die Übersetzung hat die Prüfung nicht bestanden"
 SPRACHE_IN_WORTEN = {"en": "Englischen"}
@@ -66,6 +69,8 @@ class FassungZeile(BaseModel):
     modell: str = ""
     pruefmodell: str = ""
     anweisung: int = 0
+    anrede: Anrede = "du"
+    geprueft_mit: str = ""
     begonnen: str | None = None
     bisher_s: float = 0
     angelegt_am: str
@@ -136,6 +141,16 @@ def grenzen() -> Laengengrenzen:
                           ab_zeichen=settings.uebersetzen_laenge_ab_zeichen)
 
 
+def geprueft_mit() -> str:
+    """Womit fest geprüft wird (Fassung der Prüfungen und Grenzen der Länge); ändert es sich, wird neu geprüft."""
+    g = grenzen()
+    return f"{PRUEF_FASSUNG}:{g.kleinst}:{g.groesst}:{g.ab_zeichen}"
+
+
+def anrede_vorgabe() -> Anrede:
+    return "Sie" if settings.uebersetzen_anrede == "Sie" else "du"
+
+
 # -- Lesen --------------------------------------------------------------------------------------------------------------------
 
 async def buch(buch_id: int) -> Buchangaben | None:
@@ -197,9 +212,9 @@ async def kapitel(fid: int) -> list[KapitelZeile]:
 
 # -- Schreiben ----------------------------------------------------------------------------------------------------------------
 
-async def anlegen(buch_id: int, sprache: str, aus_sprache: str) -> FassungZeile:
-    await db.execute("INSERT INTO fassung (buch_id, sprache, aus_sprache, stand, anweisung) VALUES (?, ?, ?, 'laeuft', ?)",
-                     (buch_id, sprache, aus_sprache, ANWEISUNG))
+async def anlegen(buch_id: int, sprache: str, aus_sprache: str, anrede: Anrede) -> FassungZeile:
+    await db.execute("INSERT INTO fassung (buch_id, sprache, aus_sprache, stand, anweisung, anrede, geprueft_mit) "
+                     "VALUES (?, ?, ?, 'laeuft', ?, ?, ?)", (buch_id, sprache, aus_sprache, ANWEISUNG, anrede, geprueft_mit()))
     f = await zum_buch(buch_id, sprache)
     assert f is not None
     return f
@@ -362,12 +377,13 @@ async def block_annehmen(f: FassungZeile, kennung: str) -> BlockZeile | None:
 
 
 async def block_setzen(f: FassungZeile, kennung: str, text: str, begriffe: list[Begriff]) -> BlockZeile | None:
-    """Ein Text von Hand; er gilt nur, wenn er die festen Prüfungen besteht (sonst Beanstandet mit den Befunden)."""
+    """Ein Text von Hand mit Marken, Zeichen wie < und & dürfen roh stehen; er gilt nur, wenn er die festen Prüfungen
+    besteht (sonst Beanstandet mit den Befunden)."""
     z = await block(f.id, kennung)
     if z is None:
         return None
-    text = gerade(text.strip())
-    befunde = pruefen(z.vorlage, text, begriffe, grenzen())
+    text = marken.gesichert(gerade(text.strip()), z.vorlage)
+    befunde = pruefen(z.vorlage, text, begriffe, grenzen(), f.anrede)
     if befunde:
         raise Beanstandet(befunde)
     return await _block_aendern(f.id, z.model_copy(update={"uebersetzung": text, "stand": "gesetzt", "befunde": []}))
@@ -401,3 +417,8 @@ async def offen_in_arbeit(fid: int) -> int:
     z = await db.fetch_one(f"SELECT count(*) AS n FROM uebersetzung_block WHERE fassung_id = ? AND stand IN ({','.join('?' * len(IN_ARBEIT))})",
                            (fid, *IN_ARBEIT))
     return z["n"]
+
+
+async def noch_zu_tun(f: FassungZeile) -> bool:
+    """Ob eine fertige Fassung wieder laufen muss: Blöcke in Arbeit, oder die festen Prüfungen haben sich geändert."""
+    return bool(await offen_in_arbeit(f.id)) or f.geprueft_mit != geprueft_mit()

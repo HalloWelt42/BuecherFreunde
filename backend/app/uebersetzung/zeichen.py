@@ -3,7 +3,8 @@
 `gerade` macht aus gesetzten Anführungszeichen gerade und aus Gedankenstrichen einfache Bindestriche; das geschieht mit
 jeder Übersetzung, bevor sie geprüft wird (vom Modell wie von Hand), denn es ändert nichts am Sinn. `befunde` meldet, was
 danach noch stört: gesetzte Zeichen, die `gerade` nicht kennt, ein doppelter Bindestrich im Text und Umlaute, die als ae, oe,
-ue geschrieben sind (an den Anfängen häufiger Wörter erkannt, damit "Quelle" oder "neue" nicht auffallen)."""
+ue geschrieben sind (an den Anfängen häufiger Wörter erkannt, damit "Quelle" oder "neue" nicht auffallen). `referenzen`
+meldet Zeichenreferenzen, die als Text dastehen ("&lt;" statt "<"), wenn das Original sie nicht selbst so schreibt."""
 
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ UMLAUT_ERSATZ = re.compile(r"(?<![\w])(?:ueber|fuer|zurueck|rueck|koenn|muess|du
                            r"loes|hoeh|frueh|spaet|naechst|laeng|staerk|schluess|pruef|fuehr|ausfuehr|einfueg|hinzufueg|erklaer|zaehl|"
                            r"haeufig|aehnlich|noetig|benoetig|oeffn|schoen|koerper|faell|gefaehr|verfueg|unterstuetz|tatsaech|ueblich|"
                            r"gruend|bestaet|aeusser|aeltest|kuerz|wuensch|grundsaetz)\w*", re.I)
+REFERENZ = re.compile(r"&(?:#\d+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);")
 
 
 def gerade(text: str) -> str:
@@ -39,3 +41,10 @@ def befunde(text: str) -> list[tuple[str, str]]:
     if m := UMLAUT_ERSATZ.search(text):
         aus.append((f"Umlaut als Ersatz geschrieben: {m.group(0)}", m.group(0)))
     return aus
+
+
+def referenzen(original: str, deutsch: str) -> list[tuple[str, str]]:
+    """Zeichenreferenzen, die im Klartext der Übersetzung als Text stehen und im Klartext des Originals nicht."""
+    vorher = set(REFERENZ.findall(original))
+    return [(f"Zeichenreferenz {r} steht als Text da statt des Zeichens", r) for r in dict.fromkeys(REFERENZ.findall(deutsch))
+            if r not in vorher]

@@ -7,7 +7,8 @@ dieser Folge, ab 1); ihre Blöcke zählen ab 1. Die Kennung eines Blocks ist "Ka
 mit denselben Einstellungen ergibt immer dieselben Kennungen; darauf bauen das Fortsetzen und alles, was am Block hängt.
 
 Ein Kapitel heißt wie im Inhaltsverzeichnis, sonst wie seine erste Überschrift, sonst wie der Titel der Datei. Eine Datei,
-die sich nicht lesen lässt, bleibt im Original und wird genannt (`nicht_lesbar`)."""
+die sich nicht lesen lässt, bleibt im Original und wird genannt (`nicht_lesbar`). Die Stylesheets eines Kapitels (verlinkt
+oder im Kopf) sagen, welche Klassen in Festbreitenschrift stehen: ein Merkmal für Code (codeabsaetze.py)."""
 
 from __future__ import annotations
 
@@ -19,7 +20,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 from urllib.parse import unquote
 
-from backend.app.uebersetzung import marken
+from backend.app.uebersetzung import codeabsaetze, marken
 from backend.app.uebersetzung.bloecke import Lauf, Regeln, laeufe
 from backend.app.uebersetzung.modelle import Block
 from backend.app.uebersetzung.xhtml import Element, kodierung, lesen, text_von, wurzelelement
@@ -165,6 +166,23 @@ def _abbildungen(dok: Dokument) -> int:
     return sum(1 for b in dok.quelle.baum.alle("img") if id(b) not in in_svg) + sum(1 for s in svgs)
 
 
+def _stylesheets(archiv: zipfile.ZipFile, quelle: Quelle, gelesen: dict[str, str]) -> list[str]:
+    """Die Stylesheets eines Dokuments: verlinkte Dateien des Archivs (einmal gelesen) und `<style>` im Dokument."""
+    texte = []
+    for link in quelle.baum.alle("link"):
+        if "stylesheet" not in link.woerter("rel") or not link.attr("href"):
+            continue
+        pfad = _aufgeloest(quelle.pfad, link.attr("href"))
+        if pfad not in gelesen:
+            try:
+                gelesen[pfad] = archiv.read(pfad).decode("utf-8", errors="replace")
+            except KeyError:
+                gelesen[pfad] = ""
+        texte.append(gelesen[pfad])
+    texte += [quelle.text[stil.kopf_ende:stil.fuss_anfang] for stil in quelle.baum.alle("style")]
+    return texte
+
+
 def zerlegen(daten: bytes, nie_klassen: frozenset[str] = frozenset()) -> Zerlegung:
     try:
         archiv = zipfile.ZipFile(io.BytesIO(daten))
@@ -189,13 +207,15 @@ def zerlegen(daten: bytes, nie_klassen: frozenset[str] = frozenset()) -> Zerlegu
             plan.append((manifest[ncx_kennung].pfad, "ncx"))
 
         dokumente, nicht_lesbar = [], []
+        stile: dict[str, str] = {}
         for nr, (pfad, rolle) in enumerate(plan, 1):
             try:
                 quelle = _lesen(archiv, pfad)
             except (KeyError, UnicodeDecodeError, LookupError):
                 nicht_lesbar.append(pfad)
                 continue
-            regeln = Regeln(nie_klassen=nie_klassen, nur_verzeichnis=rolle == "ncx")
+            regeln = Regeln(nie_klassen=nie_klassen, nur_verzeichnis=rolle == "ncx", code_absaetze=rolle == "inhalt",
+                            festbreit_klassen=codeabsaetze.klassen_aus(_stylesheets(archiv, quelle, stile)))
             dokumente.append(Dokument(quelle=quelle, kapitel=nr, titel="", rolle=rolle, laeufe=laeufe(quelle.baum, regeln)))
     quellen = {d.pfad: d.quelle for d in dokumente}
     verzeichnis = _titel_aus_verzeichnis(quellen.get(nav.pfad) if nav else None,

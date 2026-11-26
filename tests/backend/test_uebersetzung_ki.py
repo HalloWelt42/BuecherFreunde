@@ -87,6 +87,22 @@ async def test_antworten_werden_gerade_gemacht_und_geprueft():
     assert texte_aus({"bloecke": [" \u201eFülle\u201c den Tank \u2013 jetzt. "]}, 1) == ['"Fülle" den Tank - jetzt.']
 
 
+async def test_das_modell_sieht_zeichen_und_keine_eigenen_marken():
+    """Text geht als Zeichen hinaus, die Antwort kommt in der Schreibweise der Vorlagen zurück; die Anweisung verbietet neue
+    Marken und nennt die Anrede."""
+    TABELLE["Water if moisture < 30 & <t1>soon</t1>."] = "Gieße, wenn die Feuchte < 30 ist & <t1>bald</t1>."
+    try:
+        m = Modell()
+        aus = await uebersetzen(m, bloecke("Water if moisture &lt; 30 &amp; <t1>soon</t1>."), AUFTRAG)
+    finally:
+        del TABELLE["Water if moisture < 30 & <t1>soon</t1>."]
+    assert aus == {"2.1": "Gieße, wenn die Feuchte &lt; 30 ist &amp; <t1>bald</t1>."}
+    [a] = m.aufrufe
+    assert a["daten"]["bloecke"] == ["Water if moisture < 30 & <t1>soon</t1>."]
+    assert "keine neuen\n  <tN> oder <xN/>" in a["system"] and 'mit "du" an' in a["system"]
+    assert 'mit "Sie" an' in anweisungen.uebersetzen(1, "Sie") and 'mit "Sie" an' in anweisungen.pruefen(1, "Sie")
+
+
 async def test_nacharbeit_nennt_die_maengel():
     m = Modell()
     befunde = [Befund(art="zahlen", quelle="pruefung", text="Die Zahlen weichen ab", stelle="17"),
@@ -178,6 +194,22 @@ def test_vorschlaege_der_ki_werden_geprueft():
         ("event loop", True, "", 2, "ki"), ("callback", False, "Rückruf", 1, "ki")]
     with pytest.raises(ValueError):
         begriffe.vorschlaege_aus({"falsch": []}, texte, set())
+
+
+def test_vorschlag_bleibt_englisch_nie_fuer_alltagswoerter():
+    """Gewöhnliche Wörter werden übersetzt: "bleibt englisch" aus lauter Alltagswörtern wird verworfen, mit deutscher Form
+    oder als Fachbegriff bleibt der Vorschlag."""
+    texte = ["Garden Basics and Fundamentals", "The event loop and the Getting Started guide.", "Read the fundamentals twice."]
+    alltag = frozenset({"fundamental", "fundamentals", "basics", "guide", "getting", "started"})
+    roh = {"begriffe": [
+        {"englisch": "Fundamentals", "bleibt": True, "deutsch": "", "grund": "Überschrift"},
+        {"englisch": "Getting Started", "bleibt": True, "deutsch": "", "grund": "Überschrift"},
+        {"englisch": "basics", "bleibt": False, "deutsch": "Grundlagen", "grund": "übersetzt"},
+        {"englisch": "event loop", "bleibt": True, "deutsch": "", "grund": "Fachbegriff"},
+    ]}
+    aus = begriffe.vorschlaege_aus(roh, texte, vorhanden=set(), alltag=alltag)
+    assert [(k.englisch, k.bleibt) for k in aus] == [("basics", False), ("event loop", True)]
+    assert "Gewöhnliche Wörter werden übersetzt" in anweisungen.begriffe(60)
 
 
 def test_buch_ueberschreibt_die_liste_fuer_alle():

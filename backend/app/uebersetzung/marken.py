@@ -4,7 +4,12 @@ Platzhalter `<x2/>`, dessen Inhalt nie zum Modell geht. Die Nummern zählen in d
 Nummer, innere Marken tragen höhere Nummern als die äußere.
 
 Eine Übersetzung taugt nur, wenn sie jede Marke der Vorlage genau einmal trägt, in derselben Schachtelung und ohne fremde
-Auszeichnung; die Stellung im Satz darf sich ändern. Text steht in den Vorlagen mit &lt; &gt; &amp;."""
+Auszeichnung; die Stellung im Satz darf sich ändern.
+
+Text steht in den Vorlagen und den gespeicherten Übersetzungen mit &lt; &gt; &amp;. Das Modell sieht ihn als Zeichen
+(`fuer_modell`: "if age < 18"), nur die Marken sind Auszeichnung; seine Antwort kommt mit `aus_modell` wieder in die
+Schreibweise der Vorlagen, ein Text von Hand oder eine frühere Antwort mit `gesichert`. Was dabei wie eine Auszeichnung
+aussieht (<b>, </p>) und nicht als Text im Original steht, bleibt roh, damit die Prüfung es als fremde Auszeichnung meldet."""
 
 from __future__ import annotations
 
@@ -14,6 +19,8 @@ from html import unescape
 
 MARKE = re.compile(r"<(/?)t(\d+)>|<x(\d+)/>")
 LEERRAUM = re.compile(r"[ \t\r\n]+")
+#: was in einer Antwort wie eine Auszeichnung aussieht: Elemente, Kommentare, Anweisungen
+AUSZEICHNUNG = re.compile(r"</?[A-Za-z][\w:.-]*(?:\s[^<>]*)?/?>|<!--.*?-->|<![A-Za-z][^<>]*>|<\?[^<>]*\?>", re.S)
 
 
 @dataclass(frozen=True)
@@ -112,6 +119,57 @@ def klartext(text: str, platz: str = " ") -> str:
     """Der Text ohne Marken (Platzhalter werden `platz`), Zeichenreferenzen aufgelöst, Leerraum zu einem Leerzeichen."""
     ohne = MARKE.sub(lambda m: platz if m.group(3) else "", text)
     return LEERRAUM.sub(" ", unescape(ohne)).strip()
+
+
+def _je_stueck(text: str, umwandeln) -> str:
+    """Der Text mit umgewandelten Stücken zwischen den Marken; die Marken bleiben, wie sie sind."""
+    aus, pos = [], 0
+    for m in MARKE.finditer(text):
+        aus += [umwandeln(text[pos:m.start()]), m.group(0)]
+        pos = m.end()
+    return "".join(aus) + umwandeln(text[pos:])
+
+
+def fuer_modell(vorlage: str) -> str:
+    """Die Vorlage, wie das Modell sie sieht: Text als Zeichen (&lt; wird <, &amp; wird &), nur die Marken sind
+    Auszeichnung. Ein Stück, das als Zeichen selbst wie eine Marke aussähe, bleibt in Zeichenreferenzen."""
+    def als_zeichen(stueck: str) -> str:
+        klar = unescape(stueck)
+        return stueck if MARKE.search(klar) else klar
+    return _je_stueck(vorlage, als_zeichen)
+
+
+def aus_modell(text: str, vorlage: str) -> str:
+    """Eine Antwort des Modells in der Schreibweise der Vorlagen: das Modell schreibt Zeichen, also werden & < > im Text
+    &amp; &lt; &gt; (auch ein & vor "lt;": steht das Original so, ist es dort Text). Die Marken bleiben; was wie eine
+    Auszeichnung aussieht und nicht als Text im Original steht, bleibt roh, damit die Prüfung "Marken" es meldet."""
+    return _je_stueck(text, lambda stueck: _gesichert(stueck, vorlage, _maskiert))
+
+
+def gesichert(text: str, vorlage: str) -> str:
+    """Ein Text in der Schreibweise der Vorlagen, der rohe Zeichen enthalten kann (eine frühere Antwort, ein Text von
+    Hand): Zeichenreferenzen bleiben, ein rohes < oder > wird &lt; &gt;, ein & ohne Referenz &amp;. Was wie eine
+    Auszeichnung aussieht und nicht als Text im Original steht, bleibt roh. Zweimal angewandt ändert sich nichts mehr."""
+    return _je_stueck(text, lambda stueck: _gesichert(stueck, vorlage, _referenzen_bleiben))
+
+
+def _gesichert(stueck: str, vorlage: str, maskieren) -> str:
+    original = unescape(MARKE.sub(" ", vorlage))
+    aus, pos = [], 0
+    for m in AUSZEICHNUNG.finditer(stueck):
+        if m.group(0) in original:                           # steht im Original als Text: bleibt Text
+            continue
+        aus += [maskieren(stueck[pos:m.start()]), m.group(0)]
+        pos = m.end()
+    return "".join(aus) + maskieren(stueck[pos:])
+
+
+def _maskiert(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _referenzen_bleiben(text: str) -> str:
+    return re.sub(r"&(?!(?:#\d+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);)", "&amp;", text).replace("<", "&lt;").replace(">", "&gt;")
 
 
 def platzhalter(text: str) -> int:

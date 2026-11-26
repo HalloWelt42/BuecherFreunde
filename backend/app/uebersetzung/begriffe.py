@@ -7,13 +7,19 @@ Woher Begriffe kommen:
    nie klein (Produktnamen wie Python oder Kubernetes). Überschriften zählen nicht, sie schreiben im Englischen oft jedes
    Wort groß.
 2. KI-Vorschlag: aus Inhaltsverzeichnis, Stichwortverzeichnis und Proben schlägt die KI Fachbegriffe vor, je mit "bleibt"
-   oder einer deutschen Form und einem kurzen Grund.
+   oder einer deutschen Form und einem kurzen Grund. Ein Vorschlag "bleibt englisch" aus lauter gewöhnlichen Wörtern
+   (Alltagswörter aus vorgaben.json, kleine Wörter) wird verworfen: solche Wörter werden übersetzt.
 3. Pflege: von Hand (services/begriffsliste.py); was der Nutzer angelegt oder geändert hat, fasst keine Regel und keine KI
    mehr an.
 
-Gefunden wird ein Begriff im Original an Wortgrenzen, Groß und Klein gleich, auch in der Mehrzahl (thread, Threads); in der
-Übersetzung am Wortanfang, damit Beugung und Zusammensetzung gelten (Thread-Pool, Rückgabewerte). Zwischen Wörtern zählen
-Leerzeichen und Bindestrich gleich (Event Loop, Event-Loop)."""
+Gefunden wird ein Begriff im Original an Wortgrenzen, Groß und Klein gleich, auch in der Mehrzahl (thread, Threads). In der
+Übersetzung zählt jede Form mit deutscher Endung: je Wort der Stamm (ohne -e, -en, -er, -es, -em, -n, -s) mit einer Endung
+(ansprechende Spiele: ansprechender Spiele, kritischen Rezensionen, Verzeichnisses), dazu als Teil eines zusammengesetzten
+Worts: hinten ab einem Stamm von ZUSAMMEN_AB Buchstaben (Spieleplattformen, Zuweisungsoperatoren), vorn ab VORN_AB
+(Thread-Pool, Plattformunabhängigkeit). Kürzere Stämme brauchen ihre Wortgrenzen, damit "Spiel" nicht in "Beispiel" steckt.
+Abkürzungen (KI) zählen nur in dieser Schreibung, auch mit Bindestrich (KI-Routinen). Zwischen Wörtern zählen Leerzeichen
+und Bindestrich gleich (Event Loop, Event-Loop). Ein Begriff mit mehreren erlaubten Formen ("KI | künstliche Intelligenz")
+ist da, wenn eine davon dasteht."""
 
 from __future__ import annotations
 
@@ -23,7 +29,7 @@ from functools import lru_cache
 from typing import Any
 
 from backend.app.uebersetzung import marken
-from backend.app.uebersetzung.modelle import Begriff, Block, Kandidat
+from backend.app.uebersetzung.modelle import Begriff, Block, Kandidat, formen_von
 from backend.app.uebersetzung.sprache import STOPP_EN, saetze
 
 NAME = re.compile(r"(?<![\w.@/\\-])[A-Z][a-z]{2,}(?![\w-])")
@@ -39,6 +45,13 @@ REGEL_GRUND = "Name: im ganzen Buch groß geschrieben, auch mitten im Satz"
 VORSCHLAG_HOECHSTENS = 60
 PROBE_ZEICHEN = 4000
 STICHWORT_ZEICHEN = 3000
+#: Endungen deutscher Wörter, die eine Form im Text tragen darf, und die, die vom Ende einer Form als Endung abgehen
+ENDUNGEN = ("ern", "ens", "ses", "sen", "en", "er", "es", "em", "se", "e", "n", "s")
+ABGEHEND = ("en", "er", "es", "em", "e", "n", "s")
+STAMM_MINDESTENS = 4
+ZUSAMMEN_AB = 6                                      # so lang muss ein Stamm sein, um hinten in einem Wort zu stehen
+VORN_AB = 5                                          # ... und um vorn in einem Wort zu stehen, mit Weiterem dahinter
+ABKUERZUNG = re.compile(r"[A-ZÄÖÜ][A-ZÄÖÜ0-9]{1,5}")
 
 
 @lru_cache(maxsize=4096)
@@ -47,10 +60,31 @@ def muster_englisch(englisch: str) -> re.Pattern[str]:
     return re.compile(r"(?<![\w])" + r"[-\s]+".join(teile) + r"(?:s|es)?(?![\w])", re.I)
 
 
+def stamm(wort: str) -> str:
+    """Ein Wort ohne deutsche Endung; ein s nach i, s, u oder x bleibt (Verzeichnis, Prozess, Status, Index), und die
+    Mehrzahl auf -nisse geht auf -nis zurück (Hindernisse: Hindernis)."""
+    klein = wort.lower()
+    for e in ABGEHEND:
+        if klein.endswith(e) and len(wort) - len(e) >= STAMM_MINDESTENS:
+            if e == "s" and klein[-2:-1] in ("i", "s", "u", "x"):
+                continue
+            rest = wort[:-len(e)]
+            return rest[:-1] if rest.lower().endswith("niss") else rest
+    return wort
+
+
 @lru_cache(maxsize=4096)
 def muster_deutsch(form: str) -> re.Pattern[str]:
-    teile = [re.escape(t) for t in re.split(r"[-\s]+", form.strip()) if t]
-    return re.compile(r"(?<![\w])" + r"[-\s]?".join(teile), re.I)
+    """Eine Form der Begriffsliste im deutschen Text, mit Endungen und als Teil zusammengesetzter Wörter."""
+    woerter = [t for t in re.split(r"[-\s]+", form.strip()) if t]
+    if len(woerter) == 1 and ABKUERZUNG.fullmatch(woerter[0]):
+        return re.compile(r"(?<![\w])" + re.escape(woerter[0]) + r"s?(?![^\W\d_])")
+    endung = "(?:" + "|".join(ENDUNGEN) + ")?"
+    staemme = [stamm(w) for w in woerter]
+    kern = r"[-\s]?".join(re.escape(s) + endung for s in staemme)
+    vorn = r"(?<![\w])(?:[^\W\d_]+-?)?" if len(staemme[0]) >= ZUSAMMEN_AB else r"(?<![\w])"
+    hinten = "" if len(staemme[-1]) >= VORN_AB else r"(?![\w])"
+    return re.compile(vorn + kern + hinten, re.I)
 
 
 @lru_cache(maxsize=512)
@@ -70,7 +104,8 @@ def stellen(englisch: str, texte: list[str]) -> int:
 
 
 def im_deutschen(form: str, text: str) -> bool:
-    return bool(muster_deutsch(form).search(text))
+    """Ob eine Form (oder eine von mehreren, mit | getrennt) im deutschen Text steht."""
+    return any(muster_deutsch(f).search(text) for f in formen_von(form))
 
 
 def gelten(allgemein: list[Begriff], buch: list[Begriff]) -> list[Begriff]:
@@ -143,9 +178,16 @@ def stichwoerter(kapitel: list[tuple[str, list[Block]]], zeichen: int = STICHWOR
     return ""
 
 
-def vorschlaege_aus(roh: object, texte: list[str], vorhanden: set[str]) -> list[Kandidat]:
+def alltaeglich(englisch: str, alltag: frozenset[str]) -> bool:
+    """Ob ein Begriff nur aus gewöhnlichen Wörtern besteht (Alltagswörter, kleine Wörter; Mehrzahl auf -s mitgedacht)."""
+    woerter = [w.lower() for w in WORT.findall(englisch)]
+    return bool(woerter) and all(w in alltag or w in STOPP_EN or (w.endswith("s") and w[:-1] in alltag) for w in woerter)
+
+
+def vorschlaege_aus(roh: object, texte: list[str], vorhanden: set[str], alltag: frozenset[str] = frozenset()) -> list[Kandidat]:
     """Die Antwort der KI als Kandidaten: nur Begriffe, die im Buch stehen und noch nicht in der Liste sind, mit einer
-    deutschen Form, wenn sie nicht bleiben. Wirft ValueError, wenn die Form nicht stimmt."""
+    deutschen Form, wenn sie nicht bleiben; "bleibt englisch" nie für gewöhnliche Wörter (`alltag`). Wirft ValueError, wenn
+    die Form nicht stimmt."""
     if not isinstance(roh, dict) or not isinstance(roh.get("begriffe"), list):
         raise ValueError("Die Antwort der KI passt nicht zur verlangten Form")
     aus: dict[str, Kandidat] = {}
@@ -157,6 +199,8 @@ def vorschlaege_aus(roh: object, texte: list[str], vorhanden: set[str]) -> list[
         if not (0 < len(englisch) <= 80) or englisch.lower() in vorhanden or englisch.lower() in aus:
             continue
         if not e["bleibt"] and not deutsch:
+            continue
+        if e["bleibt"] and alltaeglich(englisch, alltag):
             continue
         n = stellen(englisch, texte)
         if n:
