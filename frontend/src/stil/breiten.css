@@ -47,6 +47,7 @@
   .chip, .segment button { min-height: 2.75rem; }
   .sterne.waehlbar button { min-width: 2.25rem; min-height: 2.75rem; text-align: center; }
   .punkt { min-height: 2.75rem; font-size: 1rem; }
+  .leiste { --leistenzeile: 2.75rem; }
   .werkzeug { padding: .5rem var(--rand-seite); }
   .werkzeug { gap: .375rem; }
   .werkzeug > .schiebt:is(:has(.bearbeiten), :has(.sortierung)) { display: contents; }
@@ -98,6 +99,20 @@
   .auswahl select, .auswahl.klein select, .eingabe, .feld input:not([type="checkbox"]), .feld textarea { font-size: 1rem; min-height: 2.75rem; }
   .haekchen { min-height: 2.75rem; }
   .vorschlagsstufen { grid-template-columns: minmax(0, 1fr); }
+  /* Katalog (BF-69): Tasten im Raster, Vorschlagszeile in zwei Reihen, Ziel unter den alten Namen */
+  :is(.katalogtasten, .dateitasten) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :is(.katalogtasten, .dateitasten) > :is(.knopf.haupt, .leise, button:only-of-type) { grid-column: 1 / -1; }
+  .kategoriekopf > .tasten { flex-basis: 100%; margin-left: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kategoriekopf > .tasten .knopf.haupt { grid-column: 1 / -1; }
+  .vorschlagszeile { grid-template-columns: 1.25rem 2.25rem minmax(0, 1fr) auto; grid-template-areas: "wahl bild titel tun" "wahl bild grund sicher"; row-gap: .375rem; }
+  .vorschlagszeile > .wahl { grid-area: wahl; } .vorschlagszeile > .bild { grid-area: bild; } .vorschlagszeile > .titel { grid-area: titel; }
+  .vorschlagszeile > .grund { grid-area: grund; } .vorschlagszeile > .sicher { grid-area: sicher; align-self: start; } .vorschlagszeile > .tun { grid-area: tun; }
+  .altzeile { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "alt alt" "pfeil pfeil" "neu griffe"; }
+  .altzeile > .alt { grid-area: alt; } .altzeile > .pfeil { grid-area: pfeil; transform: rotate(90deg); justify-self: start; } .altzeile > .neu { grid-area: neu; } .altzeile > .griffe { grid-area: griffe; }
+  .kategorieformular { grid-template-columns: minmax(0, 1fr); }
+  .regelzeile { display: flex; flex-wrap: wrap; row-gap: .375rem; }
+  .regelzeile .art { flex: 1; } .regelzeile .werte { flex-basis: 100%; order: 3; }
+  .regelzeile .regelwert { min-height: 2.75rem; }
   .zuordnungszeile { min-height: 2.75rem; }
   .buehne .suchfeld-mobil { display: flex; }
 }

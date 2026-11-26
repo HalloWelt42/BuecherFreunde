@@ -4,9 +4,11 @@
   import { ladeAblage } from "../api/orte";
   import { formatName, groesse, zahl } from "../format";
   import { ablageText } from "../ablage";
+  import { trenneKategorien } from "../katalog";
   import { leseAdresse, leseKnopf, lesestand, standText } from "../lesestand";
   import { merkmale } from "../stand/merkmale.svelte";
   import { anschluesse } from "../stand/anschluesse.svelte";
+  import { bestand } from "../stand/bestand.svelte";
   import { gespraech } from "../stand/gespraech.svelte";
   import { wahl } from "../stand/wahl.svelte";
   import Balken from "../teile/Balken.svelte";
@@ -18,6 +20,8 @@
   import type { Ablage } from "../typen";
 
   let buch = $derived(wahl.buch);
+  // Kategorien des Katalogs und Regale stehen je in ihrer Zeile (BF-69)
+  let einordnung = $derived(buch ? trenneKategorien(buch.categories, bestand.katalog) : { kategorien: [], regale: [] });
   let stand = $derived(buch ? lesestand(buch) : null);
   let ablage = $state<Ablage | null>(null);
 
@@ -47,7 +51,8 @@
         <span class="schiebt"><Sterne wert={buch.rating} onwahl={(n) => void merkmale.sterne(buch, n)} /></span>
       </div>
       <dl class="angaben">
-        {#if buch.categories.length}<dt>Regal</dt><dd>{buch.categories.map((c) => c.name).join(", ")}</dd>{/if}
+        {#if einordnung.kategorien.length}<dt>Kategorie</dt><dd>{einordnung.kategorien.map((c) => c.name).join(", ")}</dd>{/if}
+        {#if einordnung.regale.length}<dt>Regal</dt><dd>{einordnung.regale.map((c) => c.name).join(", ")}</dd>{/if}
         {#if buch.sammlung}<dt>Sammlung</dt><dd>{buch.sammlung.name}{buch.band_nummer ? `, Band ${buch.band_nummer}` : ""}</dd>{/if}
         <dt>Format</dt><dd>{formatName(buch.file_format)}, {groesse(buch.file_size)}</dd>
         {#if buch.page_count}<dt>Seiten</dt><dd class="zahl">{zahl(buch.page_count)}</dd>{/if}

@@ -14,7 +14,8 @@
 
   let suche = $state("");
   let passend = $derived(bestand.regale.filter((r) => r.name.toLowerCase().includes(suche.trim().toLowerCase())));
-  let gewaehlteRegale = $derived(filter.werte("category"));
+  // Kategorien des Katalogs stehen im selben Filter; hier geht es nur um die Regale (BF-69)
+  let gewaehlteRegale = $derived(filter.werte("category").filter((id) => bestand.regal(id)));
   // Sammlungen als Chips; bei vielen mit Suche und höchstens so vielen
   const SAMMLUNGEN_HOECHSTENS = 24;
   let sammlungswort = $state("");
@@ -24,7 +25,7 @@
 <h2>Filter</h2>
 <div class="gruppen">
   <section>
-    <div class="reihe"><h3>Regale</h3>{#if gewaehlteRegale.length}<span class="schiebt"><Knopf text="Auswahl aufheben" symbol="xmark" klein frei onclick={() => filter.setze("category", "")} /></span>{/if}</div>
+    <div class="reihe"><h3>Regale</h3>{#if gewaehlteRegale.length}<span class="schiebt"><Knopf text="Auswahl aufheben" symbol="xmark" klein frei onclick={() => filter.setzeWerte("category", filter.werte("category").filter((id) => !bestand.regal(id)))} /></span>{/if}</div>
     <input class="eingabe" type="search" placeholder="Regal suchen" aria-label="Regal suchen" bind:value={suche} />
     <div class="regalliste">
       {#each passend.slice(0, HOECHSTENS) as r (r.id)}

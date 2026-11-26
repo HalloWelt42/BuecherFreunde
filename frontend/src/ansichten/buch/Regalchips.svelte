@@ -1,6 +1,7 @@
 <script lang="ts">
   // Regale, Typ und Sammlung eines Buchs: antippen filtert die Bibliothek, der Stift nimmt heraus
   import { entferneBuch, ordneBuchZu } from "../../lib/api/categories";
+  import { trenneKategorien } from "../../lib/katalog";
   import { arten } from "../../lib/stand/arten.svelte";
   import { bestand } from "../../lib/stand/bestand.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
@@ -19,8 +20,10 @@
   let wahlOffen = $state(false);
   let knopf = $state<HTMLElement | null>(null);
 
-  let sichtbar = $derived(alle || aendern ? buch.categories : buch.categories.slice(0, ZUERST));
-  let rest = $derived(buch.categories.length - sichtbar.length);
+  // Kategorien des Katalogs stehen eigens darüber (Kategoriechips, BF-69)
+  let regale = $derived(trenneKategorien(buch.categories, bestand.katalog).regale);
+  let sichtbar = $derived(alle || aendern ? regale : regale.slice(0, ZUERST));
+  let rest = $derived(regale.length - sichtbar.length);
 
   async function tun(was: () => Promise<unknown>, text: string) {
     try {
@@ -53,9 +56,9 @@
   {#if buch.typ}<Chip text={arten.typName(buch.typ)} />{/if}
   {#if buch.sammlung}<Chip text="{buch.sammlung.name}{buch.band_nummer ? `, Band ${buch.band_nummer}` : ''}" farbe={buch.sammlung.color} href="/?sammlung={buch.sammlung.id}" titel="Bibliothek nach dieser Sammlung filtern" />{/if}
   <Knopf text="Regal dazu" symbol="plus" klein frei aufgeklappt={wahlOffen} bind:element={knopf} onclick={() => (wahlOffen = !wahlOffen)} />
-  {#if buch.categories.length}<Knopf text={aendern ? "Fertig" : "Regale ändern"} symbol={aendern ? "check" : "pen"} nur={!aendern} klein frei gedrueckt={aendern} onclick={() => (aendern = !aendern)} />{/if}
+  {#if regale.length}<Knopf text={aendern ? "Fertig" : "Regale ändern"} symbol={aendern ? "check" : "pen"} nur={!aendern} klein frei gedrueckt={aendern} onclick={() => (aendern = !aendern)} />{/if}
 </div>
 
 {#if wahlOffen}
-  <Menue anker={knopf} name="Regal dazu" onschliessen={() => (wahlOffen = false)}><Regalwahl ohne={buch.categories.map((c) => c.id)} onwahl={stelleEin} /></Menue>
+  <Menue anker={knopf} name="Regal dazu" onschliessen={() => (wahlOffen = false)}><Regalwahl ohne={regale.map((c) => c.id)} onwahl={stelleEin} /></Menue>
 {/if}

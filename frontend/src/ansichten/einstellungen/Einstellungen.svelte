@@ -3,6 +3,7 @@
   import { route } from "../../lib/router.svelte";
   import Chip from "../../lib/teile/Chip.svelte";
   import Darstellungsreiter from "./Darstellungsreiter.svelte";
+  import Katalogreiter from "./katalog/Katalogreiter.svelte";
   import Mehrreiter from "./Mehrreiter.svelte";
   import Regalreiter from "./Regalreiter.svelte";
   import Verbindungsreiter from "./Verbindungsreiter.svelte";
@@ -54,6 +55,7 @@
   {#if hier.reiter === "darstellung"}<Darstellungsreiter />
   {:else if hier.reiter === "verbindungen"}<Verbindungsreiter />
   {:else if hier.reiter === "regale"}<Regalreiter />
+  {:else if hier.reiter === "katalog"}<Katalogreiter />
   {:else if hier.reiter === "wartung"}<Wartungsreiter />
   {:else}<Mehrreiter />{/if}
 </div>

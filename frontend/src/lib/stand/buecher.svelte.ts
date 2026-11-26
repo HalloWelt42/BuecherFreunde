@@ -45,7 +45,7 @@ class Buecher {
   #parameter(seite: number, jeSeite = JE_SEITE): Record<string, string | number | boolean> {
     const p: Record<string, string | number | boolean> = { seite, pro_seite: jeSeite, sortierung: this.sortierung, richtung: this.richtung };
     if (fasstZusammen(filter.schluessel)) p.zusammenfassen = true;
-    const uebersetzt: [string, string][] = [["category", "kategorie"], ["sammlung", "sammlung"], ["file_format", "format"], ["min_rating", "bewertung_min"], ["is_favorite", "favorit"], ["is_to_read", "zu_lesen"], ["gelesen", "gelesen"], ["hat_isbn", "hat_isbn"], ["hat_highlights", "hat_highlights"], ["hat_labels", "hat_labels"], ["weiterlesen", "weiterlesen"], ["q", "suche"]];
+    const uebersetzt: [string, string][] = [["category", "kategorie"], ["ohne_kategorie", "ohne_kategorie"], ["sammlung", "sammlung"], ["file_format", "format"], ["min_rating", "bewertung_min"], ["is_favorite", "favorit"], ["is_to_read", "zu_lesen"], ["gelesen", "gelesen"], ["hat_isbn", "hat_isbn"], ["hat_highlights", "hat_highlights"], ["hat_labels", "hat_labels"], ["weiterlesen", "weiterlesen"], ["q", "suche"]];
     for (const [von, zu] of uebersetzt) {
       // Alte Adressen können bei Sammlung und Bewertung mehrere Werte tragen; der Server kennt dort nur einen
       const w = ["sammlung", "min_rating"].includes(von) ? filter.werte(von)[0] : filter.wert(von);

@@ -5,7 +5,15 @@ export interface RegalKurz {
   name: string;
   slug?: string;
   quelle?: string;
+  /** Nur an Kategorien des Katalogs (BF-69): Zeichen, Farbe (die des Bereichs, wenn die eigene leer ist), Name des Bereichs */
+  zeichen?: string;
+  farbe?: string;
+  bereich?: string;
+  art?: Kategorieart;
 }
+
+/** Was eine Zeile in categories ist (BF-69): Ebene des Katalogs oder Regal wie bisher */
+export type Kategorieart = "bereich" | "kategorie" | "regal";
 
 /** Kategorie am Server, in der Oberfläche "Regal" */
 export interface Regal extends RegalKurz {
@@ -15,6 +23,186 @@ export interface Regal extends RegalKurz {
   sort_order: number;
   spezial: number | boolean;
   buch_anzahl: number;
+}
+
+// Katalog (BF-69, docs/neubau/KATALOG.md): Bereiche mit Kategorien darunter, je mit Zeichen und Farbe
+
+/** Regeln einer Kategorie; ein Treffer reicht */
+export interface Kategorieregeln {
+  sachgruppen: string[];
+  schlagworte: string[];
+  titelwoerter: string[];
+  verlage: string[];
+}
+
+export type Regelart = keyof Kategorieregeln;
+
+/** Woher eine Kategorie im Katalog kommt */
+export type Herkunft = "standard" | "geteilt" | "neu" | "eigen";
+
+export interface Katalogkategorie {
+  /** Fehlt im Entwurf */
+  id?: number;
+  schluessel: string;
+  name: string;
+  zeichen: string;
+  /** Leer: die Farbe des Bereichs */
+  farbe: string;
+  ki_beschreibung: string;
+  regeln: Kategorieregeln;
+  verborgen: boolean;
+  /** In einer geladenen Datei auch leer */
+  herkunft: Herkunft | "" | null;
+  /** Bücher; im Entwurf die Treffer der Regeln, im Standard null */
+  anzahl: number | null;
+  /** Nur im Standard und in Dateien: Teile, in die eine große Kategorie im Entwurf zerfällt; bleiben, wie sie kamen */
+  teile?: unknown[];
+}
+
+export interface Katalogbereich {
+  id?: number;
+  schluessel: string;
+  name: string;
+  zeichen: string;
+  farbe: string;
+  beschreibung: string;
+  /** Für welche Arten des Werks der Bereich gilt, mindestens eine: "" für Buch, sonst etwa "dokument", "heft" */
+  arten: string[];
+  verborgen: boolean;
+  /** Nur im Entwurf */
+  herkunft?: Herkunft | null;
+  anzahl: number | null;
+  kategorien: Katalogkategorie[];
+}
+
+/** Ein Regal außerhalb des Katalogs (GET /api/katalog) */
+export interface Katalogregal {
+  id: number;
+  name: string;
+  zeichen: string;
+  farbe: string;
+  anzahl: number;
+  spezial: boolean;
+}
+
+/** GET /api/katalog: der gültige Katalog */
+export interface Katalog {
+  bereiche: Katalogbereich[];
+  regale: Katalogregal[];
+  /** Bücher ohne Kategorie des Katalogs */
+  ohne_kategorie: number;
+  hat_katalog: boolean;
+}
+
+/** Ein Katalog, der noch nicht gilt: aus dem Standard, an den Bestand angepasst, geladen oder leer */
+export interface Katalogentwurf {
+  fassung?: number;
+  bereiche: Katalogbereich[];
+}
+
+/** Wie ein Entwurf entsteht */
+export type Katalogweg = "standard" | "bestand" | "leer";
+
+/** Stand eines Laufs: Einordnen oder Entwurf aus dem Bestand */
+export interface Laufstand {
+  laeuft: boolean;
+  pause: boolean;
+  /** leer: es gab noch keinen Lauf */
+  stand?: "laeuft" | "pause" | "fertig" | "fehler" | "";
+  stapel: number;
+  stapel_gesamt: number;
+  stapel_groesse: number;
+  /** Vorschläge der Regeln und der KI, Bücher ohne Vorschlag */
+  regeln: number;
+  ki: number;
+  ohne_vorschlag: number;
+  /** Was der Lauf gerade tut */
+  schritt: string;
+  /** Warum er pausiert oder endete; leer sonst */
+  grund: string;
+}
+
+/** GET /api/katalog/entwurf */
+export interface Entwurfsstand {
+  entwurf: Katalogentwurf | null;
+  lauf: Laufstand | null;
+}
+
+/** Was vor dem Entfernen eines Bereichs oder einer Kategorie verloren geht */
+export interface Katalogfolgen {
+  name: string;
+  /** Bücher verlieren die Zuordnung, sie selbst bleiben */
+  buecher: number;
+  /** offene Vorschläge, die wegfallen */
+  vorschlaege: number;
+  /** bei einem Bereich: seine Kategorien */
+  kategorien: number;
+  /** die ersten betroffenen Bücher */
+  titel: string[];
+}
+
+/** Was vor dem Entfernen eines alten Regals verloren geht */
+export interface Altfolgen {
+  id: number;
+  name: string;
+  buecher: number;
+  /** davon in keiner Kategorie des Katalogs */
+  ohne_kategorie: number;
+  titel: string[];
+}
+
+/** GET /api/katalog/kategorien/{id}/treffer */
+export interface Kategorietreffer {
+  regeln: { art: Regelart; werte: string[]; treffer: number }[];
+  /** Bücher, die mindestens eine Regel trifft */
+  zusammen: number;
+  ki_vorschlaege: number;
+}
+
+/** Ein Regal aus Importen und wohin es im Katalog gehört (GET /api/katalog/alt) */
+export interface AltesRegal {
+  id: number;
+  name: string;
+  anzahl: number;
+  vorschlag: { art: "kategorie" | "schlagwort"; kategorie_id: number | null; grund: string };
+}
+
+/** Wohin alte Regale gehen: in eine Kategorie oder als Schlagwort ans Buch */
+export type Altziel = { kategorie_id: number } | { schlagwort: true };
+
+export type Vorschlagsquelle = "regel" | "ki" | "beide";
+
+/** Ein Buch in einer Kategorie, gefunden von Regel oder KI */
+export interface Katalogvorschlag {
+  id: number;
+  buch: Buch;
+  kategorie_id: number;
+  quelle: Vorschlagsquelle;
+  /** Kurze Sätze: die Regel oder der Satz der KI */
+  gruende: string[];
+  /** 0 bis 100 */
+  sicherheit: number;
+  /** Sicher genug, um vorab angehakt zu sein */
+  vorab: boolean;
+  /** Die übrigen offenen Vorschläge für dasselbe Buch; mit id lassen sie sich gleich mit annehmen */
+  auch: { id: number; kategorie_id: number; name: string; sicherheit: number }[];
+}
+
+/** GET/PUT /api/katalog/einstellungen */
+export interface Katalogeinstellungen {
+  /** Titel je Stapel eines Laufs */
+  stapel: number;
+  /** Bücher je Anfrage an die KI */
+  ki_je_anfrage: number;
+  /** So sichere Vorschläge stehen vorab angehakt */
+  sicher_ab: number;
+  /** Über so vielen Treffern zerfällt eine Kategorie im Entwurf in ihre Teile */
+  teilen_ab: number;
+}
+
+export interface Vorschlagsseite {
+  gesamt: number;
+  vorschlaege: Katalogvorschlag[];
 }
 
 export interface SammlungKurz {

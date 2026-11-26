@@ -29,7 +29,7 @@
 {#if auftraege.ergaenzung.laeuft || auftraege.ergaenzungFertig}<Ergaenzungsauftrag />{/if}
 {#each auftraege.alleEigenen as a (a.id)}
   <div class="auftrag">
-    <div class="reihe"><b>{a.titel}</b>{#if a.abbrechen && a.laeuft}<span class="schiebt"><Knopf text="Anhalten" symbol="stop" klein frei onclick={a.abbrechen} /></span>{:else if !a.laeuft}<span class="schiebt"><Knopf text="Ausblenden" symbol="xmark" nur klein frei onclick={() => auftraege.entferne(a.id)} /></span>{/if}</div>
+    <div class="reihe"><b>{a.titel}</b>{#if a.pause && a.laeuft}<span class="schiebt"><Knopf text="Pause" symbol="pause" klein frei onclick={a.pause} /></span>{:else if a.fortsetzen && a.pausiert}<span class="schiebt"><Knopf text="Fortsetzen" symbol="play" klein frei onclick={a.fortsetzen} /></span>{:else if a.abbrechen && a.laeuft}<span class="schiebt"><Knopf text="Anhalten" symbol="stop" klein frei onclick={a.abbrechen} /></span>{:else if !a.laeuft}<span class="schiebt"><Knopf text="Ausblenden" symbol="xmark" nur klein frei onclick={() => auftraege.entferne(a.id)} /></span>{/if}</div>
     {#if a.anteil !== null}<Balken anteil={a.anteil} name={a.titel} />{/if}
     <span class="leise zahl">{a.text}</span>
     {#if a.weg}<div><Knopf text="Anzeigen" symbol="arrow-right" klein frei href={a.weg} onclick={() => schale.schliesseAlles()} /></div>{/if}

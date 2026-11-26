@@ -82,3 +82,76 @@
 .vorschlagsstufen > div { padding: .625rem .75rem; display: grid; gap: .25rem; align-content: start; }
 .vorschlagsstufen b { font-size: .875rem; }
 .vorschlagsstufen span { font-size: .8125rem; }
+/* Katalog (BF-69): Karten untereinander, die Karte Einordnen nimmt die freie Höhe. Der Reiter ist fast immer höher als der
+   Schirm; dann rollt die Seite, und die Liste der Vorschläge ist höchstens so hoch wie die Mindesthöhe nach dem Schirm
+   (BF-74) und rollt selbst, Lauf und Tasten darüber bleiben stehen. */
+.raster.fuellend.katalogreiter { display: flex; flex-direction: column; gap: .75rem; }
+.katalogreiter > * { flex: none; }
+.katalogreiter > .karte:has(.vorschlagsliste) { flex: 1 0 auto; }
+.raster.fuellend .vorschlagsliste { flex: 0 1 auto; min-height: 0; max-height: var(--liste-mindestens); }
+/* Einstellungen des Katalogs: gleich breite Felder */
+.katalogeinstellungen { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr)); max-width: 64rem; }
+/* Katalog wählen: drei Wege im Raster */
+.katalogwege { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr)); }
+.katalogweg { padding: 1rem; display: flex; flex-direction: column; gap: .625rem; }
+.wegkopf { display: flex; align-items: center; gap: .625rem; flex-wrap: wrap; }
+.wegkopf b { font-size: 1rem; }
+.katalogweg p { color: var(--tinte-3); font-size: .875rem; }
+.katalogweg > .knopf { margin-top: auto; align-self: flex-start; }
+.katalogweg.empfohlen { box-shadow: 0 0 0 2px var(--messing); }
+.katalogmarke { font-size: .75rem; font-weight: 600; padding: 1px 6px; border-radius: var(--r1); background: var(--messing-hauch); color: var(--tinte); }
+/* Bereiche als Kacheln, Kategorien mit Herkunft und Zahl */
+.katalog-legende { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr)); max-width: 60rem; font-size: .8125rem; color: var(--tinte-3); }
+.katalog-legende span { display: flex; align-items: center; gap: .375rem; }
+.katalogkacheln { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(min(17rem, 100%), 1fr)); }
+.bereichskachel { padding: .875rem; display: grid; gap: .625rem; align-content: start; grid-template-columns: minmax(0, 1fr); }
+.bereichskachel.ziel { box-shadow: 0 0 0 2px var(--messing); background: var(--messing-hauch); }
+.bereichskopf { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .625rem; border-radius: var(--r2); text-align: left; }
+.bereichskopf b { font-size: 1rem; overflow-wrap: anywhere; }
+.bereichskachel .warum { color: var(--tinte-3); font-size: .8125rem; }
+.bereichskachel .kategorien { display: grid; gap: .25rem; }
+.kategoriezeile { display: grid; grid-template-columns: auto minmax(0, 1fr) 1.25rem 2.75rem; gap: .5rem; align-items: center; font-size: .875rem; padding: .25rem .375rem; border-radius: var(--r1); background: var(--platte); box-shadow: 0 0 0 1px var(--linie); text-align: left; cursor: grab; }
+.kategoriezeile:hover { box-shadow: 0 0 0 1px rgb(var(--kante) / .7); }
+.kategoriezeile .name { min-width: 0; overflow-wrap: anywhere; }
+.kategoriezeile .herkunft { color: var(--tinte-3); font-size: .75rem; text-align: center; }
+.kategoriezeile .zahl { text-align: right; }
+.kategoriezeile.verborgen, .bereichskachel.verborgen { opacity: .5; }
+/* Kategorie bearbeiten: links Name, Bereich, Zeichen, Farbe; rechts Beschreibung und Regeln */
+.kategorieformular { display: grid; gap: 1rem; grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); }
+.kategorieformular > div { display: grid; gap: .75rem; align-content: start; min-width: 0; }
+.kategorieformular textarea { min-height: 4.5rem; }
+.regeln { display: grid; gap: .25rem; min-width: 0; }
+.regelzeile { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr) 4.5rem auto; gap: .625rem; align-items: center; padding: .375rem .5rem; border-radius: var(--r1); background: var(--platte); box-shadow: 0 0 0 1px var(--linie); font-size: .875rem; color: var(--tinte); }
+.regelzeile .art { display: flex; align-items: center; gap: .375rem; font-weight: 600; }
+.regelzeile .werte { display: flex; flex-wrap: wrap; gap: .25rem; min-width: 0; }
+.regelzeile .werte .chip { font-size: .75rem; min-height: 1.5rem; }
+.regelzeile .regelwert { width: 10rem; height: 1.75rem; font-size: .875rem; }
+.regelzeile .regeltreffer { text-align: right; color: var(--tinte-3); }
+.artenwahl { display: grid; gap: .25rem .75rem; grid-template-columns: repeat(auto-fill, minmax(min(9rem, 100%), 1fr)); color: var(--tinte); }
+/* Kategorien aus Importen: alte Namen, Pfeil, Ziel, Tasten */
+.altliste { display: grid; gap: .375rem; max-height: 28rem; overflow: auto; padding: 2px .25rem 2px 2px; }
+.altzeile { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 17rem) auto; gap: .625rem; align-items: center; padding: .375rem .5rem; font-size: .875rem; }
+.altzeile .alt { display: flex; flex-wrap: wrap; gap: .25rem; min-width: 0; }
+.altzeile .neu { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .5rem; align-items: center; overflow-wrap: anywhere; }
+.altzeile .neu small { display: block; color: var(--tinte-3); font-size: .75rem; }
+/* Einordnen: Lauf, Kategorie, Vorschläge mit Gründen als knappe Zeilen */
+.einordnenlauf { display: grid; gap: .375rem; max-width: 40rem; padding: .75rem; }
+.kategoriewahl { max-width: 28rem; }
+.kategoriekopf { display: flex; flex-wrap: wrap; align-items: center; gap: .625rem; }
+.kategoriekopf b { font-size: 1rem; }
+.vorschlagsliste { display: grid; gap: .25rem; align-content: start; }
+.vorschlagszeile { display: grid; grid-template-columns: 1.25rem 2.25rem minmax(0, 1fr) minmax(0, 20rem) 3rem auto; gap: .625rem; align-items: center; padding: .375rem .5rem; border-radius: var(--r1); font-size: .875rem; }
+.vorschlagszeile.arbeitet { opacity: .6; }
+.vorschlagszeile .bild { display: block; width: 2.25rem; }
+.vorschlagszeile .umschlag { aspect-ratio: 2 / 3; border-radius: 2px; }
+.vorschlagszeile .umschlag :is(img, svg) { height: 100%; max-height: none; object-fit: cover; }
+.vorschlagszeile .titel { min-width: 0; }
+.vorschlagszeile .titel b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vorschlagszeile .titel small { display: block; color: var(--tinte-3); font-size: .75rem; }
+.vorschlagszeile .grund { display: grid; gap: .125rem; min-width: 0; font-size: .8125rem; color: var(--tinte-3); }
+.vorschlagszeile .grund > * { display: grid; grid-template-columns: 1rem minmax(0, 1fr); gap: .375rem; align-items: baseline; text-align: left; }
+.vorschlagszeile .grund .auch { color: var(--tinte); }
+.vorschlagszeile .grund button.auch:hover { color: var(--messing); }
+.vorschlagszeile .grund button.auch[aria-pressed="true"] { color: var(--messing); font-weight: 600; }
+.vorschlagszeile .sicher { color: var(--tinte-3); text-align: right; }
+.vorschlagszeile .tun { flex-wrap: nowrap; gap: .125rem; }

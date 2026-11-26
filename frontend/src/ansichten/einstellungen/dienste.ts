@@ -105,7 +105,7 @@ export async function pruefeDienste(quellen: Quellenstand[]): Promise<Dienst[]> 
   const g = gesund.status === "fulfilled" ? (gesund.value as { version?: string }) : null;
   const b = beschreibungen;
   const dienste: Dienst[] = [
-    { ...b.server, adresse: `${location.origin}/api`, ...(g ? { stand: "gut" as const, wort: "Verbunden" } : { stand: "schlecht" as const, wort: "Nicht erreichbar" }), text: g?.version ? `Fassung ${g.version}` : "" },
+    { ...b.server, adresse: `${location.origin}/api`, ...(g ? { stand: "gut" as const, wort: "Verbunden" } : { stand: "schlecht" as const, wort: "Nicht erreichbar" }), text: g?.version ? `Version ${g.version}` : "" },
     { ...b.oberflaeche, adresse: location.origin, stand: "gut", wort: "Läuft", text: "Diese Seite" },
   ];
   // Die KI kommt über die Leitstelle; ohne deren Einrichtung ist sie aus

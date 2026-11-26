@@ -6,7 +6,7 @@ const SCHLUESSEL = "lib_filter";
 /** Mehrere Werte zugleich, mit Komma getrennt */
 const MEHRERE = ["category", "file_format"];
 /** q ist der Schnellfilter (Titel, Autor, ISBN, Etikett), ein Filter wie die anderen */
-const BEKANNT = ["category", "sammlung", "file_format", "min_rating", "is_favorite", "is_to_read", "gelesen", "hat_isbn", "hat_highlights", "weiterlesen", "hat_labels", "q"];
+const BEKANNT = ["category", "ohne_kategorie", "sammlung", "file_format", "min_rating", "is_favorite", "is_to_read", "gelesen", "hat_isbn", "hat_highlights", "weiterlesen", "hat_labels", "q"];
 
 class Filter {
   #werte = $derived.by(() => {
@@ -47,6 +47,11 @@ class Filter {
     }
     const jetzt = this.werte(schluessel);
     this.setze(schluessel, (jetzt.includes(wert) ? jetzt.filter((w) => w !== wert) : [...jetzt, wert]).join(","));
+  }
+
+  /** Mehrere Werte auf einmal setzen, etwa alle Kategorien eines Bereichs (BF-69) */
+  setzeWerte(schluessel: string, werte: readonly string[]): void {
+    this.setze(schluessel, [...new Set(werte)].join(","));
   }
 
   /** ersetzen: derselbe Schritt im Verlauf (ein Wort wächst beim Tippen), sonst ein neuer */

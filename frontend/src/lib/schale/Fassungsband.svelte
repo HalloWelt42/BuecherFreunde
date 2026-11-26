@@ -5,7 +5,7 @@
 
 {#if fassung.neu}
   <div class="band-fassung glas dicht" role="status">
-    <span>Neue Fassung {fassung.neu} bereit</span>
+    <span>Neue Version {fassung.neu} bereit</span>
     <Knopf text="Jetzt neu laden" symbol="rotate-right" haupt klein onclick={() => location.reload()} />
   </div>
 {/if}

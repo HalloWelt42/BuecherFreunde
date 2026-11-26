@@ -1,11 +1,12 @@
 // Reiter der Einstellungen. Alte Adressen führen zum neuen Reiter und rollen dort an ihre Stelle.
 
-export type Reiter = "darstellung" | "verbindungen" | "regale" | "wartung" | "mehr";
+export type Reiter = "darstellung" | "verbindungen" | "regale" | "katalog" | "wartung" | "mehr";
 
 export const reiter: [Reiter, string, string][] = [
   ["darstellung", "Darstellung", "palette"],
   ["verbindungen", "Verbindungen", "plug"],
   ["regale", "Regale und Sammlungen", "folder-tree"],
+  ["katalog", "Katalog", "sitemap"],
   ["wartung", "Wartung und Sicherung", "screwdriver-wrench"],
   ["mehr", "KI, Rechtliches, Über", "circle-info"],
 ];

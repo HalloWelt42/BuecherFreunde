@@ -1,8 +1,9 @@
-// Was die Leiste und die Filter über den Bestand wissen: Zahlen, Regale, Sammlungen
+// Was die Leiste und die Filter über den Bestand wissen: Zahlen, Regale, Sammlungen, Katalog (BF-69)
 import { get } from "../api/client";
 import { ladeKategorien } from "../api/categories";
 import { ladeSammlungen } from "../api/collections";
-import type { Regal, Sammlung, Zahlen } from "../typen";
+import { ladeKatalog } from "../api/katalog";
+import type { Katalog, Regal, Sammlung, Zahlen } from "../typen";
 
 const LEER: Zahlen = { buecher_gesamt: 0, favoriten: 0, leseliste: 0, gelesen: 0, ungelesen: 0, buecher_mit_isbn: 0, dokumente: 0, weiterlesen: 0, autoren: 0, mit_labels: 0, mit_highlights: 0 };
 
@@ -15,6 +16,8 @@ class Bestand {
   zahlen = $state<Zahlen>(LEER);
   regale = $state<Regal[]>([]);
   sammlungen = $state<Sammlung[]>([]);
+  /** Der gültige Katalog; null, solange er nicht geladen ist */
+  katalog = $state<Katalog | null>(null);
   geladen = $state(false);
   #zuhoerer = new Set<Zuhoerer>();
 
@@ -22,10 +25,12 @@ class Bestand {
   leistenRegale = $derived(this.regale.filter((r) => r.spezial));
 
   async laden(): Promise<void> {
-    const [zahlen, regale, sammlungen] = await Promise.allSettled([get("/api/config/stats"), ladeKategorien(), ladeSammlungen()]);
+    const [zahlen, regale, sammlungen, katalog] = await Promise.allSettled([get("/api/config/stats"), ladeKategorien(), ladeSammlungen(), ladeKatalog()]);
     if (zahlen.status === "fulfilled") this.zahlen = { ...LEER, ...zahlen.value };
-    if (regale.status === "fulfilled") this.regale = [...regale.value].sort((a: Regal, b: Regal) => NAMENSFOLGE.compare(a.name, b.name));
+    // Bereiche und Kategorien des Katalogs stehen in derselben Tabelle; Regale sind nur die übrigen
+    if (regale.status === "fulfilled") this.regale = regale.value.filter((r: Regal) => (r.art ?? "regal") === "regal").sort((a: Regal, b: Regal) => NAMENSFOLGE.compare(a.name, b.name));
     if (sammlungen.status === "fulfilled") this.sammlungen = sammlungen.value;
+    if (katalog.status === "fulfilled") this.katalog = katalog.value;
     this.geladen = true;
   }
 

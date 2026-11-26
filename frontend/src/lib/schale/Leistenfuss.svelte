@@ -9,8 +9,8 @@
   {#if verbindungen.app.stand === "schlecht" || !verbindungen.liste.length}<Lampe stand={verbindungen.app.stand} text="App" titel={verbindungen.app.text} />{/if}
 </span>
 <span class="lampen leise">
-  {#if verbindungen.fassung}<span>Fassung {verbindungen.fassung}</span>{/if}
-  {#if verbindungen.neueFassung}<span class="marke-text info" title="Neue Fassung veröffentlicht">neu: {verbindungen.neueFassung}</span>{/if}
+  {#if verbindungen.fassung}<span>Version {verbindungen.fassung}</span>{/if}
+  {#if verbindungen.neueFassung}<span class="marke-text info" title="Neue Version veröffentlicht">neu: {verbindungen.neueFassung}</span>{/if}
 </span>
 
 <style>

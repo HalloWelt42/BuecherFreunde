@@ -300,6 +300,37 @@ Vorschläge, Suchsprache, Markieren, Notizen, Vorlesen.
 | Leser mit Original, nur Text, Zoom, Papier, Blättern, Verzeichnis; im Querformat gehört die Höhe dem Buch | Leser | ja |
 | Tippziele 44, Eingaben ab 16, nichts unter 12 | `stil/breiten.css` | ja |
 
+## 22 Katalog (BF-69)
+
+Nach dem Entwurf Runde 2 (privat an der Karte) und der Schnittstelle in `docs/neubau/KATALOG.md`. Logik ohne Oberfläche in
+`lib/katalog.ts` (Filter der Leiste, Herkunft, Regeln) und `lib/farbton.ts` (Zeichenfläche); der Reiter in
+`ansichten/einstellungen/katalog`: `pflege.svelte.ts` ändert den Entwurf oder den gültigen Katalog hinter einer Schnittstelle
+(Katalogquelle), `einordnung.svelte.ts` führt den Lauf und die Vorschläge, `entwurf.ts` und `alte.ts` rechnen ohne Zustand.
+
+| Funktion | Neu | Geprüft |
+|---|---|---|
+| Reiter "Katalog" (`sitemap`), Karten untereinander; die Karte Einordnen nimmt die freie Höhe, ihre Liste ist höchstens so hoch wie die Mindesthöhe nach dem Schirm (BF-74) und rollt selbst | `Katalogreiter`, `stil/einstellungen.css` | Probe-Server, 1280 und 375 |
+| Katalog wählen: Standard (Zahlen aus dem Standard), an den Bestand anpassen (Lauf mit Schritt, auch unter Aufträge), leer; ein bestehender Vorschlag wird erst nach Rückfrage ersetzt | `Katalogwahl`, `pflege` | Probe-Server |
+| Katalog laden (Datei wird Vorschlag) und sichern (Datei des gültigen Katalogs) | `Katalogwahl`, `pflege.ladeDatei`, `pflege.sichere` | Laden ja; Sichern nur die Antwort, kein Herunterladen ausgelöst |
+| Vorschlag oder gültiger Katalog als Bereichskacheln im Raster, Herkunft je Kategorie mit Legende, verborgene gedämpft, "gilt für" bei Bereichen, die nicht für Bücher gelten | `Katalogkacheln`, `Bereichskachel` | Probe-Server, hell und dunkel |
+| Vorschlag annehmen, verwerfen (Rückfrage), Bereich anlegen, Kategorien zwischen Bereichen ziehen | `Katalogkacheln`, `pflege.verschiebe` | Probe-Server mit Ziehen und Ablegen |
+| Bereich bearbeiten: Name, Beschreibung, gilt für (Arten aus `stand/arten`), verborgen, Zeichen, Farbe, Entfernen nach den Folgen (nur ohne Kategorien) | `Bereichsfenster` | Probe-Server |
+| Kategorie bearbeiten: Name, Bereich, Zeichen (`Symbolwahl`), Farbe (die des Bereichs, bis eine eigene gewählt wird), Beschreibung für die KI, Regeln je Art mit Werten und Treffern, zusammen und Vorschläge der KI, verborgen, Entfernen mit Folgen und betroffenen Titeln | `Kategoriefenster`, `Regeln` | Probe-Server, Tests |
+| Kategorien aus Importen: je Ziel eine Zeile, Übernehmen, Ziel wählen (Kategorie oder Schlagwort am Buch, auch je Name), Entfernen nach Folgenvorschau | `AlteKategorien`, `alte.ts` | Probe-Server, Tests |
+| Einordnen: Lauf mit Stapel, Balken, Zahlen, Pause und Fortsetzen (auch unter Aufträge), Kategorie wählen, Vorschläge mit Umschlag, Gründen als knappe Zeilen, Sicherheit, "auch" zum Mitnehmen, Annehmen und Ablehnen einzeln, angehakt (Ablehnen mehrerer nach Rückfrage) oder alle | `Einordnen`, `Vorschlagszeile`, `einordnung` | Probe-Server, Tests |
+| Seitenleiste: Abschnitt Katalog mit Bereichen (antippen filtert nach allen Kategorien und klappt auf), Kategorien mit Zeichen und Zahl, "Ohne Kategorie", ohne Katalog "Katalog einrichten"; eigene Regale bleiben unter Regale | `schale/Leiste`, `lib/katalog` | Probe-Server, Tests |
+| Leiste: oben bis Markiertes und der Fuß stehen, der Teil ab Katalog rollt in der restlichen Höhe; bleiben ihm weniger als vier Zeilen, rollt die ganze Fläche (Zeile in rem, folgt der Schrift) | `schale/Leiste`, `stil/schale.css` | 1280 x 860, 700, 500, alle Schriftstufen, Telefon |
+| Zeichen: helles Symbol auf der abgedunkelten Farbe des Bereichs, mindestens 4,5 : 1 für jede Farbe, auch eigene | `teile/Katalogzeichen`, `farbton.zeichenflaeche` | Test über den Standard und die Farbwahl |
+| Buchseite: Kategorien als Chips mit Zeichen und Farbe, Kreuz nimmt nach Rückfrage heraus, "+ Kategorie" wählt aus dem Katalog; Regale stehen darunter wie bisher | `buch/Kategoriechips`, `teile/Kategoriewahl` | Probe-Server |
+| Überschrift der Bibliothek nennt Bereich oder Kategorie; "Mehr" zählt nur Regale | `bibliothek/titel`, `Werkzeugzeile`, `Filterfeld` | Probe-Server, Tests |
+| Einstellungen des Katalogs: Titel je Stapel, Bücher je Anfrage an die KI, vorab angehakt ab, im Vorschlag teilen ab; je Feld beim Verlassen gespeichert, Grenzen wie am Server | `Katalogeinstellungen`, `einstellungen.ts` | echter Server im Testbetrieb, Tests |
+| Vorschau: Kategorien und Regale je in ihrer Zeile; eine Regel trennt beide überall (`trenneKategorien`) | `schale/Vorschau`, `Kategoriechips`, `Regalchips` | Tests |
+| Version statt Fassung in Leistenfuß, Band und Diensten | `Leistenfuss`, `Fassungsband`, `dienste.ts` | Sichtprüfung |
+
+Geprüft am Probe-Server mit erfundenen Daten und am echten Server im Testbetrieb (eigene Datenbank, erfundene Werke, ohne KI):
+Entwurf aus dem Bestand, Annehmen, Ändern und Verschieben im Entwurf, neuer Bereich mit Arten, alte Regale, Einordnen nach
+Regeln mit "auch", Einstellungen.
+
 ## Prüfstand
 
 - Jede Ansicht in 1920, 1440, 1180, 834 und 390, hell und dunkel, dazu "Sehr groß" bei 390 und 1440 (216 Bilder am gebauten Stand), am

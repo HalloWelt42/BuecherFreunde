@@ -38,3 +38,45 @@ export function tonZuHex({ ton, saettigung, helligkeit }: Farbton): string {
   };
   return `#${kanal(0)}${kanal(8)}${kanal(4)}`;
 }
+
+// Kontrast nach WCAG und die Zeichenfläche des Katalogs (BF-69)
+
+/** Das Zeichen steht hell auf seiner Fläche */
+export const ZEICHENFARBE = "#ffffff";
+/** Ziel mit Luft zu den geforderten 4,5 : 1, damit Runden nie darunter fällt */
+const ZIEL_KONTRAST = 5;
+/** Jede Fläche ist mindestens so weit mit Schwarz gemischt (Anteil der Farbe in Oklab), auch dunkle: ruhiger und weniger bunt */
+const HOECHSTENS_FARBE = 0.85;
+
+const linear = (k: number) => (k <= 0.04045 ? k / 12.92 : ((k + 0.055) / 1.055) ** 2.4);
+const gamma = (k: number) => (k <= 0.0031308 ? 12.92 * k : 1.055 * k ** (1 / 2.4) - 0.055);
+
+function kanaele(farbe: string): [number, number, number] {
+  const hex = alsHex(farbe) ?? "#808080";
+  return [1, 3, 5].map((n) => linear(Number.parseInt(hex.slice(n, n + 2), 16) / 255)) as [number, number, number];
+}
+
+/** Relative Leuchtdichte, 0 (schwarz) bis 1 (weiß) */
+export function leuchtdichte(farbe: string): number {
+  const [r, g, b] = kanaele(farbe);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+export function kontrast(a: string, b: string): number {
+  const [hell, dunkel] = [leuchtdichte(a), leuchtdichte(b)].sort((x, y) => y - x);
+  return (hell + 0.05) / (dunkel + 0.05);
+}
+
+/**
+ * Fläche für ein Zeichen in dieser Farbe: die Farbe in Oklab mit Schwarz gemischt, so weit, dass das helle Zeichen darauf
+ * mindestens 5 : 1 erreicht, und nie weniger als 15 %. Eine Mischung mit Schwarz in Oklab mit dem Anteil t ist dasselbe
+ * wie die linearen Kanäle mal t³; der Farbton bleibt also genau, nur die Helligkeit fällt.
+ */
+export function zeichenflaeche(farbe: string, zeichen = ZEICHENFARBE): string {
+  const [r, g, b] = kanaele(farbe);
+  const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const hoechstens = (leuchtdichte(zeichen) + 0.05) / ZIEL_KONTRAST - 0.05;
+  const faktor = Math.min(HOECHSTENS_FARBE ** 3, l > 0 ? hoechstens / l : 1);
+  const kanal = (k: number) => Math.round(Math.min(1, Math.max(0, gamma(k * faktor))) * 255).toString(16).padStart(2, "0");
+  return `#${kanal(r)}${kanal(g)}${kanal(b)}`;
+}

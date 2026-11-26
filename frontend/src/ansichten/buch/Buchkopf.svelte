@@ -10,6 +10,7 @@
   import Sterne from "../../lib/teile/Sterne.svelte";
   import Umschlag from "../../lib/teile/Umschlag.svelte";
   import type { BuchEinzeln, Umschlagart } from "../../lib/typen";
+  import Kategoriechips from "./Kategoriechips.svelte";
   import Regalchips from "./Regalchips.svelte";
   import { buchLoeschen } from "./loeschen";
 
@@ -80,6 +81,7 @@
           {#if probe}<p class="probe" style:font-family={probe.schrift} style:color={probe.farbe || undefined} style:background={probe.grund || undefined} title="Schriftprobe">{probe.name}</p>{/if}
         </div>
       {/if}
+      <Kategoriechips {buch} {ongeaendert} />
       <Regalchips {buch} {ongeaendert} />
     </div>
     <div class="rechts">

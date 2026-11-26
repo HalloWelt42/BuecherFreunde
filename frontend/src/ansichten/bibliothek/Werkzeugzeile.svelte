@@ -3,6 +3,7 @@
   import Schnellfilterchip from "../../lib/schale/Schnellfilterchip.svelte";
   import Suchfeld from "../../lib/schale/Suchfeld.svelte";
   import { auswahl } from "../../lib/stand/auswahl.svelte";
+  import { bestand } from "../../lib/stand/bestand.svelte";
   import { buecher, sortierungen, type Sortierung } from "../../lib/stand/buecher.svelte";
   import { filter } from "../../lib/stand/filter.svelte";
   import Auswahl from "../../lib/teile/Auswahl.svelte";
@@ -24,9 +25,10 @@
   const texte = ["txt", "md"];
   let mitText = $derived(texte.every((f) => filter.hat("file_format", f)));
   // Was im Feld "Mehr Filter" gesetzt ist, zählt am Knopf mit
-  // Ein einzelnes Regal lässt sich von Hand füllen (BF-67)
-  let regal = $derived(filter.werte("category").length === 1 ? filter.werte("category")[0] : "");
-  let weitere = $derived(filter.werte("category").length + (["sammlung", "min_rating", "hat_labels", "hat_highlights"].filter((k) => filter.wert(k)).length) + (filter.hat("file_format", "mobi") ? 1 : 0));
+  // Ein einzelnes Regal lässt sich von Hand füllen (BF-67). Kategorien des Katalogs wählt die Leiste, sie zählen hier nicht (BF-69).
+  let regale = $derived(filter.werte("category").filter((id) => bestand.regal(id)));
+  let regal = $derived(filter.werte("category").length === 1 && regale.length === 1 ? regale[0] : "");
+  let weitere = $derived(regale.length + (["sammlung", "min_rating", "hat_labels", "hat_highlights"].filter((k) => filter.wert(k)).length) + (filter.hat("file_format", "mobi") ? 1 : 0));
 
   function schalteText() {
     const rest = filter.werte("file_format").filter((f) => !texte.includes(f));

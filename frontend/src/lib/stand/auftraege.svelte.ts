@@ -30,6 +30,10 @@ export interface EigenerAuftrag {
   laeuft: boolean;
   weg?: string;
   abbrechen?: () => void;
+  /** Ein Lauf, der in Stapeln geht, macht Pause und geht später weiter (BF-69); pausiert zählt nicht als laufend */
+  pausiert?: boolean;
+  pause?: () => void;
+  fortsetzen?: () => void;
 }
 
 const GEMEINFREI_AUFTRAG = "gemeinfrei";
