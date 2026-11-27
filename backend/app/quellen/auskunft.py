@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.quellen import isbn as nummern
 from backend.app.quellen import open_library, regeln
-from backend.app.quellen.abgleich import gleiche_ausgabe, punkte
+from backend.app.quellen.abgleich import gleiche_ausgabe, isbn_fund_passt, punkte
 from backend.app.quellen.anschluss import Buchquelle
 from backend.app.quellen.crossref import Crossref
 from backend.app.quellen.dnb import Nationalbibliothek
@@ -135,9 +135,14 @@ def _nur_werk(a: Angaben) -> Angaben:
 
 
 async def _sicherer_fund(quelle: Buchquelle, frage: Buchfrage) -> Angaben | None:
-    """Mit ISBN zählt nur die ISBN. Ohne sie muss der Titel sicher sein, und Verlag, Jahr und ISBN gelten nur für dieselbe Ausgabe."""
+    """Mit ISBN zählt nur die ISBN, solange der Fund zum Buch passt (Titel oder Autor, abgleich.isbn_fund_passt). Ohne sie muss
+    der Titel sicher sein, und Verlag, Jahr und ISBN gelten nur für dieselbe Ausgabe."""
     if frage.isbn:
-        return await quelle.nach_isbn(frage.isbn)
+        fund = await quelle.nach_isbn(frage.isbn)
+        if fund is not None and not isbn_fund_passt(frage, fund):
+            logger.info("Fund über die ISBN %s passt nicht zum Buch (%s): %s", frage.isbn, quelle.regel.kennung, fund.titel)
+            return None
+        return fund
     fund = await quelle.nach_titel(frage)
     if fund is None or not fund.sicher:
         return None
@@ -163,6 +168,7 @@ async def ergaenze(frage: Buchfrage, fehlend: set[str]) -> Auskunft:
             funde.append(_mit_herkunft(fund, frage))
             offen -= {f for f in offen if getattr(fund, f)}
     angaben = zusammenfuehren(funde, frage)
-    if "umschlag" in offen and (bild := await open_library.umschlag_oder_nichts(frage.isbn)):
+    # ein Umschlag über die ISBN nur, wenn eine Quelle das Buch zu dieser ISBN bestätigt hat (sonst wäre es vielleicht ein fremdes)
+    if "umschlag" in offen and funde and (bild := await open_library.umschlag_oder_nichts(frage.isbn)):
         angaben = (angaben or Angaben()).model_copy(update={"umschlag": bild})
     return _auskunft(angaben, fehler)

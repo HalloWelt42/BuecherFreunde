@@ -13,6 +13,9 @@ from backend.app.quellen.modelle import Angaben, Buchfrage
 MIT_AUTOR = 0.8                 # so nah muss der Titel sein, wenn der Autor stimmt
 OHNE_AUTOR = 0.92               # und so nah, wenn kein Autor bekannt ist
 SICHER = 0.95                   # erst so nah darf ein Hintergrundlauf eine ISBN übernehmen
+ISBN_TITEL = 0.6                # so nah muss der Titel eines Fundes über die ISBN sein, sonst muss der Autor gleich sein
+#: Namen in Autorenfeldern, die keinen Menschen nennen (aus Dateiangaben)
+KEIN_NAME = frozenset({"unbekannt", "anonym", "unknown", "anonymous", "administrator", "admin", "user", "benutzer"})
 _HAUPTTITEL = re.compile(r"\s*[:;/|=]\s+|\s+-\s+|\.\s+")
 _ZUSAETZE = re.compile(r"\b(hrsg|hg|herausgeber|herausgeberin|ed|eds|prof|dr|phil|jur|med|ing|von und zu)\b\.?", re.IGNORECASE)
 _DATEI = re.compile(r"\.(pdf|epub|mobi|txt|md|docx?|indd|qxd|xlsx?|pptx?)\b|^microsoft (word|powerpoint|excel)\b|^(untitled|unbenannt|titel|document|dokument)\d*$|_", re.IGNORECASE)
@@ -99,6 +102,17 @@ def autor_passt(gesucht: Iterable[str], gefunden: Iterable[str]) -> bool | None:
     """Teilen beide einen Nachnamen? None, wenn eine Seite keinen kennt."""
     g, f = {nachname(n) for n in gesucht} - {""}, {nachname(n) for n in gefunden} - {""}
     return bool(g & f) if g and f else None
+
+
+def isbn_fund_passt(frage: Buchfrage, fund: Angaben) -> bool:
+    """Gehört ein Fund über die ISBN zu diesem Buch? Eine ISBN aus dem Buch kann einem anderen gehören, etwa aus einer
+    Literaturliste oder Verlagsanzeige (BF-111). Ein naher Titel genügt, sonst muss ein Autor gleich sein. Ohne lesbaren Titel
+    darf nur kein Autor widersprechen; Platzhalter wie "unbekannt" zählen nicht als Autor."""
+    autoren = [a for a in frage.autoren if norm(a) not in KEIN_NAME]
+    autor = autor_passt(autoren, fund.autoren)
+    if suchbar(frage.titel) and fund.titel:
+        return titel_naehe(frage.titel, fund.titel, fund.untertitel) >= ISBN_TITEL or autor is True
+    return autor is not False
 
 
 def _seiten_gleich(a: int, b: int) -> bool:

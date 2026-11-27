@@ -7,7 +7,7 @@ import pytest
 
 from backend.app.core.config import settings
 from backend.app.quellen import auskunft, gutenberg, isbn, marc
-from backend.app.quellen.abgleich import autor_passt, bester, namen_gleich, norm, suchbar, titel_naehe
+from backend.app.quellen.abgleich import autor_passt, bester, isbn_fund_passt, namen_gleich, norm, suchbar, titel_naehe
 from backend.app.quellen.auskunft import QUELLEN, ergaenze, suche, zusammenfuehren
 from backend.app.quellen.crossref import doi_aus_text
 from backend.app.quellen.fehler import Ausgefallen, Pausiert, QuelleFehler
@@ -315,6 +315,26 @@ async def test_ergaenzen_ohne_isbn_nimmt_ausgabe_nur_bei_gleichem_jahr_oder_umfa
     assert (s.angaben.isbn, s.angaben.verlag, s.angaben.sprache) == ("", "", "de")
     s = await ergaenze(frage.model_copy(update={"jahr": 2023}), {"isbn", "verlag"})
     assert s.angaben.isbn == "9783999991078" and s.angaben.verlag.startswith("Beispiel")
+
+
+def test_ein_fund_ueber_die_isbn_muss_zum_buch_passen():
+    """BF-111: eine ISBN aus dem Buch kann einem anderen gehören (Literaturliste); dann zählt ihr Fund nicht."""
+    fund = Angaben(titel="Die Straßenbahn von Musterstadt", untertitel="Eine Geschichte", autoren=["Erika Beispiel"])
+    passt = lambda **frage: isbn_fund_passt(Buchfrage(isbn=STRASSENBAHN, **frage), fund)    # noqa: E731
+    assert passt(titel="Die Straßenbahn von Musterstadt 2021")
+    assert passt(titel="Straßenbahnen in Musterstadt, ein Bildband", autoren=["Beispiel, Erika"]), "anderer Titel, gleicher Autor"
+    assert not passt(titel="Kochen für Anfänger", autoren=["Hans Fremd"]), "ein fremdes Buch aus der Literaturliste"
+    assert not passt(titel="Kochen für Anfänger"), "lesbarer Titel ohne Ähnlichkeit, kein Autor"
+    assert passt(titel="scan_0001.pdf"), "ohne lesbaren Titel und Autor spricht nichts dagegen"
+    assert passt(titel="scan_0001.pdf", autoren=["Unbekannt"]), "ein Platzhalter ist kein Autor"
+    assert not passt(titel="scan_0001.pdf", autoren=["Hans Fremd"])
+
+
+async def test_ergaenzen_verwirft_den_fund_einer_fremden_isbn(alle_antworten):
+    with hintergrund():
+        fremd = await ergaenze(Buchfrage(isbn=STRASSENBAHN, titel="Kochen für Anfänger", autoren=["Hans Fremd"]), {"verlag", "jahr"})
+        eigen = await ergaenze(Buchfrage(isbn=STRASSENBAHN, titel="Die Straßenbahn von Musterstadt"), {"verlag", "jahr"})
+    assert fremd.angaben is None and eigen.angaben.jahr == 1997
 
 
 @pytest.mark.parametrize("k10_antwortet", [False, True])

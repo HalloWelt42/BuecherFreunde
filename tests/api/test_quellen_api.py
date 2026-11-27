@@ -145,16 +145,19 @@ async def _fertig():
 
 async def test_ergaenzen_fuellt_nur_leeres_mit_wenigen_anfragen(client, test_db, quellen):
     quellen.setze("covers.openlibrary.org", antwort(bild()))
-    nr = await buch_erstellen(test_db, title="Mein Titel", author="", isbn=STRASSENBAHN, publisher="", year=None, language="", description="")
+    nr = await buch_erstellen(test_db, title="Die Straßenbahn von Musterstadt", author="", isbn=STRASSENBAHN, publisher="", year=None, language="", description="")
+    fremd = await buch_erstellen(test_db, hash="fremd", title="Kochen für Anfänger", author="", isbn=STRASSENBAHN, publisher="")  # ISBN aus der Literaturliste
     await buch_erstellen(test_db, hash="voll", title="Voll", cover_path="cover.jpg")
     await buch_erstellen(test_db, hash="ohne", title="Ohne ISBN", isbn="")
-    assert (await rescan_service.vorschau(["metadaten"]))["typen"] == {"metadaten": 1}, "nur Bücher, denen etwas fehlt"
-    assert (await rescan_service.vorschau_kategorien(["metadaten"]))[0]["anzahl"] == 1
-    assert (await client.post("/api/books/rescan?typen=metadaten")).json() == {"gestartet": True, "anzahl": 1}
+    assert (await rescan_service.vorschau(["metadaten"]))["typen"] == {"metadaten": 2}, "nur Bücher, denen etwas fehlt"
+    assert (await rescan_service.vorschau_kategorien(["metadaten"]))[0]["anzahl"] == 2
+    assert (await client.post("/api/books/rescan?typen=metadaten")).json() == {"gestartet": True, "anzahl": 2}
     await _fertig()
     b = (await client.get(f"/api/books/{nr}")).json()
-    assert (b["title"], b["author"], b["publisher"], b["year"], b["language"], b["cover_path"]) == ("Mein Titel", "Erika Beispiel", "Musterhaus", 1997, "de", "cover.jpg")
+    assert (b["title"], b["author"], b["publisher"], b["year"], b["language"], b["cover_path"]) == ("Die Straßenbahn von Musterstadt", "Erika Beispiel", "Musterhaus", 1997, "de", "cover.jpg")
     assert b["categories"] == [] and rescan_service.status["metadaten_aktualisiert"] == 1 and rescan_service.status["grund"] == ""
+    f = (await client.get(f"/api/books/{fremd}")).json()
+    assert (f["author"], f["publisher"]) == ("", ""), "der Fund einer fremden ISBN füllt nichts (BF-111)"
     vorher = quellen.zahl()
     await client.post("/api/books/rescan?typen=metadaten")
     await _fertig()
