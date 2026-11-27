@@ -1,6 +1,6 @@
 // Vorlesen über den Server und die Vertonung (BF-14): Stimmen zur Wahl mit ihren Bereichen, der Ton als Strom und je Buch die
 // Stelle, an der es stehen blieb
-import { anfrage, get } from "./client";
+import { anfrage, get, post } from "./client";
 
 /** Wo eine Stimme der Vertonung herkommt: freigegebene private, fremde Klonstimmen, ihr Katalog */
 export type Stimmbereich = "privat" | "fremd" | "katalog";
@@ -46,6 +46,16 @@ export function stimmgruppen(d: Dienststimmen | null, wert: (id: string) => stri
 export const freigabeHinweis = (d: Dienststimmen | null): string => d?.bereiche.find((b) => !b.frei)?.hinweis ?? "";
 
 export const ladeDienststimmen = (): Promise<Dienststimmen> => get("/api/vorlesen/stimmen");
+
+/** Eine Stimmprobe: Text und Adresse des abgelegten Tons */
+export interface Probenton {
+  text: string;
+  /** leer: die Stimme des Geräts spricht den Text */
+  url: string | null;
+}
+
+/** Die Probe einer Stimme mit den Werten des Profils, meist vorab gesprochen (BF-114); eine Stimme des Geräts bekommt nur den Text */
+export const holeStimmprobe = (stimme: string): Promise<Probenton> => post("/api/vorlesen/probe", { stimme });
 
 export function vorleseStrom(text: string, stimme: string, abbruch: AbortSignal): Promise<Response> {
   return anfrage("/api/vorlesen", { method: "POST", body: JSON.stringify({ text, stimme }), signal: abbruch });

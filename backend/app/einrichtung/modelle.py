@@ -14,7 +14,7 @@ Modus = Literal["neu", "wartung", "aus"]
 Ausgangslagename = Literal["neu", "sicherung", "kellerwolke", "umzug"]
 Schrittstand = Literal["offen", "erledigt", "uebersprungen", "entfaellt"]
 Anschlussart = Literal["kellerwolke", "leitstelle", "vertonung", "nachschlag"]
-Auftragsart = Literal["pruefung", "neuaufbau", "kopieren", "ligaturen"]
+Auftragsart = Literal["pruefung", "neuaufbau", "kopieren", "ligaturen", "stimmproben"]
 Auftragsstandart = Literal["", "wartet", "laeuft", "pause", "fertig", "fehler"]
 
 

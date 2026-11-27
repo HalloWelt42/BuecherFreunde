@@ -6,10 +6,11 @@
 // Liest es aus einem Buch, merkt der Server die Stelle (BF-37): Anhalten, Pause, Schlafuhr, Schließen des Buchs und Abriss
 // sichern den Satz, an dem es stand, beim Lesen alle paar Sekunden auch; ist der gewählte Umfang zu Ende, ist sie weg.
 import { GERAETESTIMME, setzeVorlesestimme } from "../api/familie";
-import { BEREICHSNAMEN, freigabeHinweis, holeVorlesestelle, ladeDienststimmen, merkeVorlesestelle, vergissVorlesestelle, type Dienststimmen, type Vorlesestelle } from "../api/vorlesen";
+import { BEREICHSNAMEN, freigabeHinweis, holeStimmprobe, holeVorlesestelle, ladeDienststimmen, merkeVorlesestelle, vergissVorlesestelle, type Dienststimmen, type Vorlesestelle } from "../api/vorlesen";
 import { lies as gemerkt, merke, vergiss } from "../speicher";
 import { Dienstsprecher } from "../vorlesen/dienst";
 import { Vorlesefolge, type Schlaf } from "../vorlesen/folge";
+import { Stimmprobe } from "../vorlesen/stimmprobe.svelte";
 import { GEDULD_BUCH_S, GEDULD_KURZ_S } from "../vorlesen/zulauf";
 import { geraetDa, geraetestimmen, Geraetesprecher } from "../vorlesen/geraet";
 import { medienAus, medienStand, zeigeMedien, type Werk } from "../vorlesen/mediensitzung";
@@ -22,7 +23,6 @@ import { melde } from "./meldungen.svelte";
 /** Früher die Stimme dieses Browsers; einmal ins Profil übernommen, danach vergessen */
 const SCHLUESSEL = "vorlesen.stimme";
 const SCHLUESSEL_TEMPO = "vorlesen.tempo";
-const PROBE = "So klingt diese Stimme beim Vorlesen.";
 /** Was eine Probe ist: sie darf eine laufende Probe ablösen, nie das Vorlesen eines Buchs */
 export const PROBE_WAS = "Probe";
 const DIENST = "dienst:";
@@ -65,6 +65,8 @@ class Vorlesestand {
   #gefragt = false;
   #sprecher: Record<string, Sprecher> = { dienst: new Dienstsprecher(), geraet: new Geraetesprecher() };
   #vorlauf = new Vorlauf();
+  /** Die Probe einer Stimme der Vertonung: ein abgelegter Ton, kein Vorlesen (BF-114) */
+  #probe = new Stimmprobe();
   #folge: Vorlesefolge | null = null;
   #werk = OHNE_WERK;
   /** Buch, aus dem gelesen wird; null bei einzelnen Texten (Auswahl, Probe), die nichts merken */
@@ -185,6 +187,7 @@ class Vorlesestand {
     // Wer liest, ohne dass jemand die Stimmen erfragt hat (etwa aus der Auswahl), fragt hier
     this.pruefe();
     this.halt();
+    this.#probe.halt();
     this.#buch = buch;
     this.#gesichert = Date.now();
     const [sprecher, stimme] = this.#teile();
@@ -232,8 +235,18 @@ class Vorlesestand {
     });
   }
 
+  /** Im Tippen rufen. Die Stimmen der Vertonung spielen ihre abgelegte Probe, eine des Geräts spricht den Probesatz. */
   probe(): void {
-    this.lies(PROBE, PROBE_WAS);
+    this.pruefe();
+    if (!this.#teile()[0]) return void melde.warn(this.hinweis || "Hier gibt es keine Stimme zum Vorlesen");
+    if (this.was === PROBE_WAS) this.halt();
+    this.#probe.spiele(() => holeStimmprobe(serverwert(this.stimme)), (text) => this.lies(text, PROBE_WAS), this.#tempo)
+      .catch((e) => melde.schlecht(e, "Probe nicht abgespielt"));
+  }
+
+  /** Die Probe ist gefragt, ihr Ton aber noch nicht zu hören: der Knopf dreht, bis sie spielt (BF-113) */
+  get probeLaedt(): boolean {
+    return this.#probe.laedt || (this.aktiv && this.was === PROBE_WAS && this.wartet);
   }
 
   pausiere(): void {

@@ -23,7 +23,7 @@
   import { melde } from "../../../lib/stand/meldungen.svelte";
   import Auswahl from "../../../lib/teile/Auswahl.svelte";
   import Knopf from "../../../lib/teile/Knopf.svelte";
-  import { stilleAdresse } from "../../../lib/vorlesen/ton";
+  import { Stimmprobe } from "../../../lib/vorlesen/stimmprobe.svelte";
   import Wertchip from "./Wertchip.svelte";
 
   interface Eigenschaften {
@@ -45,9 +45,8 @@
   const WIE_FAMILIE = "familie";
 
   let katalog = $state<Dienststimmen | null>(null);
-  let spielt = $state(false);
-  /** Gefragt, aber noch nicht zu hören: der Knopf dreht, bis die Probe spielt (BF-113) */
-  let laedt = $state(false);
+  /** Gefragt, aber noch nicht zu hören: der Knopf dreht, bis die Probe spielt (BF-113); bis zum Ende ruht er */
+  const probe = new Stimmprobe();
   let entwurf = $state<string | null>(null);
   let mitFamilie = $derived(familie !== undefined);
   /** Was wirklich spricht: die eigene Wahl, sonst die der Familie */
@@ -71,32 +70,18 @@
     void katalogHolen().then((k) => (katalog = k));
   });
 
-  /** Im Tippen freigegeben, sonst bleibt das Telefon stumm; der Ton kommt danach in dasselbe Element */
-  async function probe(s: string) {
-    if (!s || spielt) return;
-    const ton = new Audio(stilleAdresse());
-    void ton.play().catch(() => undefined);
-    spielt = laedt = true;
-    try {
-      const satz = await ansageProbe(s);
-      if (!satz.url) {
-        // Die Stimme des Geräts spricht den Probesatz selbst
-        speechSynthesis.cancel();
-        const sprich = new SpeechSynthesisUtterance(satz.text);
-        sprich.lang = "de-DE";
-        sprich.onstart = () => (laedt = false);
-        sprich.onend = sprich.onerror = () => (spielt = laedt = false);
-        speechSynthesis.speak(sprich);
-        return;
-      }
-      ton.src = satz.url;
-      ton.onplaying = () => (laedt = false);
-      ton.onended = ton.onerror = () => (spielt = laedt = false);
-      await ton.play();
-    } catch (e) {
-      spielt = laedt = false;
-      melde.schlecht(e, "Probe nicht abgespielt");
-    }
+  /** Die Stimme des Geräts spricht den Probesatz selbst */
+  function geraetSpricht(text: string) {
+    speechSynthesis.cancel();
+    const sprich = new SpeechSynthesisUtterance(text);
+    sprich.lang = "de-DE";
+    speechSynthesis.speak(sprich);
+  }
+
+  /** Im Tippen rufen, sonst bleibt das Telefon stumm */
+  function hoere(s: string) {
+    if (!s || probe.spielt) return;
+    probe.spiele(() => ansageProbe(s), geraetSpricht).catch((e) => melde.schlecht(e, "Probe nicht abgespielt"));
   }
 
   /** Was in der Auswahl steht: der Entwurf, sonst die gespeicherte Wahl */
@@ -115,14 +100,14 @@
 </script>
 
 <span class="reihe stimmtasten">
-  <Knopf text="Probe" symbol="play" klein nur={nurSymbol} laeuft={laedt} gesperrt={!wirkt || stumm || spielt} titel={wirkt && !stumm ? `Probe mit ${nameVon(wirkt)}` : undefined} onclick={() => void probe(wirkt)} />
+  <Knopf text="Probe" symbol="play" klein nur={nurSymbol} laeuft={probe.laedt} gesperrt={!wirkt || stumm || probe.spielt} titel={wirkt && !stumm ? `Probe mit ${nameVon(wirkt)}` : undefined} onclick={() => hoere(wirkt)} />
   <Wertchip text={chip} {name} gesperrt={gesperrt || stumm} breite="19rem">
     {#snippet children(zu)}
       {@const wert = auswahlWert()}
       {@const hoeren = wert === WIE_FAMILIE ? (familie ?? "") : wert}
       <div class="stimmwahl">
         <Auswahl name="Stimme" {gruppen} {wert} onwahl={(w) => (entwurf = w)} />
-        <Knopf text="Probe hören" symbol="play" nur klein laeuft={laedt} gesperrt={!hoeren || spielt} onclick={() => void probe(hoeren)} />
+        <Knopf text="Probe hören" symbol="play" nur klein laeuft={probe.laedt} gesperrt={!hoeren || probe.spielt} onclick={() => hoere(hoeren)} />
       </div>
       {#if katalog?.hinweis}<p class="leise">{katalog.hinweis}</p>{/if}
       {#if freigabe}<p class="leise">{freigabe}</p>{/if}

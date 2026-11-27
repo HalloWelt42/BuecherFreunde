@@ -687,7 +687,19 @@ Vorlesestand:  { stimme, werte, eigene_wahl }
   über alle Teile), zuletzt `{art: ende, saetze, dauer_ms}`. Was vor dem ersten Satz scheitert, ist eine Antwort mit Grund: 403, wenn
   die Vertonung ablehnt (nie 401), 503 ohne Vertonung oder wenn sie nicht erreichbar ist, 400 für eine Stimme, die sie nicht spricht
   (auch `geraet`); danach eine Zeile `{art: fehler, meldung}`.
-- **Kurze Texte** (feste Ansagen, Probe) gehen an `POST /api/v1/sprechen` und kommen als eine WAV.
+- **Kurze Texte** (feste Ansagen, Stimmproben) gehen an `POST /api/v1/sprechen` und kommen als eine WAV.
+- **Stimmproben** (BF-114, `vorlesen/proben.py`): je Stimme ein fester Satz aus `vorlesen/proben.json`, Art `leser` (mit den Werten
+  des Profils) und `ansage` (ohne Werte), einmal gesprochen und dauerhaft abgelegt im Ort texte unter
+  `stimmproben/<ordner der stimme>/<art>-<pruefsumme>.wav` (Prüfsumme über Fassung, Text und Werte, `vorlesen/tonablage.py`).
+  - `POST /api/vorlesen/probe {stimme}`: `{text, url}` der Probe im Leser; fehlt sie, spricht die Vertonung sie jetzt. Leer ist
+    die Stimme ab Werk, mit einer Stimme des Geräts (`geraet`, `geraet:<Name>`) `url` null; ohne Vertonung 503 mit Grund.
+  - `GET /api/vorlesen/probe/ton/{ordner}/{datei}`: der Ton (`audio/wav`, ein Jahr `immutable`, `ETag`, 304), ohne Kopf über das
+    Cookie für Inhalte, für jedes Profil mit `vorlesen`.
+  - Auftrag **Stimmproben vertonen** (`stimmproben`, in `GET /api/einrichtung/auftraege`, anhalten und fortsetzen wie die anderen):
+    spricht vorab jede fehlende Probe, je angebotener Stimme und der Stimme ab Werk, im Leser mit den Werten jedes Profils, eine nach
+    der anderen mit `STIMMPROBEN_ABSTAND_S` (2) Pause. Die Wache sieht `STIMMPROBEN_ERST_S` (60) nach dem Start und danach im Takt
+    `STIMMPROBEN_TAKT_S` (21600) nach. Antwortet die Vertonung nicht, ruht er mit Grund und geht beim nächsten Takt weiter; von Hand
+    angehalten bleibt er stehen. Am Ende fallen Proben weg, die niemand mehr hören kann (alte Werte, alter Text).
 - **Beschreibung**: aus dem Schema der Vertonung (`GET /api/v1/schnittstelle`, Modell der Anfrage an den Strom); jedes Feld außer
   `text` und `stimme` ist eine Einstellung mit Art, Grenzen (`minimum`, `maximum`) und Vorgabe. Namen aus `vorlesen/beschriftungen.json`;
   ein Feld, das dort fehlt, behält den Namen der Vertonung und hat `mehr` true. Listen und Objekte bleiben weg. Zeigt die Vertonung ihr
@@ -781,13 +793,13 @@ tut `backend/app/familie/`, die Wege stehen in `backend/app/api/familie.py`, Stu
   - aus den Dingen: `titel.<buch>` für jedes Buch, das das Kind sieht (erst nach der Freigabe), `katze` (der Name seiner Katze),
     `katze.<vorschlag>` im Vorlesealter (die Vorschläge aus `stufen.json`, `katze.vorschlaege`), `ruhezeit` ("Jetzt ist
     Ruhezeit. Ab sechs Uhr dreißig kannst du wieder lesen.", mit dem Ende seiner Ruhezeit), `profil.<profil>` (die Namen für
-    "Wer liest?", in der Stimme der Familie); `probe` ist der Probesatz.
+    "Wer liest?", in der Stimme der Familie).
 - **Ansagen erstellen** (`familie/ansagelauf.py`): ein Auftrag im Hintergrund über die Vertonung (`POST /api/v1/sprechen`), je
   Stimme nur, was fehlt; angestoßen nach der Wahl einer Stimme, nach Freigaben, dem Namen der Katze, Anlegen, Ändern und
   Löschen von Profilen und einem neuen Titel, beim Start und im Takt `ANSAGEN_TAKT_S` (600). Nach einem Neustart geht er mit dem
   weiter, was fehlt. Wechselt ein Hörer (ein Kind oder die Profilwahl) die Stimme, entstehen seine Ansagen in der neuen; bis sie
   ganz sind, gilt je Ansage der Ton der bisherigen (Tabelle `ansage_hoerer`: je Hörer die Stimme, die er zuletzt ganz hatte). Alte
-  Töne einer Stimme räumt er erst weg, wenn die neuen fertig sind und niemand sie mehr braucht; die Probe bleibt. Ohne Vertonung
+  Töne einer Stimme räumt er erst weg, wenn die neuen fertig sind und niemand sie mehr braucht. Ohne Vertonung
   steht der Grund am Auftrag.
 - **Wege der Ansagen**:
   - `GET /api/familie/ansagen`: `{stimme, fertig, gesamt, laeuft, eintraege: {schluessel: {text, url}}}` für das aktive
@@ -798,8 +810,8 @@ tut `backend/app/familie/`, die Wege stehen in `backend/app/api/familie.py`, Stu
     auf `If-None-Match`), ohne Kopf über die Cookies der Anmeldung und der Wahl. Ein Kind nur für seine Stimme, die Profilwahl
     nur für die der Familie, beide bis zum Ersatz auch für die bisherige; Erwachsene jede (403 sonst).
   - `POST /api/familie/ansagen/probe {stimme}` für Erwachsene mit `profile` oder `freigeben`: `{text, url}` des Probesatzes
-    ("Hallo, ich lese dir vor. Tippe auf ein Buch."), gesprochen von der Vertonung und abgelegt wie die Ansagen; mit `geraet` nur
-    der Text; ohne Vertonung 503 mit Grund.
+    ("Hallo, ich lese dir vor. Tippe auf ein Buch."), eine Stimmprobe der Art `ansage` (meist vorab gesprochen, `url` unter
+    `/api/vorlesen/probe/ton/`); mit `geraet` nur der Text; ohne Vertonung 503 mit Grund.
   - `GET /api/familie/ansagen/stand?stimme=`: `[{was: "Ansagen erstellen", stimme, stand (wartet, laeuft, fertig, fehler),
     gesamt, fertig, grund, begonnen, geaendert, fertig_am}]`, ebenso nur für Erwachsene mit `profile` oder `freigeben`.
 - **GET /api/familie/ich**: `{profil, faehigkeiten, darstellung, lesehilfen, lesezeit, katze, einblick, gestaltung, uhr, vorlesen}`
@@ -995,8 +1007,8 @@ noch nie gelaufen. `teile` je Auftrag:
 
 | Weg | Zweck |
 |---|---|
-| `GET /api/einrichtung/auftraege` | alle fünf |
-| `POST /api/einrichtung/auftraege/{art}/pause`, `.../fortsetzen` | für `einspielen`, `pruefung`, `neuaufbau`, `kopieren`; fortgesetzt wird an derselben Stelle (beim Einspielen am nächsten Abschnitt) |
+| `GET /api/einrichtung/auftraege` | alle sechs |
+| `POST /api/einrichtung/auftraege/{art}/pause`, `.../fortsetzen` | für `einspielen`, `pruefung`, `neuaufbau`, `kopieren`, `ligaturen`, `stimmproben`; fortgesetzt wird an derselben Stelle (beim Einspielen am nächsten Abschnitt) |
 | `POST /api/einrichtung/pruefung` `{pruefsummen}` | Prüfung von vorn (der alte Bericht fällt weg, Bücher bleiben); `pruefsummen` liest auch Originale auf dem Gerät ganz. Nur in der Ersteinrichtung (sonst 409), weil sie wiedergefundene Orte einträgt |
 | `GET /api/einrichtung/pruefung/bericht?herunterladen=` | `{auftrag, erreichbar, wiedergefunden, fehlt, texte, eintraege: [{buch_id, titel, autor, ergebnis, ort, pfad, text}]}`; `eintraege` nur wiedergefundene und fehlende, nur Bücher, die das Profil sieht; mit `herunterladen` als `pruefbericht.json` |
 | `POST /api/einrichtung/neuaufbau/ordner` `{pfad}` | Ordner der Bücher unter dem Ordner der App (Vorgabe `Bücher`): `{pfad, buecher, mit_auszug, ohne_auszug, mit_persoenlichem, schon_da, groesse, profile: [Namen aus der Datei der Profile], profile_datei}`; legt die Liste für den Auftrag an, in der Kellerwolke ändert sich nichts; unbekannter Ordner 404 |

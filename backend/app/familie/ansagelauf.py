@@ -5,13 +5,12 @@ Was fertig ist, liegt als Datei; nach einem Neustart geht es mit dem weiter, was
 
 Der Stand je Stimme steht in `ansage_auftrag` (wartet, laeuft, fertig, fehler, mit Zahlen und Zeiten). Wechselt ein Hörer die
 Stimme, entstehen seine Ansagen in der neuen neu; bis sie ganz sind, bleiben die Töne der bisherigen (`ansage_hoerer`) und gelten
-weiter. Alte Töne räumt er erst weg, wenn niemand sie mehr braucht; die Probe bleibt."""
+weiter. Alte Töne räumt er erst weg, wenn niemand sie mehr braucht. Die Probe ist eine Stimmprobe (vorlesen/proben.py)."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from pathlib import Path
 
 from appkern.vorlesen import VorlesenFehler
@@ -21,19 +20,11 @@ from backend.app.core.database import db
 from backend.app.familie import ansagen
 from backend.app.familie.ansagen import Eintrag
 from backend.app.familie.modelle import Ansagestand
-from backend.app.vorlesen import sprechen, zugang
+from backend.app.vorlesen import sprechen, tonablage, zugang
 from backend.app.vorlesen.modelle import vertont
 
 logger = logging.getLogger("buecherfreunde.familie.ansagen")
 JETZT = "strftime('%Y-%m-%dT%H:%M:%SZ', 'now')"
-
-
-def ablegen(datei: Path, ton: bytes) -> None:
-    """Erst fertig bekommt die Datei ihren Namen; eine halbe gibt es nie."""
-    datei.parent.mkdir(parents=True, exist_ok=True)
-    teil = datei.with_name(f".{datei.name}.teil")
-    teil.write_bytes(ton)
-    os.replace(teil, datei)
 
 
 def _aufraeumen(ort: Path, behalten: set[str]) -> int:
@@ -110,14 +101,13 @@ class Ansagelauf:
         for stimme, eintraege in bedarf.items():
             await self._stimme(stimme, eintraege)
         schutz = await _hoerer_nachfuehren(hoerende)
-        probe = ansagen.probe().datei
         for stimme, dateien in schutz.items():
             # erst, wenn eine Stimme ganz ist, gehen ihre alten Töne; die bisherige eines Hörers behält, was er noch hört
             if stimme not in bedarf or ansagen.ganz(stimme, bedarf[stimme]):
-                await asyncio.to_thread(_aufraeumen, ansagen.pfad(stimme), dateien | {probe})
+                await asyncio.to_thread(_aufraeumen, ansagen.pfad(stimme), dateien)
         for alt in await staende():
             if alt.stimme not in bedarf and alt.stimme not in schutz:
-                await asyncio.to_thread(_aufraeumen, ansagen.pfad(alt.stimme), {probe})
+                await asyncio.to_thread(_aufraeumen, ansagen.pfad(alt.stimme), set())
                 await db.execute("DELETE FROM ansage_auftrag WHERE stimme = ?", (alt.stimme,))
 
     async def _stimme(self, stimme: str, eintraege: list[Eintrag]) -> None:
@@ -136,7 +126,7 @@ class Ansagelauf:
             except VorlesenFehler as f:
                 await _stand(stimme, "fehler", gesamt, fertig, f.meldung)
                 return
-            await asyncio.to_thread(ablegen, ort / e.datei, ton)
+            await asyncio.to_thread(tonablage.ablegen, ort / e.datei, ton)
             fertig += 1
             await _stand(stimme, "laeuft", gesamt, fertig)
         alt = next(iter(await staende(stimme)), None)

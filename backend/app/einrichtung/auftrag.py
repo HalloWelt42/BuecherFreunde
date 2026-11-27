@@ -19,6 +19,7 @@ from backend.app.einrichtung.modelle import Auftragsstand, Teil
 from backend.app.einrichtung.zustand import jetzt
 
 logger = logging.getLogger("buecherfreunde.einrichtung.auftrag")
+ANGEHALTEN = "Angehalten"                     # Grund einer Pause von Hand
 
 
 class Ruhen(Exception):
@@ -46,6 +47,10 @@ class Auftrag(ABC):
 
     async def danach(self) -> None:
         """Nach dem letzten Stück."""
+
+    def abstand_s(self) -> float:
+        """Pause zwischen zwei Stücken."""
+        return settings.einrichtung_abstand_s
 
     # -- gemeinsam ----------------------------------------------------------------------------------------------------------
     async def zeile(self) -> dict | None:
@@ -82,7 +87,7 @@ class Auftrag(ABC):
     async def pause(self) -> Auftragsstand:
         z = await self.zeile()
         if z and z["stand"] in ("wartet", "laeuft"):
-            await self._setzen("pause", "Angehalten")
+            await self._setzen("pause", ANGEHALTEN)
         return await self.stand()
 
     async def fortsetzen(self) -> Auftragsstand:
@@ -125,7 +130,7 @@ class Auftrag(ABC):
                     return
                 if not await self.naechstes():
                     break
-                await asyncio.sleep(settings.einrichtung_abstand_s)
+                await asyncio.sleep(self.abstand_s())
             await self.danach()
             await self._setzen("fertig", fertig=True)
         except asyncio.CancelledError:
@@ -143,8 +148,9 @@ def auftraege() -> dict[str, Auftrag]:
     from backend.app.einrichtung.neuaufbau import neuaufbau
     from backend.app.einrichtung.pruefung import pruefung
     from backend.app.einrichtung.wiederherstellen import einspielen
+    from backend.app.vorlesen.proben import stimmproben
 
-    return {a.art: a for a in (einspielen, pruefung, neuaufbau, kopieren, ligaturen)}
+    return {a.art: a for a in (einspielen, pruefung, neuaufbau, kopieren, ligaturen, stimmproben)}
 
 
 async def stand_von(art: str) -> Auftragsstand:

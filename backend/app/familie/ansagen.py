@@ -1,12 +1,12 @@
 """Feste Ansagen für den Kinderbereich (BF-78): Tasten, Hinweise und Bausteine der Uhr aus `ansagen.json`, dazu die Ansagen, die
 von Dingen abhängen (Titel der Bücher, die ein Kind sieht, der Name seiner Katze, seine Ruhezeit, die Namen der Profile für
 "Wer liest?"). Gesprochen werden sie vorab über die Vertonung mit der gewählten Stimme (familie/ansagelauf.py, eingebaut,
-privat oder fremd) und dauerhaft abgelegt im Ort texte unter `ansagen/<ordner der stimme>/<schluessel>-<pruefsumme>.wav`; die
-Prüfsumme gehört zu Fassung und Text, so entsteht bei geändertem Text ein neuer Ton.
+privat oder fremd) und dauerhaft abgelegt im Ort texte unter `ansagen/<ordner der stimme>/<schluessel>-<pruefsumme>.wav`
+(vorlesen/tonablage.py); die Prüfsumme gehört zu Fassung und Text, so entsteht bei geändertem Text ein neuer Ton.
 
 Die Schlüssel heißen `gruppe.name` wie in der Oberfläche (frontend/src/lib/kind/ansagen.ts): `tasten.weiter`,
 `hinweise.frag_eltern`, `uhr.4`, `minute.35`, `noch.25`, `heute.45`, `titel.<buch>`, `katze`, `katze.<vorschlag>`,
-`profil.<profil>`, `ruhezeit`, `probe`.
+`profil.<profil>`, `ruhezeit`. Die Probe einer Stimme ist eine Stimmprobe (vorlesen/proben.py).
 
 Welche Stimme gilt: die Wahl der Eltern je Kind (`lesehilfen.stimme`), sonst die Vorlesestimme der Familie, sonst keine (dann
 schweigen die Ansagen). `geraet` ist die Stimme des Geräts, nur als ausdrückliche Wahl: dann spricht die Oberfläche die Texte.
@@ -16,9 +16,7 @@ Ansagen er zuletzt ganz hatte; nach einem Wechsel der Stimme gelten ihre Töne w
 
 from __future__ import annotations
 
-import hashlib
 import json
-import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -32,13 +30,13 @@ from backend.app.familie import lesezeit, profile
 from backend.app.familie.modelle import Profil
 from backend.app.familie.sichtbar import Sicht
 from backend.app.familie.stufen import stufenbuch
-from backend.app.vorlesen.modelle import name_im_katalog, vertont
+from backend.app.vorlesen import tonablage
+from backend.app.vorlesen.modelle import vertont
 
 DATEI = Path(__file__).with_name("ansagen.json")
 ORDNER = "ansagen"
 FAMILIENSTIMME = "familie_stimme"             # Schlüssel in app_settings: die Vorlesestimme der Familie
 PROFILWAHL = "profilwahl"                     # der Hörer der Profilwahl (und der Erwachsenen) in ansage_hoerer
-_ORDNERZEICHEN = re.compile(r"[^a-z0-9]+")
 
 
 # -- Texte ----------------------------------------------------------------------------------------------------------------------
@@ -65,7 +63,6 @@ class Zahlen(BaseModel):
 
 class Texte(BaseModel):
     fassung: int
-    probe: str
     tasten: dict[str, str]
     hinweise: dict[str, str]
     bausteine: list[Baustein]
@@ -112,15 +109,8 @@ class Eintrag(BaseModel):
 
     @property
     def datei(self) -> str:
-        """Schlüssel (nur Kleinbuchstaben, Ziffern, Bindestriche) und Prüfsumme aus Fassung und Text: ein geänderter Text gibt
-        einen neuen Ton."""
-        pruefsumme = hashlib.sha256(f"{texte().fassung}\n{self.text}".encode()).hexdigest()[:16]
-        name = _ORDNERZEICHEN.sub("-", self.schluessel.lower()).strip("-")[:100] or "ansage"
-        return f"{name}-{pruefsumme}.wav"
-
-
-def probe() -> Eintrag:
-    return Eintrag(schluessel="probe", text=texte().probe)
+        """Schlüssel und Prüfsumme aus Fassung und Text: ein geänderter Text gibt einen neuen Ton."""
+        return tonablage.dateiname(self.schluessel, str(texte().fassung), self.text)
 
 
 def allgemeine() -> list[Eintrag]:
@@ -206,15 +196,8 @@ async def zuletzt_alle() -> dict[str, str]:
     return {z["hoerer"]: z["stimme"] for z in await db.fetch_all("SELECT hoerer, stimme FROM ansage_hoerer")}
 
 
-def ordner(stimme: str) -> str:
-    """Der Ordner einer Stimme: lesbar und eindeutig, nur Kleinbuchstaben, Ziffern und Bindestriche. Für eine eingebaute Stimme
-    ihr Name, für eine Klonstimme ihre Kennung."""
-    lesbar = _ORDNERZEICHEN.sub("-", name_im_katalog(stimme).lower()).strip("-")[:40] or "stimme"
-    return f"{lesbar}-{hashlib.sha256(stimme.encode()).hexdigest()[:8]}"
-
-
 def pfad(stimme: str, e: Eintrag | None = None) -> Path:
-    ort = settings.storage_dir / ORDNER / ordner(stimme)
+    ort = settings.storage_dir / ORDNER / tonablage.ordner(stimme)
     return ort / e.datei if e is not None else ort
 
 
@@ -224,7 +207,7 @@ def pfad_im_ordner(ordner_der_stimme: str, datei: str) -> Path:
 
 
 def adresse(stimme: str, e: Eintrag) -> str:
-    return f"/api/familie/ansagen/ton/{ordner(stimme)}/{e.datei}"
+    return f"/api/familie/ansagen/ton/{tonablage.ordner(stimme)}/{e.datei}"
 
 
 def bedarf(hoerende: dict[str, tuple[str, list[Eintrag]]]) -> dict[str, list[Eintrag]]:

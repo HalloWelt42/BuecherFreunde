@@ -125,28 +125,64 @@ describe("Strom", () => {
   });
 });
 
-describe("Probe (BF-101)", () => {
-  it("scheitert die Probe, endet sie mit Meldung, und die Probe-Taste ist wieder frei", async () => {
+describe("Probe (BF-101, BF-113, BF-114)", () => {
+  class Ton {
+    static alle: Ton[] = [];
+    src = "";
+    playbackRate = 1;
+    defaultPlaybackRate = 1;
+    preservesPitch = false;
+    onplaying: (() => void) | null = null;
+    onended: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    constructor(src = "") {
+      this.src = src;
+      Ton.alle.push(this);
+    }
+    play = () => Promise.resolve();
+    pause() {}
+  }
+
+  async function leser(probe: (weg: string) => Response) {
     vi.resetModules();
-    vi.stubGlobal("Audio", class { src = ""; play = () => Promise.resolve(); pause() {} });
+    Ton.alle = [];
+    vi.stubGlobal("Audio", Ton);
     vi.stubGlobal("speechSynthesis", { getVoices: () => [], addEventListener: () => {}, cancel: () => {} });
+    const abrufe: string[] = [];
     vi.stubGlobal("fetch", vi.fn(async (weg: string) => {
-      if (weg === "/api/vorlesen") return new Response('{"art": "fehler", "meldung": "Die Vertonung ist gerade belegt"}\n');
+      abrufe.push(weg);
+      if (weg === "/api/vorlesen/probe") return probe(weg);
+      if (weg === "/api/vorlesen") throw new Error("die Probe liest nicht vor");
       return new Response(JSON.stringify(antwort));
     }));
     const { anschluesse } = await import("../src/lib/stand/anschluesse.svelte");
     anschluesse.jetzt = { ...anschluesse.jetzt, vorlesen: true };
     const { melde } = await import("../src/lib/stand/meldungen.svelte");
-    const warn = vi.spyOn(melde, "warn");
-    const { vorlesen, PROBE_WAS } = await import("../src/lib/stand/vorlesen.svelte");
+    const { vorlesen } = await import("../src/lib/stand/vorlesen.svelte");
     vorlesen.pruefe();
     await new Promise((r) => setTimeout(r, 5));
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    return { vorlesen, melde, abrufe };
+  }
+
+  it("spielt die abgelegte Probe im Tempo; der Knopf dreht, bis sie klingt", async () => {
+    const { vorlesen, abrufe } = await leser(() => new Response(JSON.stringify({ text: "So klingt es.", url: "/api/vorlesen/probe/ton/serena-1/leser-0123456789abcdef.wav" })));
+    vorlesen.tempo = 1.25;
     vorlesen.probe();
-    expect([vorlesen.aktiv, vorlesen.was]).toEqual([true, PROBE_WAS]);
-    await vi.advanceTimersByTimeAsync(120_000);                  // der Zulauf fragt erst einige Male erneut
-    vi.useRealTimers();
-    expect(vorlesen.aktiv).toBe(false);
-    expect(warn).toHaveBeenCalledWith("Die Vertonung ist gerade belegt. Bitte erneut versuchen.");
+    expect(vorlesen.probeLaedt).toBe(true);
+    await vi.waitFor(() => expect(Ton.alle.at(-1)?.src).toContain("leser-0123456789abcdef.wav"));
+    const ton = Ton.alle.at(-1)!;
+    expect([ton.playbackRate, ton.preservesPitch, vorlesen.aktiv]).toEqual([1.25, true, false]);    // kein Vorlesen, nur der Ton
+    ton.onplaying?.();
+    expect(vorlesen.probeLaedt).toBe(false);
+    expect(abrufe.filter((w) => w === "/api/vorlesen/probe")).toHaveLength(1);
+  });
+
+  it("scheitert die Probe, endet sie mit Meldung, und die Probe-Taste ist wieder frei", async () => {
+    const { vorlesen, melde } = await leser(() => new Response(JSON.stringify({ detail: "Die Vertonung ist gerade belegt" }), { status: 503 }));
+    const schlecht = vi.spyOn(melde, "schlecht");
+    vorlesen.probe();
+    await vi.waitFor(() => expect(schlecht).toHaveBeenCalled());
+    expect(schlecht.mock.calls[0][1]).toBe("Probe nicht abgespielt");
+    expect([vorlesen.probeLaedt, vorlesen.aktiv]).toEqual([false, false]);
   });
 });

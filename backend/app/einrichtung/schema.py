@@ -93,6 +93,14 @@ CREATE TABLE IF NOT EXISTS ligatur_befund (         -- Volltexte mit falschen Li
     text TEXT NOT NULL DEFAULT '',
     geaendert_am TEXT NOT NULL DEFAULT {JETZT}
 );
+CREATE TABLE IF NOT EXISTS stimmprobe_vorrat (      -- Stimmproben vertonen (BF-114, vorlesen/proben.py): je fehlender Probe ein Stück
+    stimme TEXT NOT NULL,                            -- wie die Vertonung sie schreibt; leer: ihre Stimme ab Werk
+    art TEXT NOT NULL,                               -- leser, ansage
+    werte TEXT NOT NULL DEFAULT '{{}}',                -- die Werte der Vertonung als JSON, geordnet
+    stand TEXT NOT NULL DEFAULT 'offen',             -- offen, fertig, fehler
+    grund TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (stimme, art, werte)
+);
 CREATE TABLE IF NOT EXISTS neuaufbau_datei (         -- Neuaufbau: die Originale im gewählten Ordner der Kellerwolke
     knoten TEXT PRIMARY KEY,
     name TEXT NOT NULL,

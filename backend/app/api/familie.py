@@ -14,14 +14,14 @@ from backend.app.core import auth
 from backend.app.core.auth import braucht, profil, verify_konto, verify_konto_inhalt
 from backend.app.core.database import db
 from backend.app.familie import ansagen, einblick, freigaben, geraet, ich, lesezeit, profile, rechte, sitzung
-from backend.app.familie.ansagelauf import ablegen, ansagelauf, laeuft, staende
+from backend.app.familie.ansagelauf import ansagelauf, laeuft, staende
 from backend.app.familie.fehler import Familienfehler, ZuVieleVersuche
 from backend.app.familie.modelle import (
     Einblicksantwort, Familie, Freigabeauftrag, Freigaben, Geraetestand, GeraetBinden, GeraetLoesen, Gewaehlt, Ich,
     Katze, KatzeName, Lesezeitmeldung, Lesezeitstand, Loeschfolgen, PinSetzen, PinVergessen, Profil, ProfilAenderung, ProfilEintrag,
     ProfilNeu, Schriftwechsel, Stufenansicht, Verlassen, Wahl, Ansageeintrag, Ansagen, Ansagestand, Stimmeingabe,
 )
-from backend.app.vorlesen import sprechen
+from backend.app.vorlesen import proben, tonablage
 from backend.app.vorlesen.modelle import GERAET, Vorlesestand, Vorlesewahl, vertont
 
 router = APIRouter(prefix="/api/familie", tags=["Familie"])
@@ -299,8 +299,8 @@ async def einblick_lesen(pid: str, p: Profil = Depends(profil)) -> Einblicksantw
 
 # -- Ansagen (familie/ansagen.py, familie/ansagelauf.py) -------------------------------------------------------------------------
 
-Ordner = Path(pattern=r"^[a-z0-9-]{1,60}$")
-Tondatei = Path(pattern=r"^[a-z0-9-]{1,120}-[0-9a-f]{16}\.wav$")
+Ordner = Path(pattern=tonablage.ORDNERFORM)
+Tondatei = Path(pattern=tonablage.DATEIFORM)
 TON_GILT_S = 365 * 24 * 60 * 60                    # der Name trägt die Prüfsumme des Texts: ein Ton ändert sich nie
 
 
@@ -345,7 +345,7 @@ async def ansage_ton(request: Request, ordner: str = Ordner, datei: str = Tondat
     betrachter = await _betrachter(await sitzung.zum_schluessel(sitzung.schluessel_aus(request, inhalt=True)))
     if betrachter is None or betrachter.kind:
         eigene = {await ansagen.stimme_fuer(betrachter), await ansagen.zuletzt(ansagen.hoerer(betrachter))}
-        if ordner not in {ansagen.ordner(s) for s in eigene if vertont(s)}:
+        if ordner not in {tonablage.ordner(s) for s in eigene if vertont(s)}:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Diese Stimme gehört nicht zu diesem Profil")
     kopf = {"ETag": f'"{datei}"', "Cache-Control": f"private, max-age={TON_GILT_S}, immutable"}
     if request.headers.get("if-none-match") == kopf["ETag"]:
@@ -358,22 +358,16 @@ async def ansage_ton(request: Request, ordner: str = Ordner, datei: str = Tondat
 
 @router.post("/ansagen/probe", response_model=Ansageeintrag)
 async def ansage_probe(s: Stimmeingabe, p: Profil = Depends(profil)) -> Ansageeintrag:
-    """Ein fester Probesatz in dieser Stimme, gesprochen von der Vertonung und abgelegt wie die Ansagen; mit der Stimme des
-    Geräts nur der Text."""
+    """Die Probe der Ansagen in dieser Stimme, eine Stimmprobe (vorlesen/proben.py, BF-114): meist vorab gesprochen, sonst jetzt;
+    mit der Stimme des Geräts nur der Text."""
     _darf_vorhoeren(p)
-    e = ansagen.probe()
-    if not vertont(s.stimme):
-        if s.stimme != GERAET:
-            raise HTTPException(422, "Stimme: eine der Vertonung oder die des Geräts")
-        return Ansageeintrag(text=e.text, url=None)
-    datei = ansagen.pfad(s.stimme, e)
-    if not datei.is_file():
-        try:
-            ton = await sprechen.ton(e.text, s.stimme)
-        except VorlesenFehler as f:
-            raise HTTPException(f.status, f.meldung) from f
-        ablegen(datei, ton)
-    return Ansageeintrag(text=e.text, url=ansagen.adresse(s.stimme, e))
+    if not vertont(s.stimme) and s.stimme != GERAET:
+        raise HTTPException(422, "Stimme: eine der Vertonung oder die des Geräts")
+    try:
+        probe = await proben.holen(s.stimme, "ansage")
+    except VorlesenFehler as f:
+        raise HTTPException(f.status, f.meldung) from f
+    return Ansageeintrag(text=probe.text, url=probe.url)
 
 
 @router.get("/ansagen/stand", response_model=list[Ansagestand])

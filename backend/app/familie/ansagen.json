@@ -1,6 +1,5 @@
 {
   "fassung": 1,
-  "probe": "Hallo, ich lese dir vor. Tippe auf ein Buch.",
   "tasten": {
     "weiter": "Weiter",
     "zurueck": "Zurück",

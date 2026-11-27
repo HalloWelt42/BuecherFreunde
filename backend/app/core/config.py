@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     zwischen_dir: Path = _project_root() / "zwischen"
     zwischen_mb: int = 900             # so viel dürfen Originale im Zwischenspeicher belegen
     ansagen_takt_s: float = Field(default=600, ge=1)   # so oft sieht der Auftrag "Ansagen erstellen" nach, auch ohne Anstoß (BF-78)
+    stimmproben_erst_s: float = Field(default=60, ge=0)        # so lange nach dem Start sieht die Wache zum ersten Mal nach (BF-114)
+    stimmproben_takt_s: float = Field(default=21600, ge=60)    # danach so oft: fehlen Stimmproben, stößt sie den Auftrag an
+    stimmproben_abstand_s: float = Field(default=2, ge=0)      # Pause zwischen zwei Proben, damit die Vertonung fürs Vorlesen frei bleibt
     ablage_ordner: str = "Apps/BücherFreunde"
     # Eingangsordner auf dem Gerät (ohne Kellerwolke): was hier liegt, nimmt die App jede Minute auf und zieht es um
     eingangsordner_dir: Path = _project_root() / "eingangsordner"

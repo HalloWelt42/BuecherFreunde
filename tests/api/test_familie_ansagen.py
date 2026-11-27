@@ -14,7 +14,7 @@ from backend.app.core.config import settings
 from backend.app.familie import ansagen
 from backend.app.familie.ansagelauf import Ansagelauf, ansagelauf, staende
 from backend.app.familie.stufen import stufenbuch
-from backend.app.vorlesen import sprechen, zugang
+from backend.app.vorlesen import proben, sprechen, tonablage, zugang
 from tests.api.familie_hilfen import anlegen, familie_anlegen, freigeben, waehlen
 from tests.api.vertonung_hilfen import KLON, vertonung  # noqa: F401 - Fixture
 
@@ -69,7 +69,7 @@ def test_texte_vollstaendig():
     assert len(schluessel) == len(set(schluessel))
     for art, bis in (("uhr", 12), ("minute", 59), ("noch", 120), ("heute", 120)):
         assert {f"{art}.{n}" for n in range(1, bis + 1)} <= set(schluessel)
-    assert t.probe == "Hallo, ich lese dir vor. Tippe auf ein Buch."
+    assert proben.text("ansage") == "Hallo, ich lese dir vor. Tippe auf ein Buch."
 
 
 @pytest.mark.parametrize(("n", "form", "wort"), [
@@ -205,8 +205,9 @@ async def test_stimme_des_geraets_nur_als_wahl(client, test_db, sprecher):
 async def test_probe_fuer_die_eltern(client, test_db, sprecher):
     f = await familie_anlegen(client, test_db)
     r = await client.post("/api/familie/ansagen/probe", json={"stimme": VIVIAN}, headers=f.kopf["bert"])
-    assert r.status_code == 200 and r.json()["text"] == ansagen.texte().probe
-    assert sprecher.auftraege == [(ansagen.texte().probe, VIVIAN)]
+    assert r.status_code == 200 and r.json()["text"] == proben.text("ansage")
+    assert sprecher.auftraege == [(proben.text("ansage"), VIVIAN)]
+    assert r.json()["url"].startswith("/api/vorlesen/probe/ton/")                           # eine Stimmprobe (BF-114)
     assert (await client.get(r.json()["url"], headers=f.kopf["bert"])).status_code == 200
     await client.post("/api/familie/ansagen/probe", json={"stimme": VIVIAN}, headers=f.kopf["ada"])
     assert len(sprecher.auftraege) == 1                                                     # abgelegt, nicht noch einmal
@@ -226,7 +227,7 @@ async def test_ein_kind_hoert_nur_seine_stimme(client, test_db, sprecher):
     assert (await client.get(dora["eintraege"]["tasten.weiter"]["url"], headers=f.kopf["clara"])).status_code == 403
     assert (await client.get(clara["eintraege"]["tasten.weiter"]["url"], headers=f.kopf["clara"])).status_code == 200
     assert (await client.get(clara["eintraege"]["tasten.weiter"]["url"], headers=f.kopf["ada"])).status_code == 200    # Eltern jede
-    assert (await client.get(f"/api/familie/ansagen/ton/{ansagen.ordner(VIVIAN)}/unsinn.wav", headers=f.kopf["ada"])).status_code == 404
+    assert (await client.get(f"/api/familie/ansagen/ton/{tonablage.ordner(VIVIAN)}/unsinn.wav", headers=f.kopf["ada"])).status_code == 404
     assert (await client.put("/api/familie/stimme", json={"stimme": VIVIAN}, headers=f.kopf["bert"])).status_code == 403
 
 
@@ -288,14 +289,14 @@ async def test_nach_dem_wechsel_gilt_die_bisherige_stimme_bis_zum_ersatz(client,
     dora = (await client.get("/api/familie/ansagen", headers=f.kopf["dora"])).json()
     assert dora["stimme"] == VIVIAN and dora["fertig"] == dora["gesamt"], "keine Ansage verstummt"
     ordner = {e["url"].split("/")[-2] for e in dora["eintraege"].values()}
-    assert ordner == {ansagen.ordner(VIVIAN), ansagen.ordner(SERENA)}
-    alt = next(e["url"] for e in dora["eintraege"].values() if ansagen.ordner(SERENA) in e["url"])
+    assert ordner == {tonablage.ordner(VIVIAN), tonablage.ordner(SERENA)}
+    alt = next(e["url"] for e in dora["eintraege"].values() if tonablage.ordner(SERENA) in e["url"])
     assert (await client.get(alt, headers=f.kopf["dora"])).status_code == 200
     assert (await client.get(alt, headers=f.kopf["clara"])).status_code == 403             # nur für den, der sie noch hört
     sprecher.bis = None
     await ansagelauf.runde()
     dora = (await client.get("/api/familie/ansagen", headers=f.kopf["dora"])).json()
-    assert {e["url"].split("/")[-2] for e in dora["eintraege"].values()} == {ansagen.ordner(VIVIAN)}
+    assert {e["url"].split("/")[-2] for e in dora["eintraege"].values()} == {tonablage.ordner(VIVIAN)}
     assert await ansagen.zuletzt(f.ids["dora"]) == VIVIAN
     assert [d.name for d in ansagen.pfad(SERENA).glob("*.wav")] == [], "die alten Töne sind fort, wenn niemand sie mehr braucht"
     assert [s.stimme for s in await staende()] == [VIVIAN]

@@ -41,7 +41,7 @@ export interface EigenerAuftrag {
 const GEMEINFREI_AUFTRAG = "gemeinfrei";
 /** Vorsilbe der langen Aufträge des Servers in der Liste; gezeigt, solange einer nicht fertig ist */
 const LANG = "lang-";
-const LANGE_ARTEN: readonly Auftragsart[] = ["einspielen", "pruefung", "neuaufbau", "kopieren", "ligaturen"];
+const LANGE_ARTEN: readonly Auftragsart[] = ["einspielen", "pruefung", "neuaufbau", "kopieren", "ligaturen", "stimmproben"];
 const LANG_OFFEN = new Set<Auftragsstand["stand"]>(["wartet", "laeuft", "pause", "fehler"]);
 const ERGAENZUNG: Ergaenzung = { laeuft: false, typ: "", gesamt: 0, fortschritt: 0, aktuelles_buch: "", cover_gefunden: 0, isbn_gefunden: 0, metadaten_aktualisiert: 0, volltext_extrahiert: 0, fehler: 0 };
 const TAKT_AKTIV_MS = 1500;
