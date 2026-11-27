@@ -3,22 +3,28 @@
 import logging
 import re
 
-from pydantic import ValidationError
-from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field, ValidationError
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
+from backend.app.annahme import dateiangaben
 from backend.app.services.seiten import buch_seiten
 from backend.app.core.auth import braucht, verify_token
 from backend.app.core.database import db
+from backend.app.isbnsuche.kandidaten import aus_quelle
+from backend.app.isbnsuche.modelle import Einstufung
+from backend.app.quellen.abgleich import isbn_abgleich
 from backend.app.quellen.alter import Alter
 from backend.app.quellen import auskunft, bilder, stand
+from backend.app.quellen import isbn as nummern
 from backend.app.quellen.fehler import QuelleFehler
+from backend.app.quellen.modelle import Angaben, Buchfrage
 from backend.app.quellen.regeln import REGELN
 from backend.app.quellen.stand import Quellenstand
 from backend.app.quellen.vorschlag import frage_aus, vorschlag
 from backend.app.services.autorennamen import zerlegen
 from backend.app.services.data_cleaner import bereinige_kategorien
 from backend.app.services.storage import save_cover
-from backend.app.models.grenzen import SEITEN_HOECHSTENS, Nr
+from backend.app.models.grenzen import AUTOR, SEITEN_HOECHSTENS, TITEL, Isbn, Nr
 
 logger = logging.getLogger("buecherfreunde.api.metadata")
 
@@ -124,44 +130,83 @@ async def _kategorienamen(book_id: int) -> list[str]:
     return [z["name"] for z in zeilen]
 
 
-def _kein_fund(quelle: str | None, hinweise: list[str]) -> str:
+def _kein_fund(quelle: str | None, hinweise: list[str], isbn: str | None = None) -> str:
     """Warum es keinen Vorschlag gibt: die Quelle antwortet nicht, oder dort steht nichts."""
     if hinweise:
         return ". ".join(hinweise)
+    was = f"die ISBN {nummern.mit_strichen(isbn) or isbn}" if isbn else "dieses Buch"
     if quelle in REGELN:
-        return f"{REGELN[quelle].name} kennt dieses Buch nicht."
-    return "Keine Quelle kennt dieses Buch."
+        return f"{REGELN[quelle].name} kennt {was} nicht."
+    return f"Keine Quelle kennt {was}."
+
+
+class Angabenfrage(BaseModel):
+    """Wonach gesucht wird, wenn es nicht das Gespeicherte ist (BF-111). `isbn`: ohne Angabe die gespeicherte, leer heißt ohne ISBN
+    (über Titel und Autor), sonst nur diese ISBN. `titel` und `autor`: wie sie gerade im Formular stehen, für die Suche über den
+    Titel und die Prüfung, ob ein Fund zum Buch passt."""
+
+    isbn: Isbn | None = None
+    titel: str | None = Field(None, max_length=TITEL)
+    autor: str | None = Field(None, max_length=AUTOR)
+
+
+def _frage(book: dict, angaben: Angabenfrage) -> Buchfrage:
+    stand_im_formular = {"isbn": angaben.isbn, "title": angaben.titel, "author": angaben.autor}
+    return frage_aus({**book, **{k: v for k, v in stand_im_formular.items() if v is not None}})
+
+
+def _abgleich(frage: Buchfrage, fund: Angaben) -> Einstufung | None:
+    """Passt ein Fund über die ISBN zum Buch? Für die Warnung im Vergleich, wenn das gefundene Buch ein anderes ist."""
+    return aus_quelle(isbn_abgleich(frage, fund), fund) if fund.fund == "isbn" else None
+
+
+async def _aus_der_datei(book: dict) -> tuple[Angaben | None, str]:
+    gelesen = await dateiangaben.lesen(book["hash"], (book["file_format"] or "").lower())
+    return gelesen.angaben, gelesen.grund
 
 
 @router.post("/buch/{book_id}/anreichern", dependencies=[Depends(braucht("bearbeiten"))])
 async def enrich_book(
     book_id: Nr,
-    quelle: str | None = Query(None, description="Kennung einer Quelle oder \"alle\"; ohne Angabe die erste, die etwas weiß"),
+    quelle: str | None = Query(None, description="Kennung einer Quelle, \"alle\" oder \"datei\" (Angaben der Datei neu gelesen); ohne Angabe die erste, die etwas weiß"),
+    angaben: Angabenfrage | None = Body(None),
     _token: str = Depends(verify_token),
 ):
     """Sucht Angaben zu einem Buch, als Vorschlag zum Vergleichen. Geändert wird nichts.
 
-    `alle` nimmt je Feld die beste Angabe, `vorschlag.herkunft` nennt die Quelle je Feld.
+    `alle` nimmt je Feld die beste Angabe, `vorschlag.herkunft` nennt die Quelle je Feld. Mit einer ISBN in `angaben` wird nur über
+    sie gesucht; `abgleich` sagt dann, ob das gefundene Buch zu Titel und Autor passt.
     """
-    if quelle not in (None, auskunft.ALLE, *auskunft.QUELLEN):
+    if quelle not in (None, auskunft.ALLE, dateiangaben.DATEI, *auskunft.QUELLEN):
         raise HTTPException(status_code=422, detail="Diese Quelle gibt es nicht")
+    angaben = angaben or Angabenfrage()
+    if angaben.isbn and not nummern.gueltig(angaben.isbn):
+        raise HTTPException(status_code=422, detail="Das ist keine gültige ISBN")
     book = await db.fetch_one(
         "SELECT id, hash, isbn, title, author, publisher, year, language, "
-        "description, page_count, cover_path FROM books WHERE id = ?",
+        "description, page_count, cover_path, file_format FROM books WHERE id = ?",
         (book_id,),
     )
     if not book:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
 
-    antwort = await auskunft.suche(frage_aus(book), quelle)
-    if antwort.angaben is None:
-        return {"angereichert": False, "grund": _kein_fund(quelle, antwort.hinweise), "hinweise": antwort.hinweise}
+    frage = _frage(book, angaben)
+    hinweise: list[str] = []
+    if quelle == dateiangaben.DATEI:
+        fund, grund = await _aus_der_datei(book)
+    else:
+        antwort = await auskunft.suche(frage, quelle, nur_isbn=bool(angaben.isbn))
+        fund, hinweise = antwort.angaben, antwort.hinweise
+        grund = "" if fund else _kein_fund(quelle, hinweise, angaben.isbn)
+    if fund is None:
+        return {"angereichert": False, "grund": grund, "hinweise": hinweise}
 
     return {
         "angereichert": True,
-        "quelle": antwort.angaben.quelle,
-        "vorschlag": vorschlag(antwort.angaben, book),
-        "hinweise": antwort.hinweise,
+        "quelle": fund.quelle,
+        "vorschlag": vorschlag(fund, book),
+        "hinweise": hinweise,
+        "abgleich": _abgleich(frage, fund),
         "aktuell": {
             "titel": book["title"],
             "autor": book["author"],

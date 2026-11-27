@@ -275,7 +275,7 @@ Kennungen: `google_books` (nur mit `GOOGLE_BOOKS_API_KEY`), `open_library`, `dnb
 
 | Weg | Zweck |
 |---|---|
-| `POST /api/metadata/buch/{id}/anreichern?quelle=` | Vorschlag einer Quelle, `alle` (je Feld die beste) oder ohne Angabe die erste mit Treffer; `vorschlag.herkunft` nennt je Feld die Quelle, `vorschlag.fund` den Weg (`isbn`, `doi`, `titel`), `hinweise` Quellen, die gerade nicht antworten. Ohne Treffer `{angereichert: false, grund}` |
+| `POST /api/metadata/buch/{id}/anreichern?quelle=` `{isbn?, titel?, autor?}` | Vorschlag einer Quelle, `alle` (je Feld die beste), `datei` (die Angaben der Datei neu gelesen, BF-112) oder ohne Angabe die erste mit Treffer; `vorschlag.herkunft` nennt je Feld die Quelle, `vorschlag.fund` den Weg (`isbn`, `doi`, `titel`), `hinweise` Quellen, die gerade nicht antworten. Der Körper ist freiwillig (BF-111): `isbn` fehlt = die gespeicherte, leer = ohne ISBN (über Titel und Autor), sonst nur über diese ISBN (nie über DOI oder Titel; ungültig 422); `titel` und `autor` wie im Formular. Bei einem Fund über die ISBN sagt `abgleich` (Einstufung, siehe ISBN im Buch), ob er zu Titel und Autor passt. Ohne Treffer `{angereichert: false, grund}` |
 | `POST /api/metadata/buch/{id}/uebernehmen` | wie bisher; holt den Umschlag vor dem Schreiben, nur von Rechnern der Quellen; `hinweis`, wenn das Bild fehlt |
 | `GET /api/metadata/quellen` | je Quelle der gemerkte Stand `{kennung, name, anbieter, art, aktiv, bereit, stand, wort, grund, anfragen_heute, hintergrund_heute, tagesgrenze, gemerkt}`; fragt keine Quelle |
 | `POST /api/metadata/quellen/{kennung}/pruefen` | echte Probe, höchstens einmal in der Minute je Quelle |
@@ -284,7 +284,41 @@ Kennungen: `google_books` (nur mit `GOOGLE_BOOKS_API_KEY`), `open_library`, `dnb
 | `POST /api/authors/{id}/anreichern/uebernehmen` | nimmt auch `verweise`; ein anderer Autor mit derselben Wikidata- oder GND-Kennung wird zusammengelegt |
 | `GET /api/authors/{id}` | dazu `verweise: [{art, kennung, adresse}]` |
 | `GET /api/authors/scanner/events` | wie bisher; neues Ereignis `ruht` mit `grund`, wenn eine Quelle Pause macht (der Lauf endet dann) |
-| `GET /api/books/rescan/status` | dazu `grund`, wenn keine Angaben mehr ergänzt werden (alle Verzeichnisse ruhen) |
+| `GET /api/books/rescan/status` | dazu `grund`, wenn keine Angaben mehr ergänzt werden (alle Verzeichnisse ruhen); für den Lauf ISBN `isbn_zur_wahl` (Bücher mit ISBN zur Wahl), `isbn_ungeprueft` (davon ohne Antwort einer Quelle) und `isbn_grund` (warum er die Quellen nicht mehr fragt) |
+
+### ISBN im Buch (BF-111, BF-112)
+
+Eine Stelle für alle, die eine ISBN aus dem Text eines Buchs brauchen (`backend/app/isbnsuche/`): die Leser der Formate beim Aufnehmen,
+der Lauf "ISBN" in Bibliothek ergänzen und die Suche beim Bearbeiten. Erkannt wird mit Wortgrenzen und Prüfziffer, eine ISBN-10 nur mit
+"ISBN" davor oder mit drei Strichen; dieselbe Nummer als ISBN-10 und ISBN-13, mit und ohne Striche, ist ein Kandidat. Je Fundstelle der
+Fundort (`impressum`, `rueckseite`, `titelei`, `text`, `anmerkungen`, `verlagsanzeige`, `literaturliste`; Literaturliste, Anmerkungen und
+Verlagsanzeige an ihrer Überschrift) und die Ausgabe (`druck`, `ebook`, leer), wenn der Text neben der Nummer sie nennt. Die Stufe gegen
+Titel und Autor des Buchs (`passt`, `aehnlich`, `unbekannt`, `fremd`) bestimmt `quellen/abgleich.py`: aus dem Text um die Fundstelle
+(`text_abgleich`) oder aus dem Fund einer Quelle (`isbn_abgleich`, dieselbe Regel wie `isbn_fund_passt`). Rangfolge: Stufe, Fundort, Druck
+vor E-Book, Zahl der Funde, Lage im Buch.
+
+```
+Kandidat:    { isbn, isbn13, formen: [str], ausgabe, funde, fundort, stellen: [Fundstelle], text: Einstufung, quelle: Einstufung | null }
+Fundstelle:  { seite, prozent, fundort, ausschnitt, funde }      # ausschnitt maskiert, die Nummer in <mark>
+Einstufung:  { stufe, quelle, basis, was, warum }                # quelle leer: aus dem Text; was maskiert, Abweichendes in <mark>
+```
+
+| Weg | Zweck |
+|---|---|
+| `POST /api/books/{id}/isbn-scan` | `{kandidaten, funde, aktuell, seiten}` in der Rangfolge; fehlt der Volltext, wird er erst aus der Datei gelesen; fragt keine Quelle. Was ein Lauf schon bei den Quellen erfahren hat, steht in `quelle` |
+| `POST /api/books/{id}/isbn-pruefen` `{isbn}` | fragt die Quellen der Reihe nach über die ISBN, bis eine sie kennt -> `{isbn, einstufung \| null, hinweise, ruht}`; ungültige ISBN 422 |
+| `GET /api/books/{id}/isbn-wahl` | die ISBN zur Wahl dieses Buchs aus dem Lauf (Kandidaten), leer, wenn es eine ISBN hat |
+| `GET /api/books/rescan/isbn-wahl?anzahl=&ab=` | Bücher mit ISBN zur Wahl `{gesamt, zeilen: [{buch, kandidat, weitere}]}`, die besten Stufen zuerst |
+| `POST /api/books/rescan/isbn-wahl/annehmen` `{buecher}` | je Buch den besten Kandidaten eintragen -> `{betroffen}` |
+| `POST /api/books/rescan/isbn-wahl/ablehnen` `{buecher}` | alle Kandidaten dieser Bücher ablehnen; ein neuer Lauf schlägt sie nicht wieder vor -> `{betroffen}` |
+| `GET /api/books/{id}/cover/aus-datei` | das Deckblatt aus der Datei als JPEG, nicht gespeichert (beim Bearbeiten kommt es ins Formular, gespeichert wird mit `cover/neu-extrahieren`); ohne Deckblatt 422 |
+
+Der Lauf "ISBN" trägt die ISBN aus den Angaben einer EPUB ein, sonst nur einen Kandidaten, der passt: aus dem Text, wenn Titel und Autor
+neben der Nummer stehen, sonst nach den Quellen zu den zwei besten Kandidaten (im Hintergrund, Takt und Tagesgrenze des gemeinsamen Abrufs).
+Was nicht fremd ist und nicht passt, kommt zur Wahl (Tabelle `isbn_wahl`: `buch_id`, `isbn`, `rang`, `stufe`, `kandidat` als JSON, `stand`
+offen oder abgelehnt). Bücher mit nur fremden ISBN bekommen nichts.
+
+`POST /api/books/{id}/isbn-scan` lieferte bisher `{gefunden: [{original, isbn10, isbn13, formatiert}], aktuell, anzahl}`; das gibt es nicht mehr.
 
 ### Gemeinfreie Bücher mit eigenem Katalog (BF-98)
 

@@ -1,4 +1,5 @@
 // Angaben aus Verzeichnissen und aus dem Buchtext; Stand der Quellen
+import type { Einstufung } from "./books";
 import { get, post } from "./client";
 
 /** Angaben einer Quelle zu einem Buch, wie sie der Vergleich zeigt */
@@ -59,6 +60,16 @@ export interface Angabensuche {
   aktuell?: Aktuell;
   /** Quellen, die gerade nicht antworten, mit Grund */
   hinweise?: string[];
+  /** bei einem Fund über die ISBN: passt er zu Titel und Autor (BF-111) */
+  abgleich?: Einstufung | null;
+}
+
+/** Wonach gesucht wird, wenn es nicht das Gespeicherte ist: isbn ohne Angabe die gespeicherte, leer ohne ISBN, sonst nur diese;
+ *  titel und autor wie im Formular */
+export interface Angabenfrage {
+  isbn?: string;
+  titel?: string;
+  autor?: string;
 }
 
 export interface Angabenuebernahme {
@@ -69,7 +80,8 @@ export interface Angabenuebernahme {
   hinweis: string;
 }
 
-export const sucheMetadaten = (buch: number, quelle?: string): Promise<Angabensuche> => post(`/api/metadata/buch/${buch}/anreichern${quelle ? `?quelle=${quelle}` : ""}`);
+export const sucheMetadaten = (buch: number, quelle?: string, frage?: Angabenfrage): Promise<Angabensuche> =>
+  post(`/api/metadata/buch/${buch}/anreichern${quelle ? `?quelle=${quelle}` : ""}`, frage);
 export const uebernehmMetadaten = (buch: number, daten: Record<string, unknown>): Promise<Angabenuebernahme> => post(`/api/metadata/buch/${buch}/uebernehmen`, daten);
 export const ladeVolltext = (buch: number, von = 1, bis = 5): Promise<any> => get(`/api/metadata/buch/${buch}/volltext`, { seite_von: von, seite_bis: bis });
 export const ladeQuellen = (): Promise<Quellenstand[]> => get("/api/metadata/quellen");

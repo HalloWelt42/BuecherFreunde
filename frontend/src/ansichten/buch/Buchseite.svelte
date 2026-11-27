@@ -72,7 +72,8 @@
     <Zustand art="laedt" text="Buch wird geladen" />
   {:else}
     {#if bearbeitet}
-      <BuchBearbeiten {buch} onabbruch={() => (bearbeitet = false)} onfertig={() => { bearbeitet = false; void laden(); }} />
+      <!-- je Buch ein eigenes Formular mit seinen Werkzeugen -->
+      {#key buch.id}<BuchBearbeiten {buch} onabbruch={() => (bearbeitet = false)} onfertig={() => { bearbeitet = false; void laden(); }} />{/key}
     {:else}
       <Buchkopf {buch} {fassungen} onneu={(neu) => buch && (buch = { ...buch, ...neu })} ongeaendert={() => void laden()} />
     {/if}
@@ -81,7 +82,8 @@
       <Ablageorte {buch} />
       <Buchsuche {buch} />
       <Stellen {buch} />
-      <Angabenvergleich {buch} ongeaendert={() => void laden()} />
+      <!-- Beim Bearbeiten stehen dieselben Werkzeuge über den Feldern; was sie übernehmen, kommt dort erst mit Speichern ins Buch -->
+      {#if !bearbeitet}{#key buch.id}<Angabenvergleich {buch} ongeaendert={() => void laden()} />{/key}{/if}
       {#if verwandt}<Verwandte {verwandt} />{/if}
     </div>
   {/if}

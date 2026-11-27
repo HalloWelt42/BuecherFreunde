@@ -1,5 +1,6 @@
 <script lang="ts">
   // Alles, was das Verzeichnis geliefert hat; Listen lassen sich als Regale übernehmen
+  import { anzahl } from "../../lib/format";
   import Haekchen from "../../lib/teile/Haekchen.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import { alsListe } from "./angaben";
@@ -9,7 +10,7 @@
   let eintraege = $derived(Object.entries(daten));
 </script>
 
-<div class="reihe"><Knopf text="Alle Daten, {eintraege.length} Felder" symbol={offen ? "chevron-down" : "chevron-right"} klein frei aufgeklappt={offen} onclick={() => (offen = !offen)} /></div>
+<div class="reihe"><Knopf text="Alle Daten, {anzahl(eintraege.length, 'Feld', 'Felder')}" symbol={offen ? "chevron-down" : "chevron-right"} klein frei aufgeklappt={offen} onclick={() => (offen = !offen)} /></div>
 {#if offen}
   <dl class="angaben roh">
     {#each eintraege as [name, wert] (name)}

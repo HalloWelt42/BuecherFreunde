@@ -1,4 +1,6 @@
 // Einlesen von Ordnern und Ergänzen der Bibliothek; Stand und Fortschritt des Einlesens führt die Annahme (/api/annahme)
+import type { Buch } from "../typen";
+import type { Isbnkandidat } from "./books";
 import { get, post } from "./client";
 
 export type Ergaenzungsart = "cover" | "isbn" | "metadaten" | "volltext";
@@ -50,4 +52,17 @@ export const starteRescan = (typen: string[], kategorie: number | null = null, m
 export const rescanVorschau = (typen: string[], kategorie: number | null = null, manuell = false): Promise<Ergaenzungsvorschau> => get(`/api/books/rescan/vorschau?${abfrage(typen, kategorie, manuell)}`);
 export const rescanKategorien = (typen: string[], manuell = false): Promise<Ergaenzungsregal[]> => get(`/api/books/rescan/kategorien?${abfrage(typen, null, manuell)}`);
 export const holeRescanStatus = (): Promise<any> => get("/api/books/rescan/status");
+
+/** Ein Buch mit ISBN zur Wahl aus dem Lauf "ISBN" (BF-111): der beste Kandidat und wie viele es sonst noch gibt */
+export interface Isbnwahl {
+  buch: Buch;
+  kandidat: Isbnkandidat;
+  weitere: number;
+}
+
+export const isbnWahlListe = (anzahl: number): Promise<{ gesamt: number; zeilen: Isbnwahl[] }> => get("/api/books/rescan/isbn-wahl", { anzahl });
+/** Je Buch den besten Kandidaten eintragen */
+export const isbnWahlAnnehmen = (buecher: number[]): Promise<{ betroffen: number }> => post("/api/books/rescan/isbn-wahl/annehmen", { buecher });
+/** Alle Kandidaten dieser Bücher ablehnen; ein neuer Lauf schlägt sie nicht wieder vor */
+export const isbnWahlAblehnen = (buecher: number[]): Promise<{ betroffen: number }> => post("/api/books/rescan/isbn-wahl/ablehnen", { buecher });
 export const brecheRescanAb = (): Promise<any> => post("/api/books/rescan/abbrechen");

@@ -61,6 +61,18 @@ def _nur_text(pfad: str) -> Ergebnis:
                     grund="" if (r.fulltext or "").strip() else "Kein Text in der Datei" + (f" ({r.error})" if r.error else ""))
 
 
+def _nur_angaben(pfad: str) -> Ergebnis:
+    """Nur die Angaben der Datei (Titel, Autor, Verlag, Jahr, Sprache, Beschreibung, ISBN), ohne Text und Umschlag; die ISBN wie
+    beim Aufnehmen, aus den Metadaten oder die zum Buch passende aus dem Text (BF-112)."""
+    from backend.app.services.processor import process_book
+
+    r = process_book(Path(pfad))
+    e = Ergebnis(**{k: getattr(r, k) for k in ("title", "author", "isbn", "publisher", "year", "language", "description", "page_count")})
+    if not (r.fulltext.strip() or r.page_count or r.title):
+        e.grund = "Die Datei lässt sich nicht lesen" + (f" ({r.error})" if r.error else "")
+    return e
+
+
 async def _im_prozess(art, pfad: Path) -> Ergebnis:
     global _prozess
     if _prozess is None:
@@ -81,6 +93,10 @@ async def auswerten(pfad: Path) -> Ergebnis:
 
 async def text(pfad: Path) -> Ergebnis:
     return await _im_prozess(_nur_text, pfad)
+
+
+async def angaben(pfad: Path) -> Ergebnis:
+    return await _im_prozess(_nur_angaben, pfad)
 
 
 def schliessen() -> None:

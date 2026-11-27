@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { zahl } from "../../../lib/format";
+  import { anzahl, zahl } from "../../../lib/format";
   import { auftraege } from "../../../lib/stand/auftraege.svelte";
   import { melde } from "../../../lib/stand/meldungen.svelte";
   import Balken from "../../../lib/teile/Balken.svelte";
@@ -22,11 +22,13 @@
   <div class="reihe">
     <span class="leise zahl">{e.laeuft ? `Noch ${zahl(Math.max(0, e.gesamt - e.fortschritt))} von ${zahl(e.gesamt)}${e.aktuelles_buch ? `, ${e.aktuelles_buch}` : ""}` : `Fertig, ${zahl(e.fortschritt)} von ${zahl(e.gesamt)} geprüft`}</span>
     {#each gefunden as [text, n] (text)}<span class="marke-text zahl {text === 'Fehler' ? 'schlecht' : 'gut'}">{text} {zahl(n)}</span>{/each}
+    {#if e.isbn_zur_wahl}<span class="marke-text zahl info">zur Wahl {zahl(e.isbn_zur_wahl)}</span>{/if}
     <span class="schiebt">
       {#if e.laeuft}<Knopf text="Anhalten" symbol="stop" klein onclick={() => void halte()} />{:else}<Knopf text="Ergebnis ausblenden" symbol="xmark" klein frei onclick={() => auftraege.ergebnisAusblenden()} />{/if}
     </span>
   </div>
   {#if e.grund}<p class="marke-text warn" role="status">Angaben angehalten: {e.grund}</p>{/if}
+  {#if e.isbn_grund}<p class="marke-text warn" role="status">ISBN: {e.isbn_grund}{e.isbn_ungeprueft ? `; ${anzahl(e.isbn_ungeprueft, "Buch kam", "Bücher kamen")} ungeprüft zur Wahl` : ""}</p>{/if}
 </div>
 
 <style>

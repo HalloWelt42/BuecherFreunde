@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 
 from backend.app.services.processors.base import BaseProcessor, BookProcessingResult
-from backend.app.services.isbn_extractor import extract_isbn_from_fulltext
+from backend.app.isbnsuche.kandidaten import als_seiten, beste
 
 logger = logging.getLogger("buecherfreunde.processor.text")
 
@@ -28,8 +28,8 @@ class TextProcessor(BaseProcessor):
             result.fulltext = text
             result.title = file_path.stem.replace("_", " ").replace("-", " ")
 
-            # ISBN aus Text extrahieren
-            isbn = extract_isbn_from_fulltext(text)
+            # die ISBN, die im Text am besten zum Buch passt (BF-111)
+            isbn = beste(als_seiten(text), result.title, result.author)
             if isbn:
                 result.isbn = isbn
                 logger.info("ISBN aus Text extrahiert: %s", isbn)

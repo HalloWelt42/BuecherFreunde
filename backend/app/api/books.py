@@ -43,7 +43,7 @@ from backend.app.einrichtung import pruefung as original_pruefung
 from backend.app.services import buch_loeschen, buchliste, buchsuche, deckblatt, sammlungen, schnellfilter
 from backend.app.katalog import kategorien as katalog_kategorien
 from backend.app.katalog.merkmale import IN_KATEGORIE
-from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover, save_fulltext
+from backend.app.services.storage import get_original_file, get_sidecar_path, save_cover
 from backend.app.models.grenzen import AUSWAHL_HOECHSTENS, GROESSTE_ZAHL, JAHR_BIS, LEBENSJAHR_AB, LISTENSEITE, SEITEN_HOECHSTENS, Index, Nr
 
 router = APIRouter(prefix="/api/books", tags=["Bücher"])
@@ -834,23 +834,32 @@ async def get_cover(book_id: Nr, _token: str = Depends(verify_token_inhalt)):
     )
 
 
-@router.post("/{book_id}/cover/neu-extrahieren")
-async def re_extract_cover(book_id: Nr, _p: Profil = Depends(braucht("bearbeiten"))):
-    """Extrahiert das Cover neu aus der Buchdatei und überschreibt das bestehende."""
-    book = await db.fetch_one(
-        "SELECT id, hash, file_format FROM books WHERE id = ?", (book_id,)
-    )
+async def _deckblatt_der_datei(book_id: int) -> tuple[dict, bytes]:
+    """Das Deckblatt aus der Datei des Buchs, noch nicht gespeichert."""
+    book = await db.fetch_one("SELECT id, hash, file_format FROM books WHERE id = ?", (book_id,))
     if not book:
         raise HTTPException(status_code=404, detail="Buch nicht gefunden")
-
     original = await asyncio.to_thread(get_original_file, book["hash"])
     if not original or not original.exists():
         raise HTTPException(status_code=404, detail=FEHLT)
-
     cover_data = await asyncio.to_thread(deckblatt.von_datei, original, book["file_format"])
     if not cover_data:
         raise HTTPException(status_code=422, detail="In der Datei ist kein Deckblatt zu finden")
+    return book, cover_data
 
+
+@router.get("/{book_id}/cover/aus-datei")
+async def cover_aus_datei(book_id: Nr, _p: Profil = Depends(braucht("bearbeiten"))):
+    """Das Deckblatt aus der Datei als Bild, ohne es zu speichern: beim Bearbeiten kommt es ins Formular, gespeichert wird es erst
+    mit Speichern über `cover/neu-extrahieren` (BF-112)."""
+    _book, cover_data = await _deckblatt_der_datei(book_id)
+    return Response(content=cover_data, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
+@router.post("/{book_id}/cover/neu-extrahieren")
+async def re_extract_cover(book_id: Nr, _p: Profil = Depends(braucht("bearbeiten"))):
+    """Extrahiert das Cover neu aus der Buchdatei und überschreibt das bestehende."""
+    book, cover_data = await _deckblatt_der_datei(book_id)
     save_cover(book["hash"], cover_data)
     await db.execute(
         "UPDATE books SET cover_path = 'cover.jpg', updated_at = datetime('now') WHERE id = ?",
@@ -883,101 +892,6 @@ async def get_file(book_id: Nr, request: Request, herunterladen: bool = Query(Fa
     media_type = media_types.get(book["file_format"], "application/octet-stream")
 
     return await original_antwort(request, book["hash"], media_type, book["file_name"], herunterladen)
-
-
-@router.post("/{book_id}/isbn-scan")
-async def isbn_scan(book_id: Nr, _p: Profil = Depends(braucht("bearbeiten"))):
-    """Scannt ein Buch erneut nach ISBNs.
-
-    Liest den Volltext und extrahiert alle gültigen ISBNs.
-    Liefert für jede gefundene ISBN beide Varianten (ISBN-10/13).
-    """
-    import isbnlib
-
-    from backend.app.services.isbn_extractor import extract_isbns_from_text
-
-    book = await db.fetch_one(
-        "SELECT id, hash, isbn FROM books WHERE id = ?", (book_id,)
-    )
-    if not book:
-        raise HTTPException(status_code=404, detail="Buch nicht gefunden")
-
-    # Volltext laden
-    fulltext_path = get_sidecar_path(book["hash"], "fulltext.txt")
-    text = ""
-    if fulltext_path.exists():
-        text = fulltext_path.read_text(encoding="utf-8", errors="ignore")
-
-    # Fallback: Volltext direkt aus EPUB extrahieren wenn Sidecar leer/fehlt
-    if not text.strip():
-        original = await asyncio.to_thread(get_original_file, book["hash"])
-        if original and original.exists() and original.suffix.lower() == ".epub":
-            import zipfile
-            try:
-                with zipfile.ZipFile(original) as zf:
-                    parts = []
-                    html_files = sorted([n for n in zf.namelist() if n.lower().endswith((".html", ".xhtml", ".htm"))])
-                    for html_name in html_files:
-                        try:
-                            from bs4 import BeautifulSoup
-                            html_content = zf.read(html_name).decode("utf-8", errors="ignore")
-                            soup = BeautifulSoup(html_content, "html.parser")
-                            t = soup.get_text(separator="\n", strip=True)
-                            if t:
-                                parts.append(t)
-                        except Exception:
-                            continue
-                    if parts:
-                        text = "\n\n".join(parts)
-                        # Volltext auch speichern fuer naechstes Mal
-                        from backend.app.services.storage import save_fulltext
-                        save_fulltext(book["hash"], text)
-            except Exception:
-                pass
-
-    if not text.strip():
-        return {"gefunden": [], "aktuell": book["isbn"] or ""}
-    # Gesamten Text durchsuchen - ISBN kann an beliebiger Stelle stehen
-    raw_isbns = extract_isbns_from_text(text)
-
-    # Alle Varianten mit isbnlib berechnen
-    ergebnisse = []
-    gesehen = set()
-    for isbn in raw_isbns:
-        canonical = isbnlib.canonical(isbn)
-        if not canonical or canonical in gesehen:
-            continue
-        gesehen.add(canonical)
-
-        eintrag = {"original": canonical, "varianten": []}
-
-        # ISBN-13 Variante
-        isbn13 = isbnlib.to_isbn13(canonical) if len(canonical) == 10 else canonical
-        if isbn13 and isbnlib.is_isbn13(isbn13):
-            eintrag["isbn13"] = isbn13
-            if isbn13 not in gesehen:
-                gesehen.add(isbn13)
-
-        # ISBN-10 Variante
-        isbn10 = isbnlib.to_isbn10(canonical) if len(canonical) == 13 else canonical
-        if isbn10 and isbnlib.is_isbn10(isbn10):
-            eintrag["isbn10"] = isbn10
-            if isbn10 not in gesehen:
-                gesehen.add(isbn10)
-
-        # Formatiert
-        try:
-            eintrag["formatiert"] = isbnlib.mask(canonical)
-        except Exception:
-            eintrag["formatiert"] = canonical
-
-        ergebnisse.append(eintrag)
-
-    return {
-        "gefunden": ergebnisse,
-        "aktuell": book["isbn"] or "",
-        "anzahl": len(ergebnisse),
-    }
 
 
 @router.post("/rescan")

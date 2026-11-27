@@ -19,6 +19,7 @@ from backend.app.api.auth import router as auth_router
 from backend.app.api.authors import router as authors_router
 from backend.app.api.backup import router as backup_router
 from backend.app.api.books import router as books_router
+from backend.app.api.isbnsuche import router as isbnsuche_router
 from backend.app.api.categories import router as categories_router
 from backend.app.api.config import router as config_router
 from backend.app.api.einordnung import router as einordnung_router
@@ -190,6 +191,7 @@ app.include_router(ausfuehren_router)
 app.include_router(auth_router)
 app.include_router(authors_router)
 app.include_router(backup_router)
+app.include_router(isbnsuche_router)              # vor books: /rescan/isbn-wahl
 app.include_router(books_router)
 app.include_router(categories_router)
 app.include_router(collections_router)

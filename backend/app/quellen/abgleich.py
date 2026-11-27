@@ -1,5 +1,6 @@
 """Passt ein Fund zu dem, was gesucht war? Vergleich von Titeln (mit und ohne Untertitel), Namen und Jahren, ohne Rücksicht
-auf Groß und klein, Umlautschreibweise und Satzzeichen."""
+auf Groß und klein, Umlautschreibweise und Satzzeichen. Dazu die Stufe einer ISBN gegen Titel und Autor des Buchs (BF-111), aus
+dem, was eine Quelle zu ihr nennt, oder aus dem Text um ihre Fundstelle; beide Wege enden in denselben vier Stufen."""
 
 from __future__ import annotations
 
@@ -7,6 +8,9 @@ import re
 import unicodedata
 from collections.abc import Iterable
 from difflib import SequenceMatcher
+from enum import StrEnum
+
+from pydantic import BaseModel, Field
 
 from backend.app.quellen.modelle import Angaben, Buchfrage
 
@@ -104,15 +108,147 @@ def autor_passt(gesucht: Iterable[str], gefunden: Iterable[str]) -> bool | None:
     return bool(g & f) if g and f else None
 
 
+# -- Stufe einer ISBN gegen das Buch (BF-111) ---------------------------------------------------------------------------
+class Stufe(StrEnum):
+    """Wie gut eine ISBN zu Titel und Autor des Buchs passt; die Reihenfolge ist die Rangfolge."""
+
+    PASST = "passt"              # Titel und Autor stimmen
+    AEHNLICH = "aehnlich"        # stimmt nur ungefähr: Untertitel, ohne Artikel, Vorname abgekürzt, Autor fehlt
+    UNBEKANNT = "unbekannt"      # nichts sagt etwas über das Buch zu dieser Nummer
+    FREMD = "fremd"              # ein anderer Titel, auch bei gleichem Autor
+
+
+STUFEN: tuple[Stufe, ...] = tuple(Stufe)
+_ARTIKEL = frozenset({"der", "die", "das", "ein", "eine", "the", "a", "an", "le", "la", "les", "il", "lo", "el", "los", "las", "de", "het"})
+TITEL_IM_TEXT_MINDESTENS = 6     # so viele Zeichen braucht ein Teil des Titels, um im Text als Titel zu zählen
+
+
+class Abgleich(BaseModel):
+    """Ergebnis eines Abgleichs: die Stufe, warum (kurze Wörter für die Oberfläche) und welche Teile abweichen."""
+
+    stufe: Stufe
+    gruende: list[str] = Field(default_factory=list)
+    titel_anders: bool = False
+    autor_anders: bool = False
+
+
+def echte_autoren(autoren: Iterable[str]) -> list[str]:
+    """Ohne Platzhalter wie "unbekannt", die keinen Menschen nennen."""
+    return [a for a in autoren if norm(a) and norm(a) not in KEIN_NAME]
+
+
+def ohne_artikel(normiert: str) -> str:
+    worte = normiert.split()
+    return " ".join(worte[1:]) if len(worte) > 1 and worte[0] in _ARTIKEL else normiert
+
+
+def _titelgruende(gesucht: str, titel: str, untertitel: str) -> list[str]:
+    g, t, voll = norm(umschrift(gesucht)), norm(umschrift(titel)), norm(umschrift(f"{titel} {untertitel}"))
+    if g in (t, voll):
+        return []
+    if ohne_artikel(g) in (ohne_artikel(t), ohne_artikel(voll)):
+        return ["Titel ohne Artikel"]
+    if norm(umschrift(haupttitel(gesucht))) == t or g == norm(umschrift(haupttitel(titel))):
+        return ["Untertitel anders"]
+    return ["Titel weicht ab"]
+
+
+def _vorname(a: str, b: str) -> str:
+    """Wie sich zwei Namen mit gleichem Nachnamen unterscheiden; leer, wenn gar nicht."""
+    na, nb = norm(umschrift(natuerlich(a))), norm(umschrift(natuerlich(b)))
+    if na == nb:
+        return ""
+    if not namen_gleich(a, b):
+        return "anderer Vorname"
+    kurz = [w for w in (na.split()[:-1] + nb.split()[:-1]) if len(w) == 1]
+    return "Vorname abgekürzt" if kurz else "Vorname fehlt"
+
+
+def _autorgruende(autoren: list[str], gefunden: list[str], passt: bool | None) -> list[str]:
+    if passt is None:
+        return ["Autor fehlt"] if autoren and not gefunden else []
+    if passt is False:
+        return ["anderer Autor"]
+    paare = [(a, b) for a in autoren for b in gefunden if nachname(a) == nachname(b)]       # wie autor_passt
+    unterschiede = [u for a, b in paare if (u := _vorname(a, b))]
+    return unterschiede[:1] if len(unterschiede) == len(paare) else []
+
+
+def isbn_abgleich(frage: Buchfrage, fund: Angaben) -> Abgleich:
+    """Die Stufe eines Fundes über die ISBN. Ein Titel unter `ISBN_TITEL` ist ein anderes Buch, auch bei gleichem Autor (etwa
+    ein anderes Buch derselben Autorin aus der Verlagsanzeige); passt nur, was ohne jeden Unterschied stimmt. Ohne lesbaren
+    Titel entscheidet der Autor, ohne beides ist die Stufe unbekannt. Platzhalter wie "unbekannt" zählen nicht als Autor."""
+    autoren = echte_autoren(frage.autoren)
+    autor = autor_passt(autoren, fund.autoren)
+    autorgruende = _autorgruende(autoren, fund.autoren, autor)
+    autor_anders = autor is False or any(g != "Autor fehlt" for g in autorgruende)
+    if suchbar(frage.titel) and fund.titel:
+        if titel_naehe(frage.titel, fund.titel, fund.untertitel) < ISBN_TITEL:
+            return Abgleich(stufe=Stufe.FREMD, gruende=["anderer Titel", *(["gleicher Autor"] if autor else [])], titel_anders=True, autor_anders=autor is False)
+        titelgruende = _titelgruende(frage.titel, fund.titel, fund.untertitel)
+        gruende = titelgruende + autorgruende
+        return Abgleich(stufe=Stufe.AEHNLICH if gruende else Stufe.PASST, gruende=gruende, titel_anders=bool(titelgruende), autor_anders=autor_anders)
+    if autor is False:
+        return Abgleich(stufe=Stufe.FREMD, gruende=["anderer Autor"], autor_anders=True)
+    if autor is True:
+        return Abgleich(stufe=Stufe.AEHNLICH, gruende=["Titel nicht vergleichbar", *autorgruende], autor_anders=autor_anders)
+    return Abgleich(stufe=Stufe.UNBEKANNT)
+
+
 def isbn_fund_passt(frage: Buchfrage, fund: Angaben) -> bool:
     """Gehört ein Fund über die ISBN zu diesem Buch? Eine ISBN aus dem Buch kann einem anderen gehören, etwa aus einer
-    Literaturliste oder Verlagsanzeige (BF-111). Ein naher Titel genügt, sonst muss ein Autor gleich sein. Ohne lesbaren Titel
-    darf nur kein Autor widersprechen; Platzhalter wie "unbekannt" zählen nicht als Autor."""
-    autoren = [a for a in frage.autoren if norm(a) not in KEIN_NAME]
-    autor = autor_passt(autoren, fund.autoren)
-    if suchbar(frage.titel) and fund.titel:
-        return titel_naehe(frage.titel, fund.titel, fund.untertitel) >= ISBN_TITEL or autor is True
-    return autor is not False
+    Literaturliste oder Verlagsanzeige (BF-111): alles außer der Stufe fremd (isbn_abgleich)."""
+    return isbn_abgleich(frage, fund).stufe is not Stufe.FREMD
+
+
+def _im_text(teil: str, text: str) -> bool:
+    return bool(teil) and f" {teil} " in text
+
+
+def titel_im_text(titel: str, text: str) -> str:
+    """Steht der Titel im Text? "voll", "haupt" (nur der Haupttitel), "ohne_artikel" oder leer. `text` ist mit `textform` vorbereitet."""
+    t = norm(umschrift(titel))
+    if _im_text(t, text):
+        return "voll"
+    h = norm(umschrift(haupttitel(titel)))
+    if h != t and len(h) >= TITEL_IM_TEXT_MINDESTENS and _im_text(h, text):
+        return "haupt"
+    o = ohne_artikel(t)
+    if o != t and len(o) >= TITEL_IM_TEXT_MINDESTENS and _im_text(o, text):
+        return "ohne_artikel"
+    return ""
+
+
+def textform(text: str) -> str:
+    """Ein Text, vorbereitet für titel_im_text und autor_im_text: normiert, mit Leerzeichen an den Rändern."""
+    return f" {norm(umschrift(text))} "
+
+
+def autor_im_text(autoren: Iterable[str], text: str) -> bool:
+    return any(_im_text(nachname(umschrift(a)), text) for a in autoren)
+
+
+def text_abgleich(frage: Buchfrage, umfeld: str, fremdes_umfeld: bool) -> Abgleich:
+    """Die Stufe einer ISBN aus dem Text um ihre Fundstelle. Passt, wenn Titel und Autor daneben stehen (ohne bekannten Autor genügt
+    der ganze Titel, nur nicht in einer Literaturliste oder Verlagsanzeige: `fremdes_umfeld`). Dort ist eine Nummer ohne den Titel des
+    Buchs fremd, auch wenn sein Autor daneben steht; anderswo ist sie unbekannt."""
+    text = textform(umfeld)
+    autoren = echte_autoren(frage.autoren)
+    titel = titel_im_text(frage.titel, text) if suchbar(frage.titel) else ""
+    autor: bool | None = autor_im_text(autoren, text) if autoren else None
+    if titel == "voll" and (autor is True or (autor is None and not fremdes_umfeld)):
+        return Abgleich(stufe=Stufe.PASST)
+    if titel:
+        gruende = {"haupt": ["nur der Haupttitel"], "ohne_artikel": ["Titel ohne Artikel"]}.get(titel, [])
+        gruende += ["Autor steht nicht daneben"] if autor is not True else []
+        return Abgleich(stufe=Stufe.AEHNLICH, gruende=gruende, titel_anders=titel != "voll")
+    if autor:
+        if fremdes_umfeld and suchbar(frage.titel):
+            return Abgleich(stufe=Stufe.FREMD, gruende=["anderer Titel", "gleicher Autor"], titel_anders=True)
+        return Abgleich(stufe=Stufe.AEHNLICH, gruende=["nur der Autor steht daneben"], titel_anders=True)
+    if fremdes_umfeld:
+        return Abgleich(stufe=Stufe.FREMD, gruende=["anderer Titel"], titel_anders=True)
+    return Abgleich(stufe=Stufe.UNBEKANNT)
 
 
 def _seiten_gleich(a: int, b: int) -> bool:

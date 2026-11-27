@@ -1,6 +1,8 @@
 """EPUB-Verarbeitung mit ebooklib und BeautifulSoup."""
 
 import logging
+import re
+from datetime import date
 from pathlib import Path
 
 import ebooklib
@@ -8,9 +10,16 @@ from bs4 import BeautifulSoup
 from ebooklib import epub
 
 from backend.app.services.processors.base import BaseProcessor, BookProcessingResult
-from backend.app.services.isbn_extractor import extract_isbn_from_fulltext
+from backend.app.isbnsuche.kandidaten import beste
 
 logger = logging.getLogger("buecherfreunde.processor.epub")
+_JAHR = re.compile(r"\b(1[5-9]\d\d|2\d\d\d)\b")
+
+
+def erscheinungsjahr(datum: str) -> int | None:
+    """Das Jahr aus dc:date ("2019", "2019-03-01T00:00:00Z"); None ohne oder mit einem Jahr in der Zukunft."""
+    m = _JAHR.search(datum or "")
+    return int(m.group(1)) if m and int(m.group(1)) <= date.today().year + 1 else None
 
 
 class EpubProcessor(BaseProcessor):
@@ -33,6 +42,7 @@ class EpubProcessor(BaseProcessor):
                 result.publisher = self._get_metadata(book, "publisher")
                 result.language = self._get_metadata(book, "language")
                 result.description = self._get_metadata(book, "description")
+                result.year = erscheinungsjahr(self._get_metadata(book, "date"))
 
                 isbn = self._get_isbn(book)
                 if isbn:
@@ -50,9 +60,9 @@ class EpubProcessor(BaseProcessor):
                 result.fulltext = "\n\n".join(text_parts)
                 result.page_count = len(text_parts)
 
-                # Fallback-ISBN aus Volltext wenn Metadaten-ISBN leer
+                # ohne ISBN in den Metadaten die aus dem Text, die am besten zum Buch passt (BF-111), je Dokument eine Seite
                 if not result.isbn and result.fulltext:
-                    isbn_from_text = extract_isbn_from_fulltext(result.fulltext)
+                    isbn_from_text = beste(text_parts, result.title, result.author)
                     if isbn_from_text:
                         result.isbn = isbn_from_text
                         logger.info("ISBN aus EPUB-Text extrahiert: %s", isbn_from_text)

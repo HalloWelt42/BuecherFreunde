@@ -46,12 +46,13 @@ def aktive() -> list[Buchquelle]:
     return [QUELLEN[k] for k in NACHEINANDER if not QUELLEN[k].regel.hindernis]
 
 
-async def frage_eine(quelle: Buchquelle, frage: Buchfrage) -> Angaben | None:
-    """ISBN, dann DOI, dann Titel und Autor. Wirft QuelleFehler."""
+async def frage_eine(quelle: Buchquelle, frage: Buchfrage, nur_isbn: bool = False) -> Angaben | None:
+    """ISBN, dann DOI, dann Titel und Autor; mit `nur_isbn` nur die ISBN (Angaben zu einer bestimmten ISBN, BF-111). Wirft
+    QuelleFehler."""
     fund = await quelle.nach_isbn(frage.isbn) if frage.isbn else None
-    if fund is None and frage.doi:
+    if fund is None and frage.doi and not nur_isbn:
         fund = await quelle.nach_doi(frage.doi)
-    if fund is None and frage.titel:
+    if fund is None and frage.titel and not nur_isbn:
         fund = await quelle.nach_titel(frage)
     return fund and _mit_herkunft(fund, frage)
 
@@ -63,9 +64,9 @@ def _mit_herkunft(a: Angaben, frage: Buchfrage) -> Angaben:
     return neu.model_copy(update={"herkunft": {f: a.quelle for f in FELDER if getattr(neu, f)}})
 
 
-async def _versuche(quelle: Buchquelle, frage: Buchfrage) -> tuple[Angaben | None, QuelleFehler | None]:
+async def _versuche(quelle: Buchquelle, frage: Buchfrage, nur_isbn: bool = False) -> tuple[Angaben | None, QuelleFehler | None]:
     try:
-        return await frage_eine(quelle, frage), None
+        return await frage_eine(quelle, frage, nur_isbn), None
     except QuelleFehler as f:
         logger.info("%s", f.grund)
         return None, f
@@ -78,20 +79,21 @@ def _auskunft(angaben: Angaben | None, fehler: Iterable[QuelleFehler | None]) ->
     return Auskunft(angaben=angaben, hinweise=list(dict.fromkeys(f.grund for f in echte)), ruht=bool(gefragt) and len(echte) == len(gefragt) and all(ruhig(f) for f in echte))
 
 
-async def suche(frage: Buchfrage, kennung: str | None = None) -> Auskunft:
-    """Eine Quelle (kennung), alle zusammen ("alle") oder die erste, die etwas weiß (ohne Angabe)."""
+async def suche(frage: Buchfrage, kennung: str | None = None, nur_isbn: bool = False) -> Auskunft:
+    """Eine Quelle (kennung), alle zusammen ("alle") oder die erste, die etwas weiß (ohne Angabe); mit `nur_isbn` nur über die ISBN
+    der Frage, nie über DOI oder Titel."""
     if kennung and kennung != ALLE:
-        fund, fehler = await _versuche(QUELLEN[kennung], frage)
+        fund, fehler = await _versuche(QUELLEN[kennung], frage, nur_isbn)
         return _auskunft(fund, [fehler])
     if kennung == ALLE:
-        ergebnisse = await asyncio.gather(*(_versuche(q, frage) for q in aktive()))      # verschiedene Rechner, je eine Anfrage
+        ergebnisse = await asyncio.gather(*(_versuche(q, frage, nur_isbn) for q in aktive()))      # verschiedene Rechner, je eine Anfrage
         fund = zusammenfuehren([a for a, _ in ergebnisse if a], frage)
         if fund and not fund.umschlag and (bild := await open_library.umschlag_oder_nichts(fund.isbn or frage.isbn)):
             fund = fund.model_copy(update={"umschlag": bild, "herkunft": {**fund.herkunft, "umschlag": regeln.OPEN_LIBRARY.kennung}})
         return _auskunft(fund, [f for _, f in ergebnisse])
     fehler = []
     for quelle in aktive():
-        fund, f = await _versuche(quelle, frage)
+        fund, f = await _versuche(quelle, frage, nur_isbn)
         fehler.append(f)
         if fund:
             return _auskunft(fund, fehler)

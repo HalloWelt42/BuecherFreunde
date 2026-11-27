@@ -1,15 +1,14 @@
 <script lang="ts">
-  // Regale von der KI vorschlagen lassen, wählen, übernehmen
-  import { kategorisiere, uebernehmVorschlaege } from "../../lib/api/ai";
-  import { anzahl } from "../../lib/format";
+  // Regale von der KI vorschlagen lassen, wählen, übernehmen; beim Bearbeiten mit Speichern, auf der Buchseite gleich (ziel.ts)
+  import { kategorisiere } from "../../lib/api/ai";
   import { melde } from "../../lib/stand/meldungen.svelte";
   import Fenster from "../../lib/teile/Fenster.svelte";
   import Haekchen from "../../lib/teile/Haekchen.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Zustand from "../../lib/teile/Zustand.svelte";
-  import type { BuchEinzeln } from "../../lib/typen";
+  import type { Angabenziel } from "./ziel";
 
-  let { buch, onschliessen, onfertig }: { buch: BuchEinzeln; onschliessen: () => void; onfertig: () => void } = $props();
+  let { buchId, ziel, onschliessen }: { buchId: number; ziel: Angabenziel; onschliessen: () => void } = $props();
 
   interface Vorschlag {
     name: string;
@@ -26,7 +25,7 @@
     laedt = true;
     fehler = "";
     try {
-      const a = await kategorisiere(buch.id);
+      const a = await kategorisiere(buchId);
       vorschlaege = (a.vorschlaege ?? []).map((v: { kategorie?: string; category?: string; konfidenz?: number; confidence?: number }) => ({ name: v.kategorie ?? v.category ?? "", sicher: v.konfidenz ?? v.confidence ?? 0, an: true })).filter((v: Vorschlag) => v.name);
     } catch (e) {
       fehler = e instanceof Error ? e.message : String(e);
@@ -40,9 +39,8 @@
   async function uebernimm() {
     speichert = true;
     try {
-      await uebernehmVorschlaege(buch.id, gewaehlt.map((v) => v.name));
-      melde.gut(`${anzahl(gewaehlt.length, "Regal", "Regale")} zugewiesen`);
-      onfertig();
+      await ziel.regale(gewaehlt.map((v) => v.name));
+      onschliessen();
     } catch (e) {
       melde.schlecht(e, "Nicht übernommen");
     } finally {

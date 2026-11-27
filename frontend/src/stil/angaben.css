@@ -1,0 +1,99 @@
+/* Werkzeuge für die Angaben, ISBN im Buch, Vergleich im Fenster (BF-111, BF-112) */
+
+/* Bearbeiten: die Werkzeugreihe über den Feldern, neben dem Umschlag. Am Telefon über die ganze Breite, drei gleich breite Felder
+   je Zeile, das Wort unter dem Zeichen wie in der Tafel; bei großer Schrift zwei */
+.buchkopf.mit-werkzeugen { grid-template-rows: auto minmax(0, 1fr); row-gap: .875rem; }
+.mit-werkzeugen > .kopfblatt { grid-row: 1 / span 2; }
+.mit-werkzeugen > :is(.werkzeugreihe, .felder) { grid-column: 2; }
+.kopfblatt .format { text-transform: none; }
+.werkzeugreihe { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem; }
+.werkzeugreihe .ab { margin-left: .5rem; }
+.werkzeugreihe .kurz { display: none; }
+@container app (max-width: 720px) {
+  .buchkopf.mit-werkzeugen { grid-template-rows: auto auto; }
+  .mit-werkzeugen > .werkzeugreihe { grid-column: 1 / -1; grid-row: 1; }
+  .mit-werkzeugen > :is(.kopfblatt, .felder) { grid-row: 2; }
+  .werkzeugreihe { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .25rem; }
+  .werkzeugreihe .ab { margin-left: 0; }
+  .werkzeugreihe .knopf.klein:not(.nur) { flex-direction: column; gap: .1875rem; height: auto; min-height: 3.5rem; padding: .375rem .25rem; font-size: .8125rem; min-width: 0; white-space: normal; text-align: center; line-height: 1.15; }
+  .werkzeugreihe .knopf.klein > i { font-size: 1.0625rem; }
+  .werkzeugreihe .lang { display: none; }
+  .werkzeugreihe .kurz { display: inline; }
+}
+@container app (max-width: 20rem) {
+  .werkzeugreihe { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mit-werkzeugen > .kopfblatt { grid-row: 2; }
+  .mit-werkzeugen > .felder { grid-row: 3; grid-column: 1; }
+}
+
+/* Felder, die ein Werkzeug ins Formular gesetzt hat; gespeichert wird erst mit Speichern */
+.feld.eingesetzt :is(input, textarea) { background: var(--messing-hauch); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--messing) 55%, transparent); }
+
+/* ISBN im Buch: je ISBN eine Zeile, die Fundstellen wie in der Suche im Buch (.stelle) */
+.isbnkopf { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem; }
+.kandidaten { display: grid; gap: .375rem; }
+.kandidat { display: grid; grid-template-columns: 1.25rem minmax(0, 1fr); gap: .625rem; padding: .5rem .625rem; border-radius: var(--r2); }
+.kandidat.gewaehlt { background: var(--messing-hauch); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--messing) 50%, transparent); }
+.kandidat > .wahl { display: flex; align-items: flex-start; padding-top: .1875rem; cursor: pointer; }
+.kandidat > .wahl input { -webkit-appearance: none; appearance: none; flex: none; width: 1.125rem; height: 1.125rem; margin: 0; border-radius: 50%; background: var(--vertieft); box-shadow: inset 0 1px 2px rgb(var(--schatten) / .16), inset 0 0 0 1px var(--linie); display: grid; place-items: center; cursor: inherit; }
+.kandidat > .wahl input:checked { background: var(--messing-flaeche); }
+.kandidat > .wahl input:checked::after { content: ""; width: .4375rem; height: .4375rem; border-radius: 50%; background: var(--auf-messing); }
+.kandidat > .wahl input:focus-visible { outline: 2px solid var(--messing); outline-offset: 2px; }
+.kandidat .kern { display: grid; gap: .25rem; min-width: 0; }
+.kandidat .kopfzeile { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; }
+.kandidat .isbn { font-size: 1rem; font-weight: 600; }
+.kandidat .formen { flex-basis: 100%; font-size: .75rem; color: var(--tinte-3); overflow-wrap: anywhere; }
+.kandidat .art { color: var(--tinte-2); }
+.kandidat .stufe { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; font-size: .875rem; min-height: 1.875rem; }
+.kandidat .stufe .grund { flex: 1 1 12rem; min-width: 0; color: var(--tinte-2); overflow-wrap: anywhere; }
+.kandidat .stufe .basis { color: var(--tinte-3); }
+.kandidat .stufe .warum { display: block; font-size: .8125rem; color: var(--tinte-3); }
+.kandidat .stufe .warum.warn { display: flex; align-items: baseline; color: var(--warn); }
+.kandidat .stufe > .knopf { margin-left: auto; }
+.kandidat .stellen { display: grid; }
+.kandidat .stelle.fund { grid-template-columns: 4px minmax(0, 1fr); grid-template-areas: "bar kopf" "bar zitat"; gap: .125rem .5rem; font-size: .875rem; padding: .3125rem 0; }
+.stelle.fund > i { grid-area: bar; }
+.stelle.fund > .ort { grid-area: kopf; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem .5rem; font: 500 .75rem/1.3 var(--schrift); color: var(--tinte-3); }
+.stelle.fund .seiten { gap: .25rem; margin-left: auto; }
+.stelle.fund .chip { align-self: center; font-family: var(--schrift); }
+.stelle.fund > .zitat { grid-area: zitat; font-size: .875rem; overflow-wrap: anywhere; hyphens: auto; }
+.kandidat .stelle.fremd { --f: var(--tinte-3); }
+.andere .kandidat .isbn { color: var(--tinte-2); }
+.marke-text.leise { color: var(--tinte-3); }
+.isbngruppe { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; padding: .625rem .25rem .25rem; font-size: .9375rem; font-weight: 600; }
+.isbngruppe > i { color: var(--tinte-3); }
+.isbngruppe .leise { font-weight: 400; }
+@container app (max-width: 26rem) {
+  .kandidat { padding-inline: .5rem; gap: .5rem; }
+}
+
+/* Vergleich im Fenster: Quelle, ISBN und der Weg zurück zu den Kandidaten; unten zwei gleich breite Tasten */
+.vergleichskopf { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; }
+.vergleichskopf .auswahl { flex: 0 1 12rem; min-width: 0; }
+.fensterfuss { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .875rem; width: 100%; }
+.fensterfuss > .tasten2 { margin-left: auto; flex: 0 1 26rem; }
+@container app (max-width: 720px) {
+  .fensterfuss > .tasten2 { flex: 1 1 100%; margin-left: 0; }
+  .fensterfuss .knopf:not(.nur) { white-space: normal; height: auto; min-height: 2.75rem; line-height: 1.2; padding-inline: .375rem; text-align: center; }
+}
+/* Große Schrift am Telefon: das Zeichen über das Wort, so bleiben beide Tasten nebeneinander */
+@container app (max-width: 20rem) { .fensterfuss .knopf:not(.nur) { flex-wrap: wrap; row-gap: .125rem; } }
+/* Sehr schmal mit großer Schrift: übereinander, damit kein Wort getrennt werden muss */
+@container app (max-width: 15rem) { .fensterfuss > .tasten2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* ISBN zur Wahl nach "Bibliothek ergänzen": dieselbe Zeile wie die Vorschläge im Katalog, ohne Prozentspalte */
+.vorschlagszeile.isbnwahl { grid-template-columns: 1.25rem 2.25rem minmax(0, 1fr) minmax(0, 24rem) auto; }
+.isbnwahl .grund .marke-text { font-size: .8125rem; }
+.zurwahl { display: grid; gap: .375rem; }
+.zurwahl > .reihe:first-child .isbngruppe { padding: 0; }
+@container app (max-width: 720px) {
+  .vorschlagszeile.isbnwahl { grid-template-columns: 1.25rem 2.25rem minmax(0, 1fr) auto; grid-template-areas: "wahl bild titel tun" "wahl bild grund grund"; }
+}
+/* Schmal oder große Schrift: die Tasten unter die Gründe, damit der Titel Platz behält */
+@container app (max-width: 26rem) {
+  .vorschlagszeile.isbnwahl { grid-template-columns: 1.25rem 2.25rem minmax(0, 1fr); grid-template-areas: "wahl bild titel" "wahl bild grund" "wahl bild tun"; align-items: start; }
+  .vorschlagszeile.isbnwahl > .tun { justify-self: start; }
+}
+@container app (max-width: 20rem) {
+  .vorschlagszeile.isbnwahl { grid-template-areas: "wahl bild titel" ". grund grund" ". tun tun"; }
+}

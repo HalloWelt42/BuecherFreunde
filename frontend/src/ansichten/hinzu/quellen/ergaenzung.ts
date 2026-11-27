@@ -3,7 +3,7 @@ import type { Ergaenzungsart, Ergaenzungsregal, Ergaenzungsvorschau } from "../.
 
 export const ARTEN: { art: Ergaenzungsart; text: string; symbol: string; was: string }[] = [
   { art: "cover", text: "Umschläge", symbol: "image", was: "Bücher ohne Umschlag bekommen den ersten passenden aus ihrer Datei." },
-  { art: "isbn", text: "ISBN", symbol: "barcode", was: "Bücher ohne ISBN werden nach einer durchsucht, die Nummer wird eingetragen." },
+  { art: "isbn", text: "ISBN", symbol: "barcode", was: "Bücher ohne ISBN werden nach einer durchsucht. Eingetragen wird nur eine ISBN, die zu Titel und Autor passt; jede andere kommt zur Wahl. Gefragt werden die Verzeichnisse nur, wenn der Text nicht reicht, und dann zu den zwei besten Funden je Buch." },
   { art: "metadaten", text: "Angaben", symbol: "cloud-arrow-down", was: "Bücher mit ISBN, denen Autor, Verlag, Jahr, Sprache, Beschreibung oder Umschlag fehlt, bekommen es aus den Verzeichnissen. Vorhandenes bleibt, die Verzeichnisse werden schonend gefragt." },
   { art: "volltext", text: "Volltext", symbol: "file-lines", was: "Alle gewählten Bücher werden geprüft, fehlender Volltext wird neu gelesen." },
 ];

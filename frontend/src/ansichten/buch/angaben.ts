@@ -4,13 +4,17 @@ import type { Vergleichszeile } from "../../lib/teile/Vergleichstabelle.svelte";
 
 export type { Aktuell, Vorschlag };
 
-/** Kennung einer Quelle oder "alle" (je Feld die beste) */
+/** Kennung einer Quelle, "alle" (je Feld die beste) oder "datei" (die Angaben der Datei neu gelesen, BF-112) */
 export type Quelle = string;
 export const ALLE = "alle";
+export const DATEI = "datei";
+/** Kennung des Lexikons */
+export const LEXIKON = "wikipedia";
 
 export const felder: [keyof Vorschlag & string, string][] = [["titel", "Titel"], ["autor", "Autor"], ["verlag", "Verlag"], ["jahr", "Jahr"], ["seiten", "Seiten"], ["isbn", "ISBN"], ["sprache", "Sprache"], ["beschreibung", "Beschreibung"]];
 
-const text = (w: unknown) => (w === null || w === undefined ? "" : String(w));
+/** Eine 0 bei Jahr oder Seiten heißt: unbekannt */
+const text = (w: unknown) => (w === null || w === undefined || w === 0 ? "" : String(w));
 
 /** Kleinschreibung ohne Satzzeichen und Akzente, zum Vergleichen */
 export function grob(w: string): string {

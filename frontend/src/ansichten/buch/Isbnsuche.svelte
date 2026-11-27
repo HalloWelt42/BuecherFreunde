@@ -1,36 +1,37 @@
 <script lang="ts">
-  import { isbnScan } from "../../lib/api/books";
-  import { melde } from "../../lib/stand/meldungen.svelte";
-  import Chip from "../../lib/teile/Chip.svelte";
+  // Das Feld ISBN beim Bearbeiten mit "Im Buch suchen" (BF-111): sucht im ganzen Buch und öffnet die Kandidaten im Fenster. Steht
+  // keine ISBN im Buch, sagt es das Feld in einem Satz, daneben der Weg über Titel und Autor. Hat der Lauf "ISBN" Vorschläge
+  // gemacht, stehen sie hier zur Wahl (Abnahme 5).
+  import { untrack } from "svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
-  import type { BuchEinzeln } from "../../lib/typen";
+  import Symbol from "../../lib/teile/Symbol.svelte";
+  import { FUNDORTE, STUFEN } from "./isbn";
+  import { stellenort } from "./stelle";
+  import type { Angabenwerkzeuge } from "./werkzeuge.svelte";
 
-  let { buch, wert, onwert }: { buch: BuchEinzeln; wert: string; onwert: (isbn: string) => void } = $props();
-  let sucht = $state(false);
-  let funde = $state<[string, string][] | null>(null);
+  let { werkzeuge: w, wert, eingesetzt = false, onwert }: { werkzeuge: Angabenwerkzeuge; wert: string; eingesetzt?: boolean; onwert: (isbn: string) => void } = $props();
 
-  async function suche() {
-    sucht = true;
-    try {
-      const { gefunden } = await isbnScan(buch.id);
-      funde = (gefunden as { isbn13?: string; isbn10?: string }[]).flatMap((f) => ([["ISBN-13", f.isbn13], ["ISBN-10", f.isbn10]] as [string, string | undefined][]).filter((x): x is [string, string] => !!x[1]));
-    } catch (e) {
-      melde.schlecht(e, "ISBN nicht gesucht");
-    } finally {
-      sucht = false;
-    }
-  }
+  let vorschlag = $derived(wert.trim() ? null : (w.zurWahl[0] ?? null));
+  let stelle = $derived(vorschlag?.stellen[0] ?? null);
+
+  // einmal beim Öffnen, solange das Buch keine ISBN hat
+  $effect(() => untrack(() => {
+    if (!wert.trim()) void w.ladeZurWahl();
+  }));
 </script>
 
-<div class="feld">
+<div class="feld" class:eingesetzt>
   <label for="isbn">ISBN</label>
   <span class="zeile-isbn">
     <input id="isbn" value={wert} oninput={(e) => onwert(e.currentTarget.value)} />
-    <Knopf text="Im Text suchen" symbol="barcode" laeuft={sucht} onclick={suche} />
+    <Knopf text="Im Buch suchen" symbol="barcode" titel="ISBN im Buch suchen" laeuft={w.sucht} onclick={() => void w.sucheIsbn()} />
   </span>
-  {#if funde}
+  {#if w.nichts}
+    <span class="reihe"><span class="leise"><Symbol name="circle-info" /> Im Buch steht keine ISBN.</span><Knopf text="Über Titel und Autor suchen" symbol="magnifying-glass" klein onclick={() => w.vergleiche(w.standardquelle, "")} /></span>
+  {:else if vorschlag}
     <span class="reihe">
-      {#each funde as [art, isbn] (isbn)}<Chip text="{art}: {isbn}" titel="Übernehmen" onclick={() => { onwert(isbn); funde = null; }} />{:else}<span class="leise">Im Buchtext steht keine ISBN.</span>{/each}
+      <span class="leise"><Symbol name="barcode" /> Zur Wahl: <span class="zahl">{vorschlag.isbn}</span>{#if stelle}, {FUNDORTE[stelle.fundort]}, {stellenort(w.buch, stelle)}{/if}, <span class="marke-text {STUFEN[(vorschlag.quelle ?? vorschlag.text).stufe].klasse}">{STUFEN[(vorschlag.quelle ?? vorschlag.text).stufe].wort}</span></span>
+      <Knopf text="Ansehen" symbol="list-check" klein titel="Alle ISBN im Buch ansehen und wählen" laeuft={w.sucht} onclick={() => void w.sucheIsbn()} />
     </span>
   {/if}
 </div>

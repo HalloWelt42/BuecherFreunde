@@ -6,7 +6,7 @@ from pathlib import Path
 import fitz
 
 from backend.app.services.processors.base import BaseProcessor, BookProcessingResult
-from backend.app.services.isbn_extractor import extract_isbn_from_pages
+from backend.app.isbnsuche.kandidaten import beste
 from backend.app.services.pdfseite import seitentext
 
 logger = logging.getLogger("buecherfreunde.processor.pdf")
@@ -41,8 +41,8 @@ class PdfProcessor(BaseProcessor):
             # je Dateiseite ein Teil, getrennt mit Seitenvorschub (Regel in services/seiten.py)
             result.fulltext = "\f".join(t.replace("\f", "\n") for t in page_texts)
 
-            # ISBN aus den ersten/letzten Seiten extrahieren
-            isbn = extract_isbn_from_pages(page_texts)
+            # die ISBN, die im Text am besten zu Titel und Autor passt (BF-111); eine fremde aus der Literaturliste nie
+            isbn = beste(page_texts, result.title, result.author)
             if isbn:
                 result.isbn = isbn
                 logger.info("ISBN aus PDF extrahiert: %s", isbn)

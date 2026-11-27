@@ -41,4 +41,8 @@ textarea.eingabe { height: auto; min-height: 5rem; padding: .5rem .625rem; resiz
 .zustand { justify-items: start; }
 .nachlader { text-align: center; padding: .5rem 0; }
 .zweifeld { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr)); }
+/* Ein Eingabefeld ist von sich aus etwa 190px breit und schob unter rund 370px App-Breite die Felder neben dem Umschlag über den
+   Rand (BF-116): Feld und Raster dürfen schmaler werden als ihr Inhalt */
+.zweifeld > *, .feld { min-width: 0; }
+.feld { grid-template-columns: minmax(0, 1fr); }
 .zweifeld > .ganz { grid-column: 1 / -1; }

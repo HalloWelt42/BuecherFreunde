@@ -13,6 +13,7 @@
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Segment from "../../lib/teile/Segment.svelte";
   import type { Bedeutungstreffer, BuchEinzeln } from "../../lib/typen";
+  import { stellenort, stellenziel } from "./stelle";
 
   let { buch }: { buch: BuchEinzeln } = $props();
 
@@ -66,13 +67,9 @@
     void suche();
   }
 
-  // Der Sprung zeigt die Stelle: Dateien mit Seiten über die Seite, EPUB und Text über den Anteil im Buch
-  function ziel(t: Buchtreffer): string {
-    const begriff = ersteMarkierung(t.kontext) || wort.trim();
-    return buch.file_format === "pdf" ? leseAdresse(buch.id, { page: t.seite, q: begriff }) : leseAdresse(buch.id, { percent: t.prozent, q: begriff });
-  }
-
-  const ort = (t: Buchtreffer) => (buch.file_format === "pdf" ? `Seite ${zahl(t.seite)}` : `${t.prozent.toLocaleString("de-DE")} %`);
+  // Der Sprung zeigt die Stelle (stelle.ts)
+  const ziel = (t: Buchtreffer) => stellenziel(buch, t, ersteMarkierung(t.kontext) || wort.trim());
+  const ort = (t: Buchtreffer) => stellenort(buch, t);
   let laenge = $derived(art === "wort" ? woerter.length : sinn.length);
 </script>
 

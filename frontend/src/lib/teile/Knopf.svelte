@@ -7,6 +7,8 @@
     symbol?: string;
     /** Nur das Zeichen zeigen, der Text wird Beschriftung und Hinweis */
     nur?: boolean;
+    /** Ein kürzeres Wort für enge Reihen; welches gilt, bestimmt der Stil der Reihe (.lang und .kurz) */
+    kurz?: string;
     klein?: boolean;
     haupt?: boolean;
     frei?: boolean;
@@ -25,7 +27,7 @@
     children?: Snippet;
   }
 
-  let { text, symbol = "", nur = false, klein = false, haupt = false, frei = false, gedrueckt = undefined, aufgeklappt = undefined, gesperrt = false, laeuft = false,
+  let { text, symbol = "", nur = false, kurz = undefined, klein = false, haupt = false, frei = false, gedrueckt = undefined, aufgeklappt = undefined, gesperrt = false, laeuft = false,
     href = undefined, download = undefined, extern = false, titel = undefined, art = "button", klasse = "", element = $bindable(null), onclick = undefined, children = undefined }: Eigenschaften = $props();
 
   let klassen = $derived(["knopf", klasse, nur && "nur", klein && "klein", haupt && "haupt", frei && "frei"].filter(Boolean).join(" "));
@@ -34,7 +36,7 @@
 
 {#snippet inhalt()}
   {#if laeuft}<Symbol name="circle-notch" dreht />{:else if symbol}<Symbol name={symbol} />{/if}
-  {#if !nur}<span>{text}</span>{/if}
+  {#if nur}{:else if kurz}<span class="lang">{text}</span><span class="kurz">{kurz}</span>{:else}<span>{text}</span>{/if}
   {@render children?.()}
 {/snippet}
 

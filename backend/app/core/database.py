@@ -512,6 +512,16 @@ CREATE TABLE IF NOT EXISTS reihe_band (              -- was die Quelle je Band e
     quelle TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (sammlung_id, sprache, nummer)
 );
+CREATE TABLE IF NOT EXISTS isbn_wahl (               -- ISBN zur Wahl aus dem Lauf "ISBN" (BF-111, isbnsuche/wahl.py), je Buch seine Kandidaten
+    buch_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    isbn TEXT NOT NULL,                              -- ISBN-13, nur Ziffern
+    rang INTEGER NOT NULL,                           -- Rangfolge im Buch, 0 ist der beste Kandidat
+    stufe TEXT NOT NULL,                             -- passt, aehnlich, unbekannt; fremde kommen nicht zur Wahl
+    kandidat TEXT NOT NULL,                          -- der Kandidat als JSON (isbnsuche/modelle.py Kandidat), mit Fundstellen und Prüfung
+    stand TEXT NOT NULL DEFAULT 'offen',             -- offen, abgelehnt; abgelehnte kommen beim nächsten Lauf nicht wieder
+    gefunden_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    PRIMARY KEY (buch_id, isbn)
+);
 CREATE TABLE IF NOT EXISTS luecke_ausgeblendet (     -- Platzhalter, die jemand weggenommen hat (BF-75); Zurückholen löscht die Zeile
     sammlung_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
     sprache TEXT NOT NULL,

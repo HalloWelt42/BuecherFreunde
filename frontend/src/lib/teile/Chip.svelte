@@ -13,10 +13,12 @@
     gesperrt?: boolean;
     /** Nur das Zeichen zeigen, der Text wird Beschriftung und Hinweis (BF-68) */
     nur?: boolean;
+    /** Ein Verweis öffnet in einem neuen Tab, etwa aus einem Fenster mit ungespeicherten Eingaben */
+    neu?: boolean;
     onclick?: (e: MouseEvent) => void;
     children?: Snippet;
   }
-  let { text = "", symbol = "", zahl = undefined, farbe = undefined, gedrueckt = undefined, href = undefined, titel = undefined, gesperrt = false, nur = false, onclick = undefined, children = undefined }: Eigenschaften = $props();
+  let { text = "", symbol = "", zahl = undefined, farbe = undefined, gedrueckt = undefined, href = undefined, titel = undefined, gesperrt = false, nur = false, neu = false, onclick = undefined, children = undefined }: Eigenschaften = $props();
   let nurZeichen = $derived(nur && !!symbol);
   let hinweis = $derived(titel ?? (nurZeichen ? text : undefined));
 </script>
@@ -30,7 +32,7 @@
 {/snippet}
 
 {#if href}
-  <a class="chip" class:nur={nurZeichen} {href} title={hinweis} aria-label={nurZeichen ? text : undefined} aria-current={gedrueckt ? "page" : undefined} {onclick}>{@render inhalt()}</a>
+  <a class="chip" class:nur={nurZeichen} {href} target={neu ? "_blank" : undefined} rel={neu ? "noopener" : undefined} title={hinweis} aria-label={nurZeichen ? text : undefined} aria-current={gedrueckt ? "page" : undefined} {onclick}>{@render inhalt()}</a>
 {:else if onclick}
   <button class="chip" class:nur={nurZeichen} type="button" aria-pressed={gedrueckt} title={hinweis} aria-label={nurZeichen ? text : undefined} disabled={gesperrt} {onclick}>{@render inhalt()}</button>
 {:else}

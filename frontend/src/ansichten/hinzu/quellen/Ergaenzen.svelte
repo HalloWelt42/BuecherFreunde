@@ -13,6 +13,7 @@
   import Knopf from "../../../lib/teile/Knopf.svelte";
   import Symbol from "../../../lib/teile/Symbol.svelte";
   import Ergaenzungsstand from "./Ergaenzungsstand.svelte";
+  import Isbnwahl from "./Isbnwahl.svelte";
   import { ARTEN, betroffen, regalwerte } from "./ergaenzung";
 
   let gewaehlt = $state<Ergaenzungsart[]>(["cover", "isbn"]);
@@ -79,6 +80,7 @@
   </div>
   {#if fehler}<p class="marke-text schlecht" role="alert"><Symbol name="triangle-exclamation" />{fehler}</p>{/if}
   {#if laeuft || auftraege.ergaenzungFertig}<Ergaenzungsstand />{/if}
+  <Isbnwahl />
 </Karte>
 
 {#if fenster}

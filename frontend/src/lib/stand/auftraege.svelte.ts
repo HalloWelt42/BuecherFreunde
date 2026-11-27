@@ -20,6 +20,12 @@ export interface Ergaenzung {
   fehler: number;
   /** warum keine Angaben mehr ergänzt werden: alle Verzeichnisse machen Pause */
   grund?: string;
+  /** Bücher, deren ISBN nicht sicher passte und zur Wahl steht (BF-111) */
+  isbn_zur_wahl?: number;
+  /** davon ohne Antwort einer Quelle, weil die Quellen ruhten */
+  isbn_ungeprueft?: number;
+  /** warum der Lauf ISBN die Quellen nicht mehr fragt */
+  isbn_grund?: string;
 }
 
 /** Auftrag einer Ansicht, etwa der Abgleich der Autoren */

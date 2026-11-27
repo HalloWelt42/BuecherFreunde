@@ -13,6 +13,12 @@ def sauber(isbn: str) -> str:
     return z if re.fullmatch(r"\d{13}|\d{9}[\dX]", z) else ""
 
 
+def gueltig(isbn: str) -> bool:
+    """Eine ISBN mit stimmender Prüfziffer, zehn- oder dreizehnstellig (dreizehn nur mit 978 oder 979)."""
+    z = sauber(isbn)
+    return bool(z) and (isbnlib.is_isbn13(z) if len(z) == 13 else isbnlib.is_isbn10(z))
+
+
 def dreizehn(isbn: str) -> str:
     z = sauber(isbn)
     return z if len(z) == 13 else (isbnlib.to_isbn13(z) or "") if z else ""

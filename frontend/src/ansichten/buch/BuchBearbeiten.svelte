@@ -1,106 +1,96 @@
 <script lang="ts">
-  // Angaben an Ort und Stelle ändern; scheitert das Speichern, bleiben die Eingaben stehen
-  import { untrack } from "svelte";
-  import { aktualisiereBuch } from "../../lib/api/books";
-  import { buchAusSammlung, buchZuordnen } from "../../lib/api/collections";
+  // Angaben an Ort und Stelle ändern, mit den Werkzeugen für die Angaben über den Feldern (BF-112). Was ein Werkzeug übernimmt,
+  // steht messingfarben im Formular; gespeichert wird alles erst mit Speichern, Abbrechen verwirft es. Scheitert das Speichern,
+  // bleiben die Eingaben stehen.
   import { beiEsc } from "../../lib/flucht";
   import { arten } from "../../lib/stand/arten.svelte";
   import { bestand } from "../../lib/stand/bestand.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
   import Auswahl from "../../lib/teile/Auswahl.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
+  import Symbol from "../../lib/teile/Symbol.svelte";
   import Umschlag from "../../lib/teile/Umschlag.svelte";
   import type { BuchEinzeln } from "../../lib/typen";
+  import Angabenfenster from "./Angabenfenster.svelte";
+  import { Buchformular, type Textfeld } from "./formular.svelte";
   import Isbnsuche from "./Isbnsuche.svelte";
+  import { Angabenwerkzeuge } from "./werkzeuge.svelte";
+  import Werkzeugreihe from "./Werkzeugreihe.svelte";
 
   let { buch, onabbruch, onfertig }: { buch: BuchEinzeln; onabbruch: () => void; onfertig: () => void } = $props();
 
-  let eingabe = $state(
-    untrack(() => ({
-      title: buch.title, author: buch.author, isbn: buch.isbn, year: buch.year ? String(buch.year) : "", publisher: buch.publisher, language: buch.language,
-      page_count: buch.page_count ? String(buch.page_count) : "", typ: buch.typ, gattung: buch.gattung ?? "", sammlung: buch.sammlung_id ? String(buch.sammlung_id) : "", band: buch.band_nummer, description: buch.description,
-    })),
-  );
+  // svelte-ignore state_referenced_locally
+  const formular = new Buchformular(buch);
+  // svelte-ignore state_referenced_locally
+  const werkzeuge = new Angabenwerkzeuge(buch, formular);
+  const eingabe = formular.eingabe;
   let speichert = $state(false);
-  let hinweis = $state("");
+  let fehler = $state("");
 
-  $effect(() => beiEsc(() => onabbruch()));
+  // Esc schließt das Bearbeiten nur, wenn kein Fenster der Werkzeuge offen ist (das schließt sich selbst)
+  $effect(() => beiEsc(() => werkzeuge.fenster || abbrechen()));
+  $effect(() => () => formular.verwerfen());
 
   let typen = $derived(arten.typWerte(eingabe.typ));
   let gattungen = $derived(arten.gattungWerte(eingabe.gattung));
   let sammlungen = $derived<[string, string][]>([["", "keine"], ...bestand.sammlungen.map((s): [string, string] => [String(s.id), s.name])]);
+  const neu = (feld: Textfeld) => formular.eingesetzt.includes(feld);
 
-  function alsZahl(text: string, feld: string): number | null {
-    if (!text.trim()) return null;
-    if (!/^\d{1,5}$/.test(text.trim())) throw new Error(`${feld} ist keine Zahl`);
-    return Number(text.trim());
-  }
-
-  function aenderungen(): Record<string, unknown> {
-    const daten: Record<string, unknown> = {};
-    for (const k of ["title", "author", "isbn", "publisher", "language", "typ", "gattung", "description"] as const) {
-      if (eingabe[k] !== (buch[k] ?? "")) daten[k] = eingabe[k];
-    }
-    if (!eingabe.title.trim()) throw new Error("Der Titel fehlt");
-    if ("author" in daten && !eingabe.author.trim()) throw new Error("Der Autor fehlt");
-    const jahr = alsZahl(eingabe.year, "Das Jahr");
-    if (jahr !== buch.year) daten.year = jahr;
-    const seiten = alsZahl(eingabe.page_count, "Die Seitenzahl") ?? 0;
-    if (seiten !== buch.page_count) daten.page_count = seiten;
-    return daten;
-  }
-
-  async function speichereSammlung() {
-    const neu = eingabe.sammlung ? Number(eingabe.sammlung) : null;
-    if (neu === buch.sammlung_id && eingabe.band === buch.band_nummer) return;
-    if (neu) await buchZuordnen(neu, buch.id, eingabe.band);
-    else if (buch.sammlung_id) await buchAusSammlung(buch.sammlung_id, buch.id);
+  function abbrechen() {
+    formular.verwerfen();
+    onabbruch();
   }
 
   async function speichere(e: SubmitEvent) {
     e.preventDefault();
-    hinweis = "";
+    fehler = "";
     speichert = true;
     try {
-      const daten = aenderungen();
-      await speichereSammlung();
-      if (Object.keys(daten).length) await aktualisiereBuch(buch.id, daten);
-      melde.gut("Gespeichert");
+      const fehlt = await formular.speichern();
+      if (fehlt) melde.warn(`Gespeichert, Umschlag nicht: ${fehlt}`);
+      else melde.gut("Gespeichert");
       bestand.geaendert();
       onfertig();
     } catch (grund) {
-      hinweis = grund instanceof Error ? grund.message : String(grund);
+      fehler = grund instanceof Error ? grund.message : String(grund);
     } finally {
       speichert = false;
     }
   }
 </script>
 
-<form class="buchkopf platte" onsubmit={speichere}>
-  <!-- Art und Gattung zeigen sich am Blatt schon vor dem Speichern -->
-  <div><Umschlag buch={{ ...buch, typ: eingabe.typ, gattung: eingabe.gattung }} sofort /></div>
+<form class="buchkopf platte mit-werkzeugen" onsubmit={speichere}>
+  <!-- Art und Gattung zeigen sich am Blatt schon vor dem Speichern; ein neuer Umschlag mit "neu" -->
+  <div class="kopfblatt">
+    {#if formular.umschlag}<span class="umschlag"><img src={formular.umschlag.adresse} alt="" /><span class="format">neu</span></span>
+    {:else}<Umschlag buch={{ ...buch, typ: eingabe.typ, gattung: eingabe.gattung }} sofort />{/if}
+  </div>
+  <Werkzeugreihe {werkzeuge} />
   <div class="felder">
+    {#if formular.hinweis}<p class="marke-text info" role="status"><Symbol name="circle-info" /><span>{formular.hinweis}</span></p>{/if}
     <div class="zweifeld">
-      <label class="feld ganz">Titel<input bind:value={eingabe.title} /></label>
-      <label class="feld ganz">Autor<input bind:value={eingabe.author} placeholder="Vorname Nachname, mehrere mit Komma" /></label>
-      <label class="feld">Verlag<input bind:value={eingabe.publisher} /></label>
-      <label class="feld">Jahr<input bind:value={eingabe.year} inputmode="numeric" maxlength="4" /></label>
-      <label class="feld">Sprache<input bind:value={eingabe.language} placeholder="de, en" /></label>
-      <label class="feld">Seiten<input bind:value={eingabe.page_count} inputmode="numeric" maxlength="5" /></label>
+      <label class="feld ganz" class:eingesetzt={neu("title")}>Titel<input bind:value={eingabe.title} /></label>
+      <label class="feld ganz" class:eingesetzt={neu("author")}>Autor<input bind:value={eingabe.author} placeholder="Vorname Nachname, mehrere mit Komma" /></label>
+      <label class="feld" class:eingesetzt={neu("publisher")}>Verlag<input bind:value={eingabe.publisher} /></label>
+      <label class="feld" class:eingesetzt={neu("year")}>Jahr<input bind:value={eingabe.year} inputmode="numeric" maxlength="4" /></label>
+      <label class="feld" class:eingesetzt={neu("language")}>Sprache<input bind:value={eingabe.language} placeholder="de, en" /></label>
+      <label class="feld" class:eingesetzt={neu("page_count")}>Seiten<input bind:value={eingabe.page_count} inputmode="numeric" maxlength="5" /></label>
       <div class="feld">Art<Auswahl name="Art" werte={typen} wert={eingabe.typ} onwahl={(w) => (eingabe.typ = w)} /></div>
       <div class="feld">Gattung<Auswahl name="Gattung" werte={gattungen} wert={eingabe.gattung} onwahl={(w) => (eingabe.gattung = w)} /></div>
       <div class="feld">Sammlung<Auswahl name="Sammlung" werte={sammlungen} wert={eingabe.sammlung} onwahl={(w) => (eingabe.sammlung = w)} /></div>
       <label class="feld">Band<input bind:value={eingabe.band} disabled={!eingabe.sammlung} /></label>
-      <div class="ganz"><Isbnsuche {buch} wert={eingabe.isbn} onwert={(w) => (eingabe.isbn = w)} /></div>
-      <label class="feld ganz">Beschreibung<textarea class="eingabe" rows="7" bind:value={eingabe.description}></textarea></label>
+      <div class="ganz"><Isbnsuche {werkzeuge} wert={eingabe.isbn} eingesetzt={neu("isbn")} onwert={(w) => (eingabe.isbn = w)} /></div>
+      <label class="feld ganz" class:eingesetzt={neu("description")}>Beschreibung<textarea class="eingabe" rows="7" bind:value={eingabe.description}></textarea></label>
     </div>
-    {#if hinweis}<p class="marke-text schlecht" role="alert">{hinweis}</p>{/if}
+    {#if fehler}<p class="marke-text schlecht" role="alert">{fehler}</p>{/if}
     <div class="reihe">
       <Knopf text="Speichern" symbol="check" haupt art="submit" laeuft={speichert} />
-      <Knopf text="Abbrechen" onclick={onabbruch} />
+      <Knopf text="Abbrechen" onclick={abbrechen} />
     </div>
   </div>
 </form>
+
+<Angabenfenster {werkzeuge} />
 
 <style>
   .felder {

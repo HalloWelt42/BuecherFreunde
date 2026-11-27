@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 from backend.app.services.processors.base import BaseProcessor, BookProcessingResult
-from backend.app.services.isbn_extractor import extract_isbn_from_fulltext
+from backend.app.isbnsuche.kandidaten import als_seiten, beste
 
 logger = logging.getLogger("buecherfreunde.processor.mobi")
 
@@ -44,9 +44,9 @@ class MobiProcessor(BaseProcessor):
                     except Exception as e:
                         logger.warning("HTML-Verarbeitung fehlgeschlagen: %s", e)
 
-                # ISBN aus Volltext extrahieren
+                # die ISBN, die im Text am besten zum Buch passt (BF-111)
                 if result.fulltext:
-                    isbn = extract_isbn_from_fulltext(result.fulltext)
+                    isbn = beste(als_seiten(result.fulltext), result.title, result.author)
                     if isbn:
                         result.isbn = isbn
                         logger.info("ISBN aus MOBI-Text extrahiert: %s", isbn)

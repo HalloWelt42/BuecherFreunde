@@ -2,7 +2,7 @@
 
 Ermöglicht gezieltes Nachscannen von Büchern nach:
 - Fehlenden Covern (lokal aus Datei)
-- Fehlenden ISBNs (lokal aus Datei)
+- Fehlenden ISBNs (aus der Datei; eingetragen nur, was zum Buch passt, sonst zur Wahl: isbnsuche/lauf.py)
 - Fehlenden Angaben (aus den Quellen, über die ISBN)
 - Fehlendem Volltext
 
@@ -13,23 +13,22 @@ import asyncio
 import logging
 from pathlib import Path
 
-from backend.app.annahme import auswertung
 from backend.app.core.database import db
-from backend.app.core.suchindex import SUCHTEXT_ZEICHEN
+from backend.app.isbnsuche import dienst as isbnsuche
+from backend.app.isbnsuche import lauf as isbnlauf
 from backend.app.quellen import auskunft, bilder
 from backend.app.quellen.fehler import QuelleFehler
 from backend.app.quellen.modelle import Angaben
 from backend.app.quellen.open_library import SAMMEL_HOECHSTENS, OpenLibrary
 from backend.app.quellen.vorrang import hintergrund
 from backend.app.quellen.vorschlag import frage_aus
-from backend.app.services import deckblatt
+from backend.app.services import deckblatt, volltext
 from backend.app.services.anhalten import Anhalter
 from backend.app.services.data_cleaner import bereinige_autor, bereinige_text, bereinige_titel
 from backend.app.services.storage import (
     get_original_file,
     get_sidecar_path,
     save_cover,
-    save_fulltext,
 )
 
 logger = logging.getLogger("buecherfreunde.rescan")
@@ -56,6 +55,9 @@ status = {
     "fehler": 0,
     "aktuelles_buch": "",
     "grund": "",                    # warum Angaben nicht weiter ergänzt wurden (Pause oder Tagesgrenze einer Quelle)
+    "isbn_zur_wahl": 0,             # Bücher, deren ISBN nicht sicher passte und zur Wahl steht (BF-111)
+    "isbn_ungeprueft": 0,           # davon ohne Antwort einer Quelle, weil die Quellen ruhten
+    "isbn_grund": "",               # warum der Lauf ISBN die Quellen nicht mehr fragt
 }
 
 
@@ -73,6 +75,9 @@ def _reset_status():
         "fehler": 0,
         "aktuelles_buch": "",
         "grund": "",
+        "isbn_zur_wahl": 0,
+        "isbn_ungeprueft": 0,
+        "isbn_grund": "",
     })
 
 
@@ -276,20 +281,11 @@ async def _rescan_worker(buecher: list, typen: list[str], lauf: Anhalter):
                     await db.commit()
                     status["cover_gefunden"] += 1
 
-            if original is not None and scan_isbn and not hat_isbn:
-                if await _extrahiere_isbn(book, original, fmt):
-                    status["isbn_gefunden"] += 1
+            if scan_isbn and not hat_isbn:
+                await _isbn_suchen(book, original, fmt)
 
-            if original is not None and fehlt_text:
-                e = await auswertung.auswerten(original)               # derselbe Leser wie beim Aufnehmen, im eigenen Prozess
-                if e.lesbar and e.fulltext.strip():
-                    save_fulltext(book["hash"], e.fulltext)
-                    # über fts_content in den Suchindex (Trigger), dann wieder leer; fehlende Seitenzahl gleich mit
-                    async with db.einheit():
-                        await db.execute("UPDATE books SET fts_content = ?, page_count = CASE WHEN COALESCE(page_count, 0) = 0 THEN ? "
-                                         "ELSE page_count END, updated_at = datetime('now') WHERE id = ?", (e.fulltext[:SUCHTEXT_ZEICHEN], e.page_count, book["id"]))
-                        await db.execute("UPDATE books SET fts_content = '' WHERE id = ?", (book["id"],))
-                    status["volltext_extrahiert"] += 1
+            if original is not None and fehlt_text and await volltext.nachlesen(book["id"], book["hash"], original):
+                status["volltext_extrahiert"] += 1
 
             # Fehlende Angaben aus den Quellen; den Takt hält der gemeinsame Abruf
             if scan_metadaten and not status["grund"]:
@@ -313,102 +309,22 @@ async def _rescan_worker(buecher: list, typen: list[str], lauf: Anhalter):
     )
 
 
-async def _extrahiere_isbn(book: dict, original: Path, fmt: str) -> str | None:
-    """ISBN aus Datei extrahieren.
-
-    Strategie (priorisiert):
-    1. Direkt aus EPUB-Metadaten (OPF dc:identifier)
-    2. Direkt aus Datei-Inhalt (erste Seiten / Impressum)
-    3. Fallback: Volltext-Sidecar durchsuchen
-    """
-    from backend.app.services.isbn_extractor import extract_isbns_from_text
-    import isbnlib
-
-    def _speichere(isbn_str: str, quelle: str) -> str | None:
-        """Validiert und gibt ISBN zurück (DB-Update asynchron)."""
-        canonical = isbnlib.canonical(isbn_str)
-        if canonical and len(canonical) in (10, 13):
-            return canonical
-        return None
-
-    # 1. Direkt aus EPUB-OPF (dc:identifier)
-    if fmt == "epub":
-        import zipfile
-        try:
-            with zipfile.ZipFile(original) as zf:
-                for name in zf.namelist():
-                    if name.lower().endswith(".opf"):
-                        content = zf.read(name).decode("utf-8", errors="ignore")
-                        # ISBN aus dc:identifier
-                        import re as _re
-                        for match in _re.finditer(
-                            r'<dc:identifier[^>]*>([^<]+)</dc:identifier>', content
-                        ):
-                            val = match.group(1).strip()
-                            cleaned = _re.sub(r'[^\dXx]', '', val)
-                            if len(cleaned) in (10, 13):
-                                result = _speichere(cleaned, "OPF")
-                                if result:
-                                    await _isbn_db_update(book, result, "OPF")
-                                    return result
-                        break
-        except Exception:
-            pass
-
-    # 2. Direkt aus Datei-Inhalt (erste Seiten)
-    text_direkt = ""
-    if fmt == "epub":
-        text_direkt = (await auswertung.auswerten(original)).fulltext
-    elif fmt == "pdf":
-        try:
-            import fitz
-            doc = fitz.open(str(original))
-            # Nur erste und letzte 10 Seiten (Impressum, Titelseite)
-            seiten = []
-            total = len(doc)
-            for i in list(range(min(10, total))) + list(range(max(0, total - 10), total)):
-                try:
-                    seiten.append(doc[i].get_text())
-                except Exception:
-                    pass
-            doc.close()
-            text_direkt = "\n".join(seiten)
-        except Exception:
-            pass
-
-    if text_direkt.strip():
-        raw_isbns = extract_isbns_from_text(text_direkt)
-        if raw_isbns:
-            for isbn in raw_isbns:
-                result = _speichere(isbn, "Datei")
-                if result:
-                    await _isbn_db_update(book, result, "Datei-Inhalt")
-                    return result
-
-    # 3. Fallback: Volltext-Sidecar
-    fulltext_path = get_sidecar_path(book["hash"], "fulltext.txt")
-    if fulltext_path.exists():
-        text = fulltext_path.read_text(encoding="utf-8", errors="ignore")
-        if text.strip():
-            raw_isbns = extract_isbns_from_text(text)
-            if raw_isbns:
-                for isbn in raw_isbns:
-                    result = _speichere(isbn, "Sidecar")
-                    if result:
-                        await _isbn_db_update(book, result, "Sidecar")
-                        return result
-
-    return None
-
-
-async def _isbn_db_update(book: dict, isbn: str, quelle: str):
-    """Speichert eine gefundene ISBN in der Datenbank."""
-    await db.execute(
-        "UPDATE books SET isbn = ?, updated_at = datetime('now') WHERE id = ?",
-        (isbn, book["id"]),
-    )
-    await db.commit()
-    logger.info("Rescan ISBN fuer '%s' (%s): %s", book["title"] or book["id"], quelle, isbn)
+async def _isbn_suchen(book: dict, original: Path | None, fmt: str) -> None:
+    """Lauf "ISBN" für ein Buch: die ISBN aus den Angaben einer EPUB, sonst nach den Kandidaten im Text (isbnsuche/lauf.py).
+    Ruhen die Quellen, fragt der Lauf sie für die übrigen Bücher nicht mehr; was nicht passt, kommt dann ungeprüft zur Wahl."""
+    isbn = await asyncio.to_thread(isbnlauf.isbn_der_datei, original) if original is not None and fmt == "epub" else ""
+    if not isbn:
+        seiten = await isbnsuche.seiten(book, original)
+        ergebnis = await isbnlauf.fuer_buch(book, seiten, fragen=not status["isbn_grund"])
+        isbn = ergebnis.isbn
+        status["isbn_zur_wahl"] += int(ergebnis.zur_wahl)
+        status["isbn_ungeprueft"] += int(ergebnis.zur_wahl and ergebnis.ungeprueft)
+        status["isbn_grund"] = status["isbn_grund"] or ergebnis.ruht
+    if isbn:
+        await db.execute("UPDATE books SET isbn = ?, updated_at = datetime('now') WHERE id = ?", (isbn, book["id"]))
+        await db.commit()
+        status["isbn_gefunden"] += 1
+        logger.info("Rescan ISBN für %s: %s", book["id"], isbn)
 
 
 async def _vorwaermen(buecher: list[dict]) -> None:
