@@ -10,7 +10,11 @@ export interface Posten {
 
 const STUECK_ZEICHEN = 700;
 const VORRAT_S = 45;
-const VERSUCHE = 2;
+/** So lange wartet der Zulauf nach einem Fehler, ehe er es erneut versucht. Ein Buch gestaffelt bis gut fünf Minuten, damit es
+ *  auch über eine kurze Störung der Vertonung hinweg bis zum Schluss liest (BF-107); ein einzelner Text (Probe, Auswahl) kurz,
+ *  damit ein Fehler gleich zu sehen ist. Danach steht es mit Grund still. */
+export const GEDULD_BUCH_S: readonly number[] = [1, 3, 9, 20, 40, 60, 60, 60, 60];
+export const GEDULD_KURZ_S: readonly number[] = [1, 3];
 const STILL_MS = 90_000;
 
 export class Zulauf {
@@ -22,7 +26,7 @@ export class Zulauf {
   /** Bis hierhin ist alles geholt */
   bis: Stelle;
 
-  constructor(private quelle: Lesequelle, strecke: Strecke, private sprecher: Sprecher, private stimme: string, private gemeldet: () => void, private pause = (ms: number) => new Promise((r) => setTimeout(r, ms))) {
+  constructor(private quelle: Lesequelle, strecke: Strecke, private sprecher: Sprecher, private stimme: string, private gemeldet: () => void, private pause = (ms: number) => new Promise((r) => setTimeout(r, ms)), private geduld: readonly number[] = GEDULD_BUCH_S) {
     this.bis = strecke.von;
     void this.#hole(strecke)
       .then(() => (this.fertig = true))
@@ -90,11 +94,11 @@ export class Zulauf {
         return;
       } catch (e) {
         if (this.#abbruch.signal.aborted || !text.slice(geholt).trim()) return;
-        if (versuch >= VERSUCHE) throw wache.eingeschlafen() ? new Error("Die Vertonung antwortet nicht") : e;
+        if (versuch >= this.geduld.length) throw wache.eingeschlafen() ? new Error("Die Vertonung antwortet nicht") : e;
       } finally {
         wache.ende();
       }
-      await this.pause(1000 * 3 ** versuch);
+      await this.pause(1000 * this.geduld[versuch]);
       if (this.#abbruch.signal.aborted) return;
     }
   }

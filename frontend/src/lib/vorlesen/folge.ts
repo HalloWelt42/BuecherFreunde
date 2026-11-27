@@ -23,6 +23,12 @@ const VERLAUF = 30;
 /** Ist so viel vom Satz gesprochen, beginnt "Satz zurück" ihn neu, statt zum vorigen zu gehen */
 const NEU_AB_S = 1.5;
 
+/** Wie eine Folge holt: `warte` für Tests, `geduld` die Wartezeiten nach Fehlern (Vorgabe: die für ein Buch) */
+export interface Folgewahl {
+  warte?: (ms: number) => Promise<unknown>;
+  geduld?: readonly number[];
+}
+
 export class Vorlesefolge {
   #zulauf: Zulauf;
   #verlauf: Posten[] = [];
@@ -42,7 +48,7 @@ export class Vorlesefolge {
   #schlafGrenze: Stelle | null = null;
   #schlafUm = 0;
 
-  constructor(readonly quelle: Lesequelle, private strecke: Strecke, private sprecher: Sprecher, private stimme: string, private vorlauf: Vorlauf, private griffe: Folgegriffe, private warte?: (ms: number) => Promise<unknown>) {
+  constructor(readonly quelle: Lesequelle, private strecke: Strecke, private sprecher: Sprecher, private stimme: string, private vorlauf: Vorlauf, private griffe: Folgegriffe, private wahl: Folgewahl = {}) {
     this.#zulauf = this.#baue(strecke);
     this.vorlauf.beginnen();
     this.#melde();
@@ -66,7 +72,7 @@ export class Vorlesefolge {
   }
 
   #baue(strecke: Strecke): Zulauf {
-    return new Zulauf(this.quelle, strecke, this.sprecher, this.stimme, () => this.#weck?.(), this.warte);
+    return new Zulauf(this.quelle, strecke, this.sprecher, this.stimme, () => this.#weck?.(), this.wahl.warte, this.wahl.geduld);
   }
 
   #melde(): void {

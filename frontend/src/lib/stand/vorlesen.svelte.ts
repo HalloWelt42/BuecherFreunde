@@ -10,6 +10,7 @@ import { BEREICHSNAMEN, freigabeHinweis, holeVorlesestelle, ladeDienststimmen, m
 import { lies as gemerkt, merke, vergiss } from "../speicher";
 import { Dienstsprecher } from "../vorlesen/dienst";
 import { Vorlesefolge, type Schlaf } from "../vorlesen/folge";
+import { GEDULD_BUCH_S, GEDULD_KURZ_S } from "../vorlesen/zulauf";
 import { geraetDa, geraetestimmen, Geraetesprecher } from "../vorlesen/geraet";
 import { medienAus, medienStand, zeigeMedien, type Werk } from "../vorlesen/mediensitzung";
 import type { Lesequelle, Sprecher, Stimme, Strecke } from "../vorlesen/typen";
@@ -211,7 +212,7 @@ class Vorlesestand {
         this.schlaf = { art: "aus" };
         this.#sichere();
       },
-    });
+    }, { geduld: buch === null ? GEDULD_KURZ_S : GEDULD_BUCH_S });
     this.#zeige({ wartet: true, pausiert: false, weg: false, einheit: strecke.von.einheit });
   }
 

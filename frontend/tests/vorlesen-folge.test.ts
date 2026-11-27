@@ -3,6 +3,7 @@ import { lageAb, saetzeMitLage, stuecke } from "../src/lib/vorlesen/saetze";
 import { mitPause } from "../src/lib/vorlesen/ton";
 import { Vorlesefolge, type Folgegriffe } from "../src/lib/vorlesen/folge";
 import { Vorlauf } from "../src/lib/vorlesen/vorlauf";
+import { GEDULD_BUCH_S } from "../src/lib/vorlesen/zulauf";
 import type { Lesequelle, Satzort, Sprecher, Tonsatz } from "../src/lib/vorlesen/typen";
 import { Textkarte } from "../src/lib/leser/textkarte";
 import { kapitelUm } from "../src/lib/leser/kapitelgrenzen";
@@ -64,7 +65,7 @@ function folge(o: { von?: [number, number]; bis?: [number, number] | null; sicht
   const zustand: string[] = [];
   const griffe: Folgegriffe = { zustand: (z) => zustand.push(z.pausiert ? "pause" : z.wartet ? "wartet" : "spielt"), ende: vi.fn(), gerissen: vi.fn(), eingeschlafen: vi.fn() };
   const [von, bis] = [o.von ?? [0, 0], o.bis === undefined ? null : o.bis];
-  const f = new Vorlesefolge(b.quelle, { von: { einheit: von[0], zeichen: von[1] }, bis: bis && { einheit: bis[0], zeichen: bis[1] } }, sprecher, "", new Vorlauf(), griffe, async () => {});
+  const f = new Vorlesefolge(b.quelle, { von: { einheit: von[0], zeichen: von[1] }, bis: bis && { einheit: bis[0], zeichen: bis[1] } }, sprecher, "", new Vorlauf(), griffe, { warte: async () => {} });
   const spiele = async (n: number) => {
     for (let i = 0; i < n; i++) {
       await ruhe();
@@ -84,6 +85,37 @@ describe("Vorlesefolge", () => {
     expect(markiert[2]).toEqual({ einheit: 1, von: 0, bis: 7 });
     expect(griffe.ende).toHaveBeenCalledOnce();
   });
+
+  it("liest ein langes Buch ohne Ende bis zum Schluss, mit begrenztem Vorrat (BF-107)", async () => {
+    const SEITENZAHL = 300;
+    const quelle: Lesequelle = {
+      anzahl: SEITENZAHL, name: (e) => `Seite ${e + 1}`, text: async (e) => `Satz ${e} a. Satz ${e} b.`,
+      markiere: () => {}, fuehre: async () => {}, sichtbar: () => true, kapitelende: async () => ({ einheit: SEITENZAHL - 1, zeichen: 0 }),
+    };
+    const sprecher = new Probesprecher();
+    let geliefert = 0;
+    const saetze = sprecher.saetze.bind(sprecher);
+    sprecher.saetze = async function* (text: string) {
+      for await (const s of saetze(text)) {
+        geliefert++;
+        yield s;
+      }
+    };
+    const griffe: Folgegriffe = { zustand: () => {}, ende: vi.fn(), gerissen: vi.fn(), eingeschlafen: vi.fn() };
+    new Vorlesefolge(quelle, { von: { einheit: 0, zeichen: 0 }, bis: null }, sprecher, "", new Vorlauf(), griffe, { warte: async () => {} });
+    let vorrat = 0;
+    for (let i = 0; i < 2 * SEITENZAHL; i++) {
+      await ruhe(4);
+      vorrat = Math.max(vorrat, geliefert - sprecher.gespielt.length);
+      sprecher.ende();
+    }
+    await ruhe();
+    expect(sprecher.gespielt).toHaveLength(2 * SEITENZAHL);
+    expect(sprecher.gespielt.at(-1)).toBe(`Satz ${SEITENZAHL - 1} b.`);
+    expect(griffe.ende).toHaveBeenCalledOnce();
+    expect(griffe.gerissen).not.toHaveBeenCalled();
+    expect(vorrat).toBeLessThanOrEqual(30);                                     // etwa 45 s voraus, nie das ganze Buch
+  }, 30_000);
 
   it("liest nur die Strecke, ab dem Anfang des Satzes", async () => {
     const { sprecher, spiele, griffe } = folge({ von: [1, 10], bis: [2, 0] });
@@ -119,10 +151,10 @@ describe("Vorlesefolge", () => {
 
   it("reißt der Ton ab, steht sie still und setzt an derselben Stelle fort", async () => {
     const { f, sprecher, griffe, spiele } = folge();
-    sprecher.scheitert = 9;
-    await ruhe(20);
+    sprecher.scheitert = 99;
+    await ruhe(60);
     expect(griffe.gerissen).toHaveBeenCalledWith("Die Vertonung antwortet nicht");
-    expect(sprecher.anfragen.length).toBe(3);
+    expect(sprecher.anfragen.length).toBe(GEDULD_BUCH_S.length + 1);                // erst nach gestaffeltem Warten (BF-107)
     sprecher.scheitert = 0;
     f.weiter();
     await spiele(2);
