@@ -111,6 +111,13 @@
 .blatt-sheet .zeilen .z.halt .nr::before { content: ""; position: absolute; left: .25rem; top: 50%; width: .625rem; height: .625rem; margin-top: -.3125rem; border-radius: 50%; background: var(--ed-haltepunkt); }
 .blatt-sheet .zeilen .z.jetzt { background: color-mix(in srgb, var(--messing-flaeche) 16%, transparent); box-shadow: inset 3px 0 0 var(--messing-flaeche); }
 .blatt-sheet .zeilen .z.jetzt .nr { color: var(--ed-text); font-weight: 700; }
+/* Bearbeiten (BF-105): das Blatt reicht nach oben, unten bleibt frei, was die Tastatur verdeckt */
+.blatt-sheet.hoch { top: calc(env(safe-area-inset-top, 0px) + 4.5rem); height: auto; bottom: max(4rem, calc(var(--tastatur, 0px) + .375rem)); }
+.blatt-sheet .inhalt.bearbeiten { grid-template-rows: minmax(8rem, 1fr) auto; height: 100%; }
+.blatt-sheet .editorplatz { min-height: 0; overflow: hidden; border-radius: var(--r2); box-shadow: 0 0 0 1px var(--ed-linie); }
+.blatt-sheet .bearbeitet { display: flex; align-items: center; gap: .5rem; font-size: .8125rem; color: var(--tinte-3); }
+.blatt-sheet .bearbeitet .geaendert { display: inline-flex; gap: .3125rem; align-items: center; color: var(--ed-geaendert); font-weight: 600; }
+.blatt-sheet .bearbeitet .schiebt { margin-left: auto; }
 .blatt-sheet .werte { grid-template-columns: repeat(2, max-content minmax(0, 1fr)); gap: 2px .5rem; font-size: .875rem; }
 /* Farben im Code wie im Editor der Codeschmiede (Färbung über highlight.js, Namen auf die Marken des Editors) */
 .blatt-sheet .zeilen :is(.hljs-keyword, .hljs-literal) { color: var(--ed-kw); font-weight: 700; }

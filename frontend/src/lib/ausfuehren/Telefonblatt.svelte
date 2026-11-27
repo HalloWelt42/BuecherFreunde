@@ -1,14 +1,16 @@
 <script lang="ts">
-  // Ausführen am Telefon (BF-29): ein Blatt unten über der Tafel, ohne Editor. Ausführen zeichnet jeden Lauf auf; fünf
-  // gleich hohe Tasten ohne Beschriftung; der Code nur lesend, fünf Zeilen um die gezeigte, darunter die Werte; zweiter
-  // Reiter die Ausgabe. Ein Tipp auf die Nummer einer Zeile setzt oder löscht den Haltepunkt.
-  import type { Ziel } from "appkern-oberflaeche/code";
+  // Ausführen am Telefon (BF-29): ein Blatt unten über der Tafel. Ausführen zeichnet jeden Lauf auf; fünf gleich hohe
+  // Tasten ohne Beschriftung; Reiter Code: fünf Zeilen um die gezeigte, darunter die Werte; Reiter Bearbeiten (BF-105): der
+  // ganze Code im Editor, Zurücksetzen holt das Listing aus dem Buch, mit offener Tastatur wächst das Blatt nach oben; Reiter
+  // Ausgabe. Ein Tipp auf die Nummer einer Zeile setzt oder löscht den Haltepunkt.
+  import { EditorBereich, type Ziel } from "appkern-oberflaeche/code";
+  import { onDestroy } from "svelte";
   import Knopf from "../teile/Knopf.svelte";
   import Symbol from "../teile/Symbol.svelte";
   import type { Arbeit } from "./arbeit.svelte";
   import { faerbeZeilen } from "./zeilen";
 
-  let { arbeit, name, kann, fassung, ed, onzurstelle, onschliessen }: { arbeit: Arbeit; name: string; kann: boolean; fassung: string; ed: string; onzurstelle: () => void; onschliessen: () => void } = $props();
+  let { arbeit, name, kann, fassung, ed, onzurstelle, onschliessen, onzuruecksetzen }: { arbeit: Arbeit; name: string; kann: boolean; fassung: string; ed: string; onzurstelle: () => void; onschliessen: () => void; onzuruecksetzen: () => void } = $props();
 
   const UMKREIS = 2;
   const GRIFFE: { ziel: Ziel; symbol: string; titel: string }[] = [
@@ -18,7 +20,18 @@
     { ziel: "weiterHalt", symbol: "forward", titel: "Weiter bis zum nächsten Haltepunkt" },
   ];
 
-  let wahl = $state<"code" | "ausgabe">("code");
+  let wahl = $state<"code" | "bearbeiten" | "ausgabe">("code");
+
+  // Beim Bearbeiten wächst das Blatt mit offener Tastatur nach oben: unten bleibt so viel frei, wie die Tastatur verdeckt
+  let tastatur = $state(0);
+  const vv = typeof window !== "undefined" ? window.visualViewport : null;
+  const miss = () => (tastatur = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0);
+  vv?.addEventListener("resize", miss);
+  vv?.addEventListener("scroll", miss);
+  onDestroy(() => {
+    vv?.removeEventListener("resize", miss);
+    vv?.removeEventListener("scroll", miss);
+  });
   let zeilen = $state<string[]>([]);
   $effect(() => {
     const [code, sprache] = [arbeit.code, arbeit.sprache];
@@ -45,10 +58,10 @@
   }
 </script>
 
-<section class="schwebefenster glas dicht blatt-sheet" aria-label="Ausführen" data-ed={ed} data-eigene-tasten>
+<section class="schwebefenster glas dicht blatt-sheet" class:hoch={wahl === "bearbeiten"} style:--tastatur="{tastatur}px" aria-label="Ausführen" data-ed={ed} data-eigene-tasten>
   <div class="zug"></div>
   <header>
-    <div class="titel"><b>{name}</b><span class="zahl">{n ? `Schritt ${arbeit.i + 1} von ${n}${jetzt ? ` · Zeile ${jetzt}` : ""}` : arbeit.sitzung.laeuft ? "Zeichne den Lauf auf ..." : "Noch kein Lauf"}</span></div>
+    <div class="titel"><b>{name}</b><span class="zahl">{arbeit.geaendert ? "geändert, " : ""}{n ? `Schritt ${arbeit.i + 1} von ${n}${jetzt ? ` · Zeile ${jetzt}` : ""}` : arbeit.sitzung.laeuft ? "Zeichne den Lauf auf ..." : "Noch kein Lauf"}</span></div>
     <Knopf text="Zur Stelle" symbol="location-crosshairs" nur frei onclick={onzurstelle} />
     <Knopf text="Schließen" symbol="xmark" nur frei onclick={onschliessen} />
   </header>
@@ -59,6 +72,7 @@
   <div class="wahl">
     <div class="segment" role="group" aria-label="Code oder Ausgabe">
       <button type="button" aria-pressed={wahl === "code"} onclick={() => (wahl = "code")}><Symbol name="code" />Code</button>
+      <button type="button" aria-pressed={wahl === "bearbeiten"} onclick={() => (wahl = "bearbeiten")}><Symbol name="pen" />Bearbeiten</button>
       <button type="button" aria-pressed={wahl === "ausgabe"} onclick={() => (wahl = "ausgabe")}><Symbol name="terminal" />Ausgabe</button>
     </div>
   </div>
@@ -69,6 +83,16 @@
         <div class="feldchen"><dl class="werte">{#each arbeit.variablen as v (v.name)}<dt>{v.name}</dt><dd class:neu={v.neu} title={v.wert}>{v.wert}</dd>{/each}</dl></div>
       {/if}
       {#if arbeit.sitzung.fehler}<div class="meldung-lauf"><Symbol name="triangle-exclamation" /><span>{arbeit.sitzung.fehler}</span></div>{/if}
+    </div>
+  {:else if wahl === "bearbeiten"}
+    <div class="inhalt bearbeiten">
+      <div class="editorplatz">
+        {#key arbeit.sprache}<EditorBereich sprache={arbeit.sprache} bind:code={arbeit.code} />{/key}
+      </div>
+      <div class="bearbeitet">
+        {#if arbeit.geaendert}<span class="geaendert"><Symbol name="pen" />geändert</span><span>das Listing im Buch bleibt</span>{:else}<span>Wie im Buch</span>{/if}
+        <span class="schiebt"><Knopf text="Zurücksetzen" symbol="rotate-left" klein frei gesperrt={!arbeit.geaendert} titel="Wieder das Listing aus dem Buch" onclick={onzuruecksetzen} /></span>
+      </div>
     </div>
   {:else}
     <div class="inhalt">

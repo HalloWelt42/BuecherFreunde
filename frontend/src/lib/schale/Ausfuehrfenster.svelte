@@ -113,7 +113,7 @@
 
 {#if schale.telefon}
   {#if aktiv}
-    <Telefonblatt arbeit={aktiv} name={dateiname(aktiv)} {kann} {fassung} {ed} onzurstelle={() => ausfuehren.zurStelle(aktiv.k)} onschliessen={() => ausfuehren.schliesse()} />
+    <Telefonblatt arbeit={aktiv} name={dateiname(aktiv)} {kann} {fassung} {ed} onzurstelle={() => ausfuehren.zurStelle(aktiv.k)} onschliessen={() => ausfuehren.schliesse()} onzuruecksetzen={() => void zuruecksetzen()} />
   {/if}
 {:else}
   {#if ausfuehren.abgelegt && aktiv}
