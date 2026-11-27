@@ -3,6 +3,7 @@
   // zu (BF-5); statt eines kaputten Bildes steht dort ein ruhiger Platzhalter mit dem Alternativtext und dem Weg ins Netz.
   // Geholt wird nichts, auch nicht über den Server.
   import Symbol from "../../lib/teile/Symbol.svelte";
+  import { inhaltsbild } from "../../lib/inhaltsbild";
   let { href = "", title = undefined, text = "" }: { href?: string; title?: string; text?: string } = $props();
 
   let adresse = $derived(href.trim());
@@ -19,7 +20,7 @@
   let kaputt = $state(false);
 </script>
 
-{#if (eingebettet || vonHier) && !kaputt}<img src={adresse} alt={text} {title} loading="lazy" onerror={() => (kaputt = true)} />
+{#if (eingebettet || vonHier) && !kaputt}<img src={adresse} alt={text} {title} loading="lazy" use:inhaltsbild={() => (kaputt = true)} />
 {:else if netz}<span class="netzbild" {title}><Symbol name="image" /><span class="alt">{text || "Bild"}</span><a href={netz.href} target="_blank" rel="noopener noreferrer">Im Netz öffnen</a></span>
 {:else}<span {title}>[Bild: {text || href}]</span>{/if}
 

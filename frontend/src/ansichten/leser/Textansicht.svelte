@@ -3,6 +3,7 @@
   import "../../stil/lesetext.css";
   import { onDestroy, tick, untrack } from "svelte";
   import { textBildUrl } from "../../lib/api/books";
+  import { inhaltsbild } from "../../lib/inhaltsbild";
   import { beobachteAuswahl, nimmAuswahl } from "../../lib/leser/auswahl";
   import { blaettergesten } from "../../lib/leser/blaettergesten";
   import { blattrand } from "../../lib/leser/blattrand.svelte";
@@ -264,7 +265,7 @@
 {#snippet abbildung(nr: number, b: Baustein, worte: string)}
   {@const quelle = textBildUrl(sitzung.buch.id, nr, b.bild!)}
   <button type="button" class="abbildung" aria-label="Abbildung vergrößern" onclick={() => (lupe = { quelle, beschreibung: worte })}>
-    <img src={quelle} alt={worte} loading="lazy" style:aspect-ratio={b.verhaeltnis ?? "auto"} style:--verhaeltnis={b.verhaeltnis ?? undefined} style:width={b.breite_em ? `${b.breite_em}em` : undefined} />
+    <img src={quelle} alt={worte} loading="lazy" use:inhaltsbild style:aspect-ratio={b.verhaeltnis ?? "auto"} style:--verhaeltnis={b.verhaeltnis ?? undefined} style:width={b.breite_em ? `${b.breite_em}em` : undefined} />
   </button>
 {/snippet}
 

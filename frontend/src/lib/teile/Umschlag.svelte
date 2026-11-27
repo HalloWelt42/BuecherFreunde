@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { inhaltsbild } from "../inhaltsbild";
   // Umschlag eines Buchs: das gestaltete Blatt, wenn der Server es so bestimmt (BF-59), sonst das Deckblatt vom Server.
   // Das Blatt steht auch für reine Textdateien ohne Bild und wenn das Bild ausbleibt.
   import { untrack } from "svelte";
@@ -43,7 +44,7 @@
   {#if gestaltet}
     <Deckblatt {buch} />
   {:else}
-    <img src={adresse} alt="" loading={sofort ? "eager" : "lazy"} decoding="async" draggable="false" onload={geladen} onerror={() => (kaputt = adresse)} />
+    <img src={adresse} alt="" loading={sofort ? "eager" : "lazy"} decoding="async" draggable="false" onload={geladen} use:inhaltsbild={() => (kaputt = adresse)} />
   {/if}
   {#if format && buch.file_format}<span class="format">{formatName(buch.file_format)}</span>{/if}
 </span>

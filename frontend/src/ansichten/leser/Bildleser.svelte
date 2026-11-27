@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { inhaltsbild } from "../../lib/inhaltsbild";
   // Ein Bild aus dem Begleitmaterial in der App (BF-81): ins Fenster eingepasst, ein Tippen zeigt es in voller Größe zum
   // Verschieben, noch eins passt es wieder ein. Oben wie in jedem Leser zurück, der Name und Herunterladen.
   import type { Leseziel } from "../../lib/leser/ziel";
@@ -26,7 +27,7 @@
     <div class="seiten"><Zustand art="fehler" text="Das Bild ließ sich nicht laden."><Knopf text="Herunterladen" symbol="download" klein href={fassung.anhang} download={name} /></Zustand></div>
   {:else}
     <button type="button" class="bildflaeche" class:ganz aria-label={ganz ? "Einpassen" : "In voller Größe zeigen"} title={ganz ? "Einpassen" : "In voller Größe zeigen"} onclick={() => (ganz = !ganz)}>
-      <img src={fassung.datei} alt={name} draggable="false" onerror={() => (kaputt = true)} />
+      <img src={fassung.datei} alt={name} draggable="false" use:inhaltsbild={() => (kaputt = true)} />
     </button>
   {/if}
 </div>

@@ -179,6 +179,13 @@ export async function oeffneInhalte(): Promise<void> {
   }
 }
 
+/** Einmal zugleich: lädt ein Inhalt nicht, öffnet dies den Zugang neu; viele Bilder auf einer Seite teilen sich den Aufruf */
+let erneuert: Promise<void> | null = null;
+export function zugangErneuern(): Promise<void> {
+  erneuert ??= oeffneInhalte().finally(() => setTimeout(() => (erneuert = null), 10_000));
+  return erneuert;
+}
+
 /**
  * Gibt den aktuellen Token zurück.
  */

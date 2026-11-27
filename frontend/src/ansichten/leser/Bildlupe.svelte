@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { inhaltsbild } from "../../lib/inhaltsbild";
   // Abbildung bildschirmfüllend: zwei Finger oder Mausrad zoomen, einer schiebt, doppelt tippen wechselt
   import { beiEsc } from "../../lib/flucht";
   import Knopf from "../../lib/teile/Knopf.svelte";
@@ -93,7 +94,7 @@
 
 <div class="lupe" role="dialog" aria-modal="true" aria-label={beschreibung || "Abbildung vergrößert"} use:anDieApp>
   <div class="flaeche" role="presentation" onpointerdown={runter} onpointermove={bewege} onpointerup={hoch} onpointercancel={hoch} onclick={tippe} onwheel={(e) => stufe(e.deltaY < 0 ? 1.15 : 1 / 1.15)}>
-    <img src={quelle} alt={beschreibung} draggable="false" style:transform="translate({x}px, {y}px) scale({zoom})" />
+    <img src={quelle} alt={beschreibung} draggable="false" use:inhaltsbild style:transform="translate({x}px, {y}px) scale({zoom})" />
   </div>
   <div class="knoepfe reihe">
     <Knopf text="Verkleinern" symbol="magnifying-glass-minus" nur gesperrt={zoom <= 1} onclick={() => stufe(1 / 1.5)} />
