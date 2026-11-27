@@ -3,7 +3,7 @@
   // Stimme, Tempo, Schlafuhr
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { liesAus, strecke, type Umfang } from "../../lib/leser/vorlesestart";
-  import { TEMPI, vorlesen } from "../../lib/stand/vorlesen.svelte";
+  import { PROBE_WAS, TEMPI, vorlesen } from "../../lib/stand/vorlesen.svelte";
   import Auswahl from "../../lib/teile/Auswahl.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Symbol from "../../lib/teile/Symbol.svelte";
@@ -75,7 +75,7 @@
     <div class="regelzeile">
       <span class="klein">Stimme</span>
       <Auswahl name="Stimme" gruppen={vorlesen.gruppen} wert={vorlesen.stimme} onwahl={(id) => vorlesen.waehle(id)} />
-      <Knopf text="Probe hören" symbol="play" nur klein gesperrt={vorlesen.aktiv || !vorlesen.bereit} onclick={() => { vorlesen.entsperre(); vorlesen.probe(); }} />
+      <Knopf text="Probe hören" symbol="play" nur klein gesperrt={!vorlesen.bereit || (vorlesen.aktiv && vorlesen.was !== PROBE_WAS)} onclick={() => { vorlesen.entsperre(); vorlesen.probe(); }} />
     </div>
     <div class="regelzeile">
       <span class="klein">Tempo</span>

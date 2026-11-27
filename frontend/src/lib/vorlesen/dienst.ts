@@ -14,6 +14,9 @@ interface Zeile {
 }
 
 const PAUSE_S = 0.3;
+/** So lange darf ein Ton ohne Fortschritt stehen, ehe er als hängend gilt (am Telefon bleibt er manchmal still stehen) */
+export const STILL_MS = 12_000;
+const BLICK_MS = 2_000;
 
 const tonAus = (basis64: string): ArrayBuffer => Uint8Array.from(atob(basis64), (z) => z.charCodeAt(0)).buffer;
 
@@ -21,6 +24,8 @@ export class Dienstsprecher implements Sprecher {
   #element: HTMLAudioElement | null = null;
   #frei = false;
   #tempo = 1;
+  /** Angehalten von Hand: ein stehender Ton ist dann kein Fehler */
+  #angehalten = false;
   /** Beendet den laufenden Satz */
   #fertig: (() => void) | null = null;
 
@@ -74,25 +79,39 @@ export class Dienstsprecher implements Sprecher {
   spiele(satz: Tonsatz, _stimme: string, fortschritt: (anteil: number) => void): Promise<void> {
     const t = this.#ton();
     const adresse = URL.createObjectURL(satz.ton ?? new Blob());
+    this.#angehalten = false;
     return new Promise<void>((gut, schlecht) => {
+      // Endet der Ton nie (kein ended, kein Fehler), bliebe das Vorlesen für immer an: die Wache merkt, wenn er steht
+      let [stand, seit] = [-1, Date.now()];
+      const wache = setInterval(() => {
+        if (this.#angehalten || t.currentTime !== stand) return void ([stand, seit] = [t.currentTime, Date.now()]);
+        if (Date.now() - seit >= STILL_MS) scheitere("Der Ton blieb stehen");
+      }, BLICK_MS);
       const raeume = () => {
+        clearInterval(wache);
         this.#fertig = null;
         t.onended = t.onerror = t.ontimeupdate = null;
         URL.revokeObjectURL(adresse);
       };
-      this.#fertig = () => {
+      const beende = () => {
         t.pause();
         raeume();
         gut();
       };
+      // Nur der Satz, der gerade gilt, kann scheitern; ein abgelöster schweigt
+      const scheitere = (grund: string) => {
+        if (this.#fertig !== beende) return;
+        t.pause();
+        raeume();
+        schlecht(new Error(grund));
+      };
+      this.#fertig = beende;
       t.onended = () => {
+        if (this.#fertig !== beende) return;
         raeume();
         gut();
       };
-      t.onerror = () => {
-        raeume();
-        schlecht(new Error("Der Ton ließ sich nicht abspielen"));
-      };
+      t.onerror = () => scheitere("Der Ton ließ sich nicht abspielen");
       t.ontimeupdate = () => {
         const dauer = (Number.isFinite(t.duration) ? t.duration : satz.dauer) - PAUSE_S;
         if (dauer > 0) fortschritt(Math.min(1, t.currentTime / dauer));
@@ -100,22 +119,27 @@ export class Dienstsprecher implements Sprecher {
       t.src = adresse;
       this.#stelleTempo(t);
       t.play().catch((grund: unknown) => {
-        // Abgelöst durch den nächsten Satz oder eine Pause ist kein Fehler
-        if (!(grund instanceof DOMException) || grund.name !== "NotAllowedError" || !this.#fertig) return;
-        raeume();
-        this.#frei = false;
-        schlecht(new Error("Der Browser gibt den Ton erst nach einem Tippen frei"));
+        // Abgelöst durch den nächsten Satz oder angehalten, bevor er klang: kein Fehler
+        if (this.#fertig !== beende || this.#angehalten) return;
+        if (grund instanceof DOMException && grund.name === "NotAllowedError") {
+          this.#frei = false;
+          return scheitere("Der Browser gibt den Ton erst nach einem Tippen frei");
+        }
+        scheitere("Der Ton ließ sich nicht abspielen");
       });
     });
   }
 
   pause(): void {
+    this.#angehalten = true;
     this.#element?.pause();
   }
   weiter(): void {
+    this.#angehalten = false;
     if (this.#fertig) void this.#element?.play().catch(() => undefined);
   }
   halt(): void {
+    this.#angehalten = false;
     this.#fertig?.();
   }
 }

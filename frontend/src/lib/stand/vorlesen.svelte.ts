@@ -22,6 +22,8 @@ import { melde } from "./meldungen.svelte";
 const SCHLUESSEL = "vorlesen.stimme";
 const SCHLUESSEL_TEMPO = "vorlesen.tempo";
 const PROBE = "So klingt diese Stimme beim Vorlesen.";
+/** Was eine Probe ist: sie darf eine laufende Probe ablösen, nie das Vorlesen eines Buchs */
+export const PROBE_WAS = "Probe";
 const DIENST = "dienst:";
 const OHNE_WERK: Werk = { titel: "", autor: "", bild: "" };
 
@@ -196,6 +198,11 @@ class Vorlesestand {
       ende: () => gilt() && this.#zuEnde(),
       gerissen: (grund) => {
         if (!gilt()) return;
+        // Ein einzelner Text (Probe, Auswahl) hat keine Stelle zum Weiterlesen: er endet, und die Tasten sind wieder frei
+        if (this.#buch === null) {
+          this.halt();
+          return void melde.warn(`${grund}. Bitte erneut versuchen.`);
+        }
         this.#sichere();
         melde.warn(`${grund}. Weiter setzt an derselben Stelle fort.`);
       },
@@ -225,7 +232,7 @@ class Vorlesestand {
   }
 
   probe(): void {
-    this.lies(PROBE, "Probe");
+    this.lies(PROBE, PROBE_WAS);
   }
 
   pausiere(): void {

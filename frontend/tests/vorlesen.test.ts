@@ -123,3 +123,29 @@ describe("Strom", () => {
     expect(v.noetig).toBeLessThan(lang);
   });
 });
+
+describe("Probe (BF-101)", () => {
+  it("scheitert die Probe, endet sie mit Meldung, und die Probe-Taste ist wieder frei", async () => {
+    vi.resetModules();
+    vi.stubGlobal("Audio", class { src = ""; play = () => Promise.resolve(); pause() {} });
+    vi.stubGlobal("speechSynthesis", { getVoices: () => [], addEventListener: () => {}, cancel: () => {} });
+    vi.stubGlobal("fetch", vi.fn(async (weg: string) => {
+      if (weg === "/api/vorlesen") return new Response('{"art": "fehler", "meldung": "Die Vertonung ist gerade belegt"}\n');
+      return new Response(JSON.stringify(antwort));
+    }));
+    const { anschluesse } = await import("../src/lib/stand/anschluesse.svelte");
+    anschluesse.jetzt = { ...anschluesse.jetzt, vorlesen: true };
+    const { melde } = await import("../src/lib/stand/meldungen.svelte");
+    const warn = vi.spyOn(melde, "warn");
+    const { vorlesen, PROBE_WAS } = await import("../src/lib/stand/vorlesen.svelte");
+    vorlesen.pruefe();
+    await new Promise((r) => setTimeout(r, 5));
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vorlesen.probe();
+    expect([vorlesen.aktiv, vorlesen.was]).toEqual([true, PROBE_WAS]);
+    await vi.advanceTimersByTimeAsync(120_000);                  // der Zulauf fragt erst einige Male erneut
+    vi.useRealTimers();
+    expect(vorlesen.aktiv).toBe(false);
+    expect(warn).toHaveBeenCalledWith("Die Vertonung ist gerade belegt. Bitte erneut versuchen.");
+  });
+});
