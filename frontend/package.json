@@ -33,7 +33,7 @@
     "@fontsource/vollkorn": "^5.3.0",
     "@fortawesome/fontawesome-free": "^7.2.0",
     "@humanspeak/svelte-markdown": "^1.0.5",
-    "appkern-oberflaeche": "github:HalloWelt42/appkern#4a4fba9",
+    "appkern-oberflaeche": "github:HalloWelt42/appkern#91b75f3",
     "foliate-js": "^1.0.1",
     "hash-wasm": "^4.13.0",
     "highlight.js": "^11.11.1",

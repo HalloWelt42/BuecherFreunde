@@ -12,4 +12,4 @@ beautifulsoup4==4.12.3
 isbnlib==3.10.14
 requests>=2.31.0                # Abruf der Quellen (backend/app/quellen/versand.py)
 setuptools>=70.0.0
-appkern[web] @ https://github.com/HalloWelt42/appkern/archive/4a4fba9d7d468553d1ba640f6123651578b9b05b.tar.gz
+appkern[web] @ https://github.com/HalloWelt42/appkern/archive/91b75f30a8ada2783fbb48a704524d483a361e99.tar.gz
