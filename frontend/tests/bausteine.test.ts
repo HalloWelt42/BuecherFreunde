@@ -73,6 +73,25 @@ describe("Suchfeld", () => {
     expect(route.path).toBe("/book/9");
   });
 
+  it("am iPhone kommt der Tipp an, obwohl das Feld den Fokus ohne Ziel verliert; Tippen außerhalb schließt (BF-115)", async () => {
+    antworte({ vorschlaege: [{ id: 9, titel: "Netzwerke", autor: "Anne" }] });
+    render(Suchfeld, { props: { id: "s" } });
+    await fireEvent.focus(feld());
+    await fireEvent.input(feld(), { target: { value: "netz" } });
+    const vorschlag = await screen.findByRole("button", { name: /Netzwerke/ }, { timeout: 1500 });
+    await fireEvent.focusOut(feld(), { relatedTarget: null });                 // so verliert Safari den Fokus beim Antippen
+    expect(screen.getByRole("button", { name: /Netzwerke/ })).toBe(vorschlag);
+    await fireEvent.pointerDown(vorschlag);
+    await fireEvent.click(vorschlag);
+    expect(route.path).toBe("/book/9");
+
+    await fireEvent.focus(feld());
+    await fireEvent.input(feld(), { target: { value: "netzw" } });
+    await screen.findByRole("button", { name: /Netzwerke/ }, { timeout: 1500 });
+    await fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("button", { name: /Netzwerke/ })).toBeNull();
+  });
+
   it("fragt nicht bei einem Zeichen", async () => {
     antworte({ vorschlaege: [] });
     render(Suchfeld, { props: { id: "s" } });

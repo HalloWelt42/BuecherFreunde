@@ -19,6 +19,7 @@
   const WARTE_MS = 300;
   let wort = $state("");
   let offen = $state(false);
+  let formular = $state<HTMLFormElement>();
   let vorschlagsliste = $state<Vorschlag[]>([]);
   let gewaehlt = $state(-1);
   let uhr: ReturnType<typeof setTimeout> | undefined;
@@ -138,12 +139,28 @@
     document.getElementById(id)?.focus();
   }
 
+  // Die Liste schließt, wenn der Fokus wirklich woandershin geht (Tab) oder jemand außerhalb tippt. Am iPhone bekommt ein
+  // angetippter Knopf keinen Fokus: das Feld verliert ihn ohne Ziel, und schlösse die Liste dabei, wäre sie weg, bevor der Tipp
+  // ankommt (BF-115). Ein Verlust ohne Ziel schließt darum nicht; das tut das Tippen außerhalb.
   function verlassen(e: FocusEvent) {
-    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node | null)) offen = false;
+    const nach = e.relatedTarget as Node | null;
+    if (nach && !(e.currentTarget as HTMLElement).contains(nach)) offen = false;
   }
+
+  // Wer das Feld verlässt, nimmt die ausstehende Frage nach Vorschlägen mit
+  $effect(() => () => clearTimeout(uhr));
+
+  $effect(() => {
+    if (!offen) return;
+    const draussen = (e: PointerEvent) => {
+      if (!formular?.contains(e.target as Node)) offen = false;
+    };
+    document.addEventListener("pointerdown", draussen, true);
+    return () => document.removeEventListener("pointerdown", draussen, true);
+  });
 </script>
 
-<form class="suche mulde {klasse}" role="search" onsubmit={abschicken} onfocusout={verlassen}>
+<form class="suche mulde {klasse}" role="search" bind:this={formular} onsubmit={abschicken} onfocusout={verlassen}>
   <Knopf text="Liste filtern" symbol={filtert ? "filter" : "magnifying-glass"} nur klein frei klasse="feldart" gedrueckt={filtert} gesperrt={!ziel} titel={umschalthinweis} onclick={schalteArt} />
   <input {id} type="search" bind:value={wort} placeholder={filtert && ziel ? ziel.hinweis : anschluesse.jetzt.bedeutung ? "Titel, Autor, Satz oder eine Frage" : "Titel, Autor oder Satz"} aria-label={filtert ? "Liste filtern" : "In allen Büchern suchen"} autocomplete="off" enterkeyhint="search" oninput={tippt} onkeydown={taste} onfocus={() => (offen = true)} />
   {#if zaehlung}<span class="zaehlung" role="status">{zaehlung}</span>{/if}
