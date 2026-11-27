@@ -224,8 +224,13 @@ describe("Umschlag", () => {
     const text = render(Umschlag, { props: { buch: { ...buch, cover_path: "", file_format: "txt" } } });
     expect(text.container.querySelector(".umschlag svg")).not.toBeNull();
     const bild = render(Umschlag, { props: { buch: { ...buch, id: 12 } } });
-    await fireEvent.error(bild.container.querySelector("img")!);
+    const img = bild.container.querySelector("img")!;
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 204 })));
+    await fireEvent.error(img);
+    await vi.waitFor(() => expect(img.src).toContain("zugang="));        // erst den Zugang erneuern und neu laden (BF-102)
+    await fireEvent.error(img);
     expect(bild.container.querySelector(".umschlag svg")).not.toBeNull();
+    vi.unstubAllGlobals();
   });
 });
 
