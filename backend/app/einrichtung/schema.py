@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS einrichtung_aenderung (   -- Wartung: was der Assiste
     angelegt_am TEXT NOT NULL DEFAULT {JETZT}
 );
 CREATE TABLE IF NOT EXISTS einrichtung_auftrag (     -- Prüfung, Neuaufbau, Originale kopieren: fortsetzbar über einen Neustart
-    art TEXT PRIMARY KEY,                            -- pruefung, neuaufbau, kopieren, ligaturen
+    art TEXT PRIMARY KEY,                            -- pruefung, neuaufbau, kopieren, ligaturen, stimmproben, texterkennung
     stand TEXT NOT NULL DEFAULT 'wartet',            -- wartet, laeuft, pause, fertig, fehler
     gesamt INTEGER NOT NULL DEFAULT 0,
     fertig INTEGER NOT NULL DEFAULT 0,
@@ -100,6 +100,31 @@ CREATE TABLE IF NOT EXISTS stimmprobe_vorrat (      -- Stimmproben vertonen (BF-
     stand TEXT NOT NULL DEFAULT 'offen',             -- offen, fertig, fehler
     grund TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (stimme, art, werte)
+);
+CREATE TABLE IF NOT EXISTS texterkennung_buch (      -- Texte erkennen (BF-109, texterkennung/auftrag.py): je PDF-Buch einmal durchgesehen
+    book_id INTEGER PRIMARY KEY REFERENCES books(id) ON DELETE CASCADE,
+    seiten INTEGER NOT NULL DEFAULT 0,               -- so viele Seiten hat das Buch
+    ohne_text INTEGER NOT NULL DEFAULT 0,            -- so viele davon tragen keinen lesbaren Text
+    scan INTEGER NOT NULL DEFAULT 0,                 -- 1: ein Scan (TEXTERKENNUNG_SCAN_ANTEIL), seine Seiten ohne Text werden erkannt
+    grund TEXT NOT NULL DEFAULT '',                  -- warum es sich nicht durchsehen ließ; dann sieht der nächste Lauf wieder nach
+    vorrang_am TEXT DEFAULT NULL,                    -- zuletzt hat hier jemand gelesen und auf Text gewartet (kommt zuerst dran)
+    fertig_am TEXT DEFAULT NULL,                     -- alle Seiten erkannt, Volltext, Suche und Codestellen nachgezogen
+    geprueft_am TEXT NOT NULL DEFAULT {JETZT}
+);
+CREATE TABLE IF NOT EXISTS texterkennung_seite (     -- Texte erkennen: je Seite ohne lesbaren Text eines Scans ein Stück
+    book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    seite INTEGER NOT NULL,                          -- Dateiseite ab 1
+    stand TEXT NOT NULL DEFAULT 'offen',             -- offen, erkannt, leer (erkannt, ohne lesbaren Text), fehler
+    grund TEXT NOT NULL DEFAULT '',
+    dauer_s REAL NOT NULL DEFAULT 0,
+    geaendert_am TEXT NOT NULL DEFAULT {JETZT},
+    PRIMARY KEY (book_id, seite)
+);
+CREATE TABLE IF NOT EXISTS texterkennung_vorrang (   -- Texte erkennen: hier liest jemand, diese Seiten zuerst
+    book_id INTEGER PRIMARY KEY REFERENCES books(id) ON DELETE CASCADE,
+    von INTEGER NOT NULL,                            -- Dateiseiten von bis
+    bis INTEGER NOT NULL,
+    seit TEXT NOT NULL DEFAULT {JETZT}
 );
 CREATE TABLE IF NOT EXISTS neuaufbau_datei (         -- Neuaufbau: die Originale im gewählten Ordner der Kellerwolke
     knoten TEXT PRIMARY KEY,

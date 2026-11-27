@@ -193,7 +193,8 @@ def save_cover(file_hash: str, image_data: bytes, storage_dir: Path | None = Non
 
 # Alles, was die App neben dem Original eines Buchs ablegt; das Original ist jede andere Datei im Ordner. Wer einen neuen
 # Begleiter schreibt, trägt ihn hier ein (BF-46: sonst gilt er als Original).
-BEGLEITER = frozenset({"metadata.json", "fulltext.txt", "cover.jpg", "seiten.json", "codestellen.json"})
+# (BF-109: erkennung.jsonl, die Texterkennung eines Scans, texterkennung/ablage.py)
+BEGLEITER = frozenset({"metadata.json", "fulltext.txt", "cover.jpg", "seiten.json", "codestellen.json", "erkennung.jsonl"})
 
 
 def ist_original(f: Path) -> bool:

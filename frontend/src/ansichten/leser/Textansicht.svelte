@@ -10,6 +10,7 @@
   import type { Leseart } from "../../lib/leser/fluss/fluss";
   import { Textfluss } from "../../lib/leser/fluss/textfluss";
   import { Textseiten, type Baustein } from "../../lib/leser/pdf/textseiten.svelte";
+  import { Erkennungswarten } from "../../lib/leser/pdf/erkennungswarten";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { kannHervorheben, Rechteckschicht } from "../../lib/leser/hervorhebung";
   import { imBlick, Mitlauf, sichtVon } from "../../lib/leser/mitlauf";
@@ -24,6 +25,7 @@
   import { schreibweise } from "../../lib/leser/typen";
   import { schale } from "../../lib/stand/schale.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
+  import Symbol from "../../lib/teile/Symbol.svelte";
   import Bildlupe from "./Bildlupe.svelte";
   import Codetaste from "./Codetaste.svelte";
   import type { Codestellenstand } from "../../lib/leser/codestellen.svelte";
@@ -72,6 +74,15 @@
     else await umbau();
   });
 
+  // Seiten eines Scans, deren Text die Texterkennung noch liest (BF-109): die gelesene zuerst, sanft nachgefragt; erkannte
+  // Seiten kommen an ihrer Stelle neu
+  const warten = new Erkennungswarten(untrack(() => sitzung.buch.id), () => ({ wartend: text.wartend, gelesen: gemeldet || startSeite }),
+    (nrn) => text.erneuere(nrn));
+  $effect(() => {
+    void text.wartend;
+    untrack(() => warten.pruefe());
+  });
+
   // Nachladen, bevor man an den Rand des Geladenen kommt. Vorn von selbst nur beim Blättern: ein Schwung mit dem Finger
   // stockte sonst, dort gibt es die Taste.
   const VORRAT = 2;
@@ -97,6 +108,7 @@
     onstand({ seite: nr, amAnfang, amEnde, innen });
     ersatzschicht?.zeichne();
     sitzung.bewegt();
+    warten.pruefe();
     void fuelleNach();
   }
 
@@ -258,6 +270,7 @@
   });
 
   onDestroy(() => {
+    warten.halte();
     fluss?.zerstoere();
     mitlauf?.zerstoere();
     ersatzschicht?.zerstoere();
@@ -286,6 +299,7 @@
       {#each text.seiten as s (s.nr)}
         <section data-textseite={s.nr}>
           <div class="seitenmarke">Seite {s.gedruckt || s.nr}</div>
+          {#if s.schicht === "wartet"}<div class="mitte ende erkennt"><Symbol name="circle-notch" dreht /><span>Text wird erkannt</span></div>{/if}
           {#each s.bausteine as b, n (n)}
             {#if b.art === "ueberschrift"}<h2>{b.text}</h2>
             {:else if b.art === "unterschrift"}<p class="unterschrift">{b.text}</p>
@@ -328,6 +342,10 @@
   .ende {
     font-size: 0.8em;
     opacity: 0.7;
+  }
+  .erkennt {
+    align-items: center;
+    gap: 0.5em;
   }
   /* Abstände: überall derselbe zwischen den Bausteinen (lesetext.css), damit Absätze, Code und Abbildungen ruhig folgen */
   .seitenmarke {

@@ -15,6 +15,7 @@ from backend.app.core.config import settings
 from backend.app.services import ausfuehren
 from backend.app.services.ausfuehren import Reihe, sandbox
 from backend.app.services.ki import APP, ki
+from backend.app.texterkennung import ablage as erkennungsablage
 from tests.api.conftest import buch_erstellen
 from tests.backend.test_codestellen import probebuch
 
@@ -102,8 +103,8 @@ async def buch(test_db, tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "storage_dir", tmp_path / "speicher")
     monkeypatch.setattr(settings, "vorpruefung_abstand_s", 0)
 
-    async def lesen(pfad, fmt):
-        return await asyncio.to_thread(erkennen, pfad, fmt)
+    async def lesen(pfad, fmt, erkennungen=None):
+        return await asyncio.to_thread(erkennen, pfad, fmt, erkennungsablage.datei_lesen(erkennungen) if erkennungen else None)
 
     monkeypatch.setattr(codestellen, "lesen", lesen)
     monkeypatch.setattr(codestellen, "_vorrang", [])

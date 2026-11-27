@@ -1,10 +1,12 @@
-"""Was die Textansicht über eine Seite liefert: Bausteine in Lesereihenfolge, Codeteile darin."""
+"""Was die Textansicht über eine Seite liefert: Bausteine in Lesereihenfolge, Codeteile darin, und welche Textschicht gilt."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
 import fitz
+
+from backend.app.texterkennung.textschicht import Schichtart
 
 
 @dataclass
@@ -32,3 +34,11 @@ class Baustein:
     bild: int | None = None     # Nummer der Abbildung auf der Seite (Bild-Endpunkt)
     breite_em: float | None = None  # Breite einer Abbildung in Schriftgrößen des Fließtexts
     code: Codeteil | None = None    # bei art "code"
+
+
+@dataclass
+class Textseite:
+    """Eine gelesene Dateiseite: ihre Bausteine und woher ihr Text kommt (texterkennung/textschicht.py)."""
+    nr: int
+    bausteine: list[Baustein]
+    schicht: Schichtart

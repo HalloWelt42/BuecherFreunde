@@ -43,6 +43,7 @@ from backend.app.api.user_data import router as user_data_router
 from backend.app.api.vorlesen import router as vorlesen_router
 from backend.app.api.vorlesen import ton_router as vorlesen_ton_router
 from backend.app.api.wartung import router as wartung_router
+from backend.app.api.texterkennung import router as texterkennung_router
 from backend.app.core.anmeldung import eigener_zugang, schliessen as anmeldung_schliessen
 from backend.app.core.config import settings
 from backend.app.core import fehlerantworten
@@ -50,6 +51,7 @@ from backend.app.core.einheiten import Einheiten
 from backend.app.core.database import db
 from backend.app.familie.ansagelauf import ansagelauf
 from backend.app.vorlesen.proben import probenwache
+from backend.app.texterkennung.auftrag import erkennungswache
 from backend.app.codestellen.dienst import codestellen
 from backend.app.einrichtung import anschluesse as einrichtung_anschluesse, zustand as einrichtung_zustand
 from backend.app.einrichtung.auftrag import auftraege as einrichtung_auftraege
@@ -128,6 +130,7 @@ async def lifespan(app: FastAPI):
     uebersetzungslauf.starten()
     ansagelauf.starten()                              # Ansagen erstellen: was fehlt, auch nach einem Neustart (BF-78)
     probenwache.starten()                             # Stimmproben vertonen: jede Stimme vorab, damit Proben sofort spielen (BF-114)
+    erkennungswache.starten()                         # Texte erkennen: Seiten der Scans ohne Text, die gelesenen zuerst (BF-109)
     luecken_nachschlagen.starten()                    # Lücken nachschlagen: je Sammlung und Sprache einmal, mit dem Offenen weiter (BF-75)
     await nachfuehren.beim_start()
     nachfuehren.starten()                             # Persönliches im Auszug laufend nachführen (BF-82)
@@ -148,6 +151,7 @@ async def lifespan(app: FastAPI):
     await uebersetzungslauf.stoppen()
     await ansagelauf.stoppen()
     await probenwache.stoppen()
+    await erkennungswache.stoppen()
     await luecken_nachschlagen.stoppen()
     await gemeinfreie_katalog.stoppen()               # ein laufendes Holen setzt beim nächsten Mal am Stand fort (BF-98)
     await nachfuehren.stoppen()
@@ -211,6 +215,7 @@ app.include_router(search_router)
 app.include_router(uebersetzung_router)
 app.include_router(user_data_router)
 app.include_router(wartung_router)
+app.include_router(texterkennung_router)
 app.include_router(vorlesen_router)
 app.include_router(vorlesen_ton_router)
 

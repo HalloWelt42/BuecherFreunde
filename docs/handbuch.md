@@ -15,7 +15,7 @@ schluessel_orte:
   - "pi5b: `{{wurzel}}/daten/bestand/schluessel.json`, Modus 0600 (Schlüssel, die in der App eingetragen sind: Ersteinrichtung, Anschlüsse, Umzug; gelten vor den Dateien unter `zugang/`)"
   - "pi5b: `{{wurzel}}/.env` (Orte, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
 einrichten: einrichten.sh
-stand: f4165d3
+stand: be58c5b
 ---
 
 # BücherFreunde (Neubau)
@@ -47,6 +47,10 @@ nach `Bücher` um. Doppel, fremde Formate und Unlesbares bleiben liegen und steh
   dem Volltext). Ausgeführt werden sie in der Sandbox der Codeschmiede (`CODESCHMIEDE_URL`; die Codeschmiede muss
   `bücherfreunde` in "Sandbox für Apps" führen), eingeschätzt von der lokalen KI über die Leitstelle (`LEITSTELLE_ADRESSE`,
   Schlüssel `zugang/leitstelle.schluessel`). Ohne Codeschmiede keine Taste, ohne Leitstelle prüft nur der Lauf vor.
+- Gescannte PDF-Bücher (Seiten nur als Bild) erkennt die App selbst: das Erkennungsprogramm mit deutschen und englischen
+  Sprachdaten liegt im Abbild (`backend/Dockerfile`), Sprachen und Rechenkerne in der `.env` (`TEXTERKENNUNG_SPRACHEN`,
+  `TEXTERKENNUNG_KERNE`). Der Auftrag "Texte erkennen" läuft im Hintergrund, die Seite, auf der man liest, zuerst; das
+  Ergebnis liegt je Buch als Begleiter `erkennung.jsonl` neben dem Volltext.
 
 ## Neu einrichten
 
@@ -172,6 +176,8 @@ Wieder einschalten zeigt ebenso vorher, wie viele Bücher eine Datei bekommen. I
 
 - Ein Buch öffnet nicht: die Kellerwolke ist nicht erreichbar oder die Datei fehlt dort; `/api/verbindungen` sagt es.
 - Das Backend startet nicht und nennt einen Ort: die Platte ist nicht eingehängt.
+- Gescannte Seiten bleiben Bilder: der Auftrag "Texte erkennen" in der Liste der Aufträge nennt den Grund (Programm fehlt im
+  Abbild, von Hand angehalten); `/api/einrichtung/auftraege` ebenso.
 - Keine Taste an Codestellen: `/api/ausfuehren` nennt den Grund (Codeschmiede nicht erreichbar oder BücherFreunde nicht in
   "Sandbox für Apps"); `/api/ausfuehren/vorpruefung` sagt, ob und warum die Vorprüfung angehalten ist, `.../fortsetzen`
   nimmt sie wieder auf.

@@ -1,6 +1,8 @@
-"""Der Auszug je Buch in der Kellerwolke (Begleiter `auszug`, eine ZIP neben dem Original): Umschlag, Volltext, Seiten und Angaben.
-Hier steht die einzige Wahrheit über seine Form. Geschrieben beim Eintragen (annahme/eintragen.py) und nachts für geänderte Angaben
-(services/pflege.py); gelesen beim Neuaufbau aus der Kellerwolke und wenn Volltext oder Umschlag auf dem Gerät fehlen.
+"""Der Auszug je Buch in der Kellerwolke (Begleiter `auszug`, eine ZIP neben dem Original): Umschlag, Volltext, Seiten und Angaben,
+bei einem Scan die Erkennung seiner Seiten (`erkennung.jsonl`, BF-109), damit sie einen Neuaufbau übersteht. Hier steht die einzige
+Wahrheit über seine Form. Geschrieben beim Eintragen (annahme/eintragen.py) und nachts für geänderte Angaben (services/pflege.py;
+ein fertig erkannter Scan zählt als geändert); gelesen beim Neuaufbau aus der Kellerwolke und wenn Volltext oder Umschlag auf dem
+Gerät fehlen.
 
 `angaben.json` in Form `buecherfreunde-angaben/1`: `{art, buch, kategorien, lesen, notizen, markierungen, labels}`; `buch` ist die
 Zeile der Tabelle books ohne Suchtext und Pfad. Das Persönliche steht seit BF-82 nie mehr hier, sondern im eigenen kleinen
@@ -22,7 +24,7 @@ from backend.app.core.database import db
 from backend.app.services.storage import get_sidecar_path
 
 FORM = "buecherfreunde-angaben/1"
-DATEIEN = ("cover.jpg", "fulltext.txt", "seiten.json", "metadata.json")
+DATEIEN = ("cover.jpg", "fulltext.txt", "seiten.json", "metadata.json", "erkennung.jsonl")
 
 
 class Angaben(BaseModel):

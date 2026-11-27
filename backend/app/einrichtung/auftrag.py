@@ -148,9 +148,10 @@ def auftraege() -> dict[str, Auftrag]:
     from backend.app.einrichtung.neuaufbau import neuaufbau
     from backend.app.einrichtung.pruefung import pruefung
     from backend.app.einrichtung.wiederherstellen import einspielen
+    from backend.app.texterkennung.auftrag import texterkennung
     from backend.app.vorlesen.proben import stimmproben
 
-    return {a.art: a for a in (einspielen, pruefung, neuaufbau, kopieren, ligaturen, stimmproben)}
+    return {a.art: a for a in (einspielen, pruefung, neuaufbau, kopieren, ligaturen, stimmproben, texterkennung)}
 
 
 async def stand_von(art: str) -> Auftragsstand:

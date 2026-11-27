@@ -60,7 +60,7 @@ def test_seiten_lesen_zaehlt_dateiseiten(tmp_path):
     doc.save(pfad)
     gesamt, seiten = seiten_lesen(pfad, 2, 5)
     assert gesamt == 2
-    assert [(nr, b) for nr, b in seiten] == [(2, [])]
+    assert [(s.nr, s.bausteine, s.schicht) for s in seiten] == [(2, [], "ohne")]
 
 
 def test_trennstrich_wird_verbunden():
@@ -190,18 +190,18 @@ def test_satz_ueber_den_seitenwechsel_steht_ganz_auf_der_naechsten_seite(tmp_pat
     pfad = tmp_path / "wechsel.pdf"
     buch_mit_seitenwechsel(pfad)
     _, seiten = seiten_lesen(pfad, 1, 2)
-    (eins, erste), (zwei, zweite) = seiten
+    erste, zweite = (s.bausteine for s in seiten)
     assert [b.text for b in erste] == [ERSTER]
     assert zweite[0].text == ("Wenn die Sonne aufgeht, löscht sie das Licht, legt sich schlafen und am Ende der Seite geht der "
                               "Satz auf der nächsten Seite weiter und endet erst hier.")
-    assert [b.text for b in seiten_lesen(pfad, 2, 1)[1][0][1]] == [b.text for b in zweite]      # einzeln geladen: gleich
-    assert [b.text for b in seiten_lesen(pfad, 1, 1)[1][0][1]] == [ERSTER]
+    assert [b.text for b in seiten_lesen(pfad, 2, 1)[1][0].bausteine] == [b.text for b in zweite]   # einzeln geladen: gleich
+    assert [b.text for b in seiten_lesen(pfad, 1, 1)[1][0].bausteine] == [ERSTER]
 
 
 def test_mit_satzende_bleibt_der_absatz_auf_seiner_seite(tmp_path):
     pfad = tmp_path / "wechsel.pdf"
     buch_mit_seitenwechsel(pfad, mitten="und ruht.")
-    _, ((_, erste), (_, zweite)) = seiten_lesen(pfad, 1, 2)
+    erste, zweite = (s.bausteine for s in seiten_lesen(pfad, 1, 2)[1])
     assert len(erste) == 2 and erste[1].text.endswith("und ruht.") and zweite[0].text.startswith("geht der Satz")
 
 

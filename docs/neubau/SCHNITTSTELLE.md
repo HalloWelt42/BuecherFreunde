@@ -312,6 +312,45 @@ Umlautschreibweise); sonst `null`.
 `GET /api/ausfuehren`, `POST /api/ausfuehren`, `GET /api/ausfuehren/funktionen/php`, `GET /api/books/{id}/codestellen`,
 `GET /api/ausfuehren/vorpruefung` mit `.../anhalten` und `.../fortsetzen`: Felder und Bedeutung in [AUSFUEHREN.md](AUSFUEHREN.md).
 
+## Texterkennung gescannter Bücher (BF-109)
+
+Seiten eines PDF ohne lesbaren Text werden klassisch erkannt (Tesseract im Abbild des Servers, `backend/app/texterkennung`,
+Plan in [TEXTERKENNUNG.md](TEXTERKENNUNG.md)). Die Erkennung ist eine Rückfallschicht: ohne das Programm ruht sie mit Grund, alles
+andere läuft wie bisher.
+
+- **Ablage**: je Buch `erkennung.jsonl` im Ort texte neben `fulltext.txt`, je erkannter Seite eine Zeile
+  `{seite, herkunft: klassisch|ki, werkzeug, fassung, sprachen, dpi, erkannt_am, dauer_s, zeilen: [{block, absatz, zeile,
+  woerter: [{text, lage: [x0, y0, x1, y1], sicherheit}]}], flaechen: [[x0, y0, x1, y1]]}`, Lage in PDF-Punkten, Sicherheit 0 bis 100,
+  `flaechen` die Blöcke ohne Text (Bilder in der Seite). Nur angehängt; die jüngste Zeile einer Seite gilt. Der Auszug in der
+  Kellerwolke trägt die Datei mit (`ablage/auszug.py`), damit sie einen Neuaufbau übersteht.
+- **Eine Textschicht** (`texterkennung/textschicht.py`): ohne lesbaren Text ist eine Seite mit weniger als
+  `TEXTERKENNUNG_MINDESTZEICHEN` (20) Buchstaben und Ziffern oder mit Zeichensalat. Nur für eine solche Seite gilt ihre Erkennung,
+  wenn sie lesbaren Text trägt (Wörter ab einer Sicherheit von 20); Textansicht, Volltext, Suche und Codestellen lesen sie dann
+  statt der Textschicht. Erkannt werden nur die Seiten eines Scans: eines PDF, in dem mindestens `TEXTERKENNUNG_SCAN_ANTEIL` (0,5)
+  der Seiten keinen lesbaren Text tragen; in anderen PDF sind solche Seiten Bilder (Umschlag, ganzseitige Abbildung) und bleiben,
+  wie sie sind (0: jede Seite ohne Text).
+- **Textansicht**: `GET /api/books/{id}/textseiten` nennt je Seite `schicht`: `pdf` (Textschicht des PDF), `erkannt` (aus der
+  Erkennung; Größen aus der Höhe der Wörter, ohne Festbreite, das Seitenbild ist keine Abbildung, Bildflächen der Erkennung sind
+  es), `wartet` (noch ohne Text, die Erkennung kommt) oder `ohne` (ohne lesbaren Text und ohne Erkennung, auch wenn das Programm
+  fehlt oder der Auftrag von Hand angehalten ist). Bilder einer erkannten Seite holt der Bild-Endpunkt mit derselben Erkennung.
+
+| Weg | Zweck |
+|---|---|
+| `POST /api/books/{id}/texterkennung/vorrang` `{seite}` | hier wird gelesen: die Dateiseite und `TEXTERKENNUNG_VORRANG_SEITEN` (5) danach zuerst, die jüngste Bitte zuerst; stößt den Auftrag an. `{bereit, grund, von, bis, wartet}`: ist die Erkennung bereit (sonst `grund` in Worten) und welche Seiten von `von` bis `bis` noch warten. Wiederholt ist es das Nachfragen (die Textansicht fragt sanft, im Abstand von 3 bis 20 Sekunden). Jedes Profil, nur Bücher, die es sieht (sonst 404); 422 für ein Buch, das kein PDF ist |
+
+Auftrag **Texte erkennen** (`texterkennung`, in `GET /api/einrichtung/auftraege`, anhalten und fortsetzen wie die anderen): je
+Seite ohne Text eines Scans ein Stück (Tabelle `texterkennung_seite`). Zuerst der Vorrang, dann das Durchsehen jedes PDF-Buchs
+(einmal, Tabelle `texterkennung_buch`: erst der gespeicherte Volltext, nur ein möglicher Scan holt sein Original), dann Buch für
+Buch die übrigen Seiten, das zuletzt gelesene Buch zuerst, mit `TEXTERKENNUNG_ABSTAND_S` (1) Pause, der Vorrang ohne. Je Seite
+rendert er das Seitenbild in Graustufen (`TEXTERKENNUNG_DPI`, 300) und ruft das Programm (`TEXTERKENNUNG_PROGRAMM`, Sprachen
+`TEXTERKENNUNG_SPRACHEN` deu+eng, `TEXTERKENNUNG_KERNE` (1) Kerne, Frist `TEXTERKENNUNG_FRIST_S` (120)). Ist ein Buch ganz
+erkannt, entstehen Volltext, Suchindex und Seiten neu, die Codestellen werden neu erkannt, eine fehlende Seitenzahl wird
+gefüllt, und der Auszug geht nachts neu in die Kellerwolke. Eine Seite, die scheitert, bleibt mit Grund liegen (`fehler`) und
+kommt im nächsten Lauf wieder dran; erkannt wird sonst nur, was keine Zeile hat. Die Wache sieht `TEXTERKENNUNG_ERST_S` (120) nach
+dem Start und danach im Takt `TEXTERKENNUNG_TAKT_S` (1800) nach und stößt ihn an, wenn es Arbeit gibt. Ohne Programm oder
+Sprachdaten sieht er weiter durch und ruht dann mit Grund; von Hand angehalten bleibt er stehen; nach einem Neustart geht er
+weiter. `teile`: `buecher` (durchgesehen von allen PDF-Büchern), `erkannt`, `leer` (erkannt, aber ohne lesbaren Text), `fehler`.
+
 ## Gestaltete Deckblätter (BF-59)
 
 Bücher mit schlichtem Umschlag (fast weiß, ohne Farbe, oft die Titelseite eines PDFs) bekommen in der Oberfläche ein
@@ -1004,11 +1043,12 @@ noch nie gelaufen. `teile` je Auftrag:
 | `neuaufbau` | Neuaufbau aus der Kellerwolke | `buecher`, `angaben`, `volltext`, `umschlaege`, `persoenliches` |
 | `kopieren` | Originale kopieren | `dateien`, `groesse` (Bytes), `fehler` (Prüfsumme stimmt nicht) |
 | `nachfuehren` | Persönliches nachführen | `buecher`, `bytes` (so viel ging seit dem Start hinaus) |
+| `texterkennung` | Texte erkennen (BF-109) | `buecher` (durchgesehen), `erkannt`, `leer`, `fehler` (Seiten) |
 
 | Weg | Zweck |
 |---|---|
 | `GET /api/einrichtung/auftraege` | alle sechs |
-| `POST /api/einrichtung/auftraege/{art}/pause`, `.../fortsetzen` | für `einspielen`, `pruefung`, `neuaufbau`, `kopieren`, `ligaturen`, `stimmproben`; fortgesetzt wird an derselben Stelle (beim Einspielen am nächsten Abschnitt) |
+| `POST /api/einrichtung/auftraege/{art}/pause`, `.../fortsetzen` | für `einspielen`, `pruefung`, `neuaufbau`, `kopieren`, `ligaturen`, `stimmproben`, `texterkennung`; fortgesetzt wird an derselben Stelle (beim Einspielen am nächsten Abschnitt) |
 | `POST /api/einrichtung/pruefung` `{pruefsummen}` | Prüfung von vorn (der alte Bericht fällt weg, Bücher bleiben); `pruefsummen` liest auch Originale auf dem Gerät ganz. Nur in der Ersteinrichtung (sonst 409), weil sie wiedergefundene Orte einträgt |
 | `GET /api/einrichtung/pruefung/bericht?herunterladen=` | `{auftrag, erreichbar, wiedergefunden, fehlt, texte, eintraege: [{buch_id, titel, autor, ergebnis, ort, pfad, text}]}`; `eintraege` nur wiedergefundene und fehlende, nur Bücher, die das Profil sieht; mit `herunterladen` als `pruefbericht.json` |
 | `POST /api/einrichtung/neuaufbau/ordner` `{pfad}` | Ordner der Bücher unter dem Ordner der App (Vorgabe `Bücher`): `{pfad, buecher, mit_auszug, ohne_auszug, mit_persoenlichem, schon_da, groesse, profile: [Namen aus der Datei der Profile], profile_datei}`; legt die Liste für den Auftrag an, in der Kellerwolke ändert sich nichts; unbekannter Ordner 404 |

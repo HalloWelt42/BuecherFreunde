@@ -55,6 +55,21 @@ class Settings(BaseSettings):
     # Codestellen ausführen (BF-29): Sandbox der Codeschmiede; leer: die Fähigkeit fehlt, die Erkennung läuft trotzdem
     codeschmiede_url: str = ""
     codestellen_je_runde: int = Field(default=3, ge=0)        # so viele Bücher erkennt die Pflege je Runde nach (alle 10 Minuten)
+    # Texterkennung gescannter Bücher (BF-109, backend/app/texterkennung, docs/neubau/TEXTERKENNUNG.md): Seiten eines PDF ohne
+    # lesbaren Text werden klassisch erkannt; fehlt das Programm, ruht der Auftrag "Texte erkennen" mit Grund, die App läuft weiter
+    texterkennung_programm: str = "tesseract"                  # Programm der Erkennung: Name im Suchpfad oder ganzer Pfad
+    texterkennung_sprachen: str = Field(default="deu+eng", pattern=r"^[A-Za-z_]+(\+[A-Za-z_]+)*$")   # Sprachdaten, mit + verbunden
+    texterkennung_dpi: int = Field(default=300, ge=72, le=600)  # so fein wird eine Seite für die Erkennung gerendert (Graustufen)
+    texterkennung_kerne: int = Field(default=1, ge=1)          # so viele Rechenkerne darf eine Erkennung belegen (OMP_THREAD_LIMIT)
+    texterkennung_frist_s: float = Field(default=120, gt=0)    # so lange darf eine Seite dauern; danach bleibt sie mit Grund liegen
+    texterkennung_mindestzeichen: int = Field(default=20, ge=1)   # weniger Buchstaben und Ziffern: die Seite trägt keinen lesbaren Text
+    # so viele der Seiten eines PDF ohne lesbaren Text machen es zum Scan, dessen Seiten erkannt werden; sonst sind solche Seiten
+    # Bilder (Umschlag, ganzseitige Abbildung) und bleiben, wie sie sind. 0: jede Seite ohne lesbaren Text wird erkannt
+    texterkennung_scan_anteil: float = Field(default=0.5, ge=0, le=1)
+    texterkennung_vorrang_seiten: int = Field(default=5, ge=0, le=30)   # so viele Seiten nach der gelesenen erkennt der Vorrang mit
+    texterkennung_erst_s: float = Field(default=120, ge=0)     # so lange nach dem Start sieht die Wache zum ersten Mal nach
+    texterkennung_takt_s: float = Field(default=1800, ge=60)   # danach so oft: gibt es Arbeit, stößt sie den Auftrag an
+    texterkennung_abstand_s: float = Field(default=1.0, ge=0)  # Pause zwischen zwei Stücken, damit das Gerät frei bleibt; Vorrang ohne
     vorpruefung_abstand_s: float = Field(default=5.0, ge=0)   # Pause zwischen zwei Vorprüfungen, damit die Sandbox frei bleibt
     # Leitstelle: der eine Weg zur KI (Vorprüfung, Einordnen); leer: ohne KI, eingeordnet wird von Hand
     leitstelle_adresse: str = ""

@@ -47,18 +47,24 @@ Lesereihenfolge von oben nach unten:
   Alles im Kasten (Kastentitel, Zeilennummern, Rahmen) gehört dazu. Ohne erkannte Codestellen bleibt die Seite, wie sie war.
 
 Seiten ohne lesbaren Text (Scan ohne Textschicht, oder eine Schrift ohne Zeichenzuordnung, die nur Steuer- und
-Sonderzeichen liefert) tragen keine Textbausteine; die Oberfläche weist dann auf die Originalansicht hin.
+Sonderzeichen liefert) tragen keine Textbausteine. Gibt es für eine solche Seite eine Erkennung mit lesbarem Text (BF-109),
+gilt sie statt der Textschicht (entschieden in texterkennung/textschicht.py, für alle Leser gleich): die Zeilen kommen aus
+ihr (erkannt.py), das Seitenbild ist keine Abbildung, Bilder in der Seite sind es; alles Weitere wie oben. Jede gelesene Seite
+sagt, welche Textschicht gilt (`Textseite.schicht`); ohne Text und ohne Erkennung weist die Oberfläche auf die
+Originalansicht hin, oder darauf, dass der Text gerade erkannt wird.
 
 Die Abbildungen einer Seite entstehen bei jedem Aufruf gleich aus `seitenaufbau`; der Bild-Endpunkt nutzt dieselbe
 Funktion, damit Nummer und Ausschnitt immer zusammenpassen.
 
-Aufbau: zeilen.py (Zeilen, Maße der Seite, Absätze, Trennung), code.py (Tafeln, Festbreite, lose Codezeilen), zuschnitt.py
-(Ausschnitt der Abbildungen), aufbau.py (die Seite aus allem, Seitenwechsel, Lesen und Bild-Endpunkt), modelle.py.
+Aufbau: zeilen.py (Zeilen, Maße der Seite, Absätze, Trennung), erkannt.py (Zeilen und Bilder einer erkannten Seite), code.py
+(Tafeln, Festbreite, lose Codezeilen), zuschnitt.py (Ausschnitt der Abbildungen), aufbau.py (die Seite aus allem,
+Seitenwechsel, Lesen und Bild-Endpunkt), modelle.py.
 """
 
 from backend.app.services.textansicht.aufbau import abbildung_png, abbildungen, seiten_lesen, seitenaufbau, ueber_seitenwechsel
-from backend.app.services.textansicht.modelle import Baustein, Codeteil
-from backend.app.services.textansicht.zeilen import lesbar, verbinde
+from backend.app.services.pdfseite import lesbar
+from backend.app.services.textansicht.modelle import Baustein, Codeteil, Textseite
+from backend.app.services.textansicht.zeilen import verbinde
 
-__all__ = ["Baustein", "Codeteil", "abbildung_png", "abbildungen", "lesbar", "seiten_lesen", "seitenaufbau",
+__all__ = ["Baustein", "Codeteil", "Textseite", "abbildung_png", "abbildungen", "lesbar", "seiten_lesen", "seitenaufbau",
            "ueber_seitenwechsel", "verbinde"]

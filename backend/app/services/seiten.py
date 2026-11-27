@@ -5,7 +5,9 @@ Zwei Zählungen, überall gleich benannt:
 - gedruckte Seite: die Beschriftung im Buch ("110", "iv"); für Menschen. Aus den Seitenbeschriftungen des PDF
   (PageLabels), sonst aus den Zahlen am Rand der Seiten erkannt (Kopf- und Fußzeilen), sonst leer.
 
-fulltext.txt trennt Seiten mit Seitenvorschub (\\f), je Dateiseite genau ein Teil, auch leere Seiten. Ältere Volltexte
+fulltext.txt trennt Seiten mit Seitenvorschub (\\f), je Dateiseite genau ein Teil, auch leere Seiten. Der Text einer PDF-Seite
+ist der ihrer Textschicht, für eine Seite ohne lesbaren Text der ihrer Erkennung, wenn es eine gibt (BF-109, entschieden in
+texterkennung/textschicht.py). Ältere Volltexte
 eines PDF ohne Seitenvorschub (früher mit Zeilenumbruch verbunden) oder mit einer anderen Zahl an Seiten als die Datei
 werden beim ersten Lesen aus der Originaldatei neu ausgelesen (Befund 21.10.2026: die gleichmäßige Teilung nach Zeichen traf Seiten um bis zu ein Dutzend daneben). Nur
 Formate ohne Seiten (EPUB, Text) werden gleichmäßig geteilt (mindestens 500 Zeichen je Seite).
@@ -22,6 +24,8 @@ from collections.abc import Callable
 from pathlib import Path
 
 from backend.app.services.storage import get_original_file, get_sidecar_path, load_fulltext, save_fulltext
+from backend.app.texterkennung import ablage as erkennungsablage
+from backend.app.texterkennung.modelle import Erkennungen
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +45,15 @@ def seiten_aus(text: str, page_count: int | None) -> list[str]:
     return [text[i:i + je_seite] for i in range(0, len(text), je_seite)]
 
 
-def pdf_seitentexte(pfad: Path) -> list[str]:
+def pdf_seitentexte(pfad: Path, erkennungen: Erkennungen | None = None) -> list[str]:
+    """Der schlichte Text je Dateiseite; `erkennungen` je Dateiseite, wo es welche gibt."""
     import fitz
 
-    from backend.app.services.pdfseite import seitentext
+    from backend.app.texterkennung.textschicht import schicht
 
+    erkennungen = erkennungen or {}
     with fitz.open(str(pfad)) as doc:
-        return [seitentext(seite) for seite in doc]
+        return [schicht(seite, erkennungen.get(nr)).text for nr, seite in enumerate(doc, start=1)]
 
 
 def pdf_seitenzahl(pfad: Path) -> int:
@@ -57,9 +63,9 @@ def pdf_seitenzahl(pfad: Path) -> int:
         return doc.page_count
 
 
-def pdf_volltext(pfad: Path) -> str:
+def pdf_volltext(pfad: Path, erkennungen: Erkennungen | None = None) -> str:
     """Volltext eines PDF: je Dateiseite ein Teil, getrennt mit Seitenvorschub."""
-    return SEITENTRENNER.join(t.replace(SEITENTRENNER, "\n") for t in pdf_seitentexte(pfad))
+    return SEITENTRENNER.join(t.replace(SEITENTRENNER, "\n") for t in pdf_seitentexte(pfad, erkennungen))
 
 
 def _beschriftungen(pfad: Path) -> list[str]:
@@ -134,7 +140,7 @@ def buch_seiten(file_hash: str, fmt: str | None, page_count: int | None) -> tupl
     if fmt == "pdf" and _neu_auslesen(text, page_count, lambda: get_original_file(file_hash)):
         try:
             original = get_original_file(file_hash)
-            neu = pdf_volltext(original) if original is not None else ""
+            neu = pdf_volltext(original, erkennungsablage.lesen(file_hash)) if original is not None else ""
             if neu.strip():
                 save_fulltext(file_hash, neu)
                 text = neu

@@ -27,6 +27,7 @@ verzichtet dann auf die Funktion und nennt den Grund.
 | Codeschmiede | Erkennung der Codestellen läuft immer | Taste und Editor fehlen | Grund |
 | Fundus | Wortsuche bleibt | ausgeblendet | Grund |
 | Quellen | jede abschaltbar; Vorrat, Pausen, Sicherung nach Ausfällen; nacheinander bis eine etwas weiß | Hinweis statt Angabe | Pause mit Grund |
+| Texterkennung (BF-109) | Textschicht des PDF, für Seiten eines Scans ohne Text die klassische Erkennung auf dem Gerät | Auftrag ruht mit Grund, die Textansicht weist auf das Original hin | eine Seite bleibt mit Grund liegen, die übrigen laufen weiter |
 
 ## Lücken
 

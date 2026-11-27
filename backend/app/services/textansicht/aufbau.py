@@ -8,13 +8,16 @@ from pathlib import Path
 import fitz
 
 from backend.app.codestellen.pdf import ADRESSE, MONO_ANTEIL
-from backend.app.services.pdfseite import sichtbare_zeichnungen
+from backend.app.services.pdfseite import lesbar, sichtbare_zeichnungen
 from backend.app.services.textansicht.code import (KASTEN_TEXT_AB, codebaustein, kastenrest, lose_codezeilen, tafel, tafelart,
                                                     tafelcode)
-from backend.app.services.textansicht.modelle import Baustein, Codeteil
+from backend.app.services.textansicht.erkannt import bilder_der_erkennung, zeilen_der_erkennung
+from backend.app.services.textansicht.modelle import Baustein, Codeteil, Textseite
 from backend.app.services.textansicht.zeilen import (SATZENDE, UEBERSCHRIFT_FAKTOR, Block, Zeile, abgesetzte_formel,
-                                                     absaetze, lesbar, masse, verbinde, zeilen_der_seite)
+                                                     absaetze, masse, verbinde, zeilen_der_seite)
 from backend.app.services.textansicht.zuschnitt import zuschnitt
+from backend.app.texterkennung import textschicht
+from backend.app.texterkennung.modelle import Erkennungen, Seitenerkennung
 
 UEBERSCHRIFT_HOECHSTENS = 160   # Zeichen; längere Blöcke sind auch bei großer Schrift Text
 NAEHE = 12.0                    # Punkte: so nah beieinander gehören Zeichnungsteile zu einer Abbildung
@@ -59,8 +62,12 @@ def _innen(block: Block, flaeche: fitz.Rect, rand: float = INNEN_RAND) -> bool:
     return _mitte(block.rechteck) in flaeche + (-rand, -rand, rand, rand)
 
 
-def _ist_beschriftung(block: Block, flaeche: fitz.Rect) -> bool:
+def _ist_beschriftung(block: Block, flaeche: fitz.Rect, fliesstext: float) -> bool:
+    """Steht der Block als Beschriftung bei der Fläche? Kurz, nah, keine Bildunterschrift und keine Überschrift (die über einer
+    Abbildung beginnt den Abschnitt, zu dem sie gehört)."""
     if len(block.text) > BESCHRIFTUNG_HOECHSTENS or UNTERSCHRIFT.match(block.text):
+        return False
+    if fliesstext and block.groesse >= fliesstext * UEBERSCHRIFT_FAKTOR:
         return False
     umgebung = flaeche + (-BESCHRIFTUNG_NAEHE_X, -BESCHRIFTUNG_NAEHE_Y, BESCHRIFTUNG_NAEHE_X, BESCHRIFTUNG_NAEHE_Y)
     return umgebung.intersects(block.rechteck)
@@ -92,11 +99,13 @@ def _zeilennummer(z: Zeile, codeteile: list[Codeteil]) -> bool:
 
 class _Seitenbau:
     """Baut die Bausteine einer Seite und merkt sich, welche Absätze schon vergeben sind (an Kästen, Tafeln, Abbildungen,
-    Formeln)."""
+    Formeln). Gilt für die Seite ihre Erkennung (`schicht`), kommen Zeilen und Bilder aus ihr."""
 
-    def __init__(self, seite: fitz.Page, codeteile: list[Codeteil], zuschneiden: bool = True) -> None:
+    def __init__(self, seite: fitz.Page, codeteile: list[Codeteil], zuschneiden: bool, schicht: textschicht.Schicht) -> None:
         self.seite, self.codeteile, self.zuschneiden = seite, codeteile, zuschneiden
-        zeilen = [z for z in zeilen_der_seite(seite) if not _im_code(z.rechteck, codeteile) and not _zeilennummer(z, codeteile)]
+        self.erkennung = schicht.erkennung
+        roh = zeilen_der_erkennung(self.erkennung, seite) if self.erkennung else zeilen_der_seite(seite)
+        zeilen = [z for z in roh if not _im_code(z.rechteck, codeteile) and not _zeilennummer(z, codeteile)]
         if not lesbar(" ".join(z.text for z in zeilen)):
             zeilen = []
         self.masse = masse(zeilen)
@@ -129,9 +138,15 @@ class _Seitenbau:
         zeichnungen = sichtbare_zeichnungen(self.seite)
         gruppen = [r for r in self.seite.cluster_drawings(drawings=zeichnungen)
                    if (r.width >= MINDESTGROESSE or r.height >= MINDESTGROESSE) and not _im_code(r, self.codeteile)]
-        bilder = [fitz.Rect(b["bbox"]) for b in self.seite.get_image_info()]
+        bilder = self._bilder()
         bilder = [r for r in bilder if r.width >= MINDESTGROESSE and r.height >= MINDESTGROESSE]
         return zeichnungen, bilder, _vereinigen(gruppen + bilder, NAEHE)
+
+    def _bilder(self) -> list[fitz.Rect]:
+        """Die Bilder der Seite; auf einer erkannten Seite ist das Seitenbild keins, dort zählen die Bildflächen der Erkennung."""
+        if self.erkennung is not None:
+            return bilder_der_erkennung(self.erkennung)
+        return [fitz.Rect(b["bbox"]) for b in self.seite.get_image_info()]
 
     def _flaeche(self, flaeche: fitz.Rect, zeichnungen: list[dict], bilder: list[fitz.Rect]) -> None:
         """Eine Fläche wird Tafel (Code oder Kasten), Kasten oder Abbildung; ohne eigenen Text ist sie vielleicht nur
@@ -189,7 +204,7 @@ class _Seitenbau:
             gewachsen = False
             for i in frei:
                 b = self.bloecke[i]
-                if i not in self.vergeben and (_innen(b, ausschnitt) or _ist_beschriftung(b, ausschnitt)):
+                if i not in self.vergeben and (_innen(b, ausschnitt) or _ist_beschriftung(b, ausschnitt, self.fliesstext)):
                     ausschnitt |= b.rechteck
                     self.vergeben.add(i)
                     gewachsen = True
@@ -248,15 +263,23 @@ class _Seitenbau:
                     nummer += 1
 
 
-def seitenaufbau(seite: fitz.Page, codeteile: list[Codeteil] | None = None, zuschneiden: bool = True) -> list[Baustein]:
+def _bauen(seite: fitz.Page, codeteile: list[Codeteil] | None, zuschneiden: bool, schicht: textschicht.Schicht) -> list[Baustein]:
+    return _Seitenbau(seite, codeteile or [], zuschneiden, schicht).bauen()
+
+
+def seitenaufbau(seite: fitz.Page, codeteile: list[Codeteil] | None = None, zuschneiden: bool = True,
+                 erkennung: Seitenerkennung | None = None) -> list[Baustein]:
     """Die Bausteine einer Seite in Lesereihenfolge (siehe Beschreibung des Pakets); `zuschneiden` False spart den engen
-    Ausschnitt der Abbildungen (für die Erkennung der Codestellen, die nur den Text braucht)."""
-    return _Seitenbau(seite, codeteile or [], zuschneiden).bauen()
+    Ausschnitt der Abbildungen (für die Erkennung der Codestellen, die nur den Text braucht). `erkennung`: die Erkennung der
+    Seite, falls es eine gibt; ob sie gilt, entscheidet die Textschicht (texterkennung/textschicht.py)."""
+    return _bauen(seite, codeteile, zuschneiden, textschicht.schicht(seite, erkennung))
 
 
-def abbildungen(seite: fitz.Page, codeteile: list[Codeteil] | None = None) -> list[fitz.Rect]:
-    """Die Ausschnitte der Abbildungen einer Seite, nummeriert wie in `seitenaufbau` (ab 0, mit denselben Codestellen)."""
-    return [t.rechteck for b in seitenaufbau(seite, codeteile) for t in [b, *b.inhalt] if t.art == "bild"]
+def abbildungen(seite: fitz.Page, codeteile: list[Codeteil] | None = None, erkennung: Seitenerkennung | None = None
+                ) -> list[fitz.Rect]:
+    """Die Ausschnitte der Abbildungen einer Seite, nummeriert wie in `seitenaufbau` (ab 0, mit denselben Codestellen und
+    derselben Erkennung)."""
+    return [t.rechteck for b in seitenaufbau(seite, codeteile, erkennung=erkennung) for t in [b, *b.inhalt] if t.art == "bild"]
 
 
 # -- Über den Seitenwechsel ----------------------------------------------------------------------------------------------
@@ -280,28 +303,30 @@ def ueber_seitenwechsel(seiten: dict[int, list[Baustein]]) -> None:
         anfang.text = verbinde([ende.text, anfang.text])
 
 
-def seiten_lesen(pfad: Path, ab: int, anzahl: int, codeteile: dict[int, list[Codeteil]] | None = None
-                 ) -> tuple[int, list[tuple[int, list[Baustein]]]]:
-    """Gesamtzahl der Seiten und die Bausteine der Seiten ab `ab` (Dateiseite, ab 1); `codeteile` je Dateiseite. Die Seite
-    davor und danach werden mitgelesen, für Absätze über den Seitenwechsel."""
-    codeteile = codeteile or {}
+def seiten_lesen(pfad: Path, ab: int, anzahl: int, codeteile: dict[int, list[Codeteil]] | None = None,
+                 erkennungen: Erkennungen | None = None) -> tuple[int, list[Textseite]]:
+    """Gesamtzahl der Seiten und die Seiten ab `ab` (Dateiseite, ab 1) mit ihren Bausteinen und ihrer Textschicht;
+    `codeteile` und `erkennungen` je Dateiseite. Die Seite davor und danach werden mitgelesen, für Absätze über den
+    Seitenwechsel."""
+    codeteile, erkennungen = codeteile or {}, erkennungen or {}
     with fitz.open(str(pfad)) as doc:
         gesamt = doc.page_count
         bis = min(ab + anzahl - 1, gesamt)
         von, nach = max(1, ab - 1), min(bis + 1, gesamt)
-        seiten = {nr: seitenaufbau(doc[nr - 1], codeteile.get(nr)) for nr in range(von, nach + 1)}
+        schichten = {nr: textschicht.schicht(doc[nr - 1], erkennungen.get(nr)) for nr in range(von, nach + 1)}
+        seiten = {nr: _bauen(doc[nr - 1], codeteile.get(nr), True, s) for nr, s in schichten.items()}
     ueber_seitenwechsel(seiten)
-    return gesamt, [(nr, seiten[nr]) for nr in range(ab, bis + 1)]
+    return gesamt, [Textseite(nr, seiten[nr], schichten[nr].art) for nr in range(ab, bis + 1)]
 
 
-def abbildung_png(pfad: Path, seite: int, nr: int, zoom: float = 2.5, codeteile: dict[int, list[Codeteil]] | None = None
-                  ) -> bytes | None:
+def abbildung_png(pfad: Path, seite: int, nr: int, zoom: float = 2.5, codeteile: dict[int, list[Codeteil]] | None = None,
+                  erkennungen: Erkennungen | None = None) -> bytes | None:
     """Abbildung `nr` der Dateiseite `seite` als PNG, genau der Ausschnitt des Bausteins; None, wenn es sie nicht gibt."""
     with fitz.open(str(pfad)) as doc:
         if not 1 <= seite <= doc.page_count:
             return None
         blatt = doc[seite - 1]
-        ausschnitte = abbildungen(blatt, (codeteile or {}).get(seite))
+        ausschnitte = abbildungen(blatt, (codeteile or {}).get(seite), (erkennungen or {}).get(seite))
         if not 0 <= nr < len(ausschnitte):
             return None
         return blatt.get_pixmap(matrix=fitz.Matrix(zoom, zoom), clip=ausschnitte[nr], alpha=False).tobytes("png")

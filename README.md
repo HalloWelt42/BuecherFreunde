@@ -164,6 +164,7 @@ Alles hier ist freiwillig. Fehlt ein Anschluss, fehlt nur seine Fähigkeit, und 
 | Codeschmiede (Sandbox) | `CODESCHMIEDE_URL`, dazu `CODESTELLEN_JE_RUNDE`, `VORPRUEFUNG_ABSTAND_S` | Codestellen werden erkannt, aber nicht ausgeführt (docs/neubau/AUSFUEHREN.md) |
 | Leitstelle (KI) | `LEITSTELLE_ADRESSE`, `LEITSTELLE_SCHLUESSEL_DATEI`, `KI_MODELL` | Einordnen von Hand, Vorprüfung der Codestellen nur per Lauf (docs/LEITSTELLE.md) |
 | Vertonung (Vorlesen, Ansagen) | `VERTONUNG_URL` und der App-Zugang der Kellerwolke | vorgelesen wird mit den Stimmen des Geräts (docs/neubau/STIMMEN.md) |
+| Texterkennung (Programm im Abbild) | `TEXTERKENNUNG_SPRACHEN`, `TEXTERKENNUNG_KERNE` | Seiten eingescannter Bücher bleiben Bilder, die Textansicht weist auf das Original hin (docs/neubau/TEXTERKENNUNG.md) |
 | Verzeichnisse, Lexikon, Normdatei | `DNB_ENABLED`, `K10PLUS_ENABLED`, `OPENLIBRARY_ENABLED`, `CROSSREF_ENABLED`, `WIKIPEDIA_ENABLED`, `GND_ENABLED`, `GOOGLE_BOOKS_API_KEY` | Angaben aus den Dateien |
 
 Der Port ist im Heimnetz offen (`BINDUNG=0.0.0.0`). Von außen erreichbar macht man die App nur hinter einem Vorbau mit HTTPS

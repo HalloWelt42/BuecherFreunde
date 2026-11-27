@@ -20,6 +20,7 @@ from backend.app.codestellen.erkennung import FORMATE, erkennen
 from backend.app.codestellen.modelle import FASSUNG, Begleiter
 from backend.app.core.database import db
 from backend.app.services.storage import get_original_file, get_sidecar_path
+from backend.app.texterkennung import ablage as erkennungsablage
 
 logger = logging.getLogger("buecherfreunde.codestellen")
 BEGLEITER = "codestellen.json"
@@ -46,8 +47,9 @@ def begleiter_schreiben(file_hash: str, b: Begleiter) -> None:
     teil.replace(pfad)
 
 
-def _im_prozess(pfad: str, fmt: str) -> str:
-    return erkennen(Path(pfad), fmt).model_dump_json()
+def _im_prozess(pfad: str, fmt: str, erkennungen: str) -> str:
+    """Im eigenen Prozess; `erkennungen`: die Datei mit den Erkennungen des Buchs (texterkennung/ablage.py), leer: ohne."""
+    return erkennen(Path(pfad), fmt, erkennungsablage.datei_lesen(Path(erkennungen)) if erkennungen else None).model_dump_json()
 
 
 class Codestellen:
@@ -144,7 +146,8 @@ class Codestellen:
         if pfad is None:
             logger.info("Codestellen von Buch %d: Original gerade nicht zu holen, später", buch)
             return None
-        begleiter = await self.lesen(pfad, fmt)
+        erkennungen = erkennungsablage.pfad(z["hash"])
+        begleiter = await self.lesen(pfad, fmt, erkennungen if fmt == "pdf" and erkennungen.exists() else None)
         await asyncio.to_thread(begleiter_schreiben, z["hash"], begleiter)
         await db.execute(
             """INSERT INTO codestellen(buch_id, fassung, anzahl, grund, erkannt_am, vorgeprueft)
@@ -158,13 +161,15 @@ class Codestellen:
             await melden(buch)
         return begleiter
 
-    async def lesen(self, pfad: Path, fmt: str) -> Begleiter:
-        """In einem eigenen Prozess: die App antwortet weiter, und eine Datei, die den Leser abstürzen lässt, trifft nur sie."""
+    async def lesen(self, pfad: Path, fmt: str, erkennungen: Path | None = None) -> Begleiter:
+        """In einem eigenen Prozess: die App antwortet weiter, und eine Datei, die den Leser abstürzen lässt, trifft nur sie.
+        `erkennungen`: die Datei mit den Erkennungen eines Scans (BF-109)."""
         if self._prozess is None:
             self._prozess = ProcessPoolExecutor(max_workers=1, mp_context=multiprocessing.get_context("spawn"), max_tasks_per_child=10)
         art = FORMATE[fmt]
         try:
-            roh = await asyncio.wait_for(asyncio.get_running_loop().run_in_executor(self._prozess, _im_prozess, str(pfad), fmt), ZEITGRENZE_S)
+            roh = await asyncio.wait_for(asyncio.get_running_loop().run_in_executor(
+                self._prozess, _im_prozess, str(pfad), fmt, str(erkennungen) if erkennungen else ""), ZEITGRENZE_S)
         except BrokenProcessPool:
             self._prozess = None
             return Begleiter(format=art, grund="Die Datei bringt die Erkennung zum Absturz")

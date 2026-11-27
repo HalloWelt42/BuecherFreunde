@@ -33,6 +33,19 @@ export const umschlagNeu = (id: number): Promise<any> => post(`/api/books/${id}/
 export const isbnScan = (id: number): Promise<any> => post(`/api/books/${id}/isbn-scan`);
 export const textSeiten = (id: number, ab: number, anzahl: number): Promise<any> => get(`/api/books/${id}/textseiten`, { ab, anzahl });
 
+/** Antwort der Texterkennung auf die Bitte um Vorrang (BF-109): bereit oder nicht (mit Grund), und welche Seiten von `von` bis
+ *  `bis` noch auf ihre Erkennung warten */
+export interface Vorrangstand {
+  bereit: boolean;
+  grund: string;
+  von: number;
+  bis: number;
+  wartet: number[];
+}
+
+/** Hier wird gelesen: diese Seite und die nächsten zuerst erkennen; wiederholt ist es das Nachfragen */
+export const texterkennungVorrang = (id: number, seite: number): Promise<Vorrangstand> => post(`/api/books/${id}/texterkennung/vorrang`, { seite });
+
 export function textBildUrl(id: number, seite: number, nr: number): string {
   return `/api/books/${id}/textseiten/${seite}/bild/${nr}`;
 }

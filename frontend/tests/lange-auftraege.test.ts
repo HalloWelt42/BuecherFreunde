@@ -41,6 +41,14 @@ describe("Lange Aufträge in der Liste (BF-104)", () => {
     expect(eigene).toEqual([["Volltexte mit falschen Ligaturen neu lesen", true, false, 0.25], ["Originale kopieren", false, true, 0.25]]);
   });
 
+  it("zeigt die Texterkennung mit dem Grund, warum sie ruht (BF-109)", async () => {
+    ich.setze(ichMit(["einstellungen"]));
+    server([{ ...stand("texterkennung", "Texte erkennen", "pause", 40, 204), grund: "Die Texterkennung ist auf diesem Gerät nicht eingerichtet" }]);
+    await auftraege.auffrischen();
+    expect(auftraege.alleEigenen.map((a) => [a.titel, a.text, a.pausiert])).toEqual([
+      ["Texte erkennen", "40 von 204, Die Texterkennung ist auf diesem Gerät nicht eingerichtet", true]]);
+  });
+
   it("setzt einen angehaltenen fort", async () => {
     ich.setze(ichMit(["einstellungen"]));
     const f = server([stand("ligaturen", "Volltexte mit falschen Ligaturen neu lesen", "pause", 3, 9)]);

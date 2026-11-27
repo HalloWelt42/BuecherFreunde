@@ -31,11 +31,14 @@ class TextBaustein(BaseModel):
 
 
 class TextSeite(BaseModel):
-    """Eine Dateiseite; ohne Bausteine, wenn sie keinen lesbaren Text und keine Abbildung trägt (Scan)."""
+    """Eine Dateiseite; ohne Bausteine, wenn sie keinen lesbaren Text und keine Abbildung trägt (Scan). `schicht` sagt, woher
+    ihr Text kommt (BF-109): aus der Textschicht des PDF, aus ihrer Erkennung, noch gar nicht (die Erkennung kommt, mit
+    Vorrang über POST /api/books/{id}/texterkennung/vorrang) oder nie (ohne lesbaren Text und ohne Erkennung)."""
 
     nr: int
     gedruckt: str = ""
     bausteine: list[TextBaustein]
+    schicht: Literal["pdf", "erkannt", "wartet", "ohne"] = "pdf"
 
 
 class TextSeitenAntwort(BaseModel):

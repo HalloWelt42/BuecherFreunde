@@ -33,6 +33,8 @@ from backend.app.services.textansicht import Baustein, Codeteil, abbildung_png, 
 import fitz
 
 from backend.app.codestellen.dienst import codestellen
+from backend.app.texterkennung import ablage as erkennungsablage
+from backend.app.texterkennung.auftrag import texterkennung
 from backend.app.ablage import formate
 from backend.app.ablage.antwort import FEHLT, original_antwort
 from backend.app.material import dienst as material_dienst
@@ -1073,23 +1075,27 @@ async def text_seiten(
     _p: Profil = Depends(profil),
 ):
     """Seiten eines PDF als Bausteine für die Textansicht: umfließende Absätze, Überschriften, Kästen und Abbildungen
-    (über den Bild-Endpunkt), ohne Kopf- und Fußzeilen."""
+    (über den Bild-Endpunkt), ohne Kopf- und Fußzeilen. Je Seite, woher ihr Text kommt; "wartet": die Texterkennung liest
+    sie noch (BF-109)."""
     book, pfad = await _pdf_zum_lesen(book_id)
-    gesamt, seiten = await asyncio.to_thread(seiten_lesen, pfad, ab, anzahl, await _codeteile(book_id))
+    erkennungen = await asyncio.to_thread(erkennungsablage.lesen, book["hash"])
+    gesamt, seiten = await asyncio.to_thread(seiten_lesen, pfad, ab, anzahl, await _codeteile(book_id), erkennungen)
     _texte, gedruckt = await asyncio.to_thread(buch_seiten, book["hash"], book["file_format"], book["page_count"])
+    wartend = await texterkennung.wartende(book_id, [s.nr for s in seiten if s.schicht == "ohne"])
     return TextSeitenAntwort(
         gesamt=gesamt,
-        seiten=[TextSeite(nr=nr, gedruckt=gedruckt[nr - 1] if nr <= len(gedruckt) else "",
-                          bausteine=[_baustein(b) for b in bausteine])
-                for nr, bausteine in seiten],
+        seiten=[TextSeite(nr=s.nr, gedruckt=gedruckt[s.nr - 1] if s.nr <= len(gedruckt) else "",
+                          bausteine=[_baustein(b) for b in s.bausteine], schicht="wartet" if s.nr in wartend else s.schicht)
+                for s in seiten],
     )
 
 
 @router.get("/{book_id}/textseiten/{seite}/bild/{nr}")
 async def text_seiten_bild(book_id: Nr, seite: Nr, nr: Index, _token: str = Depends(verify_token_inhalt)):
     """Abbildung `nr` einer Seite der Textansicht als PNG (Ausschnitt der Originalseite)."""
-    _book, pfad = await _pdf_zum_lesen(book_id)
-    png = await asyncio.to_thread(abbildung_png, pfad, seite, nr, codeteile=await _codeteile(book_id))
+    book, pfad = await _pdf_zum_lesen(book_id)
+    erkennungen = await asyncio.to_thread(erkennungsablage.lesen, book["hash"])
+    png = await asyncio.to_thread(abbildung_png, pfad, seite, nr, codeteile=await _codeteile(book_id), erkennungen=erkennungen)
     if png is None:
         raise HTTPException(status_code=404, detail="Abbildung nicht gefunden")
     return Response(content=png, media_type="image/png", headers={"Cache-Control": "private, max-age=604800"})

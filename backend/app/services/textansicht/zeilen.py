@@ -19,7 +19,6 @@ RAND_OBEN = 0.075               # Anteil der Seitenhöhe: darüber Kopfzeile
 RAND_UNTEN = 0.94               # darunter Fußzeile
 UEBERSCHRIFT_FAKTOR = 1.12      # so viel größer als der Fließtext gilt als Überschrift (wie die Übersetzung)
 UEBERSCHRIFT_ZEILEN = 3         # so viele Zeilen hat eine Überschrift höchstens
-LESBAR_ANTEIL = 0.5             # mindestens so viele der sichtbaren Zeichen müssen Buchstaben oder Ziffern sein
 SATZ_AB = 6                     # Wörter: so viele in einem Absatz, der mit einem Satzzeichen endet, sind ein Satz
 FORMEL_HOECHSTENS = 160         # Zeichen; längere Blöcke mit Formelzeichen sind Text mit Formeln darin
 FORMEL_MITTE = 0.12             # Anteil der Seitenbreite: so nah an der Mitte steht eine abgesetzte Formel
@@ -125,14 +124,6 @@ class Masse:
 
 
 # -- Text ----------------------------------------------------------------------------------------------------------------
-
-def lesbar(text: str) -> bool:
-    """Trägt der Text echte Zeichen? Zeichensalat aus Steuer- und Sonderzeichen gilt nicht."""
-    sichtbar = [c for c in text if not c.isspace()]
-    if not sichtbar:
-        return False
-    return sum(c.isalnum() for c in sichtbar) / len(sichtbar) >= LESBAR_ANTEIL
-
 
 def satz(text: str) -> bool:
     """Ein Satz: genug Wörter und ein Satzzeichen am Ende."""

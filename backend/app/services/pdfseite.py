@@ -14,6 +14,9 @@
   und schräge Linien gehören zu Grafiken. Sichtbar sind Zeichnungen auf der Seite (auf sie beschnitten: ein Kasten, der über
   den Seitenwechsel geht, zählt mit), ohne den Hintergrund der Seite: eine Fläche über fast die ganze Seite, oder eine weiße
   ohne Rand über mindestens die halbe (aus E-Books gedruckte PDF legen eine solche über das ganze Kapitel).
+- Lesbar (`lesbar`): ein Text trägt echte Zeichen, mindestens LESBAR_ANTEIL seiner sichtbaren Zeichen sind Buchstaben oder
+  Ziffern; Zeichensalat aus Steuer- und Sonderzeichen (eine Schrift ohne Zeichenzuordnung) gilt nicht. Darauf baut auch die
+  Regel der Texterkennung, welche Seite keinen lesbaren Text trägt (texterkennung/textschicht.py).
 """
 
 from __future__ import annotations
@@ -38,6 +41,7 @@ _IM_WORT = re.compile(r"(?<=[^\W\d_])[" + "".join(FEHLZEICHEN) + r"](?=[^\W\d_])
 HINTERGRUND = 0.85              # Anteil der Seite: eine so große Zeichnung ist Hintergrund
 WEISSER_HINTERGRUND = 0.5       # Anteil der Seite: so groß ist eine weiße Fläche ohne Rand Hintergrund
 WEISS = 0.98                    # so hell in jedem Farbanteil ist eine Füllung weiß
+LESBAR_ANTEIL = 0.5             # mindestens so viele der sichtbaren Zeichen müssen Buchstaben oder Ziffern sein
 
 
 def fehlzeichen_aus_spuren(spuren: list[dict]) -> frozenset[str]:
@@ -76,6 +80,14 @@ def fehlzeichen_im_wort(text: str) -> int:
     """So oft steht ein Fehlzeichen mitten im Wort, zwischen zwei Buchstaben: ein gespeicherter Text, der noch mit falsch
     gelesenen Ligaturen gewonnen wurde. Ein einzelnes Zeichen (etwa in einer Formel) zählt nicht."""
     return len(_IM_WORT.findall(text)) if any(c in text for c in FEHLZEICHEN) else 0
+
+
+def lesbar(text: str) -> bool:
+    """Trägt der Text echte Zeichen? Zeichensalat aus Steuer- und Sonderzeichen gilt nicht."""
+    sichtbar = [c for c in text if not c.isspace()]
+    if not sichtbar:
+        return False
+    return sum(c.isalnum() for c in sichtbar) / len(sichtbar) >= LESBAR_ANTEIL
 
 
 def seitentext(seite: fitz.Page) -> str:

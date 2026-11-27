@@ -39,3 +39,33 @@ gerade ist".
 3. Auftrag mit Vorrang, Weg für den Vorrang aus dem Leser, Anzeige in den Aufträgen.
 4. Im Betrieb an Buch 3899 prüfen, dann den Bestand laufen lassen.
 5. Nachbesserung über die Leitstelle (eigener Schritt).
+
+## Stand des Baus (Schritte 1 bis 3, 27.11.2026)
+
+Gebaut: Tesseract im Abbild, das Paket `backend/app/texterkennung` (Programm, Erkennen, Ablage, Textschicht, Auftrag mit Wache),
+der Weg für den Vorrang, `schicht` je Seite in der Textansicht, "Text wird erkannt" im Leser. Wege und Auftrag in
+[SCHNITTSTELLE.md](SCHNITTSTELLE.md#texterkennung-gescannter-bücher-bf-109).
+
+Abweichend vom Entwurf: erkannt werden nur die Seiten ohne Text eines Scans (`TEXTERKENNUNG_SCAN_ANTEIL`, 0,5 der Seiten ohne
+lesbaren Text). Sonst bekämen fast alle PDF mit einem Umschlagbild auf Seite 1 eine Erkennung, und die Textansicht zeigte dort
+erkannte Wörter statt des Umschlags; mit 0 gilt wieder jede Seite ohne Text.
+
+Messung an der privaten Probe (vier Seiten aus Buch 3899, 860 mal 1222 Bildpunkte, 96 dpi, Mac, ein Kern):
+
+| | |
+|---|---|
+| Rendern in Graustufen, 300 dpi | 0,06 bis 0,09 s je Seite |
+| Erkennen, deu+eng | 0,8 bis 1,5 s je Seite (Mittel 1,1 s); mit 200 dpi etwa ein Fünftel schneller, etwas mehr unsichere Wörter |
+| Speicher des Programms | höchstens 140 MB je Seite |
+| Ablage | etwa 17 KB je Seite in `erkennung.jsonl` |
+| Textansicht aus der Erkennung | 0,04 s für vier Seiten |
+
+Was die Textansicht daraus macht: alle vier Kapitelüberschriften als Überschrift (Größe aus der Höhe der Wörter), Fließtext als
+Absätze mit aufgelöster Trennung ("Softwareentwick-" und "lungsmethoden"), die elf Punkte zweier Listen je als eigener Listenpunkt
+(neun kleine Aufzählungspunkte liest das Programm als Doppelwinkel oder Plus, sie werden wieder Punkte; zwei als "-", die bleiben), Kopf-
+und Fußzeilen fallen weg, Fotos und eine Tabelle als Ausschnitt der Seite. Schwach bleiben, wie erwartet, eine Tabelle aus Strichen in einem Codekasten (wird ein
+Absatz), farbiger Code (teils falsch gelesen) und Text, der um ein Symbol fließt (in Zeilen geteilt); hier hilft die
+Nachbesserung.
+
+Offen: Nachbesserung über die Leitstelle (Schritt 5); die Übersetzung liest Scans noch nicht über die Textschicht; Prüfung im
+Betrieb an Buch 3899 (Schritt 4).
