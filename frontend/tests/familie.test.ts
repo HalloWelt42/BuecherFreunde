@@ -400,6 +400,35 @@ describe("Stimme der Ansagen", () => {
     expect(screen.getByText("Noch keine Stimme gewählt, die Ansagen schweigen")).toBeTruthy();
   });
 
+  it("dreht der Knopf, bis die Probe spielt; danach ruht er bis zum Ende (BF-113)", async () => {
+    class Ton {
+      static zuletzt: Ton;
+      src = "";
+      onplaying: (() => void) | null = null;
+      onended: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor() {
+        Ton.zuletzt = this;
+      }
+      play = () => Promise.resolve();
+    }
+    vi.stubGlobal("Audio", Ton);
+    await mitFamilienstimme("");
+    server({ "/api/vorlesen/stimmen": KATALOG, "/api/familie/ansagen/stand": auftrag("fertig", 186),
+             "/api/familie/ansagen/probe": { text: "Hallo.", url: "/api/familie/ansagen/ton/serena/probe-0123456789abcdef.wav" } });
+    render(Ansagestimme, { props: { profil: mitStimme("katalog:serena"), aendert: true } });
+    const knopf = (await screen.findByRole("button", { name: "Probe" })) as HTMLButtonElement;
+    await fireEvent.click(knopf);
+    await vi.waitFor(() => expect(Ton.zuletzt.src).toContain("probe-"));
+    expect([knopf.disabled, !!knopf.querySelector(".fa-spin")]).toEqual([true, true]);
+    Ton.zuletzt.onplaying?.();
+    await vi.waitFor(() => expect(knopf.querySelector(".fa-spin")).toBeNull());
+    expect(knopf.disabled).toBe(true);
+    Ton.zuletzt.onended?.();
+    await vi.waitFor(() => expect(knopf.disabled).toBe(false));
+    vi.unstubAllGlobals();
+  });
+
   it("holt die Probe als Satz mit Adresse des Tons", async () => {
     const f = server({ "/api/familie/ansagen/probe": { text: "Hallo, ich lese dir vor.", url: "/api/familie/ansagen/ton/serena/probe-0123456789abcdef.wav" } });
     const { ansageProbe } = await import("../src/lib/api/familie");

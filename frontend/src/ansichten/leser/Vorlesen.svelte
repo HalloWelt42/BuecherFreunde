@@ -19,6 +19,8 @@
   let hier = $derived(vorlesen.aktiv && !!quelle && vorlesen.quelle === quelle);
   let art = $derived(quelle?.einheitsart ?? "Seite");
   let tempo = $derived(TEMPI.indexOf(vorlesen.tempo));
+  /** Die Probe ist gefragt, ihr Ton aber noch nicht da: der Knopf dreht, bis sie spielt (BF-113) */
+  let probeLaedt = $derived(vorlesen.aktiv && vorlesen.was === PROBE_WAS && vorlesen.wartet);
 
   const SCHLAF: [string, Schlaf][] = [["aus", { art: "aus" }], ["einheit", { art: "einheit" }], ["kapitel", { art: "kapitel" }], ["15", { art: "minuten", minuten: 15 }], ["30", { art: "minuten", minuten: 30 }], ["60", { art: "minuten", minuten: 60 }]];
   let schlafwerte = $derived<[string, string][]>(SCHLAF.filter(([w]) => w !== "kapitel" || quelle?.mitKapiteln).map(([w, s]) => [w, s.art === "aus" ? "Aus" : s.art === "einheit" ? `Ende ${art === "Seite" ? "der Seite" : art === "Abschnitt" ? "des Abschnitts" : "des Stücks"}` : s.art === "kapitel" ? "Ende des Kapitels" : `Nach ${s.minuten} Minuten`]));
@@ -75,7 +77,7 @@
     <div class="regelzeile">
       <span class="klein">Stimme</span>
       <Auswahl name="Stimme" gruppen={vorlesen.gruppen} wert={vorlesen.stimme} onwahl={(id) => vorlesen.waehle(id)} />
-      <Knopf text="Probe hören" symbol="play" nur klein gesperrt={!vorlesen.bereit || (vorlesen.aktiv && vorlesen.was !== PROBE_WAS)} onclick={() => { vorlesen.entsperre(); vorlesen.probe(); }} />
+      <Knopf text="Probe hören" symbol="play" nur klein laeuft={probeLaedt} gesperrt={!vorlesen.bereit || (vorlesen.aktiv && vorlesen.was !== PROBE_WAS)} onclick={() => { vorlesen.entsperre(); vorlesen.probe(); }} />
     </div>
     <div class="regelzeile">
       <span class="klein">Tempo</span>

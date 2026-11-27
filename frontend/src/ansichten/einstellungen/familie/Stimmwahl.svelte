@@ -46,6 +46,8 @@
 
   let katalog = $state<Dienststimmen | null>(null);
   let spielt = $state(false);
+  /** Gefragt, aber noch nicht zu hören: der Knopf dreht, bis die Probe spielt (BF-113) */
+  let laedt = $state(false);
   let entwurf = $state<string | null>(null);
   let mitFamilie = $derived(familie !== undefined);
   /** Was wirklich spricht: die eigene Wahl, sonst die der Familie */
@@ -74,7 +76,7 @@
     if (!s || spielt) return;
     const ton = new Audio(stilleAdresse());
     void ton.play().catch(() => undefined);
-    spielt = true;
+    spielt = laedt = true;
     try {
       const satz = await ansageProbe(s);
       if (!satz.url) {
@@ -82,15 +84,17 @@
         speechSynthesis.cancel();
         const sprich = new SpeechSynthesisUtterance(satz.text);
         sprich.lang = "de-DE";
-        sprich.onend = sprich.onerror = () => (spielt = false);
+        sprich.onstart = () => (laedt = false);
+        sprich.onend = sprich.onerror = () => (spielt = laedt = false);
         speechSynthesis.speak(sprich);
         return;
       }
       ton.src = satz.url;
-      ton.onended = ton.onerror = () => (spielt = false);
+      ton.onplaying = () => (laedt = false);
+      ton.onended = ton.onerror = () => (spielt = laedt = false);
       await ton.play();
     } catch (e) {
-      spielt = false;
+      spielt = laedt = false;
       melde.schlecht(e, "Probe nicht abgespielt");
     }
   }
@@ -111,14 +115,14 @@
 </script>
 
 <span class="reihe stimmtasten">
-  <Knopf text="Probe" symbol="play" klein nur={nurSymbol} laeuft={spielt} gesperrt={!wirkt || stumm} titel={wirkt && !stumm ? `Probe mit ${nameVon(wirkt)}` : undefined} onclick={() => void probe(wirkt)} />
+  <Knopf text="Probe" symbol="play" klein nur={nurSymbol} laeuft={laedt} gesperrt={!wirkt || stumm || spielt} titel={wirkt && !stumm ? `Probe mit ${nameVon(wirkt)}` : undefined} onclick={() => void probe(wirkt)} />
   <Wertchip text={chip} {name} gesperrt={gesperrt || stumm} breite="19rem">
     {#snippet children(zu)}
       {@const wert = auswahlWert()}
       {@const hoeren = wert === WIE_FAMILIE ? (familie ?? "") : wert}
       <div class="stimmwahl">
         <Auswahl name="Stimme" {gruppen} {wert} onwahl={(w) => (entwurf = w)} />
-        <Knopf text="Probe hören" symbol="play" nur klein laeuft={spielt} gesperrt={!hoeren} onclick={() => void probe(hoeren)} />
+        <Knopf text="Probe hören" symbol="play" nur klein laeuft={laedt} gesperrt={!hoeren || spielt} onclick={() => void probe(hoeren)} />
       </div>
       {#if katalog?.hinweis}<p class="leise">{katalog.hinweis}</p>{/if}
       {#if freigabe}<p class="leise">{freigabe}</p>{/if}
