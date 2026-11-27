@@ -18,6 +18,15 @@ _ZUSAETZE = re.compile(r"\b(hrsg|hg|herausgeber|herausgeberin|ed|eds|prof|dr|phi
 _DATEI = re.compile(r"\.(pdf|epub|mobi|txt|md|docx?|indd|qxd|xlsx?|pptx?)\b|^microsoft (word|powerpoint|excel)\b|^(untitled|unbenannt|titel|document|dokument)\d*$|_", re.IGNORECASE)
 
 
+_UMSCHRIFT = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue", "ß": "ss", "ẞ": "SS"})
+
+
+def umschrift(text: str) -> str:
+    """Deutsche Umlaute und ß in der Umschrift ("Ölmühle" als "Oelmuehle"), sonst unverändert: so sind "Müller" und "Mueller"
+    gleich, auch für einen Index, der Akzente selbst entfernt."""
+    return (text or "").translate(_UMSCHRIFT)
+
+
 def norm(text: str) -> str:
     """Klein, ohne Akzente, ß als ss, Satzzeichen als Leerzeichen."""
     t = unicodedata.normalize("NFKD", (text or "").replace("ß", "ss").replace("ẞ", "ss"))
@@ -44,6 +53,14 @@ def titel_naehe(gesucht: str, titel: str, untertitel: str = "") -> float:
     ganz = max(_naehe(g, t), _naehe(g, voll))
     teil = max(_naehe(kurz, norm(haupttitel(titel))), _naehe(kurz, t)) if len(kurz) > 5 else 0.0
     return max(ganz, 0.95 * teil)
+
+
+def gleicher_band(gesucht: str, titel: str) -> bool:
+    """Strenger als titel_naehe, für einen bestimmten Band einer Reihe (BF-98): ein gleicher Haupttitel reicht nicht ("Erster Teil"
+    und "Dritter Teil" heißen sonst gleich). Der ganze Titel ist fast gleich (andere Zahlen zählen wie bei titel_naehe), oder
+    einer ist genau der Haupttitel des anderen, ohne Untertitel."""
+    g, t = norm(gesucht), norm(titel)
+    return bool(g and t) and (_naehe(g, t) >= SICHER or g == norm(haupttitel(titel)) or t == norm(haupttitel(gesucht)))
 
 
 def suchbar(titel: str) -> bool:

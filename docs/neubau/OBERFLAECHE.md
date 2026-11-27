@@ -263,6 +263,7 @@ die Glaswelt (`stil/ausfuehren.css`), die Farben des Editors bleiben die der Cod
 | Bibliothek ergänzen: vier Arten mit Zahlen, Handbearbeitete, Regal oder ohne, Vorschau, Start | `Ergaenzen` | ja, Regalwahl und Anhalten nein |
 | Aufgabenliste, "Schon da" richtig benannt (36), Buch öffnen | `Einleseliste` | Anzeige ja |
 | Gemeinfreie Bücher: Suche, Auswahl über Seiten (42), Übernahme als Auftrag | `Gemeinfreie` | Suche und Auswahl nachgebaut, Übernahme nein |
+| Gemeinfreie Bücher mit eigenem Katalog (BF-98): Vorschläge beim Tippen nur aus dem Katalog, "Bei Gutendex suchen" sichtbar wartend mit Abbrechen, Störung als Meldung mit Treffern aus dem Katalog, der Katalog als Auftrag, "Gemeinfrei zu haben" an der Lücke | `Gemeinfreie`, `Gemeinfreienkatalog`, `Gutendexwarten`, `Lueckenfeld`, `stand/gutenberg` | Tests und Prüfstand ohne Netz; im Betrieb nein |
 | Eingangsordner in der Kellerwolke, wird beim Ablegen erkannt | `Eingangsordner` | siehe Betrieb |
 | Aus der Kellerwolke wählen | braucht die Freigabe "Alles lesen" für den App-Zugang, noch nicht gebaut | - |
 

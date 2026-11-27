@@ -264,7 +264,8 @@ function inhalt<T>(response: Response): Promise<T> {
  */
 export type Parameter = Record<string, string | number | boolean | null | undefined>;
 
-export async function get<T = any>(path: string, params?: Parameter): Promise<T> {
+/** `optionen` gehen an fetch, etwa ein Signal zum Abbrechen */
+export async function get<T = any>(path: string, params?: Parameter, optionen: RequestInit = {}): Promise<T> {
   if (params) {
     const searchParams = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) {
@@ -277,7 +278,7 @@ export async function get<T = any>(path: string, params?: Parameter): Promise<T>
       path += `?${qs}`;
     }
   }
-  const response = await anfrage(path);
+  const response = await anfrage(path, optionen);
   return inhalt(response);
 }
 

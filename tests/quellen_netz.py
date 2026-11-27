@@ -1,4 +1,5 @@
-"""Ein Netz aus Mitschnitten für die Tests der Quellen: beantwortet Anfragen, zählt sie mit und kennt keinen Ausgang."""
+"""Ein Netz aus Mitschnitten für die Tests der Quellen: beantwortet Anfragen, zählt sie mit und kennt keinen Ausgang. Eine
+Anfrage mit Dateiziel bekommt den Inhalt in die Datei, wie beim echten Versand (200 von vorn, 206 ab dem Versatz)."""
 
 from __future__ import annotations
 
@@ -12,7 +13,7 @@ from backend.app.quellen.abruf import Abruf
 from backend.app.quellen.fehler import Ausgefallen
 from backend.app.quellen.regeln import Regel
 from backend.app.quellen.takt import Takt
-from backend.app.quellen.versand import Anfrage, Rohantwort
+from backend.app.quellen.versand import Anfrage, Rohantwort, in_datei
 
 DATEN = Path(__file__).parent / "daten" / "quellen"
 Antworter = Callable[[Anfrage], Rohantwort]
@@ -52,7 +53,10 @@ class Netz:
         naechste = liste.pop(0) if len(liste) > 1 else liste[0]
         if isinstance(naechste, Exception):
             raise naechste
-        return naechste(a) if callable(naechste) else naechste
+        r = naechste(a) if callable(naechste) else naechste
+        if a.ziel is not None and r.status in (200, 206):
+            return in_datei(a.ziel, r.status, r.kopf, [r.inhalt], a.hoechstens)
+        return r
 
 
 class Uhr:

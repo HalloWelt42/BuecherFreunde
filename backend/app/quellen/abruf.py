@@ -17,7 +17,7 @@ from backend.app.quellen import versand, vorrang
 from backend.app.quellen.fehler import Abgeschaltet, AnfrageFalsch, Ausgefallen, BitteWarten, Pausiert, QuelleFehler, Unlesbar
 from backend.app.quellen.regeln import TAG_S, Regel
 from backend.app.quellen.takt import Karte, Takt
-from backend.app.quellen.versand import Anfrage, Rohantwort, Versand
+from backend.app.quellen.versand import Anfrage, Dateiziel, Rohantwort, Versand
 from backend.app.quellen.vorrang import Vorrang
 from backend.app.quellen.vorrat import Eintrag, Vorrat
 from backend.app.quellen.zustand import ABGEWIESEN_S, Zustaende
@@ -98,17 +98,25 @@ class Abruf:
 
     async def lade(self, regel: Regel, adresse: str, hoechstens: int, zeit_s: float | None = None) -> bytes:
         """Eine Datei (Bild, Buch), ohne Vorrat, aber mit Takt, Pausen und Zählung."""
+        anfrage = Anfrage(adresse, kopf={"Accept": "*/*"}, zeit_s=zeit_s or regel.zeitgrenze, hoechstens=hoechstens)
+        return (await self._datei(regel, anfrage)).inhalt
+
+    async def lade_in_datei(self, regel: Regel, adresse: str, ziel: Dateiziel, hoechstens: int, kopf: dict[str, str] | None = None) -> Rohantwort:
+        """Eine große Datei gleich in eine Datei, wie `lade`; fortgesetzt ab `ziel.versatz`. Die Antwort nennt Status (200 ganz,
+        206 fortgesetzt, 304 unverändert, wenn `kopf` danach fragt) und Kopf, ihr Inhalt steht in der Datei."""
+        return await self._datei(regel, Anfrage(adresse, kopf={"Accept": "*/*", **(kopf or {})}, zeit_s=regel.zeitgrenze, hoechstens=hoechstens, ziel=ziel))
+
+    async def _datei(self, regel: Regel, anfrage: Anfrage) -> Rohantwort:
         if regel.hindernis:
             raise Abgeschaltet(f"{regel.name} {regel.hindernis}")
-        self._erlaubt(regel, adresse)
-        anfrage = Anfrage(adresse, kopf={"Accept": "*/*"}, zeit_s=zeit_s or regel.zeit_s, hoechstens=hoechstens)
-        takt, dran = self._takt(regel, adresse), vorrang.jetzt()
+        self._erlaubt(regel, anfrage.adresse)
+        takt, dran = self._takt(regel, anfrage.adresse), vorrang.jetzt()
         antwort = await self._durch_den_takt(regel, anfrage, takt, takt.karte(dran), dran, False)
         if antwort.status == 404:
             raise AnfrageFalsch("die Datei gibt es dort nicht")
         await self._bewerte(regel, antwort, None)
         await self.zustaende.erfolg(regel)
-        return antwort.inhalt
+        return antwort
 
     async def merke(self, regel: Regel, frage: Frage, wert: Any) -> None:
         """Eine Antwort, die auf anderem Weg kam (Sammelanfrage), unter ihrer Einzelfrage ablegen."""
@@ -171,7 +179,7 @@ class Abruf:
     # -- Anfrage und Auswertung ----------------------------------------------------------------------------------------
     async def _wirklich(self, regel: Regel, frage: Frage, takt: Takt, karte: Karte, dran: Vorrang, probe: bool) -> Any:
         self._erlaubt(regel, frage.adresse)
-        anfrage = Anfrage(frage.adresse, frage.methode, frage.felder + frage.beiwerk, dict(frage.kopf), regel.zeit_s)
+        anfrage = Anfrage(frage.adresse, frage.methode, frage.felder + frage.beiwerk, dict(frage.kopf), regel.zeitgrenze)
         try:
             wert = await self._frage_und_lies(regel, frage, anfrage, takt, karte, dran, probe)
         except Ausgefallen as f:

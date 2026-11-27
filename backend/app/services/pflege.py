@@ -1,6 +1,7 @@
 """Pflege im Hintergrund: Wissensstand neuer Bücher, Codestellen der Bücher, die noch keine haben (je Runde nur wenige),
 Sicherung nach der Regel (auch in die Kellerwolke, wenn eingeschaltet, ablage/sicherungen.py), Begleiter, deren Angaben sich
-geändert haben (Titel, Autor; Persönliches führt einrichtung/nachfuehren.py laufend nach), und abgelaufene Antworten der Quellen."""
+geändert haben (Titel, Autor; Persönliches führt einrichtung/nachfuehren.py laufend nach), abgelaufene Antworten der Quellen
+und der eigene Katalog der gemeinfreien Bücher, wenn er älter ist als eingestellt (BF-98)."""
 
 from __future__ import annotations
 
@@ -16,6 +17,9 @@ from backend.app.codestellen.vorpruefung import vorpruefer
 from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.quellen.abruf import abruf
+from backend.app.quellen.gutenberg_katalog import katalog as gemeinfreie
+from backend.app.quellen.regeln import GUTENBERG
+from backend.app.quellen.vorrang import hintergrund
 from backend.app.services import sicherung
 
 logger = logging.getLogger("buecherfreunde.pflege")
@@ -46,6 +50,15 @@ async def begleiter() -> int:
     return len(zeilen)
 
 
+async def gemeinfreie_erneuern() -> bool:
+    """Den eigenen Katalog der gemeinfreien Bücher erneuern, wenn er älter ist als GUTENBERG_KATALOG_TAGE; er läuft danach als
+    Auftrag für sich weiter, mit Vorrang Hintergrund. Einen, den es noch nicht gibt, holt erst das Öffnen der gemeinfreien Bücher."""
+    if not GUTENBERG.aktiv or not (await gemeinfreie.stand()).faellig:
+        return False
+    with hintergrund():
+        return gemeinfreie.starten()
+
+
 async def laufen() -> None:
     letzte_nacht = None
     while True:
@@ -56,6 +69,8 @@ async def laufen() -> None:
             jetzt = datetime.now()
             if jetzt.hour in NACHTS and letzte_nacht != jetzt.date():
                 letzte_nacht = jetzt.date()
+                if await gemeinfreie_erneuern():                    # läuft für sich, vor allem, was scheitern kann
+                    logger.info("Eigener Katalog der gemeinfreien Bücher wird erneuert")
                 logger.info("%d gemerkte Antworten der Quellen abgelaufen", await abruf().vorrat.aufraeumen())
                 await sichern()
                 logger.info("%d Begleiter erneuert", await begleiter())

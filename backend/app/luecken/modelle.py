@@ -9,6 +9,7 @@ from pydantic import AfterValidator, BaseModel, Field, StringConstraints, model_
 from backend.app.luecken.suchadresse import pruefen
 from backend.app.models.book import BookListItem
 from backend.app.models.grenzen import ADRESSE, Bandzahl, Sprache
+from backend.app.quellen.gutenberg import Fundbuch
 
 Wahl = Literal["quelle", "eigene", "keine"]            # welche Zahl der Bände gilt; keine: nur Lücken zwischen vorhandenen
 Herkunft = Literal["quelle", "eigene", "keine", ""]     # woher die geltende Zahl kommt; leer: es gibt keine
@@ -103,6 +104,7 @@ class Luecke(BaseModel):
     quelle: str = ""                                    # Kennung der Quelle der Angaben; leer: nur aus den eigenen Nummern
     kopieren: str                                       # Titel, Autor, Reihe und Band, ISBN als eine Zeile
     suchadresse: str | None = None                      # die fertige Adresse; leer ohne Vorlage in den Einstellungen
+    gemeinfrei: Fundbuch | None = None                  # dasselbe Buch im eigenen Katalog der gemeinfreien Bücher (BF-98), nur lokal abgeglichen
 
 
 class Platz(BaseModel):

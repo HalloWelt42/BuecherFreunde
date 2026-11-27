@@ -266,16 +266,22 @@ class Annahme:
         self._weiter()
         return neu
 
-    async def aus_gemeinfrei(self, buecher: list[dict]) -> int:
+    @staticmethod
+    async def gemeinfrei_in_arbeit(nummer: int) -> bool:
+        """Wird dieses gemeinfreie Buch gerade geholt oder gelesen?"""
+        return await db.fetch_one("SELECT id FROM aufnahme WHERE quelle = ? AND json_extract(herkunft, '$.gutenberg_id') = ? AND stand IN ('liest', 'angaben', 'regal')",
+                                  (gemeinfrei.QUELLE, nummer)) is not None
+
+    async def aus_gemeinfrei(self, buecher: list[dict], vorschau: str | None = None) -> int:
         """Gemeinfreie Bücher aus der Suche: geholt wird beim Lesen. Was es schon gibt oder schon geholt wird, kommt nicht noch
-        einmal; ohne Datei ist es gleich ein Fehler mit Grund."""
+        einmal; ohne Datei ist es gleich ein Fehler mit Grund. Mit `vorschau` (in die Lücke holen, BF-98) halten sie dort vor
+        dem Regal; sonst halten gemeinfreie Bücher nie."""
         neu = 0
         for b in buecher:
             nummer = int(b.get("gutenberg_id") or 0)
             adresse = str(b.get("download_url") or "")
             titel = str(b.get("titel") or f"Gutenberg {nummer}")
-            if await db.fetch_one("SELECT id FROM aufnahme WHERE quelle = ? AND json_extract(herkunft, '$.gutenberg_id') = ? AND stand IN ('liest', 'angaben', 'regal')",
-                                  (gemeinfrei.QUELLE, nummer)):
+            if await self.gemeinfrei_in_arbeit(nummer):
                 continue
             da = await gemeinfrei.schon_da(nummer)
             if da:
@@ -286,8 +292,8 @@ class Annahme:
                 stand, schritt, text, buch = "liest", 2, "Wartet auf das Holen", None
             herkunft = {"gutenberg_id": nummer, "download_url": adresse, "cover_url": str(b.get("cover_url") or ""), "titel": titel}
             name = sauber(titel, 150) + (".txt" if ".txt" in adresse else ".epub")
-            await db.execute("INSERT INTO aufnahme(name, groesse, stand, schritt, text, buch_id, anteil, quelle, herkunft) VALUES (?, 0, ?, ?, ?, ?, 1, ?, ?)",
-                             (name, stand, schritt, text, buch, gemeinfrei.QUELLE, json.dumps(herkunft, ensure_ascii=False)))
+            await db.execute("INSERT INTO aufnahme(name, groesse, stand, schritt, text, buch_id, anteil, quelle, herkunft, vorschau) VALUES (?, 0, ?, ?, ?, ?, 1, ?, ?, ?)",
+                             (name, stand, schritt, text, buch, gemeinfrei.QUELLE, json.dumps(herkunft, ensure_ascii=False), vorschau))
             neu += 1
         await db.commit()
         self._weiter()

@@ -77,7 +77,7 @@ const beschreibungen: Record<string, Beschreibung> = {
   },
   gutenberg: {
     kennung: "gutenberg", name: "Gutenberg", symbol: "landmark-dome",
-    beschreibung: "Gemeinfreie Bücher: suchen nach Titel, Autor und Sprache, ansehen und als EPUB oder Text übernehmen. Gesucht wird über Gutendex, die Dateien kommen von den Spiegeln des Project Gutenberg.",
+    beschreibung: "Gemeinfreie Bücher: suchen nach Titel, Autor und Sprache, ansehen und als EPUB oder Text übernehmen. Beim Tippen sucht der eigene Katalog, auf Wunsch Gutendex; Katalog und Dateien kommen von den Spiegeln des Project Gutenberg.",
     felder: [["id", "Nummer"], ["title", "Titel"], ["authors[].name", "Autor"], ["languages[]", "Sprachen"], ["formats (epub/txt)", "Datei"], ["formats (image/jpeg)", "Umschlag"], ["bookshelves[]", "Regale"], ["subjects[]", "Themen"], ["download_count", "Zahl der Downloads"]],
     roh: ["gutenberg_id", "sprachen", "regale", "themen"],
   },

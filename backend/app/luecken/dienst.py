@@ -3,8 +3,9 @@ fehlenden Bände in der Folge der Bände, mit den Angaben der Quelle, dem Text z
 
 Gerechnet wird nur mit den Büchern, die das Profil sieht (familie/sichtbar.py): ein Band, den ein anderes Profil privat hat,
 ist für es eine Lücke, ein unsichtbarer Band zeigt sich nie als vorhanden. Die Hauptsprache (für Bücher ohne Sprache) und ob
-eine Sprache Nummern hat, gelten für die ganze Sammlung, damit Nachschlagen und Ansicht dieselben Reihen meinen. Dazu die
-kurze Zeile der Sammlungsvorschläge und die Hinweise, wenn eine Datei nicht zu ihrer Lücke passt."""
+eine Sprache Nummern hat, gelten für die ganze Sammlung, damit Nachschlagen und Ansicht dieselben Reihen meinen. Je fehlendem
+Band mit Titel steht dabei, ob es ihn gemeinfrei gibt (nur im eigenen Katalog abgeglichen, BF-98). Dazu die kurze Zeile der
+Sammlungsvorschläge und die Hinweise, wenn eine Datei nicht zu ihrer Lücke passt."""
 
 from __future__ import annotations
 
@@ -22,6 +23,8 @@ from backend.app.luecken.sprachen import folge, hauptsprache, sprache_von, sprac
 from backend.app.quellen import isbn as nummern
 from backend.app.quellen import reihen as reihen_der_quellen
 from backend.app.quellen.abgleich import MIT_AUTOR, SICHER, titel_naehe
+from backend.app.quellen.gutenberg_katalog import katalog as gemeinfreie
+from backend.app.quellen.modelle import Buchfrage
 from backend.app.quellen.regeln import REGELN
 from backend.app.quellen.sprache import kuerzel
 from backend.app.services.sammlungsfinder import autor_schluessel, erkennen, erster_autor, ohne_autor
@@ -118,9 +121,18 @@ class Reihenlage:
                      belegt=len(plaetze), fehlen=fehlen, zeile=fehlen_satz(fehlen), eintraege=[p for _, p in sorted(eintraege, key=lambda e: e[0])])
 
 
-async def ansicht(sammlung_id: int, p: Profil, vorlage: str | None = None) -> Sammlungsluecken:
+async def gemeinfrei_dazu(luecken: list[Luecke]) -> None:
+    """Je fehlendem Band mit bekanntem Titel: gibt es ihn gemeinfrei? Nur im eigenen Katalog (BF-98), keine Quelle im Netz."""
+    mit_titel = [l for l in luecken if l.titel]
+    funde = await gemeinfreie.abgleichen([Buchfrage(titel=l.titel, autoren=[l.autor] if l.autor else [], sprache=l.sprache) for l in mit_titel])
+    for l, fund in zip(mit_titel, funde, strict=True):
+        l.gemeinfrei = fund
+
+
+async def ansicht(sammlung_id: int, p: Profil, vorlage: str | None = None, gemeinfrei: bool = True) -> Sammlungsluecken:
     """Die Lücken der Sammlung für dieses Profil; ein Kind sieht eine Sammlung ohne freigegebene Bücher nicht (SammlungFehlt).
-    `vorlage`: eine andere Suchadresse als die gemerkte (Probe)."""
+    `vorlage`: eine andere Suchadresse als die gemerkte (Probe); `gemeinfrei`: auch im eigenen Katalog der gemeinfreien Bücher
+    nachsehen."""
     sammlung = await speicher.sammlung(sammlung_id)
     alle = await speicher.buchbaende(sammlung_id)
     sichtbar = set(await nur_sichtbare(Sicht.von(p), [b.id for b in alle]))
@@ -138,6 +150,8 @@ async def ansicht(sammlung_id: int, p: Profil, vorlage: str | None = None) -> Sa
     vorlage = await suchadresse.lesen() if vorlage is None else vorlage
     reihen = [Reihenlage(sammlung, s, gesehen[s], ganz.get(s, []), staende.get(s), quelle, weg[s], autor, vorlage).reihe()
               for s in folge(gesehen, haupt)]
+    if gemeinfrei:
+        await gemeinfrei_dazu([e.luecke for r in reihen for e in r.eintraege if e.luecke is not None])
     return Sammlungsluecken(sammlung_id=sammlung_id, name=sammlung["name"], autor=autor, an=bool(sammlung["luecken"]), reihen=reihen,
                             ausgeblendet=ausgeblendet)
 
@@ -148,7 +162,7 @@ async def erste_luecke(p: Profil, vorlage: str) -> tuple[str, Luecke] | None:
     ohne_titel = None
     for z in await db.fetch_all("SELECT id FROM collections WHERE luecken = 1 ORDER BY sort_order, name, id"):
         try:
-            a = await ansicht(z["id"], p, vorlage)
+            a = await ansicht(z["id"], p, vorlage, gemeinfrei=False)
         except speicher.SammlungFehlt:
             continue
         for r in a.reihen:

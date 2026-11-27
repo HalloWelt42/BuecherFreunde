@@ -16,19 +16,45 @@ export function anzahl(n: number, eins: string, viele: string): string {
   return `${zahl(n)} ${n === 1 ? eins : viele}`;
 }
 
-export function groesse(bytes: number | null | undefined): string {
-  const b = bytes ?? 0;
-  // Dezimal gezählt, wie am Server und im Dateimanager
-  if (b < 1000) return `${zahl(b)} Byte`;
-  const stufen = ["KB", "MB", "GB", "TB"];
-  let wert = b / 1000;
+const STUFEN = ["KB", "MB", "GB", "TB"];
+
+/** Die Einheit einer Größe, dezimal gezählt wie am Server und im Dateimanager, und wie viele Nachkommastellen sie zeigt */
+function einheit(bytes: number): { teiler: number; name: string; stellen: number } {
+  if (bytes < 1000) return { teiler: 1, name: "Byte", stellen: 0 };
+  let teiler = 1000;
   let stufe = 0;
-  while (wert >= 1000 && stufe < stufen.length - 1) {
-    wert /= 1000;
+  while (bytes / teiler >= 1000 && stufe < STUFEN.length - 1) {
+    teiler *= 1000;
     stufe += 1;
   }
-  const stellen = wert >= 100 || stufe === 0 ? 0 : 1;
-  return `${wert.toLocaleString("de-DE", { minimumFractionDigits: stellen, maximumFractionDigits: stellen })} ${stufen[stufe]}`;
+  return { teiler, name: STUFEN[stufe], stellen: bytes / teiler >= 100 || stufe === 0 ? 0 : 1 };
+}
+
+const inEinheit = (bytes: number, e: ReturnType<typeof einheit>): string =>
+  (bytes / e.teiler).toLocaleString("de-DE", { minimumFractionDigits: e.stellen, maximumFractionDigits: e.stellen });
+
+export function groesse(bytes: number | null | undefined): string {
+  const b = bytes ?? 0;
+  const e = einheit(b);
+  return `${inEinheit(b, e)} ${e.name}`;
+}
+
+/** "12,4 von 21,3 MB": der Teil in der Einheit des Ganzen */
+export function groesseVon(teil: number, ganz: number): string {
+  const e = einheit(ganz);
+  return `${inEinheit(Math.min(teil, ganz), e)} von ${inEinheit(ganz, e)} ${e.name}`;
+}
+
+/** Wie lange etwas schon dauert: "0:23", "2:05", ab einer Stunde "1:02:03" */
+export function dauer(sekunden: number): string {
+  const s = Math.max(0, Math.floor(sekunden));
+  const zwei = (n: number) => String(n).padStart(2, "0");
+  return s >= 3600 ? `${Math.floor(s / 3600)}:${zwei(Math.floor(s / 60) % 60)}:${zwei(s % 60)}` : `${Math.floor(s / 60)}:${zwei(s % 60)}`;
+}
+
+/** Eine Wartezeit in Worten: "45 Sekunden", "2 Minuten" */
+export function zeitspanne(sekunden: number): string {
+  return sekunden < 60 ? anzahl(Math.round(sekunden), "Sekunde", "Sekunden") : anzahl(Math.round(sekunden / 60), "Minute", "Minuten");
 }
 
 /** Die Datenbank schreibt "2026-11-25 19:54:47" in Weltzeit, die neuen Wege schreiben mit Z. */

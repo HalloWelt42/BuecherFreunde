@@ -58,6 +58,7 @@ from backend.app.services.ausfuehren import sandbox
 from backend.app.katalog.bestandslauf import bestandslauf
 from backend.app.katalog.kategorien import anleitung_nachziehen
 from backend.app.luecken.nachschlagen import nachschlagen as luecken_nachschlagen
+from backend.app.quellen.gutenberg_katalog import katalog as gemeinfreie_katalog
 from backend.app.material.erkennen import abgleich as material_abgleich
 from backend.app.material.textlauf import textlauf as material_textlauf
 from backend.app.katalog.einordnen import einordner as katalog_einordner
@@ -144,6 +145,7 @@ async def lifespan(app: FastAPI):
     await uebersetzungslauf.stoppen()
     await ansagelauf.stoppen()
     await luecken_nachschlagen.stoppen()
+    await gemeinfreie_katalog.stoppen()               # ein laufendes Holen setzt beim nächsten Mal am Stand fort (BF-98)
     await nachfuehren.stoppen()
     for auftrag in einrichtung_auftraege().values():
         await auftrag.stoppen()

@@ -64,7 +64,7 @@ Plan und Entscheidungen in [HOCHLADEN.md](HOCHLADEN.md); gebaut in `backend/app/
 `schritt` 4), bis sie übernommen oder verworfen wird, auch über Tage und nach einem Neustart. Hochladen im Browser hält
 immer; der Eingangsordner und Ordner auf dem Gerät (Einlese-Ordner und externe Sammlung) nur, wenn es in den Einstellungen
 eingeschaltet ist, dann in der offenen Vorschau ihrer Quelle ("Eingangsordner", "Ordner auf dem Gerät", "Externe Sammlung").
-Gemeinfreie Bücher halten nie. Beim Halt ist die Datei schon gelesen (Angaben, Text, Umschlag); im Regal, in der Suche und in
+Gemeinfreie Bücher halten nur, wenn sie in eine Lücke geholt werden (BF-98, `POST /api/gutenberg/luecke`). Beim Halt ist die Datei schon gelesen (Angaben, Text, Umschlag); im Regal, in der Suche und in
 den Zählern steht nichts. Eine ZIP nimmt nur das Hochladen im Browser, im Eingangsordner und in Ordnern bleibt sie `format`.
 
 **ZIP**: auf dem Server ausgepackt, Eintrag für Eintrag, jeder eine eigene Aufnahme derselben Vorschau (`teil_von`); nach
@@ -285,6 +285,27 @@ Kennungen: `google_books` (nur mit `GOOGLE_BOOKS_API_KEY`), `open_library`, `dnb
 | `GET /api/authors/{id}` | dazu `verweise: [{art, kennung, adresse}]` |
 | `GET /api/authors/scanner/events` | wie bisher; neues Ereignis `ruht` mit `grund`, wenn eine Quelle Pause macht (der Lauf endet dann) |
 | `GET /api/books/rescan/status` | dazu `grund`, wenn keine Angaben mehr ergänzt werden (alle Verzeichnisse ruhen) |
+
+### Gemeinfreie Bücher mit eigenem Katalog (BF-98)
+
+Gutendex ist oft überlastet. Darum gibt es den eigenen Katalog (`quellen/gutenberg_katalog.py`): die Katalogdatei des Project
+Gutenberg von den Spiegeln (`GUTENBERG_KATALOG_PFAD`), als SQLite mit Volltextindex im Ort Suchindex (`gutenberg_katalog.db`), nur
+Einträge der Art Text. Holen ist ein Auftrag mit Fortschritt in Byte; nach einem Abbruch geht es am Stand weiter (Range mit
+If-Range), gebaut wird neben dem alten Katalog und erst ganz fertig getauscht. Beim Erneuern fragt der Auftrag, ob sich die Datei
+geändert hat (If-None-Match); die nächtliche Pflege erneuert, wenn er älter ist als `GUTENBERG_KATALOG_TAGE`. Ein Fund aus dem
+Katalog nennt die Datei und den Umschlag auf dem Spiegel (`pg<Nr>-images-3.epub`, `pg<Nr>.cover.medium.jpg`); `download_count` ist 0.
+
+| Weg | Zweck |
+|---|---|
+| `GET /api/gutenberg/vorschlaege?q=&sprache=&seite=` | beim Tippen, nur der eigene Katalog, keine Anfrage ins Netz; ohne Wort oder Katalog leer. Seiten zu 32 wie bei Gutendex |
+| `GET /api/gutenberg/suche?q=&sprache=&topic=&seite=` | ausdrücklich bei Gutendex, wartet bis zu `GUTENBERG_SUCHE_GEDULD_S` Sekunden. Dazu `herkunft` (`gutendex` oder `katalog`) und `hinweis`: antwortet Gutendex nicht, kommen die Treffer aus dem Katalog und `hinweis` sagt in Klartext warum; ohne Katalog 502 mit dem Grund als Satz, nie als Nummer |
+| `GET /api/gutenberg/katalog` | `{da, anzahl, stand, geholt_am, alter_tage, faellig, erneuern_tage, laeuft, schritt, erledigt, gesamt, grund, suche_geduld_s}`; `schritt` ist `holen` oder `bauen`, `erledigt` und `gesamt` sind Byte |
+| `POST /api/gutenberg/katalog` | holen oder erneuern; läuft es schon, bleibt es bei diesem Lauf. 409, wenn die gemeinfreien Bücher abgeschaltet sind |
+| `POST /api/gutenberg/luecke` `{buch, sammlung_id, band, sprache}` | in die Lücke holen: wie `POST /api/gutenberg/import`, aber mit Halt in einer neuen Vorschau, die Sammlung, Band und Sprache vorgibt (`{vorschau}`); 422 ohne Sammlung, 409, wenn das Buch gerade schon geholt wird |
+
+Die Lücken einer Sammlung nennen je fehlendem Band mit Titel `gemeinfrei`: das Buch des Katalogs, das nach ganzem Titel und Autor
+sicher derselbe Band ist, in der Sprache der Lücke (nur lokal abgeglichen, ohne Rücksicht auf Groß und klein, Satzzeichen und
+Umlautschreibweise); sonst `null`.
 
 ## Codestellen ausführen (BF-29)
 

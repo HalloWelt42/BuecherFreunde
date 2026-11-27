@@ -4,7 +4,7 @@ geraet: [pi5b]
 abhaengigkeiten: [kellerwolke]
 daten:
   - "pi5b: Datenbank `{{wurzel}}/daten/bestand/buecherfreunde.db` (Angaben, Notizen, Markierungen, Lesestände, Einstellungen)"
-  - "pi5b: Suchindex `{{wurzel}}/daten/suche/suche.db` (jederzeit neu zu bauen), Volltexte `{{wurzel}}/daten/texte`, Umschläge `{{wurzel}}/daten/umschlaege` (beides auch im Begleiter jedes Buchs in der Kellerwolke)"
+  - "pi5b: Suchindex `{{wurzel}}/daten/suche/suche.db` und eigener Katalog der gemeinfreien Bücher `{{wurzel}}/daten/suche/gutenberg_katalog.db` (beide jederzeit neu zu bauen), Volltexte `{{wurzel}}/daten/texte`, Umschläge `{{wurzel}}/daten/umschlaege` (beides auch im Begleiter jedes Buchs in der Kellerwolke)"
   - "Kellerwolke: Originale und je Buch ein Begleiter (Umschlag, Volltext, Angaben) unter `Apps/BücherFreunde`"
 sicherung:
   - "die Datenbank als ZIP nach `{{wurzel}}/daten/bestand/backups`, nach der Sicherungsregel der Altfassung; der Dateipool der Kellerwolke wird nicht gesichert (Stand 25.11.2026)"
@@ -15,7 +15,7 @@ schluessel_orte:
   - "pi5b: `{{wurzel}}/daten/bestand/schluessel.json`, Modus 0600 (Schlüssel, die in der App eingetragen sind: Ersteinrichtung, Anschlüsse, Umzug; gelten vor den Dateien unter `zugang/`)"
   - "pi5b: `{{wurzel}}/.env` (Orte, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
 einrichten: einrichten.sh
-stand: 28d2b7f
+stand: 4dad660
 ---
 
 # BücherFreunde (Neubau)
@@ -70,6 +70,14 @@ Umziehen: Backend anhalten, Ordner kopieren, Wert in der `.env` ändern, starten
 Netzfreigabe (Sperren und WAL sind dort unsicher); eine Platte im NAS dafür als Blockgerät einhängen.
 
 Probe: `/api/orte` nennt je Ort Pfad, freien Platz und `gut`.
+
+Im Ort Suchindex liegt auch der eigene Katalog der gemeinfreien Bücher (`gutenberg_katalog.db`, rund 76.000 Bücher). Er kommt
+beim ersten Öffnen der gemeinfreien Bücher als Auftrag vom Spiegel des Project Gutenberg (`GUTENBERG_KATALOG_PFAD`) und wird in
+der nächtlichen Pflege erneuert, wenn er älter ist als `GUTENBERG_KATALOG_TAGE` (Vorgabe 7). Beim Tippen sucht nur er; "Bei
+Gutendex suchen" wartet bis zu `GUTENBERG_SUCHE_GEDULD_S` Sekunden (Vorgabe 120) und nimmt bei einer Störung die Treffer aus ihm.
+
+Probe: `curl -s -H "Authorization: Bearer <Sitzung>" http://127.0.0.1:{{port:ziel/oberflaeche}}/api/gutenberg/katalog` nennt
+`da`, `anzahl`, `stand` und, wenn der letzte Lauf scheiterte, `grund`.
 
 ### 4. Ersteinrichtung in der App
 

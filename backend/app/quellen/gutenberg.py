@@ -1,12 +1,13 @@
-"""Gemeinfreie Bücher aus dem Project Gutenberg. Gesucht wird über Gutendex. Die Dateien kommen von den Spiegeln: die Seite selbst
-ist nur für Menschen gedacht und weist Programme ab (503, sechs Stunden Ruhe)."""
+"""Gemeinfreie Bücher aus dem Project Gutenberg. Gesucht wird ausdrücklich über Gutendex (oft überlastet, darum mit großzügiger
+Geduld), beim Tippen und als Rückfall im eigenen Katalog (quellen/gutenberg_katalog.py, BF-98). Die Dateien kommen von den
+Spiegeln: die Seite selbst ist nur für Menschen gedacht und weist Programme ab (503, sechs Stunden Ruhe)."""
 
 from __future__ import annotations
 
 import logging
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel, Field
@@ -14,8 +15,10 @@ from pydantic import BaseModel, Field
 from backend.app.quellen import regeln
 from backend.app.quellen.abruf import Frage, abruf, hole
 from backend.app.quellen.fehler import AnfrageFalsch, QuelleFehler
+from backend.app.quellen.klartext import klartext
 
 logger = logging.getLogger("buecherfreunde.quellen.gutenberg")
+SUCHDIENST = "Gutendex"                    # so heißt der Suchdienst in den Meldungen
 SPIEGEL = sorted(regeln.GUTENBERG_DATEIEN.rechner, reverse=True)
 BUCH_HOECHSTENS = 80_000_000
 BILD_HOECHSTENS = 8_000_000
@@ -41,6 +44,8 @@ class Fundliste(BaseModel):
     naechste: str | None = None
     vorherige: str | None = None
     buecher: list[Fundbuch] = Field(default_factory=list)
+    herkunft: Literal["gutendex", "katalog"] = "gutendex"    # katalog: aus dem eigenen Katalog (Vorschläge oder Rückfall)
+    hinweis: str = ""                                        # warum der Rückfall, als Satz für eine Meldung
 
 
 def _datei(formate: dict[str, str]) -> tuple[str, str]:
@@ -75,13 +80,31 @@ async def suche(query: str = "", sprache: str = "", topic: str = "", seite: int 
     return Fundliste(**(await hole(regeln.GUTENBERG, frage) or {}), seite=seite)
 
 
+def stoerung(f: QuelleFehler) -> str:
+    """Warum Gutendex gerade nichts liefert, als Satz ohne Fehlernummer."""
+    return klartext(f, SUCHDIENST)
+
+
 def _von_spiegeln(pfad: str) -> list[str]:
     return [f"https://{s}{pfad}" for s in SPIEGEL]
 
 
+def _dateien(nummer: int, endung: str) -> list[str]:
+    return [f"pg{nummer}.txt"] if endung == ".txt" else [f"pg{nummer}-images-3.epub", f"pg{nummer}.epub"]
+
+
 def _adressen(nummer: int, endung: str) -> list[str]:
-    dateien = [f"pg{nummer}.txt"] if endung == ".txt" else [f"pg{nummer}-images-3.epub", f"pg{nummer}.epub"]
-    return [a for d in dateien for a in _von_spiegeln(f"/cache/epub/{nummer}/{d}")]
+    return [a for d in _dateien(nummer, endung) for a in _von_spiegeln(f"/cache/epub/{nummer}/{d}")]
+
+
+def datei_adresse(nummer: int) -> str:
+    """Die Adresse des EPUB eines Buchs auf dem ersten Spiegel; `download_buch` versucht von dort aus alle Spiegel."""
+    return _von_spiegeln(f"/cache/epub/{nummer}/{_dateien(nummer, '.epub')[0]}")[0]
+
+
+def umschlag_adresse(nummer: int) -> str:
+    """Die Adresse des Umschlags auf dem ersten Spiegel, nach dem Muster der Verzeichnisse; `download_cover` nimmt sie."""
+    return _von_spiegeln(f"/cache/epub/{nummer}/pg{nummer}.cover.medium.jpg")[0]
 
 
 def _brauchbar(inhalt: bytes, endung: str) -> bool:

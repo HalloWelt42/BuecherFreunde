@@ -31,6 +31,7 @@ class Regel(BaseModel):
     je_minute: int = 30
     je_minute_mit_kontakt: int | None = None
     zeit_s: float = 15.0
+    geduld: str = ""                           # Name einer Einstellung mit Sekunden, die statt zeit_s gelten (eine langsame Quelle)
     treffer_tage: float = 90
     leer_tage: float = 14
     fehler_s: float = 120
@@ -54,6 +55,11 @@ class Regel(BaseModel):
         mit_kontakt = settings.quellen_kontakt and self.abstand_mit_kontakt_s is not None
         eingestellt = 1.0 / max(getattr(settings, self.je_sekunde), 0.1) if self.je_sekunde else 0.0
         return max(self.abstand_mit_kontakt_s if mit_kontakt else self.abstand_s, eingestellt)
+
+    @property
+    def zeitgrenze(self) -> float:
+        """So lange wird auf eine Antwort gewartet."""
+        return float(getattr(settings, self.geduld)) if self.geduld else self.zeit_s
 
     @property
     def minute(self) -> int:
@@ -86,14 +92,16 @@ WIKIPEDIA = Regel(kennung="wikipedia", name="Lexikon", anbieter="Wikipedia und W
 # Einfache Abrufe reichlich, Suchen höchstens 30 je Minute; Antworten mindestens 12 Stunden behalten
 GND = Regel(kennung="gnd", name="Normdatei", anbieter="Gemeinsame Normdatei über lobid.org", schalter="gnd_enabled", art="autor", adresse="https://lobid.org/gnd",
             rechner=frozenset({"lobid.org"}), abstand_s=0.8, je_minute=25, treffer_tage=60, hintergrund_tag=2000)
+# Gutendex ist oft überlastet: gefragt wird nur ausdrücklich, mit großzügiger Geduld (BF-98); beim Tippen sucht der eigene Katalog
 GUTENBERG = Regel(kennung="gutenberg", name="Gemeinfreie Bücher", anbieter="Project Gutenberg über Gutendex", schalter="gutenberg_enabled", art="bestand", adresse="https://gutendex.com",
-                  rechner=frozenset({"gutendex.com"}), abstand_s=2.0, je_minute=15, zeit_s=40, treffer_tage=14, leer_tage=3, hintergrund_tag=200)
+                  rechner=frozenset({"gutendex.com"}), abstand_s=2.0, je_minute=15, zeit_s=40, geduld="gutenberg_suche_geduld_s", treffer_tage=14, leer_tage=3,
+                  hintergrund_tag=200)
 
 
 
 def _dateien(quelle: Regel, was: str, rechner: set[str], abstand_s: float, je_minute: int, **weitere: object) -> Regel:
     felder = {"kennung": f"{quelle.kennung}_dateien", "name": f"{quelle.name}, {was}", "rechner": frozenset(rechner), "gehoert_zu": quelle.kennung, "abstand_s": abstand_s, "je_minute": je_minute,
-              "abstand_mit_kontakt_s": None, "je_minute_mit_kontakt": None, "je_sekunde": ""}
+              "abstand_mit_kontakt_s": None, "je_minute_mit_kontakt": None, "je_sekunde": "", "geduld": ""}
     return quelle.model_copy(update={**felder, **weitere})
 
 

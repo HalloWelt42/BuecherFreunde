@@ -23,11 +23,15 @@
     ...(ohneGemeinfreie ? [] : [["gutenberg", "landmark", "Gemeinfreie Bücher", "suchen nach Titel, Autor, Sprache"] as [Quelle, string, string, string]]),
   ]);
 
-  let offen = $state<Quelle | "">(gutenberg.gesucht || gutenberg.laeuft ? "gutenberg" : "");
+  let offen = $state<Quelle | "">(gutenberg.gesucht || gutenberg.laeuft || gutenberg.zeigen ? "gutenberg" : "");
 
   $effect(() => void verzeichnisse.bereit());
   $effect(() => {
     if (ohneGemeinfreie && offen === "gutenberg") offen = "";
+  });
+  // Sprung aus einer Lücke (BF-98): die gemeinfreien Bücher gehen auf
+  $effect(() => {
+    if (gutenberg.zeigen && !ohneGemeinfreie) offen = "gutenberg";
   });
   $effect(() => {
     ladeEingangsordner().then((o) => (wolke = o)).catch(() => {});

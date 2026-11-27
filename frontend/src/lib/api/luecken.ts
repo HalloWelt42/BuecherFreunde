@@ -1,6 +1,7 @@
 // Lücken in Sammlungen (BF-75, docs/neubau/SCHNITTSTELLE.md, Lücken): je Sprache eine Reihe mit Büchern und fehlenden Bänden,
 // die Zahl der Bände, Ausblenden und Zurückholen, die Suchadresse. Alle Wege brauchen die Fähigkeit "luecken".
 import { get, patch, post, put } from "./client";
+import type { Fundbuch } from "./gutenberg";
 import type { Buch } from "../typen";
 
 /** Welche Zahl der Bände gilt: die der Quelle, eine eigene oder ausdrücklich keine */
@@ -21,6 +22,8 @@ export interface Luecke {
   kopieren: string;
   /** die fertige Adresse nach der Vorlage; null ohne Vorlage */
   suchadresse: string | null;
+  /** derselbe Band im eigenen Katalog der gemeinfreien Bücher (BF-98), nur lokal abgeglichen */
+  gemeinfrei?: Fundbuch | null;
 }
 
 export interface Platz {

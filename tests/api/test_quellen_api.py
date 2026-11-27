@@ -131,7 +131,7 @@ async def test_gemeinfreie_suche_mit_klarem_grund(client, netz):
     r = await client.get("/api/gutenberg/suche", params={"q": "Faust", "sprache": "de"})
     assert r.status_code == 200 and r.json()["gesamt"] == 7 and r.json()["buecher"][0]["gutenberg_id"] == 2229
     r = await client.get("/api/gutenberg/suche", params={"q": "Effi"})
-    assert r.status_code == 502 and r.json()["detail"] == "Gemeinfreie Bücher: antwortet nicht rechtzeitig"
+    assert r.status_code == 502 and r.json()["detail"] == "Gutendex antwortet gerade nicht, der Dienst ist überlastet. Später erneut versuchen."   # ohne eigenen Katalog (BF-98)
 
 
 # -- Bibliothek ergänzen -----------------------------------------------------------------------------------------------

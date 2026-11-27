@@ -26,6 +26,9 @@ gezielt in eine Lücke oder als Stapel in eine Sammlung auf.
 7. **Auch in Sammlungsvorschlägen.** Ein offener Vorschlag zeigt eine kurze Zeile, etwa "vorhanden 1 bis 5 und 8, es
    fehlen 6 und 7", nur aus den eigenen Bandnummern, ohne Abfrage der Quellen. Platzhalter und Suche gibt es erst in der
    angelegten Sammlung.
+8. **Gemeinfrei zu haben (BF-98).** Steht der fehlende Band im eigenen Katalog der gemeinfreien Bücher (nur lokal
+   abgeglichen, ganzer Titel und Autor), zeigt das Feld "In die Lücke holen" (geholt wie jedes gemeinfreie Buch, dann in der
+   Vorschau mit Sammlung, Band und Sprache der Lücke) und "Bei Gemeinfreie Bücher zeigen" (Hinzufügen, Suche gefüllt).
 
 ## Offen für den Entwurf
 

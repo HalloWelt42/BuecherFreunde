@@ -8,3 +8,11 @@
 .aufnahme > i { text-align: center; }
 .aufnahme b { font-weight: 600; overflow-wrap: anywhere; }
 .legende { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; font-size: .75rem; color: var(--tinte-3); }
+
+/* Gemeinfreie Bücher (BF-98): ein Vorgang in der Karte (Übernahme, eigener Katalog, Warten auf Gutendex), die Zeile des eigenen
+   Katalogs und woher die Treffer kommen */
+.mulde.auftrag { display: grid; gap: .5rem; padding: .625rem .75rem; }
+.gutendex-wartet .reihe > b { font-weight: 600; }
+.katalogzeile { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .75rem; font-size: .8125rem; color: var(--tinte-3); }
+.katalogzeile > .knopf { margin-left: auto; }
+.trefferherkunft { font-size: .8125rem; color: var(--tinte-3); }

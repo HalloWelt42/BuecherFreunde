@@ -1,10 +1,13 @@
 // Lücken einer Sammlung (BF-75) für ihr Regal: Reihen je Sprache vom Server, Ausblenden, Hochladen in eine Lücke oder als
-// Stapel in die Sammlung über die Vorschau (BF-80). Nur mit der Fähigkeit "luecken" (lib/stand/abrufe.ts).
+// Stapel in die Sammlung über die Vorschau (BF-80), ein gemeinfreies Buch in die Lücke holen oder bei den gemeinfreien Büchern
+// zeigen (BF-98). Nur mit der Fähigkeit "luecken" (lib/stand/abrufe.ts).
+import { angabenAus, holeInDieLuecke } from "../../lib/api/gutenberg";
 import { blendeLueckeAus, ladeLuecken, type Ausblendgrund, type Luecke, type Reihe, type Sammlungsluecken } from "../../lib/api/luecken";
 import { lueckenvorgabe } from "../../lib/luecken";
 import { navigate } from "../../lib/router.svelte";
 import { darfAbrufen } from "../../lib/stand/abrufe";
 import { annahme } from "../../lib/stand/annahme.svelte";
+import { gutenberg } from "../../lib/stand/gutenberg.svelte";
 import { melde } from "../../lib/stand/meldungen.svelte";
 
 /** Solange eine Sprache nachgeschlagen wird, fragt das Regal so oft nach */
@@ -50,6 +53,26 @@ export class Lueckenstand {
     } finally {
       this.arbeitet = false;
     }
+  }
+
+  /** Das gemeinfreie Buch einer Lücke holen: wie jedes gemeinfreie Buch, dann in der Vorschau mit Sammlung, Band und Sprache der
+   * Lücke, wie beim Hochladen in die Lücke */
+  async holeGemeinfrei(l: Luecke): Promise<void> {
+    if (!l.gemeinfrei) return;
+    try {
+      const { vorschau } = await holeInDieLuecke(angabenAus(l.gemeinfrei), this.sammlung, String(l.nummer), l.sprache);
+      await annahme.auffrischen();
+      navigate(`/import/vorschau/${vorschau}`);
+    } catch (e) {
+      melde.schlecht(e, "Nicht geholt");
+    }
+  }
+
+  /** Bei den gemeinfreien Büchern zeigen: dort ist die Suche gefüllt und die Vorschläge stehen da */
+  zeigeGemeinfrei(l: Luecke): void {
+    if (!l.gemeinfrei) return;
+    gutenberg.oeffnen(l.gemeinfrei.titel, l.sprache);
+    navigate("/import");
   }
 
   /** In eine Lücke oder, ohne Lücke, als Stapel in die Sammlung; immer über die Vorschau */

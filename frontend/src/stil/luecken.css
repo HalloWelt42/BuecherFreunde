@@ -22,6 +22,9 @@
 .feldtasten .knopf { min-width: 0; white-space: normal; height: auto; min-height: 2.25rem; padding-block: .25rem; text-align: center; line-height: 1.2; }
 .feldtasten .knopf.klein { min-height: 1.875rem; }
 .feldtrenner { border-top: 1px solid var(--linie); }
+/* Gemeinfrei zu haben (BF-98): der Band steht im eigenen Katalog der gemeinfreien Bücher */
+.gemeinfrei-feld { display: grid; gap: .375rem; padding: .5rem .625rem; border-radius: var(--r2); background: var(--messing-hauch); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--messing) 40%, transparent); }
+.gemeinfrei-feld small { color: var(--tinte-3); }
 
 /* Sammlung bearbeiten: Platzhalter, Bände je Sprache, Ausgeblendetes */
 .lueckenteil { display: grid; gap: .625rem; padding-top: .75rem; border-top: 1px solid var(--linie); }

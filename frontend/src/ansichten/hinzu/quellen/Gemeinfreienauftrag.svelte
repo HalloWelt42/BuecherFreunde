@@ -41,11 +41,6 @@
 </section>
 
 <style>
-  .auftrag {
-    display: grid;
-    gap: 0.5rem;
-    padding: 0.625rem 0.75rem;
-  }
   ul {
     display: grid;
     max-height: 14rem;
