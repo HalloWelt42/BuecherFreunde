@@ -70,10 +70,10 @@ describe("SearchBar", () => {
     render(SearchBar);
 
     const input = screen.getByPlaceholderText("B\u00fccher durchsuchen...");
-    await fireEvent.input(input, { target: { value: "Hesse" } });
+    await fireEvent.input(input, { target: { value: "HalloWelt42" } });
     await fireEvent.keyDown(input, { key: "Enter" });
 
-    expect(pushMock).toHaveBeenCalledWith("/search?q=Hesse");
+    expect(pushMock).toHaveBeenCalledWith("/search?q=HalloWelt42");
   });
 
   it("navigiert nicht bei leerem Suchfeld und Enter", async () => {
@@ -109,7 +109,7 @@ describe("SearchBar", () => {
 
   it("zeigt Vorschlaege als Dropdown an", async () => {
     vorschlaegeMock.mockResolvedValue({
-      suggestions: ["Der Steppenwolf", "Der Prozess"],
+      suggestions: ["Tragwerk", "Hexagonal"],
     });
     render(SearchBar);
 
@@ -120,8 +120,8 @@ describe("SearchBar", () => {
     // Warten auf Promise-Aufloesung
     await vi.runAllTimersAsync();
 
-    expect(screen.getByText("Der Steppenwolf")).toBeTruthy();
-    expect(screen.getByText("Der Prozess")).toBeTruthy();
+    expect(screen.getByText("Tragwerk")).toBeTruthy();
+    expect(screen.getByText("Hexagonal")).toBeTruthy();
   });
 
   it("schliesst Dropdown bei Escape-Taste", async () => {

@@ -69,24 +69,24 @@ describe("Schnellfilter: Stand", () => {
     vi.useFakeTimers();
     const { ziel, gefiltert } = probeziel();
     ab = schnellfilter.biete(ziel);
-    for (const w of ["t", "to", "tol", "tolk "]) {
+    for (const w of ["h", "ha", "hal", "hallo "]) {
       schnellfilter.tippe(w);
       vi.advanceTimersByTime(80);
     }
     expect(gefiltert).toEqual([]);
     vi.advanceTimersByTime(FILTER_WARTE_MS);
-    expect(gefiltert).toEqual(["tolk"]);
+    expect(gefiltert).toEqual(["hallo"]);
     // Dasselbe Wort noch einmal lädt nichts neu
-    schnellfilter.tippe("tolk");
+    schnellfilter.tippe("hallo");
     vi.advanceTimersByTime(FILTER_WARTE_MS);
-    expect(gefiltert).toEqual(["tolk"]);
+    expect(gefiltert).toEqual(["hallo"]);
   });
 
   it("verwirft das Warten beim Wechsel der Ansicht", () => {
     vi.useFakeTimers();
     const erste = probeziel();
     ab = schnellfilter.biete(erste.ziel);
-    schnellfilter.tippe("kafka");
+    schnellfilter.tippe("verteiler");
     ab();
     const zweite = probeziel();
     ab = schnellfilter.biete(zweite.ziel);
@@ -97,9 +97,9 @@ describe("Schnellfilter: Stand", () => {
 
   it("leert sofort und vergisst Getipptes", () => {
     vi.useFakeTimers();
-    const { ziel, gefiltert } = probeziel("tolkien");
+    const { ziel, gefiltert } = probeziel("hallowelt");
     ab = schnellfilter.biete(ziel);
-    schnellfilter.tippe("tolkie");
+    schnellfilter.tippe("hallowel");
     schnellfilter.leere(ziel);
     vi.advanceTimersByTime(FILTER_WARTE_MS);
     expect(gefiltert).toEqual([""]);
@@ -113,26 +113,26 @@ describe("Schnellfilter: Stand", () => {
 describe("Schnellfilter der Bibliothek", () => {
   it("steht als q in der Adresse bei den übrigen Filtern", () => {
     navigate("/?is_favorite=true", true);
-    regalfilter.filtere("tolk");
+    regalfilter.filtere("hallo");
     expect(route.path).toBe("/");
-    expect(filter.wert("q")).toBe("tolk");
+    expect(filter.wert("q")).toBe("hallo");
     expect(filter.wert("is_favorite")).toBe("true");
     expect(filter.aktiv).toBe(true);
   });
 
   it("grenzt nur ein: allein zählt er nicht als Filter der Ansicht (Alle bleibt Alle)", () => {
-    navigate("/?q=tolk", true);
+    navigate("/?q=hallo", true);
     expect(filter.aktiv).toBe(false);
-    expect(filter.kennung).toBe("q=tolk");
+    expect(filter.kennung).toBe("q=hallo");
   });
 
   it("macht beim Tippen einen Schritt im Verlauf, nicht einen je Wort", () => {
     const vorher = history.length;
-    regalfilter.filtere("t");
-    regalfilter.filtere("tolk");
-    regalfilter.filtere("tolkien");
+    regalfilter.filtere("h");
+    regalfilter.filtere("hallo");
+    regalfilter.filtere("hallowelt");
     expect(history.length).toBe(vorher + 1);
-    expect(filter.wert("q")).toBe("tolkien");
+    expect(filter.wert("q")).toBe("hallowelt");
   });
 
   it("fragt den Server mit suche und zählt ohne", async () => {
@@ -141,14 +141,14 @@ describe("Schnellfilter der Bibliothek", () => {
       aufrufe.push(String(weg));
       return Promise.resolve(new Response(JSON.stringify({ buecher: [], gesamt: 12, gesamt_ohne_suche: 340, seite: 1, pro_seite: 48, seiten_gesamt: 1 })));
     }) as unknown as typeof fetch;
-    navigate("/?q=tolk%20hob", true);
+    navigate("/?q=hallo%20zah", true);
     await buecher.laden();
-    expect(aufrufe.some((a) => a.includes("suche=tolk+hob"))).toBe(true);
+    expect(aufrufe.some((a) => a.includes("suche=hallo+zah"))).toBe(true);
     expect([regalfilter.treffer, regalfilter.gesamt]).toEqual([12, 340]);
   });
 
   it("gilt nur dort: andere Ansichten kennen kein q", () => {
-    navigate("/?q=tolk", true);
+    navigate("/?q=hallo", true);
     navigate("/authors");
     expect(filter.wert("q")).toBe("");
     expect(autorenfilter.wort).toBe(autorenansicht.suche.trim());
@@ -162,7 +162,7 @@ describe("Suchfeld als Schnellfilter", () => {
   it("ohne Liste ist die Taste gesperrt und das Feld sucht", async () => {
     render(Suchfeld, { props: { id: "s" } });
     expect((umschalter() as HTMLButtonElement).disabled).toBe(true);
-    await fireEvent.input(feld(), { target: { value: "kafka" } });
+    await fireEvent.input(feld(), { target: { value: "verteiler" } });
     await fireEvent.submit(feld().form!);
     expect(route.path).toBe("/search");
   });
@@ -171,10 +171,10 @@ describe("Suchfeld als Schnellfilter", () => {
     const { ziel, gefiltert } = probeziel();
     ab = schnellfilter.biete(ziel);
     render(Suchfeld, { props: { id: "s" } });
-    await fireEvent.input(feld(), { target: { value: "tolkien" } });
+    await fireEvent.input(feld(), { target: { value: "hallowelt" } });
     await fireEvent.click(umschalter());
     expect(umschalter().getAttribute("aria-pressed")).toBe("true");
-    expect(gefiltert).toEqual(["tolkien"]);
+    expect(gefiltert).toEqual(["hallowelt"]);
     expect(feld().placeholder).toBe("Titel, Autor, ISBN oder Etikett");
     expect(screen.getByRole("status").textContent).toBe("12 von 340");
   });
@@ -185,13 +185,13 @@ describe("Suchfeld als Schnellfilter", () => {
     ab = schnellfilter.biete(ziel);
     aufArt("filtern");
     render(Suchfeld, { props: { id: "s" } });
-    for (const w of ["h", "ho", "hob", "hobb"]) {
+    for (const w of ["z", "za", "zah", "zahl"]) {
       await fireEvent.input(feld(), { target: { value: w } });
       vi.advanceTimersByTime(100);
     }
     expect(gefiltert).toEqual([]);
     vi.advanceTimersByTime(FILTER_WARTE_MS);
-    expect(gefiltert).toEqual(["hobb"]);
+    expect(gefiltert).toEqual(["zahl"]);
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
@@ -201,23 +201,23 @@ describe("Suchfeld als Schnellfilter", () => {
     aufArt("filtern");
     render(Suchfeld, { props: { id: "s" } });
     await fireEvent.focus(feld());
-    await fireEvent.input(feld(), { target: { value: "hobbit" } });
+    await fireEvent.input(feld(), { target: { value: "zahlenreich" } });
     expect(screen.getByText("In allen Büchern suchen")).toBeTruthy();
     await fireEvent.keyDown(feld(), { key: "ArrowDown" });
     await fireEvent.submit(feld().form!);
     expect(route.path).toBe("/search");
-    expect((route.params as Record<string, string>).q).toBe("hobbit");
+    expect((route.params as Record<string, string>).q).toBe("zahlenreich");
     // Die Ansicht behält, was getippt war
-    expect(gefiltert).toEqual(["hobbit"]);
+    expect(gefiltert).toEqual(["zahlenreich"]);
   });
 
   it("Escape leert und verlässt das Feld", async () => {
-    const { ziel, gefiltert } = probeziel("tolk");
+    const { ziel, gefiltert } = probeziel("hallo");
     ab = schnellfilter.biete(ziel);
     aufArt("filtern");
     render(Suchfeld, { props: { id: "s" } });
     flushSync();
-    expect(feld().value).toBe("tolk");
+    expect(feld().value).toBe("hallo");
     feld().focus();
     await fireEvent.keyDown(feld(), { key: "Escape" });
     expect(feld().value).toBe("");
@@ -226,13 +226,13 @@ describe("Suchfeld als Schnellfilter", () => {
   });
 
   it("zeigt je Ansicht ihr eigenes Wort", async () => {
-    const regal = probeziel("tolk");
+    const regal = probeziel("hallo");
     const autoren = probeziel("");
     aufArt("filtern");
     ab = schnellfilter.biete(regal.ziel);
     render(Suchfeld, { props: { id: "s" } });
     flushSync();
-    expect(feld().value).toBe("tolk");
+    expect(feld().value).toBe("hallo");
     ab();
     ab = schnellfilter.biete(autoren.ziel);
     flushSync();
@@ -240,6 +240,6 @@ describe("Suchfeld als Schnellfilter", () => {
     ab();
     ab = schnellfilter.biete(regal.ziel);
     flushSync();
-    expect(feld().value).toBe("tolk");
+    expect(feld().value).toBe("hallo");
   });
 });

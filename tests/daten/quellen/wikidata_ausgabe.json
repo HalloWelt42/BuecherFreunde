@@ -1,17 +1,17 @@
 {
  "entities": {
-  "Q87031740": {
-   "id": "Q87031740",
+  "Q900000201": {
+   "id": "Q900000201",
    "labels": {
     "de": {
      "language": "de",
-     "value": "Duden: Familiennamen"
+     "value": "Musterbuch: Familiennamen"
     }
    },
    "descriptions": {
     "de": {
      "language": "de",
-     "value": "erste Aufgabe des Familiennamen-Dudens von Rosa und Volker Kohlheim"
+     "value": "erste Aufgabe des Familiennamen-Musterbuchs von Rosa und Volker Beispielheim"
     },
     "en": {
      "language": "en",
@@ -89,8 +89,8 @@
        "datavalue": {
         "value": {
          "entity-type": "item",
-         "numeric-id": 464633,
-         "id": "Q464633"
+         "numeric-id": 900000203,
+         "id": "Q900000203"
         },
         "type": "wikibase-entityid"
        }
@@ -102,7 +102,7 @@
      {
       "mainsnak": {
        "datavalue": {
-        "value": "3-411-70851-4",
+        "value": "3-99999-123-2",
         "type": "string"
        }
       },
@@ -113,7 +113,7 @@
      {
       "mainsnak": {
        "datavalue": {
-        "value": "978-3-411-70851-2",
+        "value": "978-3-99999-123-8",
         "type": "string"
        }
       },
@@ -140,8 +140,8 @@
        "datavalue": {
         "value": {
          "entity-type": "item",
-         "numeric-id": 137651787,
-         "id": "Q137651787"
+         "numeric-id": 900000202,
+         "id": "Q900000202"
         },
         "type": "wikibase-entityid"
        }
@@ -155,8 +155,8 @@
        "datavalue": {
         "value": {
          "entity-type": "item",
-         "numeric-id": 95190229,
-         "id": "Q95190229"
+         "numeric-id": 900000204,
+         "id": "Q900000204"
         },
         "type": "wikibase-entityid"
        }
@@ -168,8 +168,8 @@
        "datavalue": {
         "value": {
          "entity-type": "item",
-         "numeric-id": 95264911,
-         "id": "Q95264911"
+         "numeric-id": 900000205,
+         "id": "Q900000205"
         },
         "type": "wikibase-entityid"
        }

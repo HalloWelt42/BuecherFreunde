@@ -1,22 +1,22 @@
 <?xml version='1.0' encoding='utf-8'?>
 <searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/" xmlns:m="http://www.loc.gov/MARC21/slim" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><version>1.1</version><numberOfRecords>17</numberOfRecords><records><record><recordSchema>MARC21-xml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record type="Bibliographic">
     <m:leader>00000pam a2200000 c 4500</m:leader>
-    <m:controlfield tag="001">1284869776</m:controlfield>
+    <m:controlfield tag="001">9990000158</m:controlfield>
     <m:controlfield tag="003">DE-101</m:controlfield>
     <m:controlfield tag="005">20231206220302.0</m:controlfield>
     <m:controlfield tag="007">tu</m:controlfield>
     <m:controlfield tag="008">230330s2023    gw ||||| |||| 00||||ger  </m:controlfield>
     <m:datafield tag="020" ind1=" " ind2=" ">
-      <m:subfield code="a">9783499013225</m:subfield>
+      <m:subfield code="a">9783999991078</m:subfield>
       <m:subfield code="c">Festeinband : EUR 14.00 (DE), EUR 14.40 (AT)</m:subfield>
-      <m:subfield code="9">978-3-499-01322-5</m:subfield>
+      <m:subfield code="9">978-3-99999-107-8</m:subfield>
     </m:datafield>
     <m:datafield tag="020" ind1=" " ind2=" ">
-      <m:subfield code="a">3499013223</m:subfield>
-      <m:subfield code="9">3-499-01322-3</m:subfield>
+      <m:subfield code="a">3999991070</m:subfield>
+      <m:subfield code="9">3-99999-107-0</m:subfield>
     </m:datafield>
     <m:datafield tag="024" ind1="3" ind2=" ">
-      <m:subfield code="a">9783499013225</m:subfield>
+      <m:subfield code="a">9783999991078</m:subfield>
     </m:datafield>
     <m:datafield tag="041" ind1=" " ind2=" ">
       <m:subfield code="a">ger</m:subfield>
@@ -30,26 +30,26 @@
     </m:datafield>
     <m:datafield tag="100" ind1="1" ind2=" ">
       <m:subfield code="8">1\p</m:subfield>
-      <m:subfield code="0">(DE-588)115812431</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/115812431</m:subfield>
-      <m:subfield code="0">(DE-101)115812431</m:subfield>
-      <m:subfield code="a">Kehlmann, Daniel</m:subfield>
-      <m:subfield code="d">1975-</m:subfield>
+      <m:subfield code="0">(DE-588)999000063</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/999000063</m:subfield>
+      <m:subfield code="0">(DE-101)999000063</m:subfield>
+      <m:subfield code="a">Probe, Paula</m:subfield>
+      <m:subfield code="d">1976-</m:subfield>
       <m:subfield code="e">Verfasser</m:subfield>
       <m:subfield code="4">aut</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="245" ind1="1" ind2="0">
-      <m:subfield code="a">Die Vermessung der Welt</m:subfield>
+      <m:subfield code="a">Die Reise nach Beispielhausen</m:subfield>
       <m:subfield code="b">Roman</m:subfield>
-      <m:subfield code="c">Daniel Kehlmann</m:subfield>
+      <m:subfield code="c">Paula Probe</m:subfield>
     </m:datafield>
     <m:datafield tag="250" ind1=" " ind2=" ">
       <m:subfield code="a">Sonderausgabe</m:subfield>
     </m:datafield>
     <m:datafield tag="264" ind1=" " ind2="1">
       <m:subfield code="a">Hamburg</m:subfield>
-      <m:subfield code="b">Rowohlt Taschenbuch Verlag</m:subfield>
+      <m:subfield code="b">Beispiel Taschenbuch Verlag</m:subfield>
       <m:subfield code="c">Dezember 2023</m:subfield>
     </m:datafield>
     <m:datafield tag="300" ind1=" " ind2=" ">
@@ -58,30 +58,30 @@
     </m:datafield>
     <m:datafield tag="600" ind1="1" ind2="7">
       <m:subfield code="8">5\p</m:subfield>
-      <m:subfield code="0">(DE-588)118554700</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/118554700</m:subfield>
-      <m:subfield code="0">(DE-101)118554700</m:subfield>
-      <m:subfield code="a">Humboldt, Alexander von</m:subfield>
-      <m:subfield code="d">1769-1859</m:subfield>
+      <m:subfield code="0">(DE-588)999000071</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/999000071</m:subfield>
+      <m:subfield code="0">(DE-101)999000071</m:subfield>
+      <m:subfield code="a">Musterberg, Amalie von</m:subfield>
+      <m:subfield code="d">1770-1860</m:subfield>
       <m:subfield code="9">rswk-swf</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="600" ind1="1" ind2="7">
       <m:subfield code="8">7\p</m:subfield>
-      <m:subfield code="0">(DE-588)104234644</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/104234644</m:subfield>
-      <m:subfield code="0">(DE-101)104234644</m:subfield>
-      <m:subfield code="a">Gauß, Carl Friedrich</m:subfield>
-      <m:subfield code="d">1777-1855</m:subfield>
+      <m:subfield code="0">(DE-588)999000098</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/999000098</m:subfield>
+      <m:subfield code="0">(DE-101)999000098</m:subfield>
+      <m:subfield code="a">Mustergroß, Friedrich</m:subfield>
+      <m:subfield code="d">1778-1856</m:subfield>
       <m:subfield code="9">rswk-swf</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="630" ind1="0" ind2="7">
       <m:subfield code="8">3\p</m:subfield>
-      <m:subfield code="0">(DE-588)1026671647</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/1026671647</m:subfield>
-      <m:subfield code="0">(DE-101)1026671647</m:subfield>
-      <m:subfield code="a">Die Vermessung der Welt</m:subfield>
+      <m:subfield code="0">(DE-588)9990000387</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/9990000387</m:subfield>
+      <m:subfield code="0">(DE-101)9990000387</m:subfield>
+      <m:subfield code="a">Die Reise nach Beispielhausen</m:subfield>
       <m:subfield code="9">rswk-swf</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
@@ -89,10 +89,10 @@
       <m:subfield code="a">(Produktform)Hardback</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">Alexander von Humboldt</m:subfield>
+      <m:subfield code="a">Amalie von Musterberg</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">Carl Friedrich Gauß</m:subfield>
+      <m:subfield code="a">Friedrich Mustergroß</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
       <m:subfield code="a">Erfolg</m:subfield>
@@ -104,10 +104,10 @@
       <m:subfield code="a">Ironie</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">Lateinamerika</m:subfield>
+      <m:subfield code="a">Beispielhausen</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">Niedersachsen</m:subfield>
+      <m:subfield code="a">Musterland</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
       <m:subfield code="a">Schwächen</m:subfield>
@@ -116,7 +116,7 @@
       <m:subfield code="a">Sehnsucht</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">rororo Bibliothek</m:subfield>
+      <m:subfield code="a">Beispiel Bibliothek</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
       <m:subfield code="a">Geschenkausgabe</m:subfield>
@@ -134,10 +134,10 @@
       <m:subfield code="a">(VLB-WN)1112: Hardcover, Softcover / Belletristik/Gegenwartsliteratur (ab 1945)</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">(VLB-FS)Vermessung</m:subfield>
+      <m:subfield code="a">(VLB-FS)Reise</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">(VLB-FS)Welt</m:subfield>
+      <m:subfield code="a">(VLB-FS)Beispielhausen</m:subfield>
     </m:datafield>
     <m:datafield tag="655" ind1=" " ind2="7">
       <m:subfield code="0">(DE-588)1071854844</m:subfield>
@@ -158,10 +158,10 @@
     </m:datafield>
     <m:datafield tag="710" ind1="2" ind2=" ">
       <m:subfield code="8">2\p</m:subfield>
-      <m:subfield code="0">(DE-588)4655865-2</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/4655865-2</m:subfield>
-      <m:subfield code="0">(DE-101)962870730</m:subfield>
-      <m:subfield code="a">Rowohlt Taschenbuch Verlag</m:subfield>
+      <m:subfield code="0">(DE-588)4999903-5</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4999903-5</m:subfield>
+      <m:subfield code="0">(DE-101)999000276</m:subfield>
+      <m:subfield code="a">Beispiel Taschenbuch Verlag</m:subfield>
       <m:subfield code="e">Verlag</m:subfield>
       <m:subfield code="4">pbl</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
@@ -169,43 +169,43 @@
     <m:datafield tag="776" ind1="0" ind2="8">
       <m:subfield code="i">Erscheint auch als</m:subfield>
       <m:subfield code="n">Druck-Ausgabe</m:subfield>
-      <m:subfield code="z">9783499241000</m:subfield>
+      <m:subfield code="z">9783999991085</m:subfield>
     </m:datafield>
     <m:datafield tag="776" ind1="0" ind2="8">
       <m:subfield code="i">Erscheint auch als</m:subfield>
       <m:subfield code="n">Druck-Ausgabe</m:subfield>
-      <m:subfield code="z">9783499332708</m:subfield>
+      <m:subfield code="z">9783999991092</m:subfield>
     </m:datafield>
     <m:datafield tag="776" ind1="0" ind2="8">
       <m:subfield code="i">Erscheint auch als</m:subfield>
       <m:subfield code="n">Online-Ausgabe</m:subfield>
-      <m:subfield code="z">9783644000117</m:subfield>
+      <m:subfield code="z">9783999991108</m:subfield>
     </m:datafield>
     <m:datafield tag="776" ind1="0" ind2="8">
       <m:subfield code="i">Erscheint auch als</m:subfield>
       <m:subfield code="n">Druck-Ausgabe</m:subfield>
-      <m:subfield code="z">9783498035280</m:subfield>
+      <m:subfield code="z">9783999991115</m:subfield>
     </m:datafield>
     <m:datafield tag="776" ind1="0" ind2="8">
       <m:subfield code="i">Erscheint auch als</m:subfield>
       <m:subfield code="n">Online-Ausgabe</m:subfield>
-      <m:subfield code="z">9783644000124</m:subfield>
+      <m:subfield code="z">9783999991122</m:subfield>
     </m:datafield>
     <m:datafield tag="776" ind1="0" ind2="8">
       <m:subfield code="i">Erscheint auch als</m:subfield>
       <m:subfield code="n">Druck-Ausgabe</m:subfield>
-      <m:subfield code="z">9783499253034</m:subfield>
+      <m:subfield code="z">9783999991139</m:subfield>
     </m:datafield>
     <m:datafield tag="856" ind1="4" ind2="2">
       <m:subfield code="m">X:MVB</m:subfield>
       <m:subfield code="q">text/html</m:subfield>
-      <m:subfield code="u">https://services.dnb.de/plus/idn/1284869776/blurb/</m:subfield>
+      <m:subfield code="u">https://services.dnb.de/plus/idn/9990000158/blurb/</m:subfield>
       <m:subfield code="3">Inhaltstext</m:subfield>
     </m:datafield>
     <m:datafield tag="856" ind1="4" ind2="2">
       <m:subfield code="m">B:DE-101</m:subfield>
       <m:subfield code="q">application/pdf</m:subfield>
-      <m:subfield code="u">https://d-nb.info/1284869776/04</m:subfield>
+      <m:subfield code="u">https://d-nb.info/9990000158/04</m:subfield>
       <m:subfield code="3">Inhaltsverzeichnis</m:subfield>
     </m:datafield>
     <m:datafield tag="883" ind1="2" ind2=" ">
@@ -273,18 +273,18 @@
     </m:datafield>
     </m:record></recordData><recordPosition>1</recordPosition></record><record><recordSchema>MARC21-xml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record type="Bibliographic">
     <m:leader>00000pam a2200000 c 4500</m:leader>
-    <m:controlfield tag="001">1049502752</m:controlfield>
+    <m:controlfield tag="001">9990000166</m:controlfield>
     <m:controlfield tag="003">DE-101</m:controlfield>
     <m:controlfield tag="005">20230125175212.0</m:controlfield>
     <m:controlfield tag="007">tu</m:controlfield>
     <m:controlfield tag="008">140402s2014    gw ||||| |||| 00||||ger  </m:controlfield>
     <m:datafield tag="020" ind1=" " ind2=" ">
-      <m:subfield code="a">9783862197347</m:subfield>
+      <m:subfield code="a">9783999991153</m:subfield>
       <m:subfield code="c">kart. : EUR 39.00 (DE), EUR 40.10 (AT), sfr 51.90 (freier Pr.)</m:subfield>
-      <m:subfield code="9">978-3-86219-734-7</m:subfield>
+      <m:subfield code="9">978-3-99999-115-3</m:subfield>
     </m:datafield>
     <m:datafield tag="024" ind1="3" ind2=" ">
-      <m:subfield code="a">9783862197347</m:subfield>
+      <m:subfield code="a">9783999991153</m:subfield>
     </m:datafield>
     <m:datafield tag="041" ind1=" " ind2=" ">
       <m:subfield code="a">ger</m:subfield>
@@ -309,25 +309,25 @@
       <m:subfield code="a">b</m:subfield>
     </m:datafield>
     <m:datafield tag="100" ind1="1" ind2=" ">
-      <m:subfield code="0">(DE-588)1154621642</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/1154621642</m:subfield>
-      <m:subfield code="0">(DE-101)1154621642</m:subfield>
-      <m:subfield code="a">George, Kristin</m:subfield>
+      <m:subfield code="0">(DE-588)9990000301</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/9990000301</m:subfield>
+      <m:subfield code="0">(DE-101)9990000301</m:subfield>
+      <m:subfield code="a">Musterfrau, Kristin</m:subfield>
       <m:subfield code="e">Verfasser</m:subfield>
       <m:subfield code="4">aut</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="245" ind1="1" ind2="0">
-      <m:subfield code="a">Grammatik &amp; Literatur</m:subfield>
-      <m:subfield code="b">eine vergleichende grammatische Analyse literarischer Dualität in Daniel Kehlmanns "Die Vermessung der Welt" und Alexa Hennig von Langes "Relax"</m:subfield>
-      <m:subfield code="c">Kristin George und Monika Henkel. Unter Mitarb. von Anne Katrin Carstens</m:subfield>
+      <m:subfield code="a">Satzbau &amp; Erzählung</m:subfield>
+      <m:subfield code="b">eine vergleichende grammatische Analyse literarischer Dualität in Paula Probes "Die Reise nach Beispielhausen" und Alma Muster von Beispiels "Ruhepause"</m:subfield>
+      <m:subfield code="c">Kristin Musterfrau und Monika Testmann. Unter Mitarb. von Anne Katrin Platzhalter</m:subfield>
     </m:datafield>
     <m:datafield tag="246" ind1="3" ind2=" ">
-      <m:subfield code="a">Grammatik und Literatur</m:subfield>
+      <m:subfield code="a">Satzbau und Erzählung</m:subfield>
     </m:datafield>
     <m:datafield tag="264" ind1=" " ind2="1">
-      <m:subfield code="a">Kassel</m:subfield>
-      <m:subfield code="b">Kassel Univ. Press</m:subfield>
+      <m:subfield code="a">Musterstadt</m:subfield>
+      <m:subfield code="b">Musterstadt Univ. Press</m:subfield>
       <m:subfield code="c">2014</m:subfield>
     </m:datafield>
     <m:datafield tag="300" ind1=" " ind2=" ">
@@ -338,22 +338,22 @@
       <m:subfield code="a">Literaturangaben</m:subfield>
     </m:datafield>
     <m:datafield tag="600" ind1="0" ind2="7">
-      <m:subfield code="0">(DE-588)7598282-1</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/7598282-1</m:subfield>
-      <m:subfield code="0">(DE-101)98728908X</m:subfield>
-      <m:subfield code="a">@凱曼丹尼爾, Daniel</m:subfield>
-      <m:subfield code="d">1975-</m:subfield>
-      <m:subfield code="t">Die Vermessung der Welt</m:subfield>
+      <m:subfield code="0">(DE-588)4999901-1</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4999901-1</m:subfield>
+      <m:subfield code="0">(DE-101)99900025X</m:subfield>
+      <m:subfield code="a">@普羅貝寶拉, Paula</m:subfield>
+      <m:subfield code="d">1976-</m:subfield>
+      <m:subfield code="t">Die Reise nach Beispielhausen</m:subfield>
       <m:subfield code="9">rswk-swf</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="600" ind1="1" ind2="7">
-      <m:subfield code="0">(DE-588)7569327-6</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/7569327-6</m:subfield>
-      <m:subfield code="0">(DE-101)984130691</m:subfield>
-      <m:subfield code="a">Hennig von Lange, Alexa</m:subfield>
-      <m:subfield code="d">1973-</m:subfield>
-      <m:subfield code="t">Relax</m:subfield>
+      <m:subfield code="0">(DE-588)4999902-3</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4999902-3</m:subfield>
+      <m:subfield code="0">(DE-101)999000268</m:subfield>
+      <m:subfield code="a">Muster von Beispiel, Alma</m:subfield>
+      <m:subfield code="d">1974-</m:subfield>
+      <m:subfield code="t">Ruhepause</m:subfield>
       <m:subfield code="9">rswk-swf</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
@@ -391,11 +391,11 @@
     </m:datafield>
     <m:datafield tag="700" ind1="1" ind2=" ">
       <m:subfield code="8">1\p</m:subfield>
-      <m:subfield code="0">(DE-588)1146604262</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/1146604262</m:subfield>
-      <m:subfield code="0">(DE-101)1146604262</m:subfield>
-      <m:subfield code="a">Henkel, Monika</m:subfield>
-      <m:subfield code="d">1940-</m:subfield>
+      <m:subfield code="0">(DE-588)9990000336</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/9990000336</m:subfield>
+      <m:subfield code="0">(DE-101)9990000336</m:subfield>
+      <m:subfield code="a">Testmann, Monika</m:subfield>
+      <m:subfield code="d">1941-</m:subfield>
       <m:subfield code="e">Verfasser</m:subfield>
       <m:subfield code="4">aut</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
@@ -403,13 +403,13 @@
     <m:datafield tag="856" ind1="4" ind2="2">
       <m:subfield code="m">X:MVB</m:subfield>
       <m:subfield code="q">text/html</m:subfield>
-      <m:subfield code="u">https://services.dnb.de/plus/idn/1049502752/blurb/</m:subfield>
+      <m:subfield code="u">https://services.dnb.de/plus/idn/9990000166/blurb/</m:subfield>
       <m:subfield code="3">Inhaltstext</m:subfield>
     </m:datafield>
     <m:datafield tag="856" ind1="4" ind2="2">
       <m:subfield code="m">B:DE-101</m:subfield>
       <m:subfield code="q">application/pdf</m:subfield>
-      <m:subfield code="u">https://d-nb.info/1049502752/04</m:subfield>
+      <m:subfield code="u">https://d-nb.info/9990000166/04</m:subfield>
       <m:subfield code="3">Inhaltsverzeichnis</m:subfield>
     </m:datafield>
     <m:datafield tag="883" ind1=" " ind2=" ">
@@ -428,15 +428,15 @@
     </m:datafield>
     </m:record></recordData><recordPosition>2</recordPosition></record><record><recordSchema>MARC21-xml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record type="Bibliographic">
     <m:leader>00000nam a2200000 c 4500</m:leader>
-    <m:controlfield tag="001">1047267012</m:controlfield>
+    <m:controlfield tag="001">9990000174</m:controlfield>
     <m:controlfield tag="003">DE-101</m:controlfield>
     <m:controlfield tag="005">20171206003923.0</m:controlfield>
     <m:controlfield tag="007">tu</m:controlfield>
     <m:controlfield tag="008">140207s2014    gw ||||| |||| 00||||ger  </m:controlfield>
     <m:datafield tag="020" ind1=" " ind2=" ">
-      <m:subfield code="a">9783804420052</m:subfield>
+      <m:subfield code="a">9783999991177</m:subfield>
       <m:subfield code="c">kart. : EUR 7.90</m:subfield>
-      <m:subfield code="9">978-3-8044-2005-2</m:subfield>
+      <m:subfield code="9">978-3-99999-117-7</m:subfield>
     </m:datafield>
     <m:datafield tag="041" ind1=" " ind2=" ">
       <m:subfield code="a">ger</m:subfield>
@@ -451,26 +451,26 @@
       <m:subfield code="a">b</m:subfield>
     </m:datafield>
     <m:datafield tag="100" ind1="1" ind2=" ">
-      <m:subfield code="0">(DE-588)1130195201</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/1130195201</m:subfield>
-      <m:subfield code="0">(DE-101)1130195201</m:subfield>
-      <m:subfield code="a">Nadolny, Arnd</m:subfield>
-      <m:subfield code="d">1961-</m:subfield>
+      <m:subfield code="0">(DE-588)9990000328</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/9990000328</m:subfield>
+      <m:subfield code="0">(DE-101)9990000328</m:subfield>
+      <m:subfield code="a">Beispielmann, Arnd</m:subfield>
+      <m:subfield code="d">1962-</m:subfield>
       <m:subfield code="e">Verfasser</m:subfield>
       <m:subfield code="4">aut</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="245" ind1="1" ind2="0">
-      <m:subfield code="a">Textanalyse und Interpretation zu Daniel Kehlmann, Die Vermessung der Welt</m:subfield>
+      <m:subfield code="a">Textanalyse und Interpretation zu Paula Probe, Die Reise nach Beispielhausen</m:subfield>
       <m:subfield code="b">alle erforderlichen Infos für Abitur, Matura, Klausur und Referat ; plus Musteraufgaben mit Lösungsansätzen</m:subfield>
-      <m:subfield code="c">Arnd Nadolny</m:subfield>
+      <m:subfield code="c">Arnd Beispielmann</m:subfield>
     </m:datafield>
     <m:datafield tag="250" ind1=" " ind2=" ">
       <m:subfield code="a">2. Aufl.</m:subfield>
     </m:datafield>
     <m:datafield tag="264" ind1=" " ind2="1">
       <m:subfield code="a">Hollfeld</m:subfield>
-      <m:subfield code="b">Bange</m:subfield>
+      <m:subfield code="b">Beispielhefte</m:subfield>
       <m:subfield code="c">2014</m:subfield>
     </m:datafield>
     <m:datafield tag="300" ind1=" " ind2=" ">
@@ -479,16 +479,16 @@
       <m:subfield code="c">18 cm</m:subfield>
     </m:datafield>
     <m:datafield tag="490" ind1="1" ind2=" ">
-      <m:subfield code="a">Königs Erläuterungen</m:subfield>
+      <m:subfield code="a">Prüfers Erläuterungen</m:subfield>
       <m:subfield code="v">Bd. 490</m:subfield>
     </m:datafield>
     <m:datafield tag="500" ind1=" " ind2=" ">
-      <m:subfield code="a">Literaturangaben. - Zusätzliches Online-Angebot unter www.königserläuterungen.de</m:subfield>
+      <m:subfield code="a">Literaturangaben. - Zusätzliches Online-Angebot unter www.prüferserläuterungen.example</m:subfield>
     </m:datafield>
     <m:datafield tag="856" ind1="4" ind2="2">
       <m:subfield code="m">B:DE-101</m:subfield>
       <m:subfield code="q">application/pdf</m:subfield>
-      <m:subfield code="u">https://d-nb.info/1047267012/04</m:subfield>
+      <m:subfield code="u">https://d-nb.info/9990000174/04</m:subfield>
       <m:subfield code="3">Inhaltsverzeichnis</m:subfield>
     </m:datafield>
     <m:datafield tag="883" ind1="2" ind2=" ">
@@ -500,22 +500,22 @@
     </m:datafield>
     </m:record></recordData><recordPosition>3</recordPosition></record><record><recordSchema>MARC21-xml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record type="Bibliographic">
     <m:leader>00000pam a2200000 c 4500</m:leader>
-    <m:controlfield tag="001">1022260529</m:controlfield>
+    <m:controlfield tag="001">9990000182</m:controlfield>
     <m:controlfield tag="003">DE-101</m:controlfield>
     <m:controlfield tag="005">20200603003459.0</m:controlfield>
     <m:controlfield tag="007">tu</m:controlfield>
     <m:controlfield tag="008">120511s2012    gw ||||| |||| 00||||ger  </m:controlfield>
     <m:datafield tag="020" ind1=" " ind2=" ">
-      <m:subfield code="a">9783499253270</m:subfield>
+      <m:subfield code="a">9783999991146</m:subfield>
       <m:subfield code="c">kart. : EUR 12.99 (DE), EUR 13.40 (AT), sfr 19.50 (freier Pr.)</m:subfield>
-      <m:subfield code="9">978-3-499-25327-0</m:subfield>
+      <m:subfield code="9">978-3-99999-114-6</m:subfield>
     </m:datafield>
     <m:datafield tag="020" ind1=" " ind2=" ">
-      <m:subfield code="a">3499253275</m:subfield>
-      <m:subfield code="9">3-499-25327-5</m:subfield>
+      <m:subfield code="a">3999991143</m:subfield>
+      <m:subfield code="9">3-99999-114-3</m:subfield>
     </m:datafield>
     <m:datafield tag="024" ind1="3" ind2=" ">
-      <m:subfield code="a">9783499253270</m:subfield>
+      <m:subfield code="a">9783999991146</m:subfield>
     </m:datafield>
     <m:datafield tag="041" ind1=" " ind2=" ">
       <m:subfield code="a">ger</m:subfield>
@@ -532,16 +532,16 @@
       <m:subfield code="a">b</m:subfield>
     </m:datafield>
     <m:datafield tag="245" ind1="0" ind2="0">
-      <m:subfield code="a">Die Vermessung der Welt</m:subfield>
+      <m:subfield code="a">Die Reise nach Beispielhausen</m:subfield>
       <m:subfield code="b">das Buch zum Film</m:subfield>
-      <m:subfield code="c">Daniel Kehlmann ; Detlef Buck. Hrsg. von Wenka v. Mikuwicz und Michael Töteberg</m:subfield>
+      <m:subfield code="c">Paula Probe ; Detlef Musterfilm. Hrsg. von Wenka v. Musterwitz und Michael Prüfberg</m:subfield>
     </m:datafield>
     <m:datafield tag="250" ind1=" " ind2=" ">
       <m:subfield code="a">Orig.-Ausg.</m:subfield>
     </m:datafield>
     <m:datafield tag="264" ind1=" " ind2="1">
       <m:subfield code="a">Reinbek bei Hamburg</m:subfield>
-      <m:subfield code="b">Rowohlt-Taschenbuch-Verl.</m:subfield>
+      <m:subfield code="b">Beispiel-Taschenbuch-Verl.</m:subfield>
       <m:subfield code="c">2012</m:subfield>
     </m:datafield>
     <m:datafield tag="300" ind1=" " ind2=" ">
@@ -550,32 +550,32 @@
       <m:subfield code="c">23 cm</m:subfield>
     </m:datafield>
     <m:datafield tag="490" ind1="1" ind2=" ">
-      <m:subfield code="a">Rororo</m:subfield>
+      <m:subfield code="a">Beispiel-Reihe</m:subfield>
       <m:subfield code="v">25327</m:subfield>
     </m:datafield>
     <m:datafield tag="600" ind1="1" ind2="7">
-      <m:subfield code="0">(DE-588)118554700</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/118554700</m:subfield>
-      <m:subfield code="0">(DE-101)118554700</m:subfield>
-      <m:subfield code="a">Humboldt, Alexander von</m:subfield>
-      <m:subfield code="d">1769-1859</m:subfield>
+      <m:subfield code="0">(DE-588)999000071</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/999000071</m:subfield>
+      <m:subfield code="0">(DE-101)999000071</m:subfield>
+      <m:subfield code="a">Musterberg, Amalie von</m:subfield>
+      <m:subfield code="d">1770-1860</m:subfield>
       <m:subfield code="9">rswk-swf</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="600" ind1="1" ind2="7">
-      <m:subfield code="0">(DE-588)104234644</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/104234644</m:subfield>
-      <m:subfield code="0">(DE-101)104234644</m:subfield>
-      <m:subfield code="a">Gauß, Carl Friedrich</m:subfield>
-      <m:subfield code="d">1777-1855</m:subfield>
+      <m:subfield code="0">(DE-588)999000098</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/999000098</m:subfield>
+      <m:subfield code="0">(DE-101)999000098</m:subfield>
+      <m:subfield code="a">Mustergroß, Friedrich</m:subfield>
+      <m:subfield code="d">1778-1856</m:subfield>
       <m:subfield code="9">rswk-swf</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="630" ind1="0" ind2="7">
-      <m:subfield code="0">(DE-588)1026671647</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/1026671647</m:subfield>
-      <m:subfield code="0">(DE-101)1026671647</m:subfield>
-      <m:subfield code="a">Die Vermessung der Welt</m:subfield>
+      <m:subfield code="0">(DE-588)9990000387</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/9990000387</m:subfield>
+      <m:subfield code="0">(DE-101)9990000387</m:subfield>
+      <m:subfield code="a">Die Reise nach Beispielhausen</m:subfield>
       <m:subfield code="9">rswk-swf</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
@@ -586,10 +586,10 @@
       <m:subfield code="a">(VLB-WN)2112: Taschenbuch / Belletristik/Gegenwartsliteratur (ab 1945)</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">(VLB-FS)Vermessung</m:subfield>
+      <m:subfield code="a">(VLB-FS)Reise</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">(VLB-FS)Welt</m:subfield>
+      <m:subfield code="a">(VLB-FS)Beispielhausen</m:subfield>
     </m:datafield>
     <m:datafield tag="655" ind1=" " ind2="7">
       <m:subfield code="0">(DE-588)1071854844</m:subfield>
@@ -609,41 +609,41 @@
       <m:subfield code="2">gatbeg</m:subfield>
     </m:datafield>
     <m:datafield tag="700" ind1="1" ind2=" ">
-      <m:subfield code="0">(DE-588)115812431</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/115812431</m:subfield>
-      <m:subfield code="0">(DE-101)115812431</m:subfield>
-      <m:subfield code="a">Kehlmann, Daniel</m:subfield>
-      <m:subfield code="d">1975-</m:subfield>
+      <m:subfield code="0">(DE-588)999000063</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/999000063</m:subfield>
+      <m:subfield code="0">(DE-101)999000063</m:subfield>
+      <m:subfield code="a">Probe, Paula</m:subfield>
+      <m:subfield code="d">1976-</m:subfield>
       <m:subfield code="e">Mitwirkender</m:subfield>
       <m:subfield code="4">ctb</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="700" ind1="1" ind2=" ">
-      <m:subfield code="0">(DE-588)119099136</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/119099136</m:subfield>
-      <m:subfield code="0">(DE-101)119099136</m:subfield>
-      <m:subfield code="a">Buck, Detlev</m:subfield>
-      <m:subfield code="d">1962-</m:subfield>
+      <m:subfield code="0">(DE-588)999000101</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/999000101</m:subfield>
+      <m:subfield code="0">(DE-101)999000101</m:subfield>
+      <m:subfield code="a">Musterfilm, Detlev</m:subfield>
+      <m:subfield code="d">1963-</m:subfield>
       <m:subfield code="e">Mitwirkender</m:subfield>
       <m:subfield code="4">ctb</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="700" ind1="1" ind2=" ">
-      <m:subfield code="0">(DE-588)1062365127</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/1062365127</m:subfield>
-      <m:subfield code="0">(DE-101)1062365127</m:subfield>
-      <m:subfield code="a">Mikulicz, Wenka von</m:subfield>
-      <m:subfield code="d">1965-</m:subfield>
+      <m:subfield code="0">(DE-588)9990000344</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/9990000344</m:subfield>
+      <m:subfield code="0">(DE-101)9990000344</m:subfield>
+      <m:subfield code="a">Musterwitz, Wenka von</m:subfield>
+      <m:subfield code="d">1966-</m:subfield>
       <m:subfield code="e">Herausgeber</m:subfield>
       <m:subfield code="4">edt</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="700" ind1="1" ind2=" ">
-      <m:subfield code="0">(DE-588)118047175</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/118047175</m:subfield>
-      <m:subfield code="0">(DE-101)118047175</m:subfield>
-      <m:subfield code="a">Töteberg, Michael</m:subfield>
-      <m:subfield code="d">1951-</m:subfield>
+      <m:subfield code="0">(DE-588)999000128</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/999000128</m:subfield>
+      <m:subfield code="0">(DE-101)999000128</m:subfield>
+      <m:subfield code="a">Prüfberg, Michael</m:subfield>
+      <m:subfield code="d">1952-</m:subfield>
       <m:subfield code="e">Herausgeber</m:subfield>
       <m:subfield code="4">edt</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
@@ -651,13 +651,13 @@
     <m:datafield tag="856" ind1="4" ind2="2">
       <m:subfield code="m">X:MVB</m:subfield>
       <m:subfield code="q">text/html</m:subfield>
-      <m:subfield code="u">https://services.dnb.de/plus/idn/1022260529/blurb/</m:subfield>
+      <m:subfield code="u">https://services.dnb.de/plus/idn/9990000182/blurb/</m:subfield>
       <m:subfield code="3">Inhaltstext</m:subfield>
     </m:datafield>
     <m:datafield tag="856" ind1="4" ind2="2">
       <m:subfield code="m">V:DE-605</m:subfield>
       <m:subfield code="q">application/pdf</m:subfield>
-      <m:subfield code="u">https://d-nb.info/1022260529/04</m:subfield>
+      <m:subfield code="u">https://d-nb.info/9990000182/04</m:subfield>
       <m:subfield code="3">Inhaltsverzeichnis</m:subfield>
     </m:datafield>
     <m:datafield tag="883" ind1="2" ind2=" ">
@@ -667,4 +667,4 @@
       <m:subfield code="q">DE-101</m:subfield>
       <m:subfield code="u">https://d-nb.info/provenance/plan#dnb</m:subfield>
     </m:datafield>
-    </m:record></recordData><recordPosition>4</recordPosition></record></records><nextRecordPosition>11</nextRecordPosition><echoedSearchRetrieveRequest><version>1.1</version><query>TIT="Die Vermessung der Welt" and PER="Kehlmann" and SPR=ger and MAT=books</query><xQuery xsi:nil="true" /><maximumRecords>10</maximumRecords><recordSchema>MARC21-xml</recordSchema></echoedSearchRetrieveRequest></searchRetrieveResponse>
+    </m:record></recordData><recordPosition>4</recordPosition></record></records><nextRecordPosition>11</nextRecordPosition><echoedSearchRetrieveRequest><version>1.1</version><query>TIT="Die Reise nach Beispielhausen" and PER="Probe" and SPR=ger and MAT=books</query><xQuery xsi:nil="true" /><maximumRecords>10</maximumRecords><recordSchema>MARC21-xml</recordSchema></echoedSearchRetrieveRequest></searchRetrieveResponse>

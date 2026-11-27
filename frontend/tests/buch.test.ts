@@ -36,27 +36,27 @@ describe("Lesestand", () => {
 });
 
 describe("Angaben vergleichen", () => {
-  const vorschlag = { titel: "Effi Briest", verlag: "Reclam", jahr: 1896, kategorien: ["Romane", "Klassiker"], cover_url: "/bild.jpg", raw: { subjects: ["Ehe", "Romane"], n: 3 } };
-  const aktuell = { titel: "Effi Briest", verlag: "", jahr: null, kategorien: ["Romane"], hat_cover: true };
+  const vorschlag = { titel: "Verteiler", verlag: "Beispielverlag", jahr: 2026, kategorien: ["Netzwerke", "Fachbuch"], cover_url: "/bild.jpg", raw: { subjects: ["Router", "Netzwerke"], n: 3 } };
+  const aktuell = { titel: "Verteiler", verlag: "", jahr: null, kategorien: ["Netzwerke"], hat_cover: true };
 
   it("wählt nur Unterschiede vor", () => {
     const zeilen = vergleiche(vorschlag, aktuell, "/alt.jpg");
     const wahl = Object.fromEntries(zeilen.map((z) => [z.schluessel, z.gewaehlt]));
     expect(wahl).toEqual({ titel: false, verlag: true, jahr: true, cover: true, kategorien: true });
-    expect(zeilen.find((z) => z.schluessel === "kategorien")?.neu).toBe("dazu: Klassiker");
+    expect(zeilen.find((z) => z.schluessel === "kategorien")?.neu).toBe("dazu: Fachbuch");
   });
 
   it("nimmt andere Schreibweisen derselben Angabe nicht als Unterschied", () => {
-    expect(gleichwertig("isbn", "978-3-257-22953-0", "9783257229530")).toBe(true);
-    expect(gleichwertig("autor", "Bernhard Schlink", "Schlink Bernhard")).toBe(true);
-    expect(gleichwertig("autor", "Schlink, Bernhard", "Bernhard Schlink")).toBe(false);
-    const zeilen = vergleiche({ titel: "Der Vorleser", isbn: "9783257229530" }, { titel: "DER VORLESER", isbn: "978-3-257-22953-0" }, "");
+    expect(gleichwertig("isbn", "978-3-99999-127-6", "9783999991276")).toBe(true);
+    expect(gleichwertig("autor", "Erika Beispiel", "Beispiel Erika")).toBe(true);
+    expect(gleichwertig("autor", "Beispiel, Erika", "Erika Beispiel")).toBe(false);
+    const zeilen = vergleiche({ titel: "Tragwerk", isbn: "9783999991276" }, { titel: "TRAGWERK", isbn: "978-3-99999-127-6" }, "");
     expect(zeilen.map((z) => [z.schluessel, z.gleich, z.gewaehlt])).toEqual([["titel", false, false], ["isbn", true, false]]);
   });
 
   it("nennt die Quelle je Feld und wie gefunden wurde", () => {
-    const v = { titel: "Effi Briest", jahr: 1896, cover_url: "/b.jpg", herkunft: { titel: "dnb", cover_url: "open_library" } };
-    const zeilen = vergleiche(v, { titel: "Effi", jahr: null }, "", { dnb: "Verzeichnis 3", open_library: "Verzeichnis 2" });
+    const v = { titel: "Hexagonal - Saubere Architektur", jahr: 2026, cover_url: "/b.jpg", herkunft: { titel: "dnb", cover_url: "open_library" } };
+    const zeilen = vergleiche(v, { titel: "Hexagonal", jahr: null }, "", { dnb: "Verzeichnis 3", open_library: "Verzeichnis 2" });
     expect(zeilen.map((z) => z.herkunft)).toEqual(["Verzeichnis 3", undefined, "Verzeichnis 2"]);
     expect(fundart({ fund: "isbn" })?.ton).toBe("gut");
     expect(fundart({ fund: "titel", sicher: false })?.ton).toBe("warn");
@@ -69,7 +69,7 @@ describe("Angaben vergleichen", () => {
   });
 
   it("sendet nur Gewähltes, Listen als Regale", () => {
-    expect(nutzlast(vorschlag, "open_library", new Set(["verlag"]), new Set())).toEqual({ verlag: "Reclam" });
-    expect(nutzlast(vorschlag, "open_library", new Set(["cover"]), new Set(["subjects", "n"]))).toEqual({ cover_url: "/bild.jpg", quelle: "open_library", kategorien: ["Ehe", "Romane"] });
+    expect(nutzlast(vorschlag, "open_library", new Set(["verlag"]), new Set())).toEqual({ verlag: "Beispielverlag" });
+    expect(nutzlast(vorschlag, "open_library", new Set(["cover"]), new Set(["subjects", "n"]))).toEqual({ cover_url: "/bild.jpg", quelle: "open_library", kategorien: ["Router", "Netzwerke"] });
   });
 });

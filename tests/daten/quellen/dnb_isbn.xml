@@ -1,20 +1,20 @@
 <?xml version='1.0' encoding='utf-8'?>
 <searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/" xmlns:m="http://www.loc.gov/MARC21/slim" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><version>1.1</version><numberOfRecords>1</numberOfRecords><records><record><recordSchema>MARC21-xml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record type="Bibliographic">
     <m:leader>00000nam a2200000 c 4500</m:leader>
-    <m:controlfield tag="001">950347590</m:controlfield>
+    <m:controlfield tag="001">999000012</m:controlfield>
     <m:controlfield tag="003">DE-101</m:controlfield>
     <m:controlfield tag="005">20171203020433.0</m:controlfield>
     <m:controlfield tag="007">tu</m:controlfield>
     <m:controlfield tag="008">970429s1997    sz ||||| |||| 00||||ger  </m:controlfield>
     <m:datafield tag="020" ind1=" " ind2=" ">
-      <m:subfield code="a">9783257229530</m:subfield>
+      <m:subfield code="a">9783999991016</m:subfield>
       <m:subfield code="c">kart. : DM 14.90, S 109.00, sfr 14.90</m:subfield>
-      <m:subfield code="9">978-3-257-22953-0</m:subfield>
+      <m:subfield code="9">978-3-99999-101-6</m:subfield>
     </m:datafield>
     <m:datafield tag="020" ind1=" " ind2=" ">
-      <m:subfield code="a">3257229534</m:subfield>
+      <m:subfield code="a">3999991011</m:subfield>
       <m:subfield code="c">kart. : DM 14.90, S 109.00, sfr 14.90</m:subfield>
-      <m:subfield code="9">3-257-22953-4</m:subfield>
+      <m:subfield code="9">3-99999-101-1</m:subfield>
     </m:datafield>
     <m:datafield tag="041" ind1=" " ind2=" ">
       <m:subfield code="a">ger</m:subfield>
@@ -49,23 +49,23 @@
       <m:subfield code="a">b</m:subfield>
     </m:datafield>
     <m:datafield tag="100" ind1="1" ind2=" ">
-      <m:subfield code="0">(DE-588)115673784</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/115673784</m:subfield>
-      <m:subfield code="0">(DE-101)115673784</m:subfield>
-      <m:subfield code="a">Schlink, Bernhard</m:subfield>
+      <m:subfield code="0">(DE-588)999000039</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/999000039</m:subfield>
+      <m:subfield code="0">(DE-101)999000039</m:subfield>
+      <m:subfield code="a">Beispiel, Erika</m:subfield>
       <m:subfield code="d">1944-</m:subfield>
       <m:subfield code="e">Verfasser</m:subfield>
       <m:subfield code="4">aut</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="245" ind1="1" ind2="0">
-      <m:subfield code="a">Der Vorleser</m:subfield>
+      <m:subfield code="a">Die Straßenbahn von Musterstadt</m:subfield>
       <m:subfield code="b">Roman</m:subfield>
-      <m:subfield code="c">Bernhard Schlink</m:subfield>
+      <m:subfield code="c">Erika Beispiel</m:subfield>
     </m:datafield>
     <m:datafield tag="264" ind1=" " ind2="1">
       <m:subfield code="a">Zürich</m:subfield>
-      <m:subfield code="b">Diogenes</m:subfield>
+      <m:subfield code="b">Musterhaus</m:subfield>
       <m:subfield code="c">1997</m:subfield>
     </m:datafield>
     <m:datafield tag="300" ind1=" " ind2=" ">
@@ -73,8 +73,8 @@
       <m:subfield code="c">18 cm</m:subfield>
     </m:datafield>
     <m:datafield tag="490" ind1="1" ind2=" ">
-      <m:subfield code="a">Diogenes-Taschenbuch</m:subfield>
-      <m:subfield code="v">22953</m:subfield>
+      <m:subfield code="a">Musterhaus-Taschenbuch</m:subfield>
+      <m:subfield code="v">101</m:subfield>
     </m:datafield>
     <m:datafield tag="650" ind1=" " ind2="7">
       <m:subfield code="0">(DE-588)4018202-2</m:subfield>
@@ -101,26 +101,26 @@
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="650" ind1=" " ind2="7">
-      <m:subfield code="0">(DE-588)4032352-3</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/4032352-3</m:subfield>
-      <m:subfield code="0">(DE-101)040323528</m:subfield>
-      <m:subfield code="a">Konzentrationslager</m:subfield>
+      <m:subfield code="0">(DE-588)4999904-7</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4999904-7</m:subfield>
+      <m:subfield code="0">(DE-101)099900017</m:subfield>
+      <m:subfield code="a">Straßenbahn</m:subfield>
       <m:subfield code="9">rswk-swf</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="650" ind1=" " ind2="7">
-      <m:subfield code="0">(DE-588)4342624-4</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/4342624-4</m:subfield>
-      <m:subfield code="0">(DE-101)941420132</m:subfield>
-      <m:subfield code="a">Aufseherin</m:subfield>
+      <m:subfield code="0">(DE-588)4999905-9</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4999905-9</m:subfield>
+      <m:subfield code="0">(DE-101)999000284</m:subfield>
+      <m:subfield code="a">Schaffnerin</m:subfield>
       <m:subfield code="9">rswk-swf</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
     <m:datafield tag="650" ind1=" " ind2="7">
-      <m:subfield code="0">(DE-588)4057803-3</m:subfield>
-      <m:subfield code="0">https://d-nb.info/gnd/4057803-3</m:subfield>
-      <m:subfield code="0">(DE-101)040578038</m:subfield>
-      <m:subfield code="a">Strafverfolgung</m:subfield>
+      <m:subfield code="0">(DE-588)4999906-0</m:subfield>
+      <m:subfield code="0">https://d-nb.info/gnd/4999906-0</m:subfield>
+      <m:subfield code="0">(DE-101)099900025</m:subfield>
+      <m:subfield code="a">Kleinstadt</m:subfield>
       <m:subfield code="9">rswk-swf</m:subfield>
       <m:subfield code="2">gnd</m:subfield>
     </m:datafield>
@@ -143,46 +143,46 @@
       <m:subfield code="a">(BISAC Subject Heading)FIC019000</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">Konzentrationslager</m:subfield>
+      <m:subfield code="a">Fahrplan</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">Gerichtssaal</m:subfield>
+      <m:subfield code="a">Depot</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">Analphabetismus</m:subfield>
+      <m:subfield code="a">Nachtschicht</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">Holocaust</m:subfield>
+      <m:subfield code="a">Fahrkarte</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
       <m:subfield code="a">Straßenbahn</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">Deutsche Geschichte</m:subfield>
+      <m:subfield code="a">Stadtgeschichte</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">Schuld</m:subfield>
+      <m:subfield code="a">Abschied</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
       <m:subfield code="a">Schullektüre</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">Verbrechen</m:subfield>
+      <m:subfield code="a">Fundbüro</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">Prozess</m:subfield>
+      <m:subfield code="a">Haltestelle</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
       <m:subfield code="a">Geheimnis</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">Heidelberg</m:subfield>
+      <m:subfield code="a">Musterstadt</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
       <m:subfield code="a">Vergangenheit</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
-      <m:subfield code="a">Nationalsozialismus</m:subfield>
+      <m:subfield code="a">Nahverkehr</m:subfield>
     </m:datafield>
     <m:datafield tag="653" ind1=" " ind2=" ">
       <m:subfield code="a">Bestseller</m:subfield>
@@ -218,17 +218,17 @@
     <m:datafield tag="776" ind1="0" ind2="8">
       <m:subfield code="i">Erscheint auch als</m:subfield>
       <m:subfield code="n">Online-Ausgabe</m:subfield>
-      <m:subfield code="a">Schlink, Bernhard, 1944-</m:subfield>
-      <m:subfield code="t">Der Vorleser</m:subfield>
-      <m:subfield code="d">Zürich : Diogenes Verlag AG, 2012</m:subfield>
+      <m:subfield code="a">Beispiel, Erika, 1944-</m:subfield>
+      <m:subfield code="t">Die Straßenbahn von Musterstadt</m:subfield>
+      <m:subfield code="d">Zürich : Musterhaus Verlag AG, 2012</m:subfield>
       <m:subfield code="h">Online-Ressource</m:subfield>
-      <m:subfield code="w">(DE-101)1113883103</m:subfield>
+      <m:subfield code="w">(DE-101)9990000417</m:subfield>
       <m:subfield code="b">1. Auflage</m:subfield>
     </m:datafield>
     <m:datafield tag="856" ind1="4" ind2="2">
       <m:subfield code="m">X:MVB</m:subfield>
       <m:subfield code="q">text/html</m:subfield>
-      <m:subfield code="u">https://services.dnb.de/plus/idn/950347590/blurb/</m:subfield>
+      <m:subfield code="u">https://services.dnb.de/plus/idn/999000012/blurb/</m:subfield>
       <m:subfield code="3">Inhaltstext</m:subfield>
     </m:datafield>
-    </m:record></recordData><recordPosition>1</recordPosition></record></records><echoedSearchRetrieveRequest><version>1.1</version><query>NUM=9783257229530</query><xQuery xsi:nil="true" /><maximumRecords>3</maximumRecords><recordSchema>MARC21-xml</recordSchema></echoedSearchRetrieveRequest></searchRetrieveResponse>
+    </m:record></recordData><recordPosition>1</recordPosition></record></records><echoedSearchRetrieveRequest><version>1.1</version><query>NUM=9783999991016</query><xQuery xsi:nil="true" /><maximumRecords>3</maximumRecords><recordSchema>MARC21-xml</recordSchema></echoedSearchRetrieveRequest></searchRetrieveResponse>

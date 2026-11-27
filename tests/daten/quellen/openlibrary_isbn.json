@@ -1,29 +1,29 @@
 {
- "ISBN:9783257229530": {
-  "url": "http://openlibrary.org/books/OL31761782M/Der_Vorleser",
-  "key": "/books/OL31761782M",
-  "title": "Der Vorleser",
+ "ISBN:9783999991016": {
+  "url": "http://openlibrary.org/books/OL99000101M/Die_Straßenbahn_von_Musterstadt",
+  "key": "/books/OL99000101M",
+  "title": "Die Straßenbahn von Musterstadt",
   "authors": [
    {
-    "url": "http://openlibrary.org/authors/OL24809A/Bernhard_Schlink",
-    "name": "Bernhard Schlink"
+    "url": "http://openlibrary.org/authors/OL9900001A/Erika_Beispiel",
+    "name": "Erika Beispiel"
    }
   ],
   "number_of_pages": 206,
   "identifiers": {
    "bookbrainz": [
-    "f49aa32d-fdf3-4538-b790-1fcb2f71fa27"
+    "00000000-0000-4000-8000-000000000101"
    ],
    "isbn_10": [
-    "3257229534"
+    "3999991011"
    ],
    "openlibrary": [
-    "OL31761782M"
+    "OL99000101M"
    ]
   },
   "publishers": [
    {
-    "name": "Diogenes"
+    "name": "Musterhaus"
    }
   ],
   "publish_date": "2000",
@@ -41,24 +41,24 @@
     "url": "https://openlibrary.org/subjects/germany"
    },
    {
-    "name": "Holocaust",
-    "url": "https://openlibrary.org/subjects/holocaust"
+    "name": "Streetcars",
+    "url": "https://openlibrary.org/subjects/streetcars"
    },
    {
-    "name": "war crimes",
-    "url": "https://openlibrary.org/subjects/war_crimes"
+    "name": "Public transit",
+    "url": "https://openlibrary.org/subjects/public_transit"
    },
    {
-    "name": "Atrocities",
-    "url": "https://openlibrary.org/subjects/atrocities"
+    "name": "Small towns",
+    "url": "https://openlibrary.org/subjects/small_towns"
    },
    {
-    "name": "World War, 1939-1945",
-    "url": "https://openlibrary.org/subjects/world_war,_1939-1945"
+    "name": "Conductors",
+    "url": "https://openlibrary.org/subjects/conductors"
    },
    {
-    "name": "War crime trials",
-    "url": "https://openlibrary.org/subjects/war_crime_trials"
+    "name": "Night shifts",
+    "url": "https://openlibrary.org/subjects/night_shifts"
    },
    {
     "name": "History",
@@ -69,8 +69,8 @@
     "url": "https://openlibrary.org/subjects/man-woman_relationship"
    },
    {
-    "name": "Nazis",
-    "url": "https://openlibrary.org/subjects/nazis"
+    "name": "Family secrets",
+    "url": "https://openlibrary.org/subjects/family_secrets"
    },
    {
     "name": "Fiction, psychological",
@@ -85,8 +85,8 @@
     "url": "https://openlibrary.org/subjects/germany,_fiction"
    },
    {
-    "name": "World war, 1939-1945, fiction",
-    "url": "https://openlibrary.org/subjects/world_war,_1939-1945,_fiction"
+    "name": "Streetcars, fiction",
+    "url": "https://openlibrary.org/subjects/streetcars,_fiction"
    },
    {
     "name": "Activities",
@@ -97,20 +97,20 @@
     "url": "https://openlibrary.org/subjects/large_type_books"
    },
    {
-    "name": "nyt:trade-fiction-paperback=2008-12-21",
-    "url": "https://openlibrary.org/subjects/nyt:trade-fiction-paperback=2008-12-21"
+    "name": "nyt:trade-fiction-paperback=2001-01-07",
+    "url": "https://openlibrary.org/subjects/nyt:trade-fiction-paperback=2001-01-07"
    },
    {
-    "name": "New York Times bestseller",
-    "url": "https://openlibrary.org/subjects/new_york_times_bestseller"
+    "name": "Bestseller",
+    "url": "https://openlibrary.org/subjects/bestseller"
    },
    {
-    "name": "Guilt",
-    "url": "https://openlibrary.org/subjects/guilt"
+    "name": "Memory",
+    "url": "https://openlibrary.org/subjects/memory"
    },
    {
-    "name": "Holocaust, Jewish (1939-1945)",
-    "url": "https://openlibrary.org/subjects/holocaust,_jewish_(1939-1945)"
+    "name": "Streetcars, German (1950-1980)",
+    "url": "https://openlibrary.org/subjects/streetcars,_german_(1950-1980)"
    },
    {
     "name": "Germans",
@@ -137,16 +137,16 @@
     "url": "https://openlibrary.org/subjects/fiction,_historical,_general"
    },
    {
-    "name": "Guerra Mundial II, 1939-1945",
-    "url": "https://openlibrary.org/subjects/guerra_mundial_ii,_1939-1945"
+    "name": "Tranvías, 1950-1980",
+    "url": "https://openlibrary.org/subjects/tranvías,_1950-1980"
    },
    {
-    "name": "Procesos por crimenes de guerra",
-    "url": "https://openlibrary.org/subjects/procesos_por_crimenes_de_guerra"
+    "name": "Viajes nocturnos en tranvía",
+    "url": "https://openlibrary.org/subjects/viajes_nocturnos_en_tranvía"
    },
    {
-    "name": "World War (1939-1945) fast (OCoLC)fst01180924",
-    "url": "https://openlibrary.org/subjects/world_war_(1939-1945)_fast_(ocolc)fst01180924"
+    "name": "Streetcars fast (OCoLC)fst09999901",
+    "url": "https://openlibrary.org/subjects/streetcars_fast_(ocolc)fst09999901"
    }
   ],
   "subject_places": [
@@ -155,8 +155,8 @@
     "url": "https://openlibrary.org/subjects/place:west_germany"
    },
    {
-    "name": "Auschwitz",
-    "url": "https://openlibrary.org/subjects/place:auschwitz"
+    "name": "Musterstadt",
+    "url": "https://openlibrary.org/subjects/place:musterstadt"
    },
    {
     "name": "Germany",
@@ -182,21 +182,21 @@
   "links": [
    {
     "title": "Wikipedia",
-    "url": "https://en.wikipedia.org/wiki/The_Reader"
+    "url": "https://en.wikipedia.org/wiki/The_Tram_of_Musterstadt"
    },
    {
-    "title": "VIAF ID: 197681426",
-    "url": "https://viaf.org/viaf/197681426/"
+    "title": "VIAF ID: 999000002",
+    "url": "https://viaf.org/viaf/999000002/"
    },
    {
     "title": "inventaire.io",
-    "url": "https://inventaire.io/entity/wd:Q311449"
+    "url": "https://inventaire.io/entity/wd:Q900000102"
    }
   ],
   "cover": {
-   "small": "https://covers.openlibrary.org/b/id/10527919-S.jpg",
-   "medium": "https://covers.openlibrary.org/b/id/10527919-M.jpg",
-   "large": "https://covers.openlibrary.org/b/id/10527919-L.jpg"
+   "small": "https://covers.openlibrary.org/b/id/99000101-S.jpg",
+   "medium": "https://covers.openlibrary.org/b/id/99000101-M.jpg",
+   "large": "https://covers.openlibrary.org/b/id/99000101-L.jpg"
   }
  }
 }

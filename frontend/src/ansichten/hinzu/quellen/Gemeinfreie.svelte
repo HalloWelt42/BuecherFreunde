@@ -47,7 +47,7 @@
   <p class="leise">Aus dem Project Gutenberg. Geholte Bücher kommen ins Regal Gutenberg, schon vorhandene werden übersprungen.</p>
   <Gemeinfreienkatalog />
   <form class="suche-frei" onsubmit={suche}>
-    <label class="feld">Titel oder Autor<input class="eingabe" type="search" placeholder="Faust, Fontane, Verne" bind:value={g.wort} oninput={() => g.tippe()} /></label>
+    <label class="feld">Titel oder Autor<input class="eingabe" type="search" placeholder="Märchen, Abenteuer, Reise" bind:value={g.wort} oninput={() => g.tippe()} /></label>
     <label class="feld">Sprache<input class="eingabe" type="text" placeholder="de oder de,en" autocapitalize="none" spellcheck="false" title="Kürzel, mehrere mit Komma" bind:value={g.sprache} oninput={() => g.tippe()} /></label>
     <Knopf text="Bei Gutendex suchen" symbol="magnifying-glass" art="submit" laeuft={g.fragt} titel="Den Suchdienst fragen; er ist oft langsam" />
   </form>

@@ -3,19 +3,19 @@
  "message-type": "work",
  "message-version": "1.0.0",
  "message": {
-  "publisher": "Springer Science and Business Media LLC",
+  "publisher": "Example Science Publishing LLC",
   "issue": "7553",
-  "DOI": "10.1038/nature14539",
+  "DOI": "10.5555/example14539",
   "type": "journal-article",
   "page": "436-444",
   "title": [
-   "Deep learning"
+   "Sample learning"
   ],
   "volume": "521",
   "author": [
    {
-    "given": "Yann",
-    "family": "LeCun",
+    "given": "Sam",
+    "family": "DeSample",
     "sequence": "first",
     "affiliation": [],
     "role": [
@@ -26,8 +26,8 @@
     ]
    },
    {
-    "given": "Yoshua",
-    "family": "Bengio",
+    "given": "Jo",
+    "family": "Example",
     "sequence": "additional",
     "affiliation": [],
     "role": [
@@ -38,8 +38,8 @@
     ]
    },
    {
-    "given": "Geoffrey",
-    "family": "Hinton",
+    "given": "Alex",
+    "family": "Placeholder",
     "sequence": "additional",
     "affiliation": [],
     "role": [
@@ -51,7 +51,7 @@
    }
   ],
   "container-title": [
-   "Nature"
+   "Example Letters"
   ],
   "language": "en",
   "subtitle": [],
@@ -64,10 +64,10 @@
     ]
    ]
   },
-  "URL": "https://doi.org/10.1038/nature14539",
+  "URL": "https://doi.org/10.5555/example14539",
   "ISSN": [
-   "0028-0836",
-   "1476-4687"
+   "9999-0016",
+   "9999-0024"
   ]
  }
 }

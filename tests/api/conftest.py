@@ -139,7 +139,7 @@ async def buch_erstellen(test_db: Database, **kwargs) -> int:
         "hash": "testhash123",
         "title": "Testbuch",
         "author": "Testautor",
-        "isbn": "978-3-16-148410-0",
+        "isbn": "978-3-99999-125-2",
         "publisher": "Testverlag",
         "year": 2024,
         "language": "de",

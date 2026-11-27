@@ -34,7 +34,7 @@ def papierkorb(monkeypatch):
 
 
 async def _buch_mit_allem(test_db, in_der_wolke: bool = True) -> int:
-    buch = await buch_erstellen(test_db, hash="loesch01", title="Der Prozeß", author="Franz Kafka", file_size=173000, file_format="epub")
+    buch = await buch_erstellen(test_db, hash="loesch01", title="Fließband", author="HalloWelt42", file_size=173000, file_format="epub")
     profil = await verwaltung(test_db)
     for text in ("erste", "zweite"):
         await test_db.execute("INSERT INTO book_notes (profil_id, book_id, content) VALUES (?, ?, ?)", (profil, buch, text))
@@ -43,12 +43,12 @@ async def _buch_mit_allem(test_db, in_der_wolke: bool = True) -> int:
     await test_db.execute("INSERT INTO book_labels (profil_id, book_id, name) VALUES (?, ?, 'Merksatz')", (profil, buch))
     await test_db.execute("INSERT INTO user_book_data (profil_id, book_id, reading_position) VALUES (?, ?, 'epubcfi(/6/4)')", (profil, buch))
     await test_db.execute("INSERT INTO vorlesestelle (profil_id, buch_id, einheit, zeichen) VALUES (?, ?, 2, 10)", (profil, buch))
-    await test_db.execute("INSERT INTO book_categories (book_id, category_id) VALUES (?, ?)", (buch, await kategorie_erstellen(test_db, name="Klassiker")))
+    await test_db.execute("INSERT INTO book_categories (book_id, category_id) VALUES (?, ?)", (buch, await kategorie_erstellen(test_db, name="Fachbuch")))
     ungeordnet = await kategorie_erstellen(test_db, name="Ungeordnet")          # vergibt die App selbst, zählt nicht als Regal
     await test_db.execute("INSERT INTO book_categories (book_id, category_id) VALUES (?, ?)", (buch, ungeordnet))
     if in_der_wolke:
-        await test_db.execute("INSERT INTO ablage_datei (hash, knoten, name, pfad, groesse) VALUES ('loesch01', 'k7', 'Der Prozeß.epub', "
-                              "'Apps/BücherFreunde/Bücher/D/Der Prozeß.epub', 173000)")
+        await test_db.execute("INSERT INTO ablage_datei (hash, knoten, name, pfad, groesse) VALUES ('loesch01', 'k7', 'Fließband.epub', "
+                              "'Apps/BücherFreunde/Bücher/F/Fließband.epub', 173000)")
     await test_db.commit()
     return buch
 
@@ -64,8 +64,8 @@ async def test_folgen_nennen_alles_was_verloren_geht(client: AsyncClient, test_d
     buch = await _buch_mit_allem(test_db)
     f = (await client.get(f"/api/books/{buch}/loeschfolgen")).json()
     assert (f["titel"], f["autor"], f["notizen"], f["markierungen"], f["etiketten"], f["lesestand"], f["vorlesestelle"], f["regale"]) == \
-        ("Der Prozeß", "Franz Kafka", 2, 3, 1, True, True, 1)
-    assert f["datei"] == {"pfad": "Apps/BücherFreunde/Bücher/D/Der Prozeß.epub", "groesse": 173000, "papierkorb": True}
+        ("Fließband", "HalloWelt42", 2, 3, 1, True, True, 1)
+    assert f["datei"] == {"pfad": "Apps/BücherFreunde/Bücher/F/Fließband.epub", "groesse": 173000, "papierkorb": True}
     assert f["abschnitte"] is None
 
 
@@ -74,9 +74,9 @@ async def test_folgen_eines_buchs_nur_auf_dem_geraet(client: AsyncClient, test_d
     buch = await _buch_mit_allem(test_db, in_der_wolke=False)
     ordner = get_storage_path("loesch01")
     ordner.mkdir(parents=True)
-    (ordner / "Der Prozeß.epub").write_bytes(b"epub")
+    (ordner / "Fließband.epub").write_bytes(b"epub")
     f = (await client.get(f"/api/books/{buch}/loeschfolgen")).json()
-    assert f["datei"] == {"pfad": "Der Prozeß.epub", "groesse": 173000, "papierkorb": False}
+    assert f["datei"] == {"pfad": "Fließband.epub", "groesse": 173000, "papierkorb": False}
 
 
 @pytest.mark.asyncio

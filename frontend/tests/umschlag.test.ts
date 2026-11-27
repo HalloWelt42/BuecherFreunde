@@ -129,7 +129,7 @@ describe("Titel bleiben im Feld", () => {
 
   it("auf allen Blättern bleibt jeder Text auf dem Blatt", () => {
     for (const title of TITEL) {
-      for (const b of alleGestalten({ id: 2, title, author: "Bundesamt für Sicherheit in der Informationstechnik", year: 2019 })) {
+      for (const b of alleGestalten({ id: 2, title, author: "Landesamt für Sicherheit in der Beispielverwaltung", year: 2019 })) {
         for (const t of lies(gestaltetesBlatt(b)).querySelectorAll("text")) {
           const y = Number(t.getAttribute("y"));
           const imVersatz = t.closest("g") !== null;

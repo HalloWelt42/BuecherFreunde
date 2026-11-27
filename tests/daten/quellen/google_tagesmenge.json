@@ -1,10 +1,10 @@
 {
  "error": {
   "code": 429,
-  "message": "Quota exceeded for quota metric 'Queries' and limit 'Queries per day' of service 'books.googleapis.com' for consumer 'project_number:624717413613'.",
+  "message": "Quota exceeded for quota metric 'Queries' and limit 'Queries per day' of service 'books.googleapis.com' for consumer 'project_number:999999999999'.",
   "errors": [
    {
-    "message": "Quota exceeded for quota metric 'Queries' and limit 'Queries per day' of service 'books.googleapis.com' for consumer 'project_number:624717413613'.",
+    "message": "Quota exceeded for quota metric 'Queries' and limit 'Queries per day' of service 'books.googleapis.com' for consumer 'project_number:999999999999'.",
     "domain": "global",
     "reason": "rateLimitExceeded"
    }
@@ -22,7 +22,7 @@
      "quota_location": "global",
      "quota_limit_value": "0",
      "service": "books.googleapis.com",
-     "consumer": "projects/624717413613"
+     "consumer": "projects/999999999999"
     }
    },
    {

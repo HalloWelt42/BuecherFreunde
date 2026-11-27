@@ -6,7 +6,7 @@ export const beispiele: [string, string][] = [
   ["haus AND garten", "beide Wörter"],
   ["haus OR hütte", "eines von beiden"],
   ["haus NOT boot", "das eine ohne das andere"],
-  ["autor:Fontane", "nur von diesem Autor, auch author:"],
+  ["autor:HalloWelt42", "nur von diesem Autor, auch author:"],
   ["format:epub", "nur dieses Format: pdf, epub, mobi, txt, md"],
   ["datum:2023", "erschienen in diesem Jahr, auch date:"],
   ["datum:2018-2026", "erschienen zwischen den Jahren"],

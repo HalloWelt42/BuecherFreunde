@@ -76,7 +76,7 @@ async def test_erst_regeln_dann_die_ki_gebuendelt(client, test_db, ki_sagt, monk
     buch = await werk(test_db, "r1", "Gärten im Wandel", isbn="9783000000001", page_count=230, umschlag_schlicht=0)
     protokoll = await werk(test_db, "r2", "Microsoft Word - Protokoll", page_count=12)
     zettel = await werk(test_db, "r3", "Einladung", page_count=1, umschlag_schlicht=1)
-    krimi = await werk(test_db, "k1", "Mord im Pfarrhaus", author="Erna Beispiel", page_count=180, umschlag_schlicht=1, file_name="pfarrhaus.epub")
+    krimi = await werk(test_db, "k1", "Mord im Musterhaus", author="Erna Beispiel", page_count=180, umschlag_schlicht=1, file_name="musterhaus.epub")
     roman = await werk(test_db, "k2", "Sommer am Deich", isbn="9783000000002", page_count=320, umschlag_schlicht=1)
     bunt = await werk(test_db, "k3", "Bunte Tage", page_count=200, umschlag_schlicht=0, gattung="roman")
     akte = await werk(test_db, "k4", "Akte Wasserwerk", page_count=30, umschlag_schlicht=0)
@@ -85,7 +85,7 @@ async def test_erst_regeln_dann_die_ki_gebuendelt(client, test_db, ki_sagt, monk
     von_hand = await werk(test_db, "h1", "Mein Heft", typ="heft", einordnung="hand")
     frueher = await werk(test_db, "h2", "Altes Heft", typ="heft")                       # vor BF-59 von Hand gesetzt
     save_fulltext("k1", "Kapitel 1\fDie Leiche lag im Arbeitszimmer des Pfarrers. " + "Wort " * 1000)
-    ki_sagt.werke = {"Mord im Pfarrhaus": {"art": "buch", "gattung": "krimi"},
+    ki_sagt.werke = {"Mord im Musterhaus": {"art": "buch", "gattung": "krimi"},
                      "Sommer am Deich": {"art": "buch", "gattung": "liebesroman"},
                      "Bunte Tage": {"art": "buch", "gattung": "thriller"},            # nicht gefragt: die Gattung bleibt
                      "Akte Wasserwerk": {"art": "dokument", "gattung": "krimi"}}     # nur Bücher haben eine Gattung
@@ -107,7 +107,7 @@ async def test_erst_regeln_dann_die_ki_gebuendelt(client, test_db, ki_sagt, monk
     assert len(chats) == 3                                                              # fünf Werke zu je zwei
     koerper = json.loads(chats[0].content)
     nutzer = koerper["messages"][1]["content"]
-    assert "1. Titel: Mord im Pfarrhaus | Autor: Erna Beispiel | Verlag: Testverlag | Seiten: 180 | ISBN: nein | Datei: pfarrhaus.epub | Gattung gefragt" in nutzer
+    assert "1. Titel: Mord im Musterhaus | Autor: Erna Beispiel | Verlag: Testverlag | Seiten: 180 | ISBN: nein | Datei: musterhaus.epub | Gattung gefragt" in nutzer
     assert "Anfang: Kapitel 1 Die Leiche lag im Arbeitszimmer" in nutzer and nutzer.count("Wort") < 80
     werke = koerper["response_format"]["json_schema"]["schema"]["properties"]["werke"]
     assert (werke["minItems"], werke["maxItems"]) == (2, 2)
@@ -116,7 +116,7 @@ async def test_erst_regeln_dann_die_ki_gebuendelt(client, test_db, ki_sagt, monk
     assert "Titel: Bunte Tage" in bunt_anfrage and "Bunte Tage | Autor: Testautor | Verlag: Testverlag | Seiten: 200 | ISBN: nein | Datei: testbuch.pdf\n" in bunt_anfrage
     assert chats[0].headers["X-Leitstelle-Prioritaet"] == "hintergrund"
     assert chats[0].headers["X-Leitstelle-Arbeit"].startswith("bf-einordnen-")
-    assert frage(chats[0]) == "Art und Gattung: 2 Werke ab Mord im Pfarrhaus"
+    assert frage(chats[0]) == "Art und Gattung: 2 Werke ab Mord im Musterhaus"
 
     s = (await client.get("/api/einordnung/stand")).json()
     assert {k: s[k] for k in ("gesamt", "nach_regel", "durch_ki", "offen", "erledigt", "angehalten")} == {

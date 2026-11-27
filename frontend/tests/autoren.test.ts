@@ -4,19 +4,19 @@ import { betroffen, regalwerte } from "../src/ansichten/hinzu/quellen/ergaenzung
 import type { Anreicherung, Autoreneinzeln } from "../src/lib/api/authors";
 
 const autor: Autoreneinzeln = {
-  id: 5, name: "Theodor Fontane", photo_path: "", birth_year: 1819, death_year: null, nationality: "", biography: "", beschreibung: "Erzähler", wikidata_id: "", wikipedia_url: "", website: "", quelle: "", konfidenz: "", score: 0, books: [], werke: [], verweise: [],
+  id: 5, name: "Theo Beispielhof", photo_path: "", birth_year: 1820, death_year: null, nationality: "", biography: "", beschreibung: "Erzähler", wikidata_id: "", wikipedia_url: "", website: "", quelle: "", konfidenz: "", score: 0, books: [], werke: [], verweise: [],
 };
 
 describe("Autoren: Angaben", () => {
   it("nennt Lebensdaten nur, wenn es welche gibt", () => {
     expect(lebensdaten({ birth_year: null, death_year: null })).toBe("");
-    expect(lebensdaten({ birth_year: 1819, death_year: null })).toBe("geboren 1819");
-    expect(lebensdaten({ birth_year: null, death_year: 1898 })).toBe("unbekannt bis 1898");
+    expect(lebensdaten({ birth_year: 1820, death_year: null })).toBe("geboren 1820");
+    expect(lebensdaten({ birth_year: null, death_year: 1899 })).toBe("unbekannt bis 1899");
     expect(lebensdaten({ birth_year: -427, death_year: -347 })).toBe("427 v. Chr. bis 347 v. Chr.");
   });
 
   it("nimmt zwei Anfangsbuchstaben und lesbare Schrift", () => {
-    expect(anfangsbuchstaben("J. W. von Goethe")).toBe("JW");
+    expect(anfangsbuchstaben("A. M. von Musterberg")).toBe("AM");
     expect(schriftAuf("#f4efe2")).not.toBe(schriftAuf("#0e2b2b"));
   });
 
@@ -26,7 +26,7 @@ describe("Autoren: Angaben", () => {
     expect(pruefe({ ...f, birth_year: "18xx" }, 2026)).toHaveProperty("birth_year");
     expect(pruefe({ ...f, death_year: "1800" }, 2026)).toHaveProperty("death_year");
     expect(pruefe({ ...f, death_year: "2300" }, 2026)).toHaveProperty("death_year");
-    expect(pruefe({ ...f, website: "fontane" }, 2026)).toHaveProperty("website");
+    expect(pruefe({ ...f, website: "beispielhof" }, 2026)).toHaveProperty("website");
     expect(pruefe({ ...f, name: " " }, 2026)).toHaveProperty("name");
   });
 
@@ -40,8 +40,8 @@ describe("Autoren: Angaben", () => {
 describe("Autoren: Vergleich", () => {
   const antwort: Anreicherung = {
     angereichert: true,
-    vorschlag: { name: "Theodor Fontane", beschreibung: "Deutscher Schriftsteller", birth_year: 1819, death_year: 1898, photo_url: "http://bild", konfidenz: "hoch", score: 42, werke: [{ titel: "Effi Briest" }] },
-    aktuell: { name: "Theodor Fontane", birth_year: 1819, death_year: null, hat_foto: false },
+    vorschlag: { name: "Theo Beispielhof", beschreibung: "Deutscher Schriftsteller", birth_year: 1820, death_year: 1899, photo_url: "http://bild", konfidenz: "hoch", score: 42, werke: [{ titel: "Lotte Beispiel" }] },
+    aktuell: { name: "Theo Beispielhof", birth_year: 1820, death_year: null, hat_foto: false },
   };
 
   it("sperrt Gleiches, wählt Neues und nimmt fehlende Vergleichswerte vom Autor", () => {
@@ -49,7 +49,7 @@ describe("Autoren: Vergleich", () => {
     const nach = (k: string) => zeilen.find((z) => z.schluessel === k)!;
     expect(nach("name").gleich).toBe(true);
     expect(nach("birth_year").gleich).toBe(true);
-    expect(nach("death_year")).toMatchObject({ gleich: false, gewaehlt: true, neu: "1898" });
+    expect(nach("death_year")).toMatchObject({ gleich: false, gewaehlt: true, neu: "1899" });
     expect(nach("beschreibung").alt).toBe("Erzähler");
     expect(nach("photo_url")).toMatchObject({ bildAlt: undefined, bildNeu: "http://bild" });
   });
@@ -61,23 +61,23 @@ describe("Autoren: Vergleich", () => {
     const felder = uebernahmefelder(antwort.vorschlag!, ohne);
     expect(felder).not.toHaveProperty("beschreibung");
     expect(felder).not.toHaveProperty("name");
-    expect(felder).toMatchObject({ death_year: 1898, konfidenz: "hoch", score: 42 });
+    expect(felder).toMatchObject({ death_year: 1899, konfidenz: "hoch", score: 42 });
   });
 
   it("zeigt Verweise auf Normdateien als eine Zeile und sendet sie nur gewählt", () => {
-    expect(verweistext({ viaf: "59157273", gnd: "115673784", fremd: "x" })).toBe("GND 115673784, VIAF 59157273");
-    const mit: Anreicherung = { ...antwort, vorschlag: { ...antwort.vorschlag, verweise: { gnd: "115673784" } }, aktuell: { ...antwort.aktuell, verweise: {} } };
+    expect(verweistext({ viaf: "99900001", gnd: "999000039", fremd: "x" })).toBe("GND 999000039, VIAF 99900001");
+    const mit: Anreicherung = { ...antwort, vorschlag: { ...antwort.vorschlag, verweise: { gnd: "999000039" } }, aktuell: { ...antwort.aktuell, verweise: {} } };
     const zeilen = vergleichszeilen(autor, mit, "/foto");
-    expect(zeilen.find((z) => z.schluessel === "verweise")).toMatchObject({ alt: "", neu: "GND 115673784", gewaehlt: true });
-    expect(uebernahmefelder(mit.vorschlag!, zeilen).verweise).toEqual({ gnd: "115673784" });
-    const schon = { ...mit, aktuell: { ...mit.aktuell, verweise: { gnd: "115673784" } } };
+    expect(zeilen.find((z) => z.schluessel === "verweise")).toMatchObject({ alt: "", neu: "GND 999000039", gewaehlt: true });
+    expect(uebernahmefelder(mit.vorschlag!, zeilen).verweise).toEqual({ gnd: "999000039" });
+    const schon = { ...mit, aktuell: { ...mit.aktuell, verweise: { gnd: "999000039" } } };
     expect(vergleichszeilen(autor, schon, "/foto").find((z) => z.schluessel === "verweise")?.gleich).toBe(true);
   });
 
   it("erkennt Werke im Bestand in beide Richtungen", () => {
-    expect(imBestand("Effi Briest", [{ title: "Effi Briest, Roman" }])).toBe(true);
-    expect(imBestand("Der Stechlin, Roman", [{ title: "Der Stechlin" }])).toBe(true);
-    expect(imBestand("Irrungen", [{ title: "Effi Briest" }])).toBe(false);
+    expect(imBestand("Lotte Beispiel", [{ title: "Lotte Beispiel, Roman" }])).toBe(true);
+    expect(imBestand("Der Musterhof, Roman", [{ title: "Der Musterhof" }])).toBe(true);
+    expect(imBestand("Irrwege", [{ title: "Lotte Beispiel" }])).toBe(false);
   });
 });
 

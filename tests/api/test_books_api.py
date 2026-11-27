@@ -56,7 +56,7 @@ async def test_buch_details_abrufen(client: AsyncClient, test_db):
     assert data["title"] == "Detailbuch"
     assert data["author"] == "Max Muster"
     assert data["file_format"] == "pdf"
-    assert data["isbn"] == "978-3-16-148410-0"
+    assert data["isbn"] == "978-3-99999-125-2"
     assert isinstance(data["categories"], list)
     assert isinstance(data["authors"], list)
 

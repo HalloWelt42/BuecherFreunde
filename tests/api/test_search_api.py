@@ -47,7 +47,7 @@ async def test_suche_findet_buch_nach_titel(client: AsyncClient, test_db):
         test_db,
         hash="search_titel01",
         title="Python Programmierung",
-        author="Guido van Rossum",
+        author="Ida van Beispiel",
         fts_content="Einfuehrung in die Python-Sprache",
     )
 

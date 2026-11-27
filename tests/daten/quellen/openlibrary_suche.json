@@ -9,14 +9,14 @@
  "docs": [
   {
    "author_key": [
-    "OL91826A"
+    "OL9900003A"
    ],
    "author_name": [
-    "Daniel Kehlmann"
+    "Paula Probe"
    ],
-   "cover_i": 1165201,
+   "cover_i": 99000141,
    "first_publish_year": 2005,
-   "key": "/works/OL991411W",
+   "key": "/works/OL99000141W",
    "language": [
     "fre",
     "tur",
@@ -26,16 +26,16 @@
     "eng",
     "chi"
    ],
-   "title": "Die Vermessung der Welt",
+   "title": "Die Reise nach Beispielhausen",
    "subject": [
     "Fiction",
-    "Long Now Manual for Civilization",
+    "Manual for Example Readers",
     "New York Times reviewed",
     "Fiction, historical, general",
-    "Scientists, fiction",
+    "Travelers, fiction",
     "Fiction, biographical",
     "German fiction",
-    "OUR Brockhaus selection",
+    "OUR Beispiel selection",
     "German language materials",
     "18.09 German literature",
     "Romans, nouvelles",
@@ -44,7 +44,7 @@
     "Biographical fiction",
     "Intellectual life",
     "Belletristische Darstellung",
-    "Gauß, Carl Friedrich",
+    "Mustergroß, Friedrich",
     "Mathematicians",
     "Explorers",
     "German Historical fiction"
@@ -55,22 +55,22 @@
     "numFoundExact": true,
     "docs": [
      {
-      "key": "/books/OL40205584M",
-      "title": "Die Vermessung der Welt",
+      "key": "/books/OL99000142M",
+      "title": "Die Reise nach Beispielhausen",
       "subtitle": "Roman",
-      "cover_i": 12958418,
+      "cover_i": 99000142,
       "language": [
        "ger"
       ],
       "publisher": [
-       "Rowohlt-Taschenbuch-Verl."
+       "Beispiel-Taschenbuch-Verl."
       ],
       "publish_date": [
        "2009"
       ],
       "isbn": [
-       "9783499332708",
-       "3499332701"
+       "9783999991092",
+       "3999991097"
       ]
      }
     ]
@@ -78,24 +78,24 @@
   },
   {
    "author_key": [
-    "OL91826A"
+    "OL9900003A"
    ],
    "author_name": [
-    "Daniel Kehlmann"
+    "Paula Probe"
    ],
-   "cover_i": 1013562,
+   "cover_i": 99000143,
    "first_publish_year": 2012,
-   "key": "/works/OL991402W",
+   "key": "/works/OL99000143W",
    "language": [
     "ger"
    ],
-   "title": "Die Vermessung der Welt - Das Buch zum Film",
+   "title": "Die Reise nach Beispielhausen - Das Buch zum Film",
    "subject": [
     "Fiction",
-    "OUR Brockhaus selection",
+    "OUR Beispiel selection",
     "German Motion picture plays",
     "History and criticism",
-    "Vermessung der Welt (Motion picture)",
+    "Reise nach Beispielhausen (Motion picture)",
     "German fiction"
    ],
    "editions": {
@@ -104,24 +104,24 @@
     "numFoundExact": true,
     "docs": [
      {
-      "key": "/books/OL30749128M",
-      "title": "Die Vermessung der Welt",
+      "key": "/books/OL99000144M",
+      "title": "Die Reise nach Beispielhausen",
       "subtitle": "das Buch zum Film",
-      "cover_i": 14121543,
+      "cover_i": 99000144,
       "language": [
        "ger"
       ],
       "publisher": [
-       "Rowohlt Taschenbuch",
-       "Rowohlt Taschenbuch Verlag GmbH",
-       "Reinbek : Rowohlt Taschenbuch Verlag, 2012"
+       "Beispiel Taschenbuch",
+       "Beispiel Taschenbuch Verlag GmbH",
+       "Reinbek : Beispiel Taschenbuch Verlag, 2012"
       ],
       "publish_date": [
        "2012"
       ],
       "isbn": [
-       "9783499253270",
-       "3499253275"
+       "9783999991146",
+       "3999991143"
       ]
      }
     ]

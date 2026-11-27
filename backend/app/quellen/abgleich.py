@@ -78,7 +78,7 @@ def nachname(name: str) -> str:
 
 
 def natuerlich(name: str) -> str:
-    """"Schlink, Bernhard" -> "Bernhard Schlink"; ohne Komma bleibt der Name."""
+    """"Beispiel, Erika" -> "Erika Beispiel"; ohne Komma bleibt der Name."""
     n = " ".join(unicodedata.normalize("NFC", name or "").split()).strip(" ,;")
     if "," not in n:
         return n

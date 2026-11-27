@@ -52,7 +52,7 @@ def _alles_aelter(dauer: timedelta) -> None:
 
 
 def test_erste_sicherung_ist_geschlossen_auch_mit_wal(datenbank, monkeypatch):
-    datenbank("Steppenwolf")
+    datenbank("Tragwerk")
     beginn = datetime.now().timestamp() - 30
     monkeypatch.setattr(sicherung, "time", SimpleNamespace(time=lambda: beginn))
     lauf = sicherung.sichern(Anlass.HAND)
@@ -67,7 +67,7 @@ def test_erste_sicherung_ist_geschlossen_auch_mit_wal(datenbank, monkeypatch):
         kopie = settings.database_dir / "kopie.db"
         kopie.write_bytes(zf.read("database/buecherfreunde.db"))
     with sqlite3.connect(kopie) as v:
-        assert v.execute("SELECT titel FROM buch").fetchall() == [("Steppenwolf",)]
+        assert v.execute("SELECT titel FROM buch").fetchall() == [("Tragwerk",)]
     # Keine Teil- oder Begleitdateien im Ordner der Sicherungen.
     assert [p.name for p in settings.backup_dir.iterdir()] == [lauf.datei.name]
 
@@ -78,7 +78,7 @@ def test_ohne_aenderung_entsteht_keine_neue(datenbank):
     assert not gleich.neu and gleich.datei == erste.datei and "unverändert" in gleich.grund
 
     _alles_aelter(timedelta(minutes=1))
-    datenbank("Siddhartha")
+    datenbank("Hexagonal")
     geaendert = sicherung.sichern(Anlass.HAND)
     assert geaendert.neu and len(sicherung.staende()) == 2
 

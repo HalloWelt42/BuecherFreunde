@@ -2,8 +2,8 @@
  "totalItems": 308,
  "member": [
   {
-   "gndIdentifier": "1343576210",
-   "preferredName": "Müller, Thomas",
+   "gndIdentifier": "9990000530",
+   "preferredName": "Mustermann, Jürgen",
    "professionOrOccupation": [
     {
      "id": "https://d-nb.info/gnd/4195382-4",
@@ -11,7 +11,7 @@
     }
    ],
    "biographicalOrHistoricalInformation": [
-    "tätig and der Klinik für Kinderheilkunde und Jugendmedizin, Cottbus"
+    "tätig and der Klinik für Kinderheilkunde und Jugendmedizin, Musterstadt"
    ],
    "geographicAreaCode": [
     {
@@ -20,11 +20,11 @@
     }
    ],
    "publication": [
-    "Neugeborenes mit chondroektodermaler Dysplasie und perizentrischer Inversion am Chromosom 4"
+    "Neugeborenes mit beispielhafter Musterdysplasie am Chromosom 4"
    ],
    "sameAs": [
     {
-     "id": "https://d-nb.info/gnd/1343576210/about"
+     "id": "https://d-nb.info/gnd/9990000530/about"
     }
    ],
    "type": [
@@ -34,15 +34,15 @@
    ]
   },
   {
-   "gndIdentifier": "1020625279",
-   "preferredName": "Müller, Thomas",
+   "gndIdentifier": "9990000549",
+   "preferredName": "Mustermann, Jürgen",
    "dateOfBirth": [
-    "1976"
+    "1977"
    ],
    "placeOfBirth": [
     {
-     "id": "https://d-nb.info/gnd/4015240-6",
-     "label": "Erfurt"
+     "id": "https://d-nb.info/gnd/4999909-6",
+     "label": "Beispielhausen"
     }
    ],
    "professionOrOccupation": [
@@ -56,8 +56,8 @@
     }
    ],
    "biographicalOrHistoricalInformation": [
-    "Promotion 2011, am Lehrstuhl für Bürgerliches Recht, Handels- und Wirtschaftsrecht, Rechtsvergleichung, Multimedia- und Tele-kommunikationsrecht, Georg-August-Universität Göttingen",
-    "Seit 08/2004 Sozius in der Anwaltssozietät Dr. Müller & Lotz in Göttingen"
+    "Promotion 2011, am Lehrstuhl für Bürgerliches Recht, Handels- und Wirtschaftsrecht, Rechtsvergleichung, Multimedia- und Tele-kommunikationsrecht, Universität Musterstadt",
+    "Seit 08/2004 Sozius in der Anwaltssozietät Dr. Mustermann & Probe in Musterstadt"
    ],
    "geographicAreaCode": [
     {
@@ -66,29 +66,29 @@
     }
    ],
    "publication": [
-    "Rechtsnatur und Wirkung so genannter \"atypischer Beherrschungsverträge\""
+    "Rechtsnatur und Wirkung so genannter \"beispielhafter Musterverträge\""
    ],
    "homepage": [
     {
-     "id": "http://www.hochschule-calw.de/de/unsere-hochschule/professoren/detailansicht/team/thomas-mueller",
-     "label": "http://www.hochschule-calw.de/de/unsere-hochschule/professoren/detailansicht/team/thomas-mueller"
+     "id": "http://www.hochschule-musterstadt.example/professoren/juergen-mustermann",
+     "label": "http://www.hochschule-musterstadt.example/professoren/juergen-mustermann"
     }
    ],
    "sameAs": [
     {
-     "id": "http://id.loc.gov/rwo/agents/n2012040334"
+     "id": "http://id.loc.gov/rwo/agents/n2099000002"
     },
     {
-     "id": "http://viaf.org/viaf/431146997396918892419"
+     "id": "http://viaf.org/viaf/999000000000000000004"
     },
     {
-     "id": "http://www.wikidata.org/entity/Q137307041"
+     "id": "http://www.wikidata.org/entity/Q900000401"
     },
     {
-     "id": "https://d-nb.info/gnd/1020625279/about"
+     "id": "https://d-nb.info/gnd/9990000549/about"
     },
     {
-     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1020625279"
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/9990000549"
     }
    ],
    "type": [
@@ -98,10 +98,10 @@
    ]
   },
   {
-   "gndIdentifier": "1027201091",
-   "preferredName": "Müller, Thomas",
+   "gndIdentifier": "9990000557",
+   "preferredName": "Mustermann, Jürgen",
    "variantName": [
-    "Müller, Th."
+    "Mustermann, J."
    ],
    "professionOrOccupation": [
     {
@@ -114,7 +114,7 @@
     }
    ],
    "biographicalOrHistoricalInformation": [
-    "Facharzt für Neurologie, Psychiatrie und Psychotherapie; Department of Neurology, Department of Neurology, Huntington Centre NRW, St. Josef Hospital, Ruhr-University, Bochum; tätig am Alexianer St. Joseph-Krankenhaus Berlin-Weißensee: Behandlungsfokus: Multiple Sklerose, Morbus Parkinson, Schmerzerkrankungen, Wirbelsäulenbeschwerden, Demenzerkrankungen, Restless-Legs-Syndrom (RLS)"
+    "Facharzt für Neurologie, Psychiatrie und Psychotherapie; Department of Neurology, Beispielklinik Musterstadt; tätig am Musterkrankenhaus Beispielhausen-Weißdorf: Behandlungsfokus: Multiple Sklerose, Morbus Parkinson, Schmerzerkrankungen, Wirbelsäulenbeschwerden, Demenzerkrankungen, Restless-Legs-Syndrom (RLS)"
    ],
    "geographicAreaCode": [
     {
@@ -123,23 +123,23 @@
     }
    ],
    "publication": [
-    "Vitamin D rise enhances blood perfusion in patients with multiple sclerosis"
+    "Sample vitamin effects on blood perfusion in test patients"
    ],
    "sameAs": [
     {
-     "id": "http://viaf.org/viaf/2046150203815803250000"
+     "id": "http://viaf.org/viaf/9990000000000000000005"
     },
     {
-     "id": "http://www.wikidata.org/entity/Q89485636"
+     "id": "http://www.wikidata.org/entity/Q900000402"
     },
     {
-     "id": "https://d-nb.info/gnd/1027201091/about"
+     "id": "https://d-nb.info/gnd/9990000557/about"
     },
     {
-     "id": "https://orcid.org/0000-0002-6799-0753"
+     "id": "https://orcid.org/0000-0002-9999-0002"
     },
     {
-     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1027201091"
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/9990000557"
     }
    ],
    "type": [
@@ -149,8 +149,8 @@
    ]
   },
   {
-   "gndIdentifier": "1036150933",
-   "preferredName": "Müller, Thomas",
+   "gndIdentifier": "9990000565",
+   "preferredName": "Mustermann, Jürgen",
    "professionOrOccupation": [
     {
      "id": "https://d-nb.info/gnd/4066533-1",
@@ -164,14 +164,14 @@
     }
    ],
    "publication": [
-    "Güterverkehr und Energieverbrauch"
+    "Güterverkehr im Beispieltal"
    ],
    "sameAs": [
     {
-     "id": "http://viaf.org/viaf/304716979"
+     "id": "http://viaf.org/viaf/999000006"
     },
     {
-     "id": "https://d-nb.info/gnd/1036150933/about"
+     "id": "https://d-nb.info/gnd/9990000565/about"
     }
    ],
    "type": [
@@ -181,10 +181,10 @@
    ]
   },
   {
-   "gndIdentifier": "1036155226",
-   "preferredName": "Müller, Thomas",
+   "gndIdentifier": "9990000573",
+   "preferredName": "Mustermann, Jürgen",
    "variantName": [
-    "Müller, Th."
+    "Mustermann, J."
    ],
    "professionOrOccupation": [
     {
@@ -193,7 +193,7 @@
     }
    ],
    "biographicalOrHistoricalInformation": [
-    "tätig am Fraunhofer-Institut für Solare Energiesysteme; zuvor Doktorand an der Technischen Universität Chemnitz; Master von der Albert-Ludwigs-Universität Freiburg im Breisgau"
+    "tätig am Beispielinstitut für Solare Energiesysteme; zuvor Doktorand an der Technischen Universität Musterstadt; Master von der Universität Beispielhausen"
    ],
    "geographicAreaCode": [
     {
@@ -202,20 +202,20 @@
     }
    ],
    "publication": [
-    "Friedrich, Rainer: Energie und Umwelt"
+    "Probe, Rainer: Energie im Musterhaus"
    ],
    "sameAs": [
     {
-     "id": "http://viaf.org/viaf/304331244"
+     "id": "http://viaf.org/viaf/999000007"
     },
     {
-     "id": "http://www.wikidata.org/entity/Q122802583"
+     "id": "http://www.wikidata.org/entity/Q900000403"
     },
     {
-     "id": "https://d-nb.info/gnd/1036155226/about"
+     "id": "https://d-nb.info/gnd/9990000573/about"
     },
     {
-     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1036155226"
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/9990000573"
     }
    ],
    "type": [
@@ -225,15 +225,15 @@
    ]
   },
   {
-   "gndIdentifier": "1334534039",
-   "preferredName": "Müller, Thomas",
+   "gndIdentifier": "9990000581",
+   "preferredName": "Mustermann, Jürgen",
    "dateOfBirth": [
-    "1983"
+    "1984"
    ],
    "placeOfBirth": [
     {
-     "id": "https://d-nb.info/gnd/4107568-7",
-     "label": "Waren (Müritz)"
+     "id": "https://d-nb.info/gnd/4999910-2",
+     "label": "Musterau (Beispielsee)"
     }
    ],
    "professionOrOccupation": [
@@ -249,14 +249,14 @@
     }
    ],
    "publication": [
-    "Mikrobielle Belastung in einem OP ohne raumlufttechnische Anlage im Vergleich zwischen aseptischen und septischen Operationen"
+    "Keimbelastung in einem Musteroperationssaal im Vergleich zwischen aseptischen und septischen Beispieleingriffen"
    ],
    "sameAs": [
     {
-     "id": "https://d-nb.info/gnd/1334534039/about"
+     "id": "https://d-nb.info/gnd/9990000581/about"
     },
     {
-     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1334534039"
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/9990000581"
     }
    ],
    "type": [
@@ -266,8 +266,8 @@
    ]
   },
   {
-   "gndIdentifier": "1331580919",
-   "preferredName": "Müller, Thomas",
+   "gndIdentifier": "9990000603",
+   "preferredName": "Mustermann, Jürgen",
    "professionOrOccupation": [
     {
      "id": "https://d-nb.info/gnd/4009836-9",
@@ -275,7 +275,7 @@
     }
    ],
    "biographicalOrHistoricalInformation": [
-    "tätig am Institut für Organische Chemie, Universität Innsbruck"
+    "tätig am Institut für Organische Chemie, Universität Beispielhausen"
    ],
    "geographicAreaCode": [
     {
@@ -284,17 +284,17 @@
     }
    ],
    "publication": [
-    "Clathrochelate Complexes Containing Axial Cymantrene and Tromancenium Moieties"
+    "Clathrochelate Complexes Containing Sample Moieties"
    ],
    "sameAs": [
     {
-     "id": "https://d-nb.info/gnd/1331580919/about"
+     "id": "https://d-nb.info/gnd/9990000603/about"
     },
     {
-     "id": "https://d-nb.info/gnd/1332362788"
+     "id": "https://d-nb.info/gnd/9990000522"
     },
     {
-     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1331580919"
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/9990000603"
     }
    ],
    "type": [
@@ -304,8 +304,8 @@
    ]
   },
   {
-   "gndIdentifier": "1332045448",
-   "preferredName": "Müller, Thomas",
+   "gndIdentifier": "9990000611",
+   "preferredName": "Mustermann, Jürgen",
    "professionOrOccupation": [
     {
      "id": "https://d-nb.info/gnd/4039199-1",
@@ -321,7 +321,7 @@
     }
    ],
    "biographicalOrHistoricalInformation": [
-    "tätig am ZALF, AG Pilzliche Interaktion"
+    "tätig am Musterinstitut, AG Pilzliche Interaktion"
    ],
    "geographicAreaCode": [
     {
@@ -330,14 +330,14 @@
     }
    ],
    "publication": [
-    "Pseudomonas simiae effects on the mycotoxin formation by fusaria and alternaria in vitro and in a wheat field"
+    "Sample bacteria effects on mycotoxin formation in vitro and in a test wheat field"
    ],
    "sameAs": [
     {
-     "id": "https://d-nb.info/gnd/1332045448/about"
+     "id": "https://d-nb.info/gnd/9990000611/about"
     },
     {
-     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1332045448"
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/9990000611"
     }
    ],
    "type": [
@@ -347,10 +347,10 @@
    ]
   },
   {
-   "gndIdentifier": "1335497749",
-   "preferredName": "Müller, Thomas",
+   "gndIdentifier": "9990000638",
+   "preferredName": "Mustermann, Jürgen",
    "dateOfBirth": [
-    "1985"
+    "1986"
    ],
    "professionOrOccupation": [
     {
@@ -365,14 +365,14 @@
     }
    ],
    "publication": [
-    "Mesophases in molecular and granular systems: from liquid crystalline polymers to granular rods"
+    "Mesophases in sample systems: from liquid crystalline polymers to granular rods"
    ],
    "sameAs": [
     {
-     "id": "https://d-nb.info/gnd/1335497749/about"
+     "id": "https://d-nb.info/gnd/9990000638/about"
     },
     {
-     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1335497749"
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/9990000638"
     }
    ],
    "type": [
@@ -382,8 +382,8 @@
    ]
   },
   {
-   "gndIdentifier": "1330851684",
-   "preferredName": "Müller, Thomas",
+   "gndIdentifier": "9990000646",
+   "preferredName": "Mustermann, Jürgen",
    "professionOrOccupation": [
     {
      "id": "https://d-nb.info/gnd/4209056-8",
@@ -391,7 +391,7 @@
     }
    ],
    "biographicalOrHistoricalInformation": [
-    "Thomas Müller ist gemeinsam mit Christian Pretzsch als Chief Product Owner für SAP Conversational AI tätig und arbeitet seit über 20 Jahren für die SAP SE. Nach seinem Studium der Informationstechnik wirkte er unter anderem als Entwickler und Architekt in den SAP Labs in Montreal am Web-Client-UI-Framework mit. Außerdem arbeitete er als Architekt bei SAP Design und war als Schulungsreferent und Redner bei externen und internen SAP-Veranstaltungen aktiv."
+    "Jürgen Mustermann ist gemeinsam mit Christian Probe als leitender Produktverantwortlicher für einen Beispiel-Sprachassistenten tätig und arbeitet seit über 20 Jahren für die Musterfirma. Nach seinem Studium der Informationstechnik wirkte er unter anderem als Entwickler und Architekt in den Musterlaboren in Beispielhausen am Web-Client-UI-Framework mit. Außerdem arbeitete er als Architekt bei Musterdesign und war als Schulungsreferent und Redner bei externen und internen Veranstaltungen aktiv."
    ],
    "geographicAreaCode": [
     {
@@ -400,14 +400,14 @@
     }
    ],
    "publication": [
-    "SAP Conversational Al"
+    "Beispiel-Sprachassistent"
    ],
    "sameAs": [
     {
-     "id": "https://d-nb.info/gnd/1330851684/about"
+     "id": "https://d-nb.info/gnd/9990000646/about"
     },
     {
-     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/1330851684"
+     "id": "https://www.deutsche-digitale-bibliothek.de/person/gnd/9990000646"
     }
    ],
    "type": [

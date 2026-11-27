@@ -105,7 +105,7 @@ export function vergleichszeilen(autor: Autoreneinzeln, a: Anreicherung, fotoAlt
 
 const VERWEISNAMEN: Record<string, string> = { gnd: "GND", viaf: "VIAF", isni: "ISNI", orcid: "ORCID" };
 
-/** "GND 115673784, VIAF 59157273" in fester Reihenfolge */
+/** "GND 999000039, VIAF 99900001" in fester Reihenfolge */
 export function verweistext(v: Record<string, string> | undefined): string {
   return Object.keys(VERWEISNAMEN).filter((k) => v?.[k]).map((k) => `${VERWEISNAMEN[k]} ${v![k]}`).join(", ");
 }

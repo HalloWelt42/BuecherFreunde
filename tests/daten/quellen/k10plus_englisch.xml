@@ -1,18 +1,18 @@
 <?xml version='1.0' encoding='utf-8'?>
 <searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/" xmlns:m="http://www.loc.gov/MARC21/slim"><version>1.1</version><numberOfRecords>7</numberOfRecords><records><record><recordSchema>marcxml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record>
   <m:leader>     cam a22      c 4500</m:leader>
-  <m:controlfield tag="001">1616281510</m:controlfield>
+  <m:controlfield tag="001">9990000271</m:controlfield>
   <m:controlfield tag="003">DE-627</m:controlfield>
   <m:controlfield tag="005">20261028204805.0</m:controlfield>
   <m:controlfield tag="007">tu</m:controlfield>
   <m:controlfield tag="008">120410s2012    xxu|||||      00| ||eng c</m:controlfield>
   <m:datafield tag="020" ind1=" " ind2=" ">
-    <m:subfield code="a">9780132350884</m:subfield>
-    <m:subfield code="9">978-0-13-235088-4</m:subfield>
+    <m:subfield code="a">9780999999912</m:subfield>
+    <m:subfield code="9">978-0-9999999-1-2</m:subfield>
   </m:datafield>
   <m:datafield tag="020" ind1=" " ind2=" ">
-    <m:subfield code="a">0132350882</m:subfield>
-    <m:subfield code="9">0-13-235088-2</m:subfield>
+    <m:subfield code="a">0999999915</m:subfield>
+    <m:subfield code="9">0-9999999-1-5</m:subfield>
   </m:datafield>
   <m:datafield tag="041" ind1=" " ind2=" ">
     <m:subfield code="a">eng</m:subfield>
@@ -26,17 +26,17 @@
     <m:subfield code="0">(DE-625)rvk/143617:</m:subfield>
   </m:datafield>
   <m:datafield tag="100" ind1="1" ind2=" ">
-    <m:subfield code="a">Martin, Robert C.</m:subfield>
-    <m:subfield code="d">1952-</m:subfield>
-    <m:subfield code="0">(DE-588)114440964</m:subfield>
-    <m:subfield code="0">(DE-627)594825814</m:subfield>
-    <m:subfield code="0">(DE-576)173656994</m:subfield>
+    <m:subfield code="a">Example, Jane Q.</m:subfield>
+    <m:subfield code="d">1953-</m:subfield>
+    <m:subfield code="0">(DE-588)999000160</m:subfield>
+    <m:subfield code="0">(DE-627)999000322</m:subfield>
+    <m:subfield code="0">(DE-576)999000330</m:subfield>
     <m:subfield code="4">aut</m:subfield>
   </m:datafield>
   <m:datafield tag="245" ind1="1" ind2="0">
-    <m:subfield code="a">Clean code</m:subfield>
-    <m:subfield code="b">a handbook of agile software craftsmanship</m:subfield>
-    <m:subfield code="c">Robert C. Martin</m:subfield>
+    <m:subfield code="a">Example code</m:subfield>
+    <m:subfield code="b">a handbook of tidy sample craftsmanship</m:subfield>
+    <m:subfield code="c">Jane Q. Example</m:subfield>
   </m:datafield>
   <m:datafield tag="250" ind1=" " ind2=" ">
     <m:subfield code="a">[Repr.]</m:subfield>
@@ -44,7 +44,7 @@
   <m:datafield tag="264" ind1=" " ind2="1">
     <m:subfield code="a">Upper Saddle River, NJ</m:subfield>
     <m:subfield code="a">Munich [u.a.]</m:subfield>
-    <m:subfield code="b">Prentice Hall</m:subfield>
+    <m:subfield code="b">Sample Hall</m:subfield>
     <m:subfield code="c">2012</m:subfield>
   </m:datafield>
   <m:datafield tag="300" ind1=" " ind2=" ">
@@ -52,10 +52,10 @@
     <m:subfield code="b">Ill.</m:subfield>
   </m:datafield>
   <m:datafield tag="490" ind1="0" ind2=" ">
-    <m:subfield code="a">Robert C. Martin series</m:subfield>
+    <m:subfield code="a">Jane Q. Example series</m:subfield>
   </m:datafield>
   <m:datafield tag="856" ind1="4" ind2="2">
-    <m:subfield code="u">http://www.gbv.de/dms/bowker/toc/9780132350884.pdf</m:subfield>
+    <m:subfield code="u">http://www.gbv.de/dms/bowker/toc/9780999999912.pdf</m:subfield>
     <m:subfield code="m">DE-601</m:subfield>
     <m:subfield code="q">pdf/application</m:subfield>
     <m:subfield code="v">2026-10-28</m:subfield>
@@ -65,38 +65,38 @@
   </m:datafield>
   </m:record></recordData><recordPosition>1</recordPosition></record><record><recordSchema>marcxml</recordSchema><recordPacking>xml</recordPacking><recordData><m:record>
   <m:leader>     cam a22      c 4500</m:leader>
-  <m:controlfield tag="001">1789226422</m:controlfield>
+  <m:controlfield tag="001">9990000298</m:controlfield>
   <m:controlfield tag="003">DE-627</m:controlfield>
   <m:controlfield tag="005">20261028204806.0</m:controlfield>
   <m:controlfield tag="007">cr uuu---uuuuu</m:controlfield>
   <m:controlfield tag="008">220210s2011    xx |||||o     00| ||eng c</m:controlfield>
   <m:datafield tag="020" ind1=" " ind2=" ">
-    <m:subfield code="a">9780136083221</m:subfield>
-    <m:subfield code="9">978-0-13-608322-1</m:subfield>
+    <m:subfield code="a">9780999999929</m:subfield>
+    <m:subfield code="9">978-0-9999999-2-9</m:subfield>
   </m:datafield>
   <m:datafield tag="041" ind1=" " ind2=" ">
     <m:subfield code="a">eng</m:subfield>
   </m:datafield>
   <m:datafield tag="100" ind1="1" ind2=" ">
-    <m:subfield code="a">Martin, Robert C.</m:subfield>
-    <m:subfield code="d">1952-</m:subfield>
+    <m:subfield code="a">Example, Jane Q.</m:subfield>
+    <m:subfield code="d">1953-</m:subfield>
     <m:subfield code="e">VerfasserIn</m:subfield>
-    <m:subfield code="0">(DE-588)114440964</m:subfield>
-    <m:subfield code="0">(DE-627)594825814</m:subfield>
-    <m:subfield code="0">(DE-576)173656994</m:subfield>
+    <m:subfield code="0">(DE-588)999000160</m:subfield>
+    <m:subfield code="0">(DE-627)999000322</m:subfield>
+    <m:subfield code="0">(DE-576)999000330</m:subfield>
     <m:subfield code="4">aut</m:subfield>
   </m:datafield>
   <m:datafield tag="245" ind1="1" ind2="0">
-    <m:subfield code="a">Clean Code</m:subfield>
-    <m:subfield code="b">a handbook of agile software craftsmanship</m:subfield>
-    <m:subfield code="c">Robert C. Martin</m:subfield>
+    <m:subfield code="a">Example Code</m:subfield>
+    <m:subfield code="b">a handbook of tidy sample craftsmanship</m:subfield>
+    <m:subfield code="c">Jane Q. Example</m:subfield>
   </m:datafield>
   <m:datafield tag="250" ind1=" " ind2=" ">
     <m:subfield code="a">Ninth printing</m:subfield>
   </m:datafield>
   <m:datafield tag="264" ind1=" " ind2="1">
     <m:subfield code="a">Upper Saddle River, NJ</m:subfield>
-    <m:subfield code="b">Addison-Wesley</m:subfield>
+    <m:subfield code="b">Example-Press</m:subfield>
     <m:subfield code="c">May 2011</m:subfield>
   </m:datafield>
   <m:datafield tag="300" ind1=" " ind2=" ">
@@ -104,7 +104,7 @@
     <m:subfield code="b">Illustrationen</m:subfield>
   </m:datafield>
   <m:datafield tag="490" ind1="0" ind2=" ">
-    <m:subfield code="a">Robert C. Martin series</m:subfield>
+    <m:subfield code="a">Jane Q. Example series</m:subfield>
   </m:datafield>
   <m:datafield tag="520" ind1=" " ind2=" ">
     <m:subfield code="a">Eine Inhaltsangabe in ganzen Sätzen, lang genug, um etwas zu sagen.</m:subfield>
@@ -122,22 +122,22 @@
     <m:subfield code="a">Employability;IT Professional;Professional;Y-AB SOFTWARE METHODS</m:subfield>
   </m:datafield>
   <m:datafield tag="776" ind1="1" ind2=" ">
-    <m:subfield code="z">9780132350884</m:subfield>
+    <m:subfield code="z">9780999999912</m:subfield>
   </m:datafield>
   <m:datafield tag="776" ind1="0" ind2="8">
     <m:subfield code="i">Erscheint auch als</m:subfield>
     <m:subfield code="n">Druck-Ausgabe</m:subfield>
-    <m:subfield code="z">9780132350884</m:subfield>
+    <m:subfield code="z">9780999999912</m:subfield>
   </m:datafield>
   <m:datafield tag="856" ind1="4" ind2="0">
-    <m:subfield code="u">https://elibrary.pearson.de/book/99.150005/9780136083221</m:subfield>
-    <m:subfield code="m">X:PEARSON</m:subfield>
+    <m:subfield code="u">https://elibrary.example.org/book/99.150005/9780999999929</m:subfield>
+    <m:subfield code="m">X:EXAMPLE</m:subfield>
     <m:subfield code="x">Verlag</m:subfield>
     <m:subfield code="z">lizenzpflichtig</m:subfield>
     <m:subfield code="7">1</m:subfield>
   </m:datafield>
   <m:datafield tag="856" ind1="4" ind2="2">
-    <m:subfield code="u">http://www.gbv.de/dms/bowker/toc/9780132350884.pdf</m:subfield>
+    <m:subfield code="u">http://www.gbv.de/dms/bowker/toc/9780999999912.pdf</m:subfield>
     <m:subfield code="m">DE-601</m:subfield>
     <m:subfield code="q">pdf/application</m:subfield>
     <m:subfield code="v">2026-10-28</m:subfield>
@@ -145,4 +145,4 @@
     <m:subfield code="3">Inhaltsverzeichnis</m:subfield>
     <m:subfield code="7">1</m:subfield>
   </m:datafield>
-  </m:record></recordData><recordPosition>2</recordPosition></record></records><echoedSearchRetrieveRequest><version>1.1</version><query>pica.isb=9780132350884</query><maximumRecords>2</maximumRecords><recordPacking>xml</recordPacking><recordSchema>marcxml</recordSchema></echoedSearchRetrieveRequest></searchRetrieveResponse>
+  </m:record></recordData><recordPosition>2</recordPosition></record></records><echoedSearchRetrieveRequest><version>1.1</version><query>pica.isb=9780999999912</query><maximumRecords>2</maximumRecords><recordPacking>xml</recordPacking><recordSchema>marcxml</recordSchema></echoedSearchRetrieveRequest></searchRetrieveResponse>

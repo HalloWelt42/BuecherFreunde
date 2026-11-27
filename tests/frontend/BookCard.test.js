@@ -16,8 +16,8 @@ vi.mock("../src/lib/api/user-data.js", () => ({
 function erstelleTestBuch(ueberschreibungen = {}) {
   return {
     id: 1,
-    title: "Der Steppenwolf",
-    author: "Hermann Hesse",
+    title: "Tragwerk",
+    author: "HalloWelt42",
     file_format: "epub",
     file_size: 1536000,
     rating: 4,
@@ -31,8 +31,8 @@ describe("BookCard", () => {
     const buch = erstelleTestBuch();
     render(BookCard, { props: { book: buch } });
 
-    expect(screen.getByText("Der Steppenwolf")).toBeTruthy();
-    expect(screen.getByText("Hermann Hesse")).toBeTruthy();
+    expect(screen.getByText("Tragwerk")).toBeTruthy();
+    expect(screen.getByText("HalloWelt42")).toBeTruthy();
   });
 
   it("zeigt 'Unbekannt' wenn kein Autor vorhanden", () => {
@@ -89,7 +89,7 @@ describe("BookCard", () => {
     const buch = erstelleTestBuch({ id: 7 });
     render(BookCard, { props: { book: buch } });
 
-    const img = screen.getByAltText("Cover: Der Steppenwolf");
+    const img = screen.getByAltText("Cover: Tragwerk");
     expect(img).toBeTruthy();
     expect(img.getAttribute("src")).toBe("/api/books/7/cover");
   });

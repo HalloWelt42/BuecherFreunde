@@ -6,7 +6,7 @@ import { navigate, route } from "../src/lib/router.svelte";
 import type { Buch } from "../src/lib/typen";
 
 const buch: Buch = {
-  id: 5, hash: "", title: "Der Steppenwolf", author: "Hermann Hesse", publisher: "", file_format: "epub", file_size: 1, cover_path: "", page_count: 250, year: 1927, isbn: "", typ: "", gattung: "", umschlag: "titelseite", umschlag_schlicht: false, umschlag_wahl: "", sammlung_id: null, band_nummer: "",
+  id: 5, hash: "", title: "Tragwerk", author: "HalloWelt42", publisher: "", file_format: "epub", file_size: 1, cover_path: "", page_count: 250, year: 2026, isbn: "", typ: "", gattung: "", umschlag: "titelseite", umschlag_schlicht: false, umschlag_wahl: "", sammlung_id: null, band_nummer: "",
   is_favorite: false, is_to_read: false, rating: 4, reading_position: "", last_read_at: null, categories: [], sammlung: null, created_at: "", updated_at: "",
 };
 
@@ -22,22 +22,22 @@ beforeEach(() => {
 describe("Buch im Regal", () => {
   it("zeigt Titel, Autor, Format und führt zur Buchseite", () => {
     render(Band, { props: { buch } });
-    expect(screen.getAllByText("Hermann Hesse").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("HalloWelt42").length).toBeGreaterThan(0);
     expect(screen.getByText("EPUB")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Der Steppenwolf" }).getAttribute("href")).toBe("/book/5");
+    expect(screen.getByRole("link", { name: "Tragwerk" }).getAttribute("href")).toBe("/book/5");
   });
 
   it("überlässt Klicks mit Cmd dem Browser", async () => {
     render(Band, { props: { buch } });
     const e = new MouseEvent("click", { bubbles: true, cancelable: true, metaKey: true });
-    screen.getByRole("link", { name: "Der Steppenwolf" }).dispatchEvent(e);
+    screen.getByRole("link", { name: "Tragwerk" }).dispatchEvent(e);
     expect(e.defaultPrevented).toBe(false);
   });
 
   it("wählt im Bearbeitungsmodus aus statt zu öffnen", async () => {
     auswahl.modus(true);
     render(Band, { props: { buch } });
-    await fireEvent.click(screen.getByRole("button", { name: "Der Steppenwolf" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Tragwerk" }));
     expect(auswahl.hat(5)).toBe(true);
     expect(route.path).toBe("/");
   });

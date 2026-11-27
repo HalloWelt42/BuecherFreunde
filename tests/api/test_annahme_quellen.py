@@ -52,8 +52,8 @@ async def test_gemeinfreie_buecher_ueber_die_annahme(annahme_dienst, auth_header
     async def holen(nummer, adresse):
         assert (nummer, adresse) == (1342, "https://www.gutenberg.org/ebooks/1342.txt.utf-8")
         datei = tmp_path / "geholt.txt"
-        datei.write_text("Stolz und Vorurteil\n\nEs ist eine allgemein anerkannte Wahrheit, dass ein Junggeselle im Besitz eines "
-                         "schönen Vermögens nichts dringender braucht als eine Frau.\n" * 20, encoding="utf-8")
+        datei.write_text("Die Straßenbahn von Musterstadt\n\nAm Morgen fuhr die erste Bahn pünktlich durch die stille Musterstadt, "
+                         "vorbei am Rathaus und an der alten Mühle.\n" * 20, encoding="utf-8")
         return datei
 
     async def kein_umschlag(_adresse):
@@ -61,13 +61,13 @@ async def test_gemeinfreie_buecher_ueber_die_annahme(annahme_dienst, auth_header
 
     monkeypatch.setattr(gemeinfrei, "download_buch", holen)
     monkeypatch.setattr(gemeinfrei, "download_cover", kein_umschlag)
-    buch = {"gutenberg_id": 1342, "titel": "Stolz und Vorurteil", "download_url": "https://www.gutenberg.org/ebooks/1342.txt.utf-8",
+    buch = {"gutenberg_id": 1342, "titel": "Die Straßenbahn von Musterstadt", "download_url": "https://www.gutenberg.org/ebooks/1342.txt.utf-8",
             "cover_url": "https://www.gutenberg.org/cache/epub/1342/cover.jpg"}
     r = (await annahme_dienst.post("/api/gutenberg/import", headers=auth_headers, json={"buecher": [buch, {"gutenberg_id": 7, "titel": "Ohne Datei"}]})).json()
     assert r == {"gestartet": True, "anzahl": 2}
     eintraege = {e["name"]: e for e in (await annahme_dienst.get("/api/annahme", headers=auth_headers)).json()["eintraege"]}
     assert eintraege["Ohne Datei.epub"]["stand"] == "fehler"
-    z = await warten(annahme_dienst, auth_headers, eintraege["Stolz und Vorurteil.txt"]["id"])
+    z = await warten(annahme_dienst, auth_headers, eintraege["Die Straßenbahn von Musterstadt.txt"]["id"])
     assert z["stand"] == "fertig" and z["quelle"] == "gemeinfrei"
     zeile = await test_db.fetch_one("SELECT gutenberg_id FROM books WHERE id = ?", (z["buch_id"],))
     regal = await test_db.fetch_one("SELECT c.slug FROM categories c JOIN book_categories x ON x.category_id = c.id WHERE x.book_id = ? AND c.slug = 'gutenberg'",

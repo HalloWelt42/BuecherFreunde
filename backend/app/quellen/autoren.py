@@ -201,7 +201,7 @@ def _herkunft(a: Autorangaben, quelle: str) -> dict[str, str]:
 
 
 def suchname(name: str) -> str:
-    """"Roberts, Nora (Hrsg.)" -> "Nora Roberts", "E.T.A. Hoffmann" -> "E. T. A. Hoffmann"."""
+    """"Beispiel, Erika (Hrsg.)" -> "Erika Beispiel", "E.T.A. Muster" -> "E. T. A. Muster"."""
     ohne = re.sub(r"\s*\(?\b(?:Hrsg|Hg|Herausgeber(?:in)?|Ed|Eds)\b\.?\)?\s*$", "", (name or "").strip(" ;"), flags=re.IGNORECASE)
     return re.sub(r"\.(?=\w)", ". ", natuerlich(ohne))
 

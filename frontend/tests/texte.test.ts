@@ -50,7 +50,7 @@ describe("Suchsprache", () => {
 
   it("lässt für die Bedeutung nur den freien Text", () => {
     expect(nurText('"in Schichten" author:Lindner format:epub date:2023')).toBe("in Schichten");
-    expect(nurText("autor:Kafka")).toBe("");
+    expect(nurText("autor:HalloWelt42")).toBe("");
   });
 });
 

@@ -7,19 +7,19 @@
   "total-results": 371229,
   "items": [
    {
-    "publisher": "Beltz Verlagsgruppe GmbH & Co. KG",
+    "publisher": "Musterverlagsgruppe GmbH & Co. KG",
     "issue": "9",
     "abstract": "<jats:title>Zusammenfassung</jats:title><jats:p>Worum es geht.</jats:p><jats:p>Was dabei herauskam.</jats:p>",
-    "DOI": "10.3262/paed2609057",
+    "DOI": "10.5555/bsp2609057",
     "type": "journal-article",
     "page": "57-57",
     "title": [
-     "Künstliche Intelligenz im Unterricht"
+     "Künstliche Intelligenz im Beispielunterricht"
     ],
     "author": [
      {
       "given": "Sonja",
-      "family": "Hensel",
+      "family": "Beispielmann",
       "sequence": "first",
       "affiliation": [],
       "role": [
@@ -31,7 +31,7 @@
      }
     ],
     "container-title": [
-     "Pädagogik"
+     "Beispielpädagogik"
     ],
     "issued": {
      "date-parts": [
@@ -42,28 +42,28 @@
       ]
      ]
     },
-    "URL": "https://doi.org/10.3262/paed2609057",
+    "URL": "https://doi.org/10.5555/bsp2609057",
     "ISSN": [
-     "0933-422X"
+     "9999-108X"
     ]
    },
    {
-    "publisher": "Universidad Autonoma del Estado de Hidalgo",
+    "publisher": "Universidad de Ejemplo",
     "issue": "10",
     "abstract": "<jats:title>Zusammenfassung</jats:title><jats:p>Worum es geht.</jats:p><jats:p>Was dabei herauskam.</jats:p>",
-    "DOI": "10.29057/lc.v5i10.12218",
+    "DOI": "10.5555/ejemplo.v5i10.12218",
     "type": "journal-article",
     "page": "50-55",
     "title": [
-     "Künstliche Intelligenz im DaF-Unterricht. Mediation mit KI-Anwendungen fördern."
+     "Künstliche Intelligenz im Beispielunterricht. Vermittlung mit KI-Anwendungen fördern."
     ],
     "volume": "5",
     "author": [
      {
-      "ORCID": "https://orcid.org/0009-0009-5348-6693",
+      "ORCID": "https://orcid.org/0009-0009-9999-0000",
       "authenticated-orcid": false,
       "given": "Daniela",
-      "family": "Hartmann",
+      "family": "Musterfrau",
       "sequence": "first",
       "affiliation": [],
       "role": [
@@ -75,7 +75,7 @@
      }
     ],
     "container-title": [
-     "Revista Lengua y Cultura"
+     "Revista de Ejemplos"
     ],
     "issued": {
      "date-parts": [
@@ -86,29 +86,29 @@
       ]
      ]
     },
-    "URL": "https://doi.org/10.29057/lc.v5i10.12218",
+    "URL": "https://doi.org/10.5555/ejemplo.v5i10.12218",
     "ISSN": [
-     "2683-2321"
+     "9999-0032"
     ]
    },
    {
-    "publisher": "Konstantin Preslavsky University of Shumen",
+    "publisher": "Example University of Primerovo",
     "abstract": "<jats:title>Zusammenfassung</jats:title><jats:p>Worum es geht.</jats:p><jats:p>Was dabei herauskam.</jats:p>",
-    "DOI": "10.46687/ypvu1787",
+    "DOI": "10.5555/ypvu1787",
     "type": "journal-article",
     "page": "92",
     "title": [
-     "ZWISCHEN THEORIE UND PRAXIS: KÜNSTLICHE INTELLIGENZ IM DAF-UNTERRICHT AUF DEM PRÜFSTAND"
+     "ZWISCHEN THEORIE UND PRAXIS: KÜNSTLICHE INTELLIGENZ IM BEISPIELUNTERRICHT AUF DEM PRÜFSTAND"
     ],
     "volume": "VI",
     "author": [
      {
-      "given": "Yildirim",
-      "family": "Tuğlu",
+      "given": "Deniz",
+      "family": "Örnekoğlu",
       "sequence": "first",
       "affiliation": [
        {
-        "name": "Trakya University"
+        "name": "Example University"
        }
       ],
       "role": [
@@ -120,11 +120,11 @@
      },
      {
       "given": "Pinar",
-      "family": "Pekdemir",
+      "family": "Deneme",
       "sequence": "additional",
       "affiliation": [
        {
-        "name": "Trakya University"
+        "name": "Example University"
        }
       ],
       "role": [
@@ -136,7 +136,7 @@
      }
     ],
     "container-title": [
-     "Filologičeski rakursi"
+     "Primeričeski rakursi"
     ],
     "issued": {
      "date-parts": [
@@ -147,10 +147,10 @@
       ]
      ]
     },
-    "URL": "https://doi.org/10.46687/ypvu1787",
+    "URL": "https://doi.org/10.5555/ypvu1787",
     "ISSN": [
-     "2367-8348",
-     "2603-4298"
+     "9999-0040",
+     "9999-0059"
     ]
    }
   ],

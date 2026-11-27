@@ -7,16 +7,16 @@
   "total-results": 1,
   "items": [
    {
-    "publisher": "Springer Fachmedien Wiesbaden",
-    "DOI": "10.1007/978-3-658-05620-9",
+    "publisher": "Fachverlag Beispiel Musterstadt",
+    "DOI": "10.5555/978-3-99999-105-4",
     "type": "book",
     "title": [
-     "Mathematik für Ingenieure und Naturwissenschaftler Band 1"
+     "Mathematik für Musterbauer und Beispielforscher Band 1"
     ],
     "author": [
      {
-      "given": "Lothar",
-      "family": "Papula",
+      "given": "Max",
+      "family": "Muster",
       "sequence": "first",
       "affiliation": [],
       "role": [
@@ -38,10 +38,10 @@
      ]
     },
     "ISBN": [
-     "9783658056193",
-     "9783658056209"
+     "9783999991047",
+     "9783999991054"
     ],
-    "URL": "https://doi.org/10.1007/978-3-658-05620-9"
+    "URL": "https://doi.org/10.5555/978-3-99999-105-4"
    }
   ],
   "items-per-page": 3,

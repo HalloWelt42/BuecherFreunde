@@ -38,10 +38,10 @@ def abruf(test_db, uhr):
 
 # -- Vorrat ------------------------------------------------------------------------------------------------------------
 async def test_dieselbe_frage_geht_nur_einmal_hinaus_und_gilt_lange(abruf, uhr):
-    abruf.netz.setze(RECHNER, antwort({"titel": "Faust"}))
-    assert await abruf.hole(DNB, FRAGE) == {"titel": "Faust"}
+    abruf.netz.setze(RECHNER, antwort({"titel": "Grundstein"}))
+    assert await abruf.hole(DNB, FRAGE) == {"titel": "Grundstein"}
     uhr.zeit += 80 * 24 * 3600
-    assert await abruf.hole(DNB, FRAGE) == {"titel": "Faust"}
+    assert await abruf.hole(DNB, FRAGE) == {"titel": "Grundstein"}
     assert abruf.netz.zahl() == 1
     uhr.zeit += 20 * 24 * 3600
     await abruf.hole(DNB, FRAGE)

@@ -171,12 +171,12 @@ async def test_ki_ergaenzt_und_ueberschreibt_den_nutzer_nie(annahme_dienst, auth
 # -- Doppel und weiteres Format ---------------------------------------------------------------------------------------------
 
 async def test_gleiche_datei_weglassen_weiteres_format_und_eigenes_buch(annahme_dienst, auth_headers, test_db):
-    vorhanden = await buch_erstellen(test_db, hash="vorhanden-epub", title="Das Lied der Krähen", author="Wanda Beispiel", file_format="epub",
-                                     file_name="Lied.epub", isbn="")
-    inhalt = pdf("Krähenlied", 30, titel="Das Lied der Krähen", autor="Wanda Beispiel")
-    z = await bis_bestaetigen(annahme_dienst, auth_headers, "Lied der Krähen.pdf", inhalt)
+    vorhanden = await buch_erstellen(test_db, hash="vorhanden-epub", title="Fließband", author="HalloWelt42", file_format="epub",
+                                     file_name="Band.epub", isbn="")
+    inhalt = pdf("Fließbandtext", 30, titel="Fließband", autor="HalloWelt42")
+    z = await bis_bestaetigen(annahme_dienst, auth_headers, "Fließband.pdf", inhalt)
     v = await vorschau_von(annahme_dienst, auth_headers, z["id"])
-    f = zeile(v, "Lied der Krähen.pdf")["felder"]
+    f = zeile(v, "Fließband.pdf")["felder"]
     assert (f["doppel"]["art"], f["doppel"]["wahl"], f["doppel"]["herkunft"], f["ziel"]["buch_id"]) == ("format", "format", "bestand", vorhanden)
     assert f["art"]["herkunft"] == "bestand" and "EPUB" in f["doppel"]["grund"]
     await annahme_dienst.post(f"/api/annahme/vorschau/{z['vorschau']}/uebernehmen", headers=auth_headers, json={})
@@ -193,11 +193,11 @@ async def test_gleiche_datei_weglassen_weiteres_format_und_eigenes_buch(annahme_
     assert noch_einmal["stand"] == "da" and noch_einmal["buch_id"] == vorhanden and "PDF" in noch_einmal["text"]
     assert zeile(await vorschau_von(annahme_dienst, auth_headers, noch_einmal["id"]), "Noch einmal.pdf")["rolle"] == "doppel"
 
-    anders = pdf("Krähenlied, zweite Ausgabe", 31, titel="Das Lied der Krähen", autor="Wanda Beispiel")
-    eigen = await bis_bestaetigen(annahme_dienst, auth_headers, "Lied, andere Ausgabe.pdf", anders)
+    anders = pdf("Fließbandtext, zweite Ausgabe", 31, titel="Fließband", autor="HalloWelt42")
+    eigen = await bis_bestaetigen(annahme_dienst, auth_headers, "Fließband, andere Ausgabe.pdf", anders)
     v = await vorschau_von(annahme_dienst, auth_headers, eigen["id"])
-    assert zeile(v, "Lied, andere Ausgabe.pdf")["felder"]["doppel"]["art"] == "neu"                  # ein PDF hat das Buch schon
-    hinweis = zeile(v, "Lied, andere Ausgabe.pdf")["felder"]["hinweise"][0]
+    assert zeile(v, "Fließband, andere Ausgabe.pdf")["felder"]["doppel"]["art"] == "neu"                  # ein PDF hat das Buch schon
+    hinweis = zeile(v, "Fließband, andere Ausgabe.pdf")["felder"]["hinweise"][0]
     assert "schon als PDF" in hinweis["text"] and hinweis["herkunft"] == "bestand"
     await annahme_dienst.post(f"/api/annahme/vorschau/{v['id']}/uebernehmen", headers=auth_headers, json={})
     assert (await warten(annahme_dienst, auth_headers, eigen["id"]))["buch_id"] != vorhanden

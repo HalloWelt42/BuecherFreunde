@@ -1,30 +1,30 @@
 {
- "ISBN:3257228007": {
-  "url": "http://openlibrary.org/books/OL31997645M/Das_Parfum",
-  "key": "/books/OL31997645M",
-  "title": "Das Parfum",
-  "subtitle": "Die Geschichte eines Mörders",
+ "ISBN:3999991038": {
+  "url": "http://openlibrary.org/books/OL99000102M/Das_Beispielhaus",
+  "key": "/books/OL99000102M",
+  "title": "Das Beispielhaus",
+  "subtitle": "Die Geschichte eines Gärtners",
   "authors": [
    {
-    "url": "http://openlibrary.org/authors/OL276700A/Patrick_Süskind",
-    "name": "Patrick Süskind"
+    "url": "http://openlibrary.org/authors/OL9900002A/Jörg_Mustermüller",
+    "name": "Jörg Mustermüller"
    }
   ],
   "number_of_pages": 319,
   "identifiers": {
    "bookbrainz": [
-    "341956fa-f92b-44f0-97ff-63fec5c5dc14"
+    "00000000-0000-4000-8000-000000000102"
    ],
    "isbn_13": [
-    "9783257228007"
+    "9783999991030"
    ],
    "openlibrary": [
-    "OL31997645M"
+    "OL99000102M"
    ]
   },
   "publishers": [
    {
-    "name": "Diogenes"
+    "name": "Musterhaus"
    }
   ],
   "publish_date": "2006",
@@ -54,16 +54,16 @@
     "url": "https://openlibrary.org/subjects/obsession"
    },
    {
-    "name": "perfume",
-    "url": "https://openlibrary.org/subjects/perfume"
+    "name": "gardens",
+    "url": "https://openlibrary.org/subjects/gardens"
    },
    {
-    "name": "scent",
-    "url": "https://openlibrary.org/subjects/scent"
+    "name": "flowers",
+    "url": "https://openlibrary.org/subjects/flowers"
    },
    {
-    "name": "olfactory",
-    "url": "https://openlibrary.org/subjects/olfactory"
+    "name": "botany",
+    "url": "https://openlibrary.org/subjects/botany"
    },
    {
     "name": "senses",
@@ -86,12 +86,12 @@
     "url": "https://openlibrary.org/subjects/fiction,_historical,_general"
    },
    {
-    "name": "Perfumes",
-    "url": "https://openlibrary.org/subjects/perfumes"
+    "name": "Gardening",
+    "url": "https://openlibrary.org/subjects/gardening"
    },
    {
-    "name": "Odors",
-    "url": "https://openlibrary.org/subjects/odors"
+    "name": "Plants",
+    "url": "https://openlibrary.org/subjects/plants"
    },
    {
     "name": "Murderers",
@@ -102,8 +102,8 @@
     "url": "https://openlibrary.org/subjects/fiction"
    },
    {
-    "name": "Parfum (Motion picture)",
-    "url": "https://openlibrary.org/subjects/parfum_(motion_picture)"
+    "name": "Beispielhaus (Motion picture)",
+    "url": "https://openlibrary.org/subjects/beispielhaus_(motion_picture)"
    },
    {
     "name": "Identity",
@@ -119,9 +119,9 @@
    }
   ],
   "cover": {
-   "small": "https://covers.openlibrary.org/b/id/10668278-S.jpg",
-   "medium": "https://covers.openlibrary.org/b/id/10668278-M.jpg",
-   "large": "https://covers.openlibrary.org/b/id/10668278-L.jpg"
+   "small": "https://covers.openlibrary.org/b/id/99000102-S.jpg",
+   "medium": "https://covers.openlibrary.org/b/id/99000102-M.jpg",
+   "large": "https://covers.openlibrary.org/b/id/99000102-L.jpg"
   }
  }
 }

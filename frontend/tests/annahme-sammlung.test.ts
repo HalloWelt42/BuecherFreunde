@@ -14,7 +14,7 @@ const liste: AnnahmeEintrag[] = [
   eintrag({ id: 6, stand: "angaben", text: "Angaben werden ergänzt" }),
   eintrag({ id: 7 }),
   eintrag({ id: 8, quelle: "extern" }),
-  eintrag({ id: 10, quelle: "gemeinfrei", name: "Faust.epub", text: "Wartet auf das Holen", groesse: 0, empfangen: 0 }),
+  eintrag({ id: 10, quelle: "gemeinfrei", name: "Beispielmärchen.epub", text: "Wartet auf das Holen", groesse: 0, empfangen: 0 }),
   eintrag({ id: 2, quelle: "gemeinfrei", stand: "fertig", buch_id: 40 }),
 ];
 

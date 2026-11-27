@@ -5,19 +5,19 @@
  "results": [
   {
    "id": 2229,
-   "title": "Faust: Der Tragödie erster Teil",
+   "title": "Die Straßenbahn von Musterstadt: Erster Teil",
    "authors": [
     {
-     "name": "Goethe, Johann Wolfgang von",
-     "birth_year": 1749,
-     "death_year": 1832
+     "name": "Beispiel, Erika",
+     "birth_year": 1801,
+     "death_year": 1870
     }
    ],
    "summaries": [],
    "editors": [],
    "translators": [],
    "subjects": [
-    "Faust, -approximately 1540 -- Drama",
+    "Musterstadt (Erfunden) -- Drama",
     "German poetry",
     "Legends -- Germany -- Drama",
     "Magicians -- Drama"
@@ -48,25 +48,25 @@
   },
   {
    "id": 21000,
-   "title": "Faust: Eine Tragödie [erster Teil]",
+   "title": "Die Straßenbahn von Musterstadt: Ein Roman [erster Teil]",
    "authors": [
     {
-     "name": "Goethe, Johann Wolfgang von",
-     "birth_year": 1749,
-     "death_year": 1832
+     "name": "Beispiel, Erika",
+     "birth_year": 1801,
+     "death_year": 1870
     }
    ],
    "summaries": [],
    "editors": [],
    "translators": [],
    "subjects": [
-    "Faust, -approximately 1540 -- Drama",
+    "Musterstadt (Erfunden) -- Drama",
     "German poetry",
     "Legends -- Germany -- Drama",
     "Magicians -- Drama"
    ],
    "bookshelves": [
-    "Banned Books from Anne Haight's list",
+    "Erfundene Musterliste",
     "Best Books Ever Listings",
     "Category: Classics of Literature",
     "Category: German Literature",
