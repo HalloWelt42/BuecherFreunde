@@ -516,7 +516,7 @@ CREATE TABLE IF NOT EXISTS isbn_wahl (               -- ISBN zur Wahl aus dem La
     buch_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     isbn TEXT NOT NULL,                              -- ISBN-13, nur Ziffern
     rang INTEGER NOT NULL,                           -- Rangfolge im Buch, 0 ist der beste Kandidat
-    stufe TEXT NOT NULL,                             -- passt, aehnlich, unbekannt; fremde kommen nicht zur Wahl
+    stufe TEXT NOT NULL,                             -- passt, aehnlich, unbekannt, fremd (nur nach einer Quelle; fremd im Text kommt nicht zur Wahl)
     kandidat TEXT NOT NULL,                          -- der Kandidat als JSON (isbnsuche/modelle.py Kandidat), mit Fundstellen und Prüfung
     stand TEXT NOT NULL DEFAULT 'offen',             -- offen, abgelehnt; abgelehnte kommen beim nächsten Lauf nicht wieder
     gefunden_am TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),

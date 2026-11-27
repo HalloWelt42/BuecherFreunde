@@ -1,6 +1,8 @@
-"""Der Lauf "ISBN" in Bibliothek ergänzen, je Buch (BF-111). Eingetragen wird nur, was zu Titel und Autor passt; alles andere,
-was nicht fremd ist, kommt zur Wahl. Der Text reicht als Beleg, wenn Titel und Autor neben der Nummer stehen; sonst fragt der
-Lauf die Quellen zu den besten Kandidaten, im Hintergrund über den gemeinsamen Abruf (Takt, Tagesgrenze), nie zu mehr."""
+"""Der Lauf "ISBN" in Bibliothek ergänzen, je Buch (BF-111). Eingetragen wird nur, was zu Titel und Autor passt; alles andere
+kommt zur Wahl, außer was schon der Text als fremd zeigt (Literaturliste, Verlagsanzeige). Was erst eine Quelle für fremd hält,
+bleibt zur Wahl, mit ihrem Befund: oft ist dann der Titel des Buchs selbst unbrauchbar ("9783... Unbekannt"), und die Nummer aus
+dem Impressum stimmt. Der Text reicht als Beleg, wenn Titel und Autor neben der Nummer stehen; sonst fragt der Lauf die Quellen
+zu den besten Kandidaten, im Hintergrund über den gemeinsamen Abruf (Takt, Tagesgrenze), nie zu mehr."""
 
 from __future__ import annotations
 
@@ -76,8 +78,5 @@ async def fuer_buch(buch: Mapping[str, Any], seiten: list[str], fragen: bool) ->
     passend, gefragt, ruht = await _pruefen(frage, eigene) if fragen else (None, False, "")
     if passend:
         return Laufergebnis(isbn=passend.isbn)
-    bleiben = sorted((k for k in eigene if k.einstufung.stufe is not Stufe.FREMD), key=rang)
-    if not bleiben:
-        return Laufergebnis(ruht=ruht)
-    await wahl.merken(buch["id"], bleiben)
+    await wahl.merken(buch["id"], sorted(eigene, key=rang))         # was eine Quelle für fremd hält, zuletzt
     return Laufergebnis(zur_wahl=True, ungeprueft=not gefragt, ruht=ruht)

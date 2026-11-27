@@ -233,6 +233,19 @@ async def test_lauf_traegt_nur_ein_was_passt(client, test_db, quellen):
     assert (await client.get("/api/books/rescan/isbn-wahl")).json()["gesamt"] == 0, "abgelehnte kommen nicht wieder"
 
 
+async def test_was_nur_eine_quelle_fremd_nennt_bleibt_zur_wahl(client, test_db, quellen):
+    """Ein Buch mit unbrauchbarem Titel: die Nummer aus dem Impressum kennt eine Quelle unter dem echten Titel. Eingetragen wird
+    sie nicht, sie bleibt aber zur Wahl, mit dem Befund der Quelle."""
+    nr = await buch_mit_text(test_db, "f", roman("Die Straßenbahn von Musterstadt", "Erika Beispiel", impressum=f"ISBN {strich(STRASSENBAHN)}"),
+                             title="Scan 0042 Unbekannt", author="")
+    stand = await _lauf(client)
+    assert (stand["isbn_gefunden"], stand["isbn_zur_wahl"], stand["isbn_ungeprueft"]) == (0, 1, 0), stand
+    assert (await test_db.fetch_one("SELECT isbn FROM books WHERE id = ?", (nr,)))["isbn"] == ""
+    [k] = (await client.get(f"/api/books/{nr}/isbn-wahl")).json()
+    assert (k["isbn13"], k["text"]["stufe"], k["quelle"]["stufe"]) == (STRASSENBAHN, "unbekannt", "fremd")
+    assert (await client.get("/api/books/rescan/isbn-wahl")).json()["zeilen"][0]["kandidat"]["quelle"]["stufe"] == "fremd"
+
+
 async def test_isbn_zur_wahl_annehmen(client, test_db, netz, orte):
     for rechner in (DNB, OL, K10, CR, WD):
         netz.setze(rechner, antwort(status=429, retry_after="600"))
