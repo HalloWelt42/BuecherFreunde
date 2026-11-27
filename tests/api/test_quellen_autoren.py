@@ -91,7 +91,7 @@ async def test_nur_namensgleich_ist_nicht_sicher(test_db, netz):
 
     netz.setze(WD, wikidata)
     netz.setze(WP, antwort(mitschnitt("wikipedia_artikel.json")))
-    a = (await suche(Autorfrage(name="Erika Beispiel", titel=["Kochen für Anfänger"]))).angaben
+    a = (await suche(Autorfrage(name="Erika Beispiel", titel=["Kochbuch aus Beispielhausen"]))).angaben
     assert a.score >= 15 and a.konfidenz == "mittel", "zwei Menschen dieses Namens, kein Buch als Beleg"
     assert (await suche(Autorfrage(name="Erika Beispiel", titel=["Die Straßenbahn von Musterstadt"]))).angaben.konfidenz == "hoch"
 

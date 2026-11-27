@@ -157,7 +157,7 @@ def test_volltext_nimmt_fuer_scans_die_erkennung(tmp_path):
 
 def _erkannte_seite() -> list[Probezeile]:
     zeilen = [Probezeile("3 Kapitel über den Leuchtturm", 72, 40, 9, block=1)]                       # Kopfzeile
-    zeilen.append(Probezeile("3.1 Die Insel im Nebel", LINKS, 110, 18, block=2))                     # Überschrift
+    zeilen.append(Probezeile("3.1 Die Insel vor Beispielhausen", LINKS, 110, 18, block=2))                     # Überschrift
     absatz = volle_zeilen(SATZ + " Die Wärterin steigt jeden Abend die hundert Stufen hinauf und putzt das Glas der Lam-",
                           140, block=3)
     absatz.append(Probezeile("pe, bevor es dunkel wird.", LINKS, absatz[-1].basis + 14, block=3))
@@ -171,7 +171,7 @@ def test_erkannte_seite_wird_absaetze_ueberschrift_und_liste(tmp_path):
     e = erkennung(1, _erkannte_seite(), flaechen=[(150, 450, 450, 650), (72, 60, 523, 61)])
     bausteine = seitenaufbau(seite, erkennung=e)
     assert [b.art for b in bausteine] == ["ueberschrift", "absatz", "absatz", "absatz", "bild"]
-    assert bausteine[0].text == "3.1 Die Insel im Nebel"
+    assert bausteine[0].text == "3.1 Die Insel vor Beispielhausen"
     assert bausteine[1].text.startswith("Am Rand der kleinen Insel") and bausteine[1].text.endswith("Glas der Lampe, bevor es dunkel wird.")
     assert [b.text for b in bausteine[2:4]] == [chr(0x2022) + " Erstens prüft sie den Docht.", chr(0x2022) + " Zweitens füllt sie das Öl nach."]
     assert bausteine[4].rechteck.width < 320                     # eine Bildfläche der Erkennung, nicht das Seitenbild
@@ -208,7 +208,7 @@ async def test_echte_erkennung_einer_erfundenen_seite(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "texterkennung_programm", ECHT)
     vorlage = fitz.open()
     s = vorlage.new_page(width=595, height=842)
-    s.insert_text((72, 110), "Die Insel im Nebel", fontname="helv", fontsize=20)
+    s.insert_text((72, 110), "Die Insel vor Beispielhausen", fontname="helv", fontsize=20)
     s.insert_textbox(fitz.Rect(72, 130, 523, 400), SATZ + " " + SATZ, fontname="helv", fontsize=11)
     scan = fitz.open()
     seite = scan.new_page(width=595, height=842)
@@ -218,7 +218,7 @@ async def test_echte_erkennung_einer_erfundenen_seite(tmp_path, monkeypatch):
     text = erkannter_text(e)
     assert "Leuchtturm" in text and "Nebel" in text
     bausteine = seitenaufbau(fitz.open(tmp_path / "echt.pdf")[0], erkennung=e)
-    assert [b.art for b in bausteine] == ["ueberschrift", "absatz"] and bausteine[0].text == "Die Insel im Nebel"
+    assert [b.art for b in bausteine] == ["ueberschrift", "absatz"] and bausteine[0].text == "Die Insel vor Beispielhausen"
     assert "Leuchtturm, der den Schiffen" in bausteine[1].text
 
 

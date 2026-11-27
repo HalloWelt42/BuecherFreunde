@@ -323,8 +323,8 @@ def test_ein_fund_ueber_die_isbn_muss_zum_buch_passen():
     passt = lambda **frage: isbn_fund_passt(Buchfrage(isbn=STRASSENBAHN, **frage), fund)    # noqa: E731
     assert passt(titel="Die Straßenbahn von Musterstadt 2021")
     assert passt(titel="Straßenbahnen in Musterstadt, ein Bildband", autoren=["Beispiel, Erika"]), "anderer Titel, gleicher Autor"
-    assert not passt(titel="Kochen für Anfänger", autoren=["Hans Fremd"]), "ein fremdes Buch aus der Literaturliste"
-    assert not passt(titel="Kochen für Anfänger"), "lesbarer Titel ohne Ähnlichkeit, kein Autor"
+    assert not passt(titel="Kochbuch aus Beispielhausen", autoren=["Hans Fremd"]), "ein fremdes Buch aus der Literaturliste"
+    assert not passt(titel="Kochbuch aus Beispielhausen"), "lesbarer Titel ohne Ähnlichkeit, kein Autor"
     assert passt(titel="scan_0001.pdf"), "ohne lesbaren Titel und Autor spricht nichts dagegen"
     assert passt(titel="scan_0001.pdf", autoren=["Unbekannt"]), "ein Platzhalter ist kein Autor"
     assert not passt(titel="scan_0001.pdf", autoren=["Hans Fremd"])
@@ -332,7 +332,7 @@ def test_ein_fund_ueber_die_isbn_muss_zum_buch_passen():
 
 async def test_ergaenzen_verwirft_den_fund_einer_fremden_isbn(alle_antworten):
     with hintergrund():
-        fremd = await ergaenze(Buchfrage(isbn=STRASSENBAHN, titel="Kochen für Anfänger", autoren=["Hans Fremd"]), {"verlag", "jahr"})
+        fremd = await ergaenze(Buchfrage(isbn=STRASSENBAHN, titel="Kochbuch aus Beispielhausen", autoren=["Hans Fremd"]), {"verlag", "jahr"})
         eigen = await ergaenze(Buchfrage(isbn=STRASSENBAHN, titel="Die Straßenbahn von Musterstadt"), {"verlag", "jahr"})
     assert fremd.angaben is None and eigen.angaben.jahr == 1997
 

@@ -146,7 +146,7 @@ async def _fertig():
 async def test_ergaenzen_fuellt_nur_leeres_mit_wenigen_anfragen(client, test_db, quellen):
     quellen.setze("covers.openlibrary.org", antwort(bild()))
     nr = await buch_erstellen(test_db, title="Die Straßenbahn von Musterstadt", author="", isbn=STRASSENBAHN, publisher="", year=None, language="", description="")
-    fremd = await buch_erstellen(test_db, hash="fremd", title="Kochen für Anfänger", author="", isbn=STRASSENBAHN, publisher="")  # ISBN aus der Literaturliste
+    fremd = await buch_erstellen(test_db, hash="fremd", title="Kochbuch aus Beispielhausen", author="", isbn=STRASSENBAHN, publisher="")  # ISBN aus der Literaturliste
     await buch_erstellen(test_db, hash="voll", title="Voll", cover_path="cover.jpg")
     await buch_erstellen(test_db, hash="ohne", title="Ohne ISBN", isbn="")
     assert (await rescan_service.vorschau(["metadaten"]))["typen"] == {"metadaten": 2}, "nur Bücher, denen etwas fehlt"
