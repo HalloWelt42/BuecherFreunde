@@ -1,6 +1,7 @@
-// Wie viel Ton bereitliegen muss, bevor es losgeht. Reißt er ab, wächst der Vorlauf; nach ruhigen Läufen sinkt er wieder.
+// Wie viel Ton bereitliegen muss, bevor es losgeht. Reißt er ab, wächst der Vorlauf; nach ruhigen Läufen sinkt er wieder,
+// nie unter den kleinen Vorlauf, mit dem es von Anfang an flüssig läuft (BF-106).
 
-const MINDESTENS_S = 1.5;
+export const MINDESTENS_S = 3;
 const HOECHSTENS_S = 30;
 
 export class Vorlauf {

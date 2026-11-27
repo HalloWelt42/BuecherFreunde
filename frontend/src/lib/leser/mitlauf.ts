@@ -1,6 +1,7 @@
 // Beim Vorlesen läuft eine gescrollte Ansicht ruhig mit: die gelesene Zeile bleibt zwischen dem oberen Fünftel und der Mitte.
-// Nachgeführt wird um das, was sie weitergerückt ist, also Zeile um Zeile; nur von weit her geht es ohne Übergang. Wer selbst
-// scrollt, hat ein paar Sekunden Vorrang.
+// Nachgeführt wird wie mit einer gedämpften Feder (BF-106): die Ansicht folgt dem Ziel gleichmäßig, ohne Ruck und ohne
+// Überschwingen, auch wenn es Zeile um Zeile weiterrückt; nur von weit her geht es ohne Übergang. Wer selbst scrollt, hat ein
+// paar Sekunden Vorrang.
 import { festerBereich, rechteckeVon } from "./festbereich";
 
 export interface Rollbahn {
@@ -11,7 +12,11 @@ export interface Rollbahn {
 
 const MITTE = 0.45;
 const ZIEL = 0.3;
-const DAUER_MS = 320;
+/** So träge folgt die Ansicht: kleiner folgt straffer, größer gleitet ruhiger (Sekunden bis etwa zum Ziel) */
+export const GLAETTUNG_S = 0.7;
+/** Näher als so viele Pixel und langsamer als so viele je Sekunde: angekommen */
+const ANGEKOMMEN_PX = 0.5;
+const RUHE_PX_S = 4;
 const VORRANG_MS = 4000;
 
 const ruhig = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -19,6 +24,9 @@ const ruhig = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-re
 export class Mitlauf {
   #ziel: number | null = null;
   #bild = 0;
+  /** Lage und Tempo der Ansicht unterwegs, genauer als der Stand der Rollbahn (der rundet auf ganze Pixel) */
+  #lage = 0;
+  #tempo = 0;
   #selbst = 0;
   #loesen: () => void = () => {};
 
@@ -60,26 +68,32 @@ export class Mitlauf {
   }
 
   #gleite(ziel: number): void {
-    const neu = this.#ziel === null;
     this.#ziel = ziel;
-    if (!neu) return;
-    const start = performance.now();
-    let von = this.bahn.stand;
-    let zuletzt = this.#ziel;
+    if (this.#bild) return;                                   // unterwegs: es gilt nur das neue Ziel, das Tempo bleibt
+    this.#lage = this.bahn.stand;
+    this.#tempo = 0;
+    let zuletzt = performance.now();
     const schritt = (jetzt: number) => {
-      if (this.#ziel === null) return;
-      // Ein neues Ziel unterwegs: von hier aus weiter, ohne Ruck
-      if (this.#ziel !== zuletzt) [von, zuletzt] = [this.bahn.stand, this.#ziel];
-      const t = Math.min(1, (jetzt - start) / DAUER_MS);
-      this.bahn.stand = von + (this.#ziel - von) * (1 - (1 - t) ** 3);
-      if (t < 1) this.#bild = requestAnimationFrame(schritt);
-      else this.#ziel = null;
+      const z = this.#ziel;
+      if (z === null) return void (this.#bild = 0);
+      const dt = Math.min(0.1, Math.max(0, (jetzt - zuletzt) / 1000));
+      zuletzt = jetzt;
+      [this.#lage, this.#tempo] = feder(this.#lage, this.#tempo, z, dt);
+      if (Math.abs(this.#lage - z) < ANGEKOMMEN_PX && Math.abs(this.#tempo) < RUHE_PX_S) {
+        this.bahn.stand = z;
+        this.#ziel = null;
+        this.#bild = 0;
+        return;
+      }
+      this.bahn.stand = this.#lage;
+      this.#bild = requestAnimationFrame(schritt);
     };
     this.#bild = requestAnimationFrame(schritt);
   }
 
   #halt(): void {
     cancelAnimationFrame(this.#bild);
+    this.#bild = 0;
     this.#ziel = null;
   }
 
@@ -87,6 +101,16 @@ export class Mitlauf {
     this.#halt();
     this.#loesen();
   }
+}
+
+/** Ein Schritt einer kritisch gedämpften Feder: neue Lage und neues Tempo nach `dt` Sekunden auf dem Weg zum Ziel */
+export function feder(lage: number, tempo: number, ziel: number, dt: number, glaettung = GLAETTUNG_S): [number, number] {
+  const w = 2 / glaettung;
+  const x = w * dt;
+  const daempfung = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+  const weg = lage - ziel;
+  const zug = (tempo + w * weg) * dt;
+  return [ziel + (weg + zug) * daempfung, (tempo - w * zug) * daempfung];
 }
 
 /** Die sichtbare Fläche eines Elements, ohne die Ränder, unter denen Leisten liegen */

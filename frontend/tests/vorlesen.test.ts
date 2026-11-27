@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { saetze } from "../src/lib/vorlesen/saetze";
 import { zeilenAus } from "../src/lib/vorlesen/zeilen";
-import { Vorlauf } from "../src/lib/vorlesen/vorlauf";
+import { MINDESTENS_S, Vorlauf } from "../src/lib/vorlesen/vorlauf";
 
 const PRIVAT = "5b1e7c3a-2f4d-4a6b-8c9d-0e1f2a3b4c5d";
 const FREI = [{ bereich: "privat", frei: true, hinweis: "" }, { bereich: "fremd", frei: true, hinweis: "" }, { bereich: "katalog", frei: true, hinweis: "" }];
@@ -115,9 +115,10 @@ describe("Strom", () => {
     const v = new Vorlauf();
     expect(v.genug(1, false)).toBe(false);
     expect(v.genug(1, true)).toBe(true);
+    expect([v.genug(MINDESTENS_S - 0.5, false), v.genug(MINDESTENS_S, false)]).toEqual([false, true]);   // kleiner Vorlauf (BF-106)
     v.abgerissen();
     const lang = v.noetig;
-    expect(lang).toBeGreaterThan(1.5);
+    expect(lang).toBeGreaterThan(MINDESTENS_S);
     v.beginnen();
     v.beenden();
     expect(v.noetig).toBeLessThan(lang);
