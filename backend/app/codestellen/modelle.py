@@ -6,9 +6,11 @@ im PDF Dateiseite und Rechteck, im EPUB das Kapitel und die Nummer des Codeblock
 
 from __future__ import annotations
 
+import hashlib
+import re
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 #: steigt, wenn die Erkennung anders arbeitet; Begleiter einer älteren Fassung werden neu erkannt
 #: (2: je Teil die Zahl seiner Zeilen, für den Baustein der Textansicht)
@@ -18,6 +20,18 @@ FASSUNG = 2
 SICHER = 0.6
 
 Quelle = Literal["titel", "datei", "inhalt", ""]
+
+# Eine Zahl am Anfang einer Codezeile ist ohne Ausnahme eine Zählung des Buchs (Entscheidung des Nutzers, BF-104): sie fällt samt
+# direktem Trennzeichen und genau einem Leerzeichen weg, die Einrückung danach bleibt.
+ZEILENNUMMER = re.compile(r"^[ \t]*\d+[.:)]?(?:[ \t]|$)", re.M)
+
+
+def ohne_zeilennummern(code: str) -> str:
+    return ZEILENNUMMER.sub("", code)
+
+
+def pruefsumme(code: str) -> str:
+    return hashlib.sha256(code.encode("utf-8")).hexdigest()[:16]
 Format = Literal["pdf", "epub", "md", "txt"]
 
 
@@ -47,6 +61,15 @@ class Codestelle(BaseModel):
     code: str
     zeilennummern_ab: int | None = None  # erste gedruckte Zeilennummer
     pruefsumme: str                      # des Codes; bleibt sie gleich, gilt die Vorprüfung weiter
+
+    @model_validator(mode="after")
+    def _ohne_zeilennummern(self) -> Codestelle:
+        """An dieser einen Stelle, beim Erkennen wie beim Lesen schon gespeicherter Stellen: der Code ohne die Zählung des
+        Buchs. Die Kennung bleibt (an ihr hängt die eigene Kopie), die Prüfsumme folgt dem Code (die Vorprüfung gilt neu)."""
+        sauber = ohne_zeilennummern(self.code)
+        if sauber != self.code:
+            self.code, self.pruefsumme = sauber, pruefsumme(sauber)
+        return self
 
     @property
     def sicher(self) -> bool:

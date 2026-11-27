@@ -3,18 +3,13 @@ ihre Codeblöcke (auszeichnung.py). Läuft in einem eigenen Prozess (dienst.py);
 
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 
 from backend.app.codestellen import auszeichnung, pdf
-from backend.app.codestellen.modelle import Begleiter, Codestelle, Format, Teil
+from backend.app.codestellen.modelle import Begleiter, Codestelle, Format, Teil, pruefsumme
 from backend.app.codestellen.sprache import bestimmen
 
 FORMATE: dict[str, Format] = {"pdf": "pdf", "epub": "epub", "md": "md", "txt": "txt"}
-
-
-def pruefsumme(code: str) -> str:
-    return hashlib.sha256(code.encode("utf-8")).hexdigest()[:16]
 
 
 def _stelle(kennung_lage: str, teile: list[Teil], code: str, titel: str, datei: str, nummer: int | None,
