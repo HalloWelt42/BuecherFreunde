@@ -235,7 +235,7 @@ class TestPdfProzessorMock:
         mock_doc.metadata = {
             "title": "Testbuch PDF",
             "author": "PDF-Autor",
-            "producer": "TestVerlag",
+            "producer": "Satzprogramm 1.0",
         }
         mock_doc.__len__ = lambda self: 1
         mock_doc.__iter__ = lambda self: iter([mock_page])
@@ -252,7 +252,7 @@ class TestPdfProzessorMock:
 
         assert ergebnis.title == "Testbuch PDF"
         assert ergebnis.author == "PDF-Autor"
-        assert ergebnis.publisher == "TestVerlag"
+        assert ergebnis.publisher == ""                         # der Erzeuger des PDF ist kein Verlag (BF-110)
         assert ergebnis.page_count == 1
 
     def test_pdf_ohne_metadaten(self, tmp_path):

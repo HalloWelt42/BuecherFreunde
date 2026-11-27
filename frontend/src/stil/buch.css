@@ -1,5 +1,9 @@
 /* Buchseite */
 .buchkopf { display: grid; grid-template-columns: 13.5rem minmax(0, 1fr); gap: 1.5rem; padding: 1.125rem; }
+/* Die Spalten folgen der Breite des Kopfs selbst, nicht der des App-Fensters (BF-110): mit Leiste und Vorschau ist die Mitte schmal,
+   dann stehen Titel und Angaben untereinander statt den Titel Silbe für Silbe zu erdrücken */
+.buchkopf { container: buchkopf / inline-size; }
+@container buchkopf (max-width: 57rem) { .buchkopf .zwei { grid-template-columns: minmax(0, 1fr); } }
 .buchkopf h1 { overflow-wrap: anywhere; hyphens: auto; font: 600 2rem/1.15 var(--buchschrift); text-wrap: balance; }
 .buchkopf .zwei { display: grid; gap: 1.5rem; grid-template-columns: minmax(0, 1fr) minmax(0, 22rem); }
 .buchkopf .rechts { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; align-content: start; }

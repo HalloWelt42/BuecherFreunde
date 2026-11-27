@@ -29,7 +29,7 @@ class PdfProcessor(BaseProcessor):
             meta = doc.metadata or {}
             result.title = meta.get("title", "") or ""
             result.author = meta.get("author", "") or ""
-            result.publisher = meta.get("producer", "") or ""
+            # Ein PDF kennt keinen Verlag: "producer" und "creator" nennen das Programm, das die Datei erzeugt hat (BF-110)
             result.page_count = len(doc)
             result.metadata_raw = meta
 
