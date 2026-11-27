@@ -86,3 +86,25 @@ async def test_anschluesse_und_verbindungen_nennen_nur_was_da_ist(client, auth_h
                                     "nachschlag_art": "netz", "ki": False, "vorlesen": False, "ausfuehren": False}
     v = (await client.get("/api/verbindungen", headers=auth_headers)).json()
     assert [(x["kennung"], x["name"]) for x in v] == [("nachschlag", "Lexikon im Netz")]        # die Rückfallschicht des Nachschlags
+
+
+@pytest.mark.asyncio
+async def test_zugang_fuer_inhalte_mit_der_echten_weiche(eigene, monkeypatch):
+    """Der Appkern ruft an der Weiche alle Wege seiner Anmeldung auf (0.44.0: ohne `ohne_anmeldung` brach /zugang mit 500 ab).
+    Hier mit der echten Weiche und dem echten Router, nicht mit einer Attrappe."""
+    from appkern.anmeldung.api import COOKIE, KOPF, anmeldungs_router
+
+    from backend.app.core.anmeldung import Weiche
+
+    monkeypatch.setattr(settings, "kellerwolke_url", "")
+    weiche = Weiche()
+    monkeypatch.setattr(weiche, "_eigene", eigene)
+    app = FastAPI()
+    app.include_router(anmeldungs_router(weiche, prefix="/api/anmeldung", inhalt_pfade=("/api",)))
+    token, _ = await eigene.einrichten("Anna", "langes Kennwort")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
+        r = await c.post("/api/anmeldung/zugang", headers={KOPF: token})
+        assert r.status_code == 204 and COOKIE in r.headers.get("set-cookie", "")
+        assert (await c.get("/api/anmeldung", headers={KOPF: token})).status_code == 200
+        assert (await c.post("/api/anmeldung/zugang", headers={KOPF: "falsch"})).status_code in (401, 403)
+    assert await weiche.im_auftrag("sitzung", "fremde-app") is None

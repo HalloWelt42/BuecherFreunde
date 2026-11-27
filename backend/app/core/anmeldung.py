@@ -102,6 +102,15 @@ class Weiche:
         """Die eigenen Konten, wenn sie gelten; mit Kellerwolke None."""
         return self._eigene if self.aktiv is self._eigene else None
 
+    def ohne_anmeldung(self) -> bool:
+        """Den Betrieb ohne Anmeldung des Appkerns gibt es hier nie: es gilt immer die Kellerwolke oder die eigenen Konten."""
+        return False
+
+    async def im_auftrag(self, sitzung: str, app: str) -> Konto | None:
+        """Eine App im Auftrag eines Menschen: nur mit der Kellerwolke, die eigenen Konten kennen keine anderen Apps."""
+        aktiv = self.aktiv
+        return await aktiv.im_auftrag(sitzung, app) if isinstance(aktiv, Anmeldung) else None
+
     async def pruefen(self, token: str) -> Konto | None:
         return await self.aktiv.pruefen(token)
 
