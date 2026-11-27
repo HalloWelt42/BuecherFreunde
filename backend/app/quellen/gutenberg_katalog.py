@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import email.utils
+import gzip
 import json
 import logging
 import os
@@ -158,12 +159,28 @@ def _eintrag(z: dict[str, str]) -> tuple[int, str, str, str, str, str, str, str]
             " ".join((z.get("Bookshelves") or "").split()), umschrift(titel), umschrift(autor))
 
 
-def _zeilen(roh, gelesen: list[int]) -> Iterator[str]:
-    """Die Zeilen der Datei als Text; `gelesen` zählt die Byte mit. Ein Zeichen über mehrere Byte endet nie an einem
-    Zeilenende, und Zeilenumbrüche in Feldern löst der CSV-Leser selbst."""
+def _zeilen(roh) -> Iterator[str]:
+    """Die Zeilen der Datei als Text. Ein Zeichen über mehrere Byte endet nie an einem Zeilenende, und Zeilenumbrüche in
+    Feldern löst der CSV-Leser selbst."""
     for i, zeile in enumerate(roh):
-        gelesen[0] += len(zeile)
         yield (zeile.removeprefix(b"\xef\xbb\xbf") if i == 0 else zeile).decode("utf-8", errors="replace")
+
+
+GEPACKT = b"\x1f\x8b"                                  # Anfang einer gzip-Datei: der Spiegel bietet den Katalog auch gepackt
+
+
+@contextmanager
+def _oeffnen(quelle: Path) -> Iterator[tuple[object, Callable[[], int]]]:
+    """Die Katalogdatei zum Lesen, gepackt (gzip) oder nicht, erkannt am Inhalt; dazu, wie weit die Datei auf dem Gerät gelesen
+    ist (für den Fortschritt, bei gepackten die gepackten Byte)."""
+    with quelle.open("rb") as datei:
+        gepackt = datei.read(2) == GEPACKT
+        datei.seek(0)
+        if not gepackt:
+            yield datei, datei.tell
+            return
+        with gzip.GzipFile(fileobj=datei) as entpackt:
+            yield entpackt, datei.tell
 
 
 def bauen(quelle: Path, ziel: Path, kopf: dict[str, str], stand: Callable[[int, int], None] | None = None) -> int:
@@ -173,14 +190,14 @@ def bauen(quelle: Path, ziel: Path, kopf: dict[str, str], stand: Callable[[int, 
     neu = ziel.with_name(ziel.name + ".neu")
     neu.unlink(missing_ok=True)
     ziel.parent.mkdir(parents=True, exist_ok=True)
-    gesamt, gelesen = quelle.stat().st_size, [0]
+    gesamt = quelle.stat().st_size
     v = sqlite3.connect(neu)
     try:
         v.execute("PRAGMA journal_mode=OFF")
         v.execute("PRAGMA synchronous=OFF")
         v.executescript(SCHEMA)
-        with quelle.open("rb") as roh:
-            leser = csv.DictReader(_zeilen(roh, gelesen))
+        with _oeffnen(quelle) as (roh, gelesen):
+            leser = csv.DictReader(_zeilen(roh))
             if not leser.fieldnames or not set(SPALTEN) <= set(leser.fieldnames):
                 raise Katalogfehler("Die Datei vom Spiegel ist kein Katalog des Project Gutenberg")
             stapel: list[tuple] = []
@@ -191,7 +208,7 @@ def bauen(quelle: Path, ziel: Path, kopf: dict[str, str], stand: Callable[[int, 
                     v.executemany(NEU, stapel)
                     stapel.clear()
                     if stand:
-                        stand(gelesen[0], gesamt)
+                        stand(min(gelesen(), gesamt), gesamt)
             v.executemany(NEU, stapel)
         anzahl = v.execute("SELECT count(*) FROM buch").fetchone()[0]
         if not anzahl:
@@ -408,7 +425,8 @@ class Katalog:
         for spiegel in SPIEGEL:
             adresse = f"https://{spiegel}{settings.gutenberg_katalog_pfad}"
             merk = self._merkzettel_lesen()
-            versatz = teil.stat().st_size if teil.is_file() and merk.get("etag") else 0
+            # Fortsetzen nur bei derselben Adresse (etwa nach Wechsel von pg_catalog.csv auf die gepackte Datei: von vorn)
+            versatz = teil.stat().st_size if teil.is_file() and merk.get("etag") and merk.get("adresse") == adresse else 0
             if versatz:
                 kopf = {"If-Range": merk["etag"]}                     # dieselbe Datei: weiter, sonst kommt sie ganz
             else:

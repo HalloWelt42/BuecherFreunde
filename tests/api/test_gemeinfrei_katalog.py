@@ -85,6 +85,17 @@ async def test_katalog_nur_aus_text_mit_titel_autor_und_spiegeladressen(gebaut):
     assert (await katalog.vorschlaege("  ,;  ")).buecher == [] and (await katalog.vorschlaege("")).gesamt == 0
 
 
+async def test_katalog_auch_gepackt_mit_fortschritt_in_gepackten_byte(tmp_path):
+    """Der Spiegel bietet den Katalog gepackt an; erkannt wird das am Inhalt, nicht an der Endung."""
+    import gzip
+
+    roh = tmp_path / "geholt.teil"
+    roh.write_bytes(gzip.compress(INHALT if isinstance(INHALT, bytes) else INHALT.encode()))
+    stand: list[tuple[int, int]] = []
+    assert bauen(roh, tmp_path / "gepackt.db", {}, lambda a, b: stand.append((a, b))) == 5
+    assert stand[-1] == (roh.stat().st_size, roh.stat().st_size)
+
+
 async def test_ein_kaputter_katalog_ersetzt_den_alten_nie(gebaut, tmp_path):
     kaputt = tmp_path / "wartung.csv"
     kaputt.write_text("<html>Wartung</html>\n", encoding="utf-8")
@@ -120,7 +131,9 @@ async def test_holen_vom_zweiten_spiegel_mit_fortschritt_in_byte(test_db, netz, 
     s = await katalog.stand()
     assert (s.da, s.anzahl, s.stand, s.grund, s.laeuft) == (True, 5, "2026-11-08", "", False)
     assert gesehen[-1] == (len(INHALT), len(INHALT))
-    assert [a.adresse for a in netz.anfragen] == [f"https://{SPIEGEL_1}/cache/epub/feeds/pg_catalog.csv", f"https://{SPIEGEL_2}/cache/epub/feeds/pg_catalog.csv"]
+    pfad = settings.gutenberg_katalog_pfad
+    assert pfad == "/cache/epub/feeds/pg_catalog.csv.gz"                                       # gepackt: 5,6 statt 21 MB
+    assert [a.adresse for a in netz.anfragen] == [f"https://{SPIEGEL_1}{pfad}", f"https://{SPIEGEL_2}{pfad}"]
     assert sorted(p.name for p in ort().parent.iterdir() if p.name.startswith("gutenberg_katalog")) == ["gutenberg_katalog.db"]
 
 

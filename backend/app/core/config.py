@@ -119,7 +119,7 @@ class Settings(BaseSettings):
     gutenberg_enabled: bool = True     # gemeinfreie Bücher
     # Gemeinfreie Bücher (BF-98): der eigene Katalog vom Spiegel (quellen/gutenberg_katalog.py) im Ort Suchindex, Vorschläge beim
     # Tippen nur aus ihm; "Bei Gutendex suchen" fragt den Suchdienst ausdrücklich und fällt bei einer Störung auf den Katalog zurück
-    gutenberg_katalog_pfad: str = Field(default="/cache/epub/feeds/pg_catalog.csv", pattern=r"^/[\w./-]+$")   # Katalogdatei auf den Spiegeln
+    gutenberg_katalog_pfad: str = Field(default="/cache/epub/feeds/pg_catalog.csv.gz", pattern=r"^/[\w./-]+$")   # Katalogdatei auf den Spiegeln
     gutenberg_katalog_tage: int = Field(default=7, ge=1)       # älter als so viele Tage: die nächtliche Pflege erneuert ihn
     gutenberg_suche_geduld_s: float = Field(default=120, gt=0)  # so lange wartet "Bei Gutendex suchen" auf eine Antwort
     quellen_kontakt: str = ""          # freiwillig: Adresse einer Seite oder Mail im Ausweis der App, manche Quellen erlauben damit mehr

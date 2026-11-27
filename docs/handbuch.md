@@ -15,7 +15,7 @@ schluessel_orte:
   - "pi5b: `{{wurzel}}/daten/bestand/schluessel.json`, Modus 0600 (Schlüssel, die in der App eingetragen sind: Ersteinrichtung, Anschlüsse, Umzug; gelten vor den Dateien unter `zugang/`)"
   - "pi5b: `{{wurzel}}/.env` (Orte, Port, Adresse der Kellerwolke, Pfad zur Schlüsseldatei)"
 einrichten: einrichten.sh
-stand: 4dad660
+stand: f4165d3
 ---
 
 # BücherFreunde (Neubau)
