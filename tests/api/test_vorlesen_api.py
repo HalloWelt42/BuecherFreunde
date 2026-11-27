@@ -170,3 +170,19 @@ async def test_kinder_hoeren_die_wahl_der_eltern(client, test_db, vertonung):
     assert (await client.get("/api/familie/ich", headers=f.kopf["clara"])).json()["vorlesen"] == {"stimme": KLON, "werte": {"tempo": 0.8}, "eigene_wahl": False}
     r = await client.patch(f"/api/familie/profile/{f.ids['clara']}", json={"einstellungen": {"vorlesen": {"stimme": "katalog:serena"}}}, headers=f.kopf["ada"])
     assert r.status_code == 422 and "Lesehilfen" in r.json()["detail"]
+
+
+async def test_hinweis_zur_freigabe_nennt_den_namen_der_app(monkeypatch):
+    """Die Vertonung vergleicht den App-Namen der Kellerwolke ("BücherFreunde", mit ü); der Hinweis nennt genau diesen."""
+    from backend.app.core.anmeldung import eigener_zugang
+    from backend.app.vorlesen import stimmen
+
+    monkeypatch.setattr(eigener_zugang, "name", "BücherFreunde")
+    assert await stimmen.weg_zur_freigabe() == 'Freigabe in der Vertonung unter Private Stimmen für die App "BücherFreunde" eintragen'
+    monkeypatch.setattr(eigener_zugang, "name", None)
+    monkeypatch.setattr(eigener_zugang, "erfragen", lambda: _sofort(None))
+    assert await stimmen.weg_zur_freigabe() == stimmen.WEG_ZUR_FREIGABE
+
+
+async def _sofort(wert):
+    return wert

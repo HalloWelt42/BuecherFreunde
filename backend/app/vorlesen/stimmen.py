@@ -12,12 +12,20 @@ from appkern.verbund import ABFRAGE, VerbundFehler
 from appkern.vorlesen import BEREICHE
 from pydantic import BaseModel, ValidationError
 
+from backend.app.core.anmeldung import eigener_zugang
 from backend.app.vorlesen import zugang
 from backend.app.vorlesen.modelle import Bereich, Bereichsstand, Stimme, Stimmenliste
 
 logger = logging.getLogger("buecherfreunde.vorlesen")
 STIMMEN = "/api/v1/stimmen"
 WEG_ZUR_FREIGABE = "Freigabe in der Vertonung unter Private Stimmen für"
+
+
+async def weg_zur_freigabe() -> str:
+    """Der Weg zur Freigabe privater Stimmen, mit dem Namen, unter dem die Kellerwolke BücherFreunde führt: genau diesen
+    vergleicht die Vertonung mit ihrer Liste "Private Stimmen für" (BF-14; eine andere Schreibweise greift dort nicht)."""
+    name = await eigener_zugang.erfragen()
+    return f'{WEG_ZUR_FREIGABE} die App "{name}" eintragen' if name else WEG_ZUR_FREIGABE
 
 
 class _Angaben(BaseModel):
@@ -53,7 +61,7 @@ async def liste(adresse: str | None = None) -> Stimmenliste:
     hinweis = ""
     for (bereich, _), a in zip(BEREICHE, antworten, strict=True):
         if isinstance(a, VerbundFehler) and bereich == "privat" and a.status in (401, 403):
-            bereiche.append(Bereichsstand(bereich=bereich, frei=False, hinweis=f"{a.meldung.rstrip('.')}. {WEG_ZUR_FREIGABE}"))
+            bereiche.append(Bereichsstand(bereich=bereich, frei=False, hinweis=f"{a.meldung.rstrip('.')}. {await weg_zur_freigabe()}"))
         elif isinstance(a, VerbundFehler):
             logger.info("Stimmen der Vertonung (%s) nicht geholt: %s", bereich, a.meldung)
             hinweis = hinweis or zugang.fehler(a).meldung
