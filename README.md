@@ -52,7 +52,7 @@ Selbst gehostete Buchverwaltung für 50.000+ Bücher. Läuft per Docker auf Rasp
 - **Gutenberg**: Gemeinfreie Bücher direkt von Project Gutenberg importieren
 - **Metadaten**: Open Library, Google Books, Wikipedia/Wikidata
 - **KI**: Einordnen in Regale (freiwillig, jede Schnittstelle unter /v1)
-- **Vorlesen**: mit den Stimmen des Geräts oder einem Sprechdienst, Stimme wählbar
+- **Vorlesen**: mit den Stimmen der Vertonung (eingebaute, fremde und freigegebene private) oder des Geräts, Stimme je Profil wählbar
 - **Läuft allein**: ohne Wolke, ohne KI, ohne weitere Dienste; was angeschlossen ist, kommt dazu
 - **Backup**: DB + Metadaten als ZIP, Buchmaterial per rsync
 - **Dark Mode**: Vier Papier-Modi im Reader (Normal, Sepia, Dunkel, Kontrast)
@@ -142,11 +142,13 @@ QUELLEN_KONTAKT=                # freiwillig: Seite oder Mail im Ausweis der App
 QUELLEN_HINTERGRUND_TAG=500     # höchstens so viele Anfragen je Quelle und Tag in Hintergrundläufen
 QUELLEN_VORRAT_MB=32            # gemerkte Antworten in der Datenbank
 
-# KI über die Leitstelle (optional): Einordnen, Vorprüfung der Codestellen, Vorlesen
+# KI über die Leitstelle (optional): Einordnen, Vorprüfung der Codestellen
 LEITSTELLE_ADRESSE=             # leer: ohne KI
 LEITSTELLE_SCHLUESSEL_DATEI=    # Schlüssel der Anwendung als Datei, Modus 0600
 KI_MODELL=qwen/qwen3-next-80b   # Modellwahl der App
-SPRECHDIENST=klangwerk-sprechen # Vorlesen über diesen Dienst der Leitstelle
+
+# Vorlesen und Ansagen über die Vertonung (optional), angemeldet mit dem App-Zugang der Kellerwolke
+VERTONUNG_URL=                  # leer: nur die Stimmen des Geräts
 ```
 
 ### Anschlüsse
@@ -160,7 +162,8 @@ Alles hier ist freiwillig. Fehlt ein Anschluss, fehlt nur seine Fähigkeit, und 
 | Assistent | `ASSISTENT_URL` | kein Gespräch über Stellen |
 | Nachschlag (Lexika, Handbücher) | `NACHSCHLAG_URL` | Nachschlagen im öffentlichen Lexikon im Netz (`WIKIPEDIA_ENABLED`), abgeschaltet keins |
 | Codeschmiede (Sandbox) | `CODESCHMIEDE_URL`, dazu `CODESTELLEN_JE_RUNDE`, `VORPRUEFUNG_ABSTAND_S` | Codestellen werden erkannt, aber nicht ausgeführt (docs/neubau/AUSFUEHREN.md) |
-| Leitstelle (KI und Stimme) | `LEITSTELLE_ADRESSE`, `LEITSTELLE_SCHLUESSEL_DATEI`, `KI_MODELL`, `SPRECHDIENST` | Einordnen von Hand, Vorprüfung der Codestellen nur per Lauf, vorgelesen wird mit den Stimmen des Geräts (docs/LEITSTELLE.md) |
+| Leitstelle (KI) | `LEITSTELLE_ADRESSE`, `LEITSTELLE_SCHLUESSEL_DATEI`, `KI_MODELL` | Einordnen von Hand, Vorprüfung der Codestellen nur per Lauf (docs/LEITSTELLE.md) |
+| Vertonung (Vorlesen, Ansagen) | `VERTONUNG_URL` und der App-Zugang der Kellerwolke | vorgelesen wird mit den Stimmen des Geräts (docs/neubau/STIMMEN.md) |
 | Verzeichnisse, Lexikon, Normdatei | `DNB_ENABLED`, `K10PLUS_ENABLED`, `OPENLIBRARY_ENABLED`, `CROSSREF_ENABLED`, `WIKIPEDIA_ENABLED`, `GND_ENABLED`, `GOOGLE_BOOKS_API_KEY` | Angaben aus den Dateien |
 
 Der Port ist im Heimnetz offen (`BINDUNG=0.0.0.0`). Von außen erreichbar macht man die App nur hinter einem Vorbau mit HTTPS

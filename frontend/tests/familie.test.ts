@@ -35,6 +35,7 @@ function ichAls(p: Profil, faehigkeiten: Ich["faehigkeiten"]): Ich {
   return {
     profil: p, faehigkeiten, darstellung: {}, lesehilfen: null, einblick: [], katze: { an: false, name: "", schnurren: false },
     lesezeit: { an: false, heute_s: 0, grenze_s: null, rest_s: null, ruht: false, ruhe_bis: null, hinweis_ab_s: null }, gestaltung: null, uhr: null,
+    vorlesen: { stimme: "", werte: {}, eigene_wahl: p.rolle !== "kind" },
   };
 }
 
@@ -338,7 +339,13 @@ describe("Bild-PIN", () => {
 });
 
 describe("Stimme der Ansagen", () => {
-  const KATALOG = { da: true, stimmen: [{ id: "katalog:serena", name: "serena", gruppe: "eingebaut" }], hinweis: "" };
+  const KLON = "0f8c2b9e-1d2a-4c3b-9e8f-7a6b5c4d3e2f";
+  const FREIGABE = "Private Stimmen sind dieser App nicht erlaubt. Freigabe in der Vertonung unter Private Stimmen für";
+  const KATALOG = {
+    da: true, hinweis: "",
+    stimmen: [{ id: KLON, name: "Probesprecher", bereich: "fremd", sprache: "de" }, { id: "katalog:serena", name: "serena", bereich: "katalog", sprache: null }],
+    bereiche: [{ bereich: "privat", frei: false, hinweis: FREIGABE }, { bereich: "fremd", frei: true, hinweis: "" }, { bereich: "katalog", frei: true, hinweis: "" }],
+  };
   const mitStimme = (stimme: string): Profil => ({ ...KIND, einstellungen: { lesehilfen: { mitlesen: true, tempo: 1, silben: false, lesezeile: true, schrift: "mittel", schrift_wahl: "normal", hinweise_sprechen: true, tasten_ansagen: true, stimme } } });
   const auftrag = (stand: "wartet" | "laeuft" | "fertig" | "fehler", fertig: number, grund = "") =>
     [{ was: "Ansagen erstellen", stimme: "katalog:serena", stand, gesamt: 186, fertig, grund, begonnen: null, geaendert: null, fertig_am: null }];
@@ -351,9 +358,19 @@ describe("Stimme der Ansagen", () => {
     await mitFamilienstimme("");
     server({ "/api/vorlesen/stimmen": KATALOG, "/api/familie/ansagen/stand": auftrag("fertig", 186) });
     render(Ansagestimme, { props: { profil: mitStimme("katalog:serena"), aendert: true } });
-    expect(await screen.findByText("186 feste Ansagen fertig, auch ohne Sprechdienst")).toBeTruthy();
+    expect(await screen.findByText("186 feste Ansagen fertig, auch ohne Vertonung")).toBeTruthy();
     expect(await screen.findByRole("button", { name: "serena" })).toBeTruthy();
     expect((screen.getByRole("button", { name: "Probe" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("zeigt die Stimmen der Vertonung in Gruppen nach ihren Bereichen und den Weg zur Freigabe privater Stimmen", async () => {
+    await mitFamilienstimme("");
+    server({ "/api/vorlesen/stimmen": KATALOG, "/api/familie/ansagen/stand": auftrag("fertig", 186) });
+    render(Ansagestimme, { props: { profil: mitStimme("katalog:serena"), aendert: true } });
+    await fireEvent.click(await screen.findByRole("button", { name: "serena" }));
+    const auswahl = await screen.findByRole("combobox", { name: "Stimme" });
+    expect([...auswahl.querySelectorAll("optgroup")].map((g) => g.label)).toEqual(["Vorgabe", "Fremde Stimmen", "Eingebaute Stimmen", "Ohne Vertonung"]);
+    expect(screen.getByText(FREIGABE)).toBeTruthy();
   });
 
   it("zeigt, wie weit die Ansagen entstehen, und den Grund, wenn sie nicht entstehen", async () => {
@@ -363,9 +380,9 @@ describe("Stimme der Ansagen", () => {
     expect(await screen.findByText(/werden erstellt: 40 von 186/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Auftrag" })).toBeTruthy();
     unmount();
-    server({ "/api/vorlesen/stimmen": KATALOG, "/api/familie/ansagen/stand": auftrag("fehler", 0, "Es ist kein Sprechdienst angeschlossen") });
+    server({ "/api/vorlesen/stimmen": KATALOG, "/api/familie/ansagen/stand": auftrag("fehler", 0, "Es ist keine Vertonung angeschlossen (Anschlüsse, Vertonung)") });
     render(Ansagestimme, { props: { profil: mitStimme("katalog:serena"), aendert: true } });
-    expect(await screen.findByText(/Es ist kein Sprechdienst angeschlossen/)).toBeTruthy();
+    expect(await screen.findByText(/Es ist keine Vertonung angeschlossen/)).toBeTruthy();
   });
 
   it("folgt ohne eigene Wahl der Stimme der Familie, ohne sie bittet es um eine Wahl", async () => {

@@ -92,7 +92,7 @@
   // Vorlesen: läuft es aus diesem Buch?
   let vorlesequelle: ReturnType<Kinderlesestand["vorlesequelle"]> | null = null;
   let liestVor = $derived(vorlesen.aktiv && !!vorlesequelle && vorlesen.quelle === vorlesequelle);
-  let kannVorlesen = $derived(f.has("vorlesen") && vorlesen.stimmen.length > 0);
+  let kannVorlesen = $derived(f.has("vorlesen") && vorlesen.bereit);
   let tempoVorher = vorlesen.tempo;
 
   let speicher: Positionsspeicher | null = null;

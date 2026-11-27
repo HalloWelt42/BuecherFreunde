@@ -21,7 +21,7 @@ class Probesprecher implements Sprecher {
     this.anfragen.push(text);
     if (this.scheitert > 0) {
       this.scheitert--;
-      throw new Error("Der Sprechdienst antwortet nicht");
+      throw new Error("Die Vertonung antwortet nicht");
     }
     for (const s of saetzeMitLage(text)) yield { ...s, ton: null, dauer: 2 };
   }
@@ -121,7 +121,7 @@ describe("Vorlesefolge", () => {
     const { f, sprecher, griffe, spiele } = folge();
     sprecher.scheitert = 9;
     await ruhe(20);
-    expect(griffe.gerissen).toHaveBeenCalledWith("Der Sprechdienst antwortet nicht");
+    expect(griffe.gerissen).toHaveBeenCalledWith("Die Vertonung antwortet nicht");
     expect(sprecher.anfragen.length).toBe(3);
     sprecher.scheitert = 0;
     f.weiter();

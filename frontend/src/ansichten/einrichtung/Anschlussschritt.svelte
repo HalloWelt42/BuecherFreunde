@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Schritt Anschlüsse: Kellerwolke, Leitstelle und Nachschlag, alles freiwillig
+  // Schritt Anschlüsse: Kellerwolke, Leitstelle, Vertonung und Nachschlag, alles freiwillig
   import { ladeAnschluesse, type Anschluss, type Schritt } from "../../lib/api/einrichtung";
   import { einrichtung } from "../../lib/stand/einrichtung.svelte";
   import Zustand from "../../lib/teile/Zustand.svelte";

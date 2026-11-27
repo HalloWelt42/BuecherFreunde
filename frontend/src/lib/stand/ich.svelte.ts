@@ -1,6 +1,6 @@
 // Das aktive Profil (BF-78): wer liest, was es darf, Lesezeit und Katze. Die einzige Stelle, an der die Oberfläche fragt,
 // ob eine Taste erscheint; der Server prüft jeden Weg ohnehin selbst.
-import { ladeIch, setzeKatzenname, type Faehigkeit, type Ich, type Lesezeitstand, type Profil, type Rolle } from "../api/familie";
+import { ladeIch, setzeKatzenname, type Faehigkeit, type Ich, type Lesezeitstand, type Profil, type Rolle, type Vorlesestand } from "../api/familie";
 
 class Ichstand {
   jetzt = $state<Ich | null>(null);
@@ -72,6 +72,11 @@ class Ichstand {
   async katzenname(name: string): Promise<void> {
     const katze = await setzeKatzenname(name);
     if (this.jetzt) this.jetzt = { ...this.jetzt, katze };
+  }
+
+  /** Die eigene Stimme im Leser ist gespeichert (BF-14) */
+  vorlesenGeaendert(stand: Vorlesestand): void {
+    if (this.jetzt) this.jetzt = { ...this.jetzt, vorlesen: stand };
   }
 
   /** Neuer Stand der Lesezeit, etwa als Antwort auf das Melden aus dem Leser */

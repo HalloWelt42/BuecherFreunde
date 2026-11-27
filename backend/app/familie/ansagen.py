@@ -1,15 +1,18 @@
 """Feste Ansagen für den Kinderbereich (BF-78): Tasten, Hinweise und Bausteine der Uhr aus `ansagen.json`, dazu die Ansagen, die
 von Dingen abhängen (Titel der Bücher, die ein Kind sieht, der Name seiner Katze, seine Ruhezeit, die Namen der Profile für
-"Wer liest?"). Gesprochen werden sie vorab mit einer eingebauten Stimme des Sprechdienstes (familie/ansagelauf.py) und
-dauerhaft abgelegt im Ort texte unter `ansagen/<ordner der stimme>/<schluessel>-<pruefsumme>.wav`; die Prüfsumme gehört zu
-Fassung und Text, so entsteht bei geändertem Text ein neuer Ton.
+"Wer liest?"). Gesprochen werden sie vorab über die Vertonung mit der gewählten Stimme (familie/ansagelauf.py, eingebaut,
+privat oder fremd) und dauerhaft abgelegt im Ort texte unter `ansagen/<ordner der stimme>/<schluessel>-<pruefsumme>.wav`; die
+Prüfsumme gehört zu Fassung und Text, so entsteht bei geändertem Text ein neuer Ton.
 
 Die Schlüssel heißen `gruppe.name` wie in der Oberfläche (frontend/src/lib/kind/ansagen.ts): `tasten.weiter`,
 `hinweise.frag_eltern`, `uhr.4`, `minute.35`, `noch.25`, `heute.45`, `titel.<buch>`, `katze`, `katze.<vorschlag>`,
 `profil.<profil>`, `ruhezeit`, `probe`.
 
 Welche Stimme gilt: die Wahl der Eltern je Kind (`lesehilfen.stimme`), sonst die Vorlesestimme der Familie, sonst keine (dann
-schweigen die Ansagen). `geraet` ist die Stimme des Geräts, nur als ausdrückliche Wahl: dann spricht die Oberfläche die Texte."""
+schweigen die Ansagen). `geraet` ist die Stimme des Geräts, nur als ausdrückliche Wahl: dann spricht die Oberfläche die Texte.
+
+Hörer sind jedes Kind und die Profilwahl (dort hören auch Erwachsene). Je Hörer steht in `ansage_hoerer` die Stimme, deren
+Ansagen er zuletzt ganz hatte; nach einem Wechsel der Stimme gelten ihre Töne weiter, bis die der neuen fertig sind."""
 
 from __future__ import annotations
 
@@ -29,13 +32,12 @@ from backend.app.familie import lesezeit, profile
 from backend.app.familie.modelle import Profil
 from backend.app.familie.sichtbar import Sicht
 from backend.app.familie.stufen import stufenbuch
+from backend.app.vorlesen.modelle import name_im_katalog, vertont
 
 DATEI = Path(__file__).with_name("ansagen.json")
 ORDNER = "ansagen"
-KATALOG = "katalog:"
-GERAET = "geraet"
 FAMILIENSTIMME = "familie_stimme"             # Schlüssel in app_settings: die Vorlesestimme der Familie
-STIMME = r"^(katalog:.{1,150}|geraet)?$"     # eine Stimme des Katalogs, die des Geräts oder keine
+PROFILWAHL = "profilwahl"                     # der Hörer der Profilwahl (und der Erwachsenen) in ansage_hoerer
 _ORDNERZEICHEN = re.compile(r"[^a-z0-9]+")
 
 
@@ -180,14 +182,34 @@ async def fuer(p: Profil | None) -> tuple[str, list[Eintrag]]:
     return await stimme_fuer(p), eintraege
 
 
-def gesprochen(stimme: str) -> bool:
-    """Spricht der Sprechdienst diese Stimme vorab? Die des Geräts spricht die Oberfläche, ohne Stimme schweigt alles."""
-    return stimme.startswith(KATALOG)
+def hoerer(p: Profil | None) -> str:
+    """Wer die Ansagen hört: ein Kind seine eigenen, alle anderen die der Profilwahl."""
+    return p.id if p is not None and p.kind else PROFILWAHL
+
+
+async def je_hoerer() -> dict[str, tuple[str, list[Eintrag]]]:
+    """Je Hörer die Stimme, die gilt, und alles, was er mit ihr hört."""
+    aus = {PROFILWAHL: (await familienstimme(), allgemeine() + await namen())}
+    for p in await profile.alle():
+        if p.kind:
+            aus[p.id] = (await stimme_fuer(p), allgemeine() + await eigene(p))
+    return aus
+
+
+async def zuletzt(wer: str) -> str:
+    """Die Stimme, deren Ansagen dieser Hörer zuletzt ganz hatte; leer: noch keine."""
+    z = await db.fetch_one("SELECT stimme FROM ansage_hoerer WHERE hoerer = ?", (wer,))
+    return z["stimme"] if z else ""
+
+
+async def zuletzt_alle() -> dict[str, str]:
+    return {z["hoerer"]: z["stimme"] for z in await db.fetch_all("SELECT hoerer, stimme FROM ansage_hoerer")}
 
 
 def ordner(stimme: str) -> str:
-    """Der Ordner einer Stimme: lesbar und eindeutig, nur Kleinbuchstaben, Ziffern und Bindestriche."""
-    lesbar = _ORDNERZEICHEN.sub("-", stimme.removeprefix(KATALOG).lower()).strip("-")[:40] or "stimme"
+    """Der Ordner einer Stimme: lesbar und eindeutig, nur Kleinbuchstaben, Ziffern und Bindestriche. Für eine eingebaute Stimme
+    ihr Name, für eine Klonstimme ihre Kennung."""
+    lesbar = _ORDNERZEICHEN.sub("-", name_im_katalog(stimme).lower()).strip("-")[:40] or "stimme"
     return f"{lesbar}-{hashlib.sha256(stimme.encode()).hexdigest()[:8]}"
 
 
@@ -205,19 +227,18 @@ def adresse(stimme: str, e: Eintrag) -> str:
     return f"/api/familie/ansagen/ton/{ordner(stimme)}/{e.datei}"
 
 
-async def bedarf() -> dict[str, list[Eintrag]]:
+def bedarf(hoerende: dict[str, tuple[str, list[Eintrag]]]) -> dict[str, list[Eintrag]]:
     """Je vorab gesprochener Stimme alles, was jemand mit ihr hört; jede Datei einmal."""
     je: dict[str, dict[str, Eintrag]] = {}
-
-    def dazu(stimme: str, eintraege: list[Eintrag]) -> None:
-        if gesprochen(stimme):
+    for stimme, eintraege in hoerende.values():
+        if vertont(stimme):
             ziel = je.setdefault(stimme, {})
             for e in eintraege:
                 ziel.setdefault(e.datei, e)
-
-    familie = await familienstimme()
-    dazu(familie, allgemeine() + await namen())
-    for p in await profile.alle():
-        if p.kind:
-            dazu(await stimme_fuer(p), allgemeine() + await eigene(p))
     return {s: list(e.values()) for s, e in je.items()}
+
+
+def ganz(stimme: str, eintraege: list[Eintrag]) -> bool:
+    """Liegt jede dieser Ansagen in dieser Stimme bereit?"""
+    ort = pfad(stimme)
+    return all((ort / e.datei).exists() for e in eintraege)

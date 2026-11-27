@@ -17,7 +17,6 @@ Abschnitt 9).
 |---|---|
 | `LEITSTELLE_ADRESSE` | Adresse der Leitstelle (mit oder ohne `/v1`); leer: ohne KI |
 | `LEITSTELLE_SCHLUESSEL_DATEI` | Schlüssel der Anwendung als Datei, Modus 0600; im Betrieb `zugang/leitstelle.schluessel`, im Container `/app/zugang/leitstelle.schluessel` (der Ordner `zugang` ist schon nur lesend eingehängt) |
-| `SPRECHDIENST` | Dienst der Leitstelle zum Vorlesen (Vorgabe `klangwerk-sprechen`, Fähigkeit `stimme`); ohne Leitstelle liest die Oberfläche mit den Stimmen des Geräts |
 | `KI_MODELL` | Modellwahl der App (Vorgabe `qwen/qwen3-next-80b`); in den Einstellungen änderbar (`PATCH /api/ai/config`, gemerkt als `ki_modell` in `app_settings`), die Leitstelle wählt nie ein Modell |
 
 Die Zertifikatsstelle des Hauses gilt wie für die Kellerwolke (`KELLERWOLKE_CA`).
@@ -48,11 +47,13 @@ Warnung die Vorgabe. Keine Wahl wird gelöscht.
 | Teil | Fähigkeit | Priorität | Was ohne Leitstelle geschieht |
 |---|---|---|---|
 | Vorprüfung der Codestellen (BF-29, `codestellen/vorpruefung.py`) | `text`, Antwort in fester Form (JSON-Schema) | `hintergrund`, alle Anfragen einer Runde als eine Arbeit (`X-Leitstelle-Arbeit`) | der Fehler des Laufs ist der Grund |
-| Vorlesen (BF-14, `services/vorlesen.py`) | `stimme`: Dienst `SPRECHDIENST`, Katalog `GET /tts/voices`, je Satz `POST /v1/audio/speech` (WAV) | `hoch` (ein Mensch hört zu; die Leitstelle kappt auf die Vorgabe der App), alle Sätze einer Vorlesung als eine Arbeit, zwei Sätze zugleich bestellt | Stimmen des Geräts |
 | Einordnen von Büchern (BF-10, `services/ai_categorization.py`) | `text`, Anweisung aus `ai_prompts` | Vorgabe der App (ein Mensch wartet) | keine Vorschläge, Grund statt Fehler; eingeordnet wird von Hand |
 
 ## Was geändert wurde
 
+- BF-14 (27.11.2026): Vorlesen und die festen Ansagen gehen über die Vertonung (Baustein `appkern.vorlesen` mit `appkern.verbund`,
+  App-Zugang der Kellerwolke; `backend/app/vorlesen/`, docs/neubau/STIMMEN.md); die Vertonung ruft dafür selbst die Dienste
+  hinter der Leitstelle. BücherFreunde braucht von der Leitstelle die Fähigkeit `stimme` nicht mehr.
 - BF-14: Vorlesen über den Sprechdienst der Leitstelle, Schnittstelle `/api/vorlesen` und `/api/vorlesen/stimmen` mit
   denselben Feldern wie zuvor; Anschluss `vorlesen` heißt: Leitstelle eingerichtet und Sprechdienst gesetzt.
 - BF-29: `services/ki.py` (Leitstellen-Anschluss), Einstellungen `LEITSTELLE_ADRESSE`, `LEITSTELLE_SCHLUESSEL_DATEI`,
@@ -64,6 +65,9 @@ Warnung die Vorgabe. Keine Wahl wird gelöscht.
 
 ## Was zurückgebaut wurde
 
+- BF-14 (27.11.2026): der Weg zum Sprechdienst der Leitstelle (`SPRECHDIENST`, `services/vorlesen.py`, Katalog
+  `GET /tts/voices`, je Satz `POST /v1/audio/speech`). Werte `katalog:<name>` gelten weiter, die Vertonung schreibt ihre
+  eingebauten Stimmen genauso.
 - BF-14: der direkte Weg zur App Vertonung (`VORLESEN_URL`, `/api/v1/stimmen`, `/api/v1/sprechen/strom` im Auftrag des
   Menschen) samt eigenem Verbindungsaufbau mit Lese-Zeitgrenze. Die Stimmen der Vertonung (eigene und weitere) gibt es
   damit nicht mehr, nur die des Sprechdienstes; früher gewählte eigene Stimmen meldet die Schnittstelle mit Grund.

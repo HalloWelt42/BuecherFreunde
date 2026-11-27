@@ -22,7 +22,8 @@ from backend.app.einrichtung.auftrag import auftraege
 from backend.app.einrichtung.nachfuehren import nachfuehren
 from backend.app.services import sicherung
 
-FELDER = ("kellerwolke_url", "leitstelle_adresse", "nachschlag_url", "kellerwolke_schluessel_datei", "leitstelle_schluessel_datei")
+FELDER = ("kellerwolke_url", "leitstelle_adresse", "vertonung_url", "nachschlag_url", "kellerwolke_schluessel_datei",
+          "leitstelle_schluessel_datei")
 WOLKE = "https://wolke.probe.test"
 LEITSTELLE = "https://leitstelle.probe.test"
 APP_ZUGANG = "kw_app_probe_zugang_0123456789"

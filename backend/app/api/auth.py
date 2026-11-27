@@ -12,7 +12,8 @@ from backend.app.core.auth import braucht, verify_token
 from backend.app.core.config import settings
 from backend.app.core.eigene_anmeldung import EigeneAnmeldung
 
-router = anmeldungs_router(anmeldung, prefix="/api/anmeldung", inhalt_pfad="/api")
+# das Inhalts-Cookie wie bisher: Name `app_inhalt` (Vorgabe des Appkerns), gilt unter /api
+router = anmeldungs_router(anmeldung, prefix="/api/anmeldung", inhalt_pfade=("/api",))
 
 
 class AppAngaben(BaseModel):

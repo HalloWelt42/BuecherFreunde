@@ -1,0 +1,10 @@
+{
+  "art": "buecherfreunde-beschriftungen/1",
+  "zweck": "Deutsche Namen für die Einstellungen, die die Vertonung zum Sprechen beschreibt (backend/app/vorlesen/beschreibung.py). Ein Feld, das hier fehlt, behält den Namen der Vertonung und steht unter Mehr.",
+  "felder": {
+    "tempo": {"name": "Tempo", "erklaerung": "1 ist das gewohnte Tempo der Stimme"},
+    "sprache": {"name": "Sprache", "erklaerung": "leer: die Sprache, die in der Vertonung eingestellt ist",
+                "werte": {"de": "Deutsch", "en": "Englisch", "fr": "Französisch", "es": "Spanisch", "it": "Italienisch"}},
+    "ausschreiben": {"name": "Zahlen und Abkürzungen ausschreiben", "erklaerung": "spricht etwa 12 € als zwölf Euro"}
+  }
+}

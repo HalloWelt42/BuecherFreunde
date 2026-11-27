@@ -63,7 +63,7 @@ export interface Orte {
   grund: string;
 }
 
-export type Anschlussart = "kellerwolke" | "leitstelle" | "nachschlag";
+export type Anschlussart = "kellerwolke" | "leitstelle" | "vertonung" | "nachschlag";
 
 export interface Verbindungspruefung {
   ok: boolean;

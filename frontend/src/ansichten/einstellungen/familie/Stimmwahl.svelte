@@ -1,12 +1,12 @@
 <script lang="ts" module>
   import { ladeDienststimmen, type Dienststimmen } from "../../../lib/api/vorlesen";
 
-  /** Der Katalog des Sprechdienstes, einmal je Seite für alle Zeilen */
+  /** Die Stimmen der Vertonung, einmal je Seite für alle Zeilen */
   let katalogLaeuft: Promise<Dienststimmen> | null = null;
   function katalogHolen(): Promise<Dienststimmen> {
     katalogLaeuft ??= ladeDienststimmen().catch(() => {
       katalogLaeuft = null;
-      return { da: false, stimmen: [], hinweis: "" };
+      return { da: false, stimmen: [], bereiche: [], hinweis: "" };
     });
     return katalogLaeuft;
   }
@@ -14,10 +14,12 @@
 
 <script lang="ts">
   // Eine Stimme der Ansagen wählen (BF-78, Entwurf kinder-6 Abschnitt 5): "Probe" und die Stimme als Chip. Der Chip öffnet die
-  // Stimmenwahl wie im Leser (Auswahl und "Probe hören") mit den Stimmen aus dem Katalog des Sprechdienstes und der Stimme des
-  // Geräts für Installationen ohne ihn; für ein Kind steht oben "wie die Familie". Erst "Wählen" speichert, denn danach
-  // erstellt der Server alle festen Ansagen in dieser Stimme. Gebraucht für die Stimme der Familie und je Kind.
+  // Stimmenwahl wie im Leser (Auswahl und "Probe hören") mit den Stimmen der Vertonung in Gruppen nach ihren Bereichen (privat,
+  // fremd, eingebaut; BF-14) und der Stimme des Geräts für Installationen ohne sie; für ein Kind steht oben "wie die Familie".
+  // Gibt die Vertonung keine privaten Stimmen frei, steht darunter der Grund und wo man sie freigibt. Erst "Wählen" speichert,
+  // denn danach erstellt der Server alle festen Ansagen in dieser Stimme. Gebraucht für die Stimme der Familie und je Kind.
   import { ansageProbe, GERAETESTIMME } from "../../../lib/api/familie";
+  import { freigabeHinweis, stimmgruppen } from "../../../lib/api/vorlesen";
   import { melde } from "../../../lib/stand/meldungen.svelte";
   import Auswahl from "../../../lib/teile/Auswahl.svelte";
   import Knopf from "../../../lib/teile/Knopf.svelte";
@@ -39,7 +41,6 @@
   }
   let { stimme, familie = undefined, name, gesperrt = false, stumm = false, nurSymbol = false, onwahl }: Eigenschaften = $props();
 
-  const GRUPPE = { eigene: "Eigene Stimmen", weitere: "Weitere Stimmen", eingebaut: "Eingebaute Stimmen" } as const;
   /** Steht für "wie die Familie" in der Auswahl; gespeichert wird leer */
   const WIE_FAMILIE = "familie";
 
@@ -51,15 +52,15 @@
   let wirkt = $derived(stimme || familie || "");
 
   let gruppen = $derived.by(() => {
-    const aus = new Map<string, [string, string][]>();
-    for (const s of katalog?.stimmen ?? []) aus.set(GRUPPE[s.gruppe], [...(aus.get(GRUPPE[s.gruppe]) ?? []), [s.id, s.name]]);
-    const alle = [...aus, ["Ohne Sprechdienst", [[GERAETESTIMME, "Stimme des Geräts"]]]] as [string, [string, string][]][];
+    const alle = [...stimmgruppen(katalog), ["Ohne Vertonung", [[GERAETESTIMME, "Stimme des Geräts"]]]] as [string, [string, string][]][];
     return mitFamilie ? ([["Vorgabe", [[WIE_FAMILIE, "wie die Familie"]]], ...alle] as [string, [string, string][]][]) : alle;
   });
+  let freigabe = $derived(freigabeHinweis(katalog));
 
+  /** Ist eine gewählte Klonstimme nicht mehr im Angebot (etwa nicht mehr freigegeben), steht sie als Klonstimme da */
   function nameVon(id: string): string {
     if (id === GERAETESTIMME) return "Stimme des Geräts";
-    return katalog?.stimmen.find((s) => s.id === id)?.name ?? id.replace(/^katalog:/, "");
+    return katalog?.stimmen.find((s) => s.id === id)?.name ?? (id.startsWith("katalog:") ? id.slice("katalog:".length) : "Klonstimme");
   }
 
   let chip = $derived(stimme ? nameVon(stimme) : mitFamilie && familie ? "wie die Familie" : "Stimme wählen");
@@ -120,7 +121,8 @@
         <Knopf text="Probe hören" symbol="play" nur klein laeuft={spielt} gesperrt={!hoeren} onclick={() => void probe(hoeren)} />
       </div>
       {#if katalog?.hinweis}<p class="leise">{katalog.hinweis}</p>{/if}
-      {#if wert === GERAETESTIMME}<p class="leise">Nur für Installationen ohne Sprechdienst: jedes Gerät spricht mit seiner eigenen Stimme.</p>{/if}
+      {#if freigabe}<p class="leise">{freigabe}</p>{/if}
+      {#if wert === GERAETESTIMME}<p class="leise">Nur für Installationen ohne Vertonung: jedes Gerät spricht mit seiner eigenen Stimme.</p>{/if}
       {#if wert === WIE_FAMILIE && !familie}<p class="leise">Die Familie hat noch keine Stimme; bis dahin schweigen die Ansagen.</p>{/if}
       <Knopf text="Wählen" symbol="check" haupt klein gesperrt={(wert === WIE_FAMILIE ? "" : wert) === stimme} onclick={() => void waehle(wert, zu)} />
     {/snippet}

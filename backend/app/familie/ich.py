@@ -1,14 +1,16 @@
 """Wie ein Profil hinausgeht (BF-78): `GET /api/familie/ich` mit Fähigkeiten, Darstellung und Lesehilfen der Stufe samt der Wahl
 der Eltern, Lesezeitstand, Katze, dem, was die Eltern sehen, und der Gestaltung des Kinderbereichs (BF-88); ein Profil für die
-Liste (mit Geburtsjahr und Einstellungen nur für die, die es ändern dürfen); die Stufen aus stufen.json für die Oberfläche."""
+Liste (mit Geburtsjahr und Einstellungen nur für die, die es ändern dürfen); die Stufen aus stufen.json für die Oberfläche. Dazu,
+mit welcher Stimme und welchen Werten das Profil vorgelesen bekommt (BF-14)."""
 
 from __future__ import annotations
 
-from backend.app.familie import lesezeit, profile, rechte
+from backend.app.familie import ansagen, lesezeit, profile, rechte
 from backend.app.familie.fehler import NichtErlaubt
 from backend.app.familie.modelle import (
     Ich, Katze, Lesezeitvorgabe, Profil, ProfilEintrag, Profileinstellungen, Stufenangabe, Stufenansicht, Stufenvorgaben, Zugangsangaben,
 )
+from backend.app.vorlesen.modelle import Vorlesestand
 from backend.app.familie.stufen import Darstellung, Gestaltungsart, Lesehilfen, Leseschrift, Stufe, Uhrart, stufenbuch
 
 
@@ -61,7 +63,16 @@ def einstellungen(p: Profil) -> Profileinstellungen | None:
     hilfen, zeit, art = lesehilfen(p), lesezeit.wirksam(p), uhr(p)
     if not (hilfen and zeit and art):
         return None
-    return Profileinstellungen(lesehilfen=hilfen, lesezeit=zeit, katze=katze(p), gestaltung=gestaltung(p), uhr=art)
+    return Profileinstellungen(lesehilfen=hilfen, lesezeit=zeit, katze=katze(p), gestaltung=gestaltung(p), uhr=art,
+                               vorlesen=p.einstellungen.vorlesen)
+
+
+async def vorlesen(p: Profil) -> Vorlesestand:
+    """Stimme und Werte fürs Vorlesen: ein Kind hört die Wahl der Eltern (sonst die Stimme der Familie), dieselbe wie für seine
+    Ansagen; ein Erwachsener wählt im Leser selbst (leer: die Stimme ab Werk der Vertonung)."""
+    wahl = p.einstellungen.vorlesen
+    stimme = await ansagen.stimme_fuer(p) if p.kind else (wahl.stimme or "")
+    return Vorlesestand(stimme=stimme, werte=wahl.werte, eigene_wahl=p.erwachsen)
 
 
 def eintrag(p: Profil, mit_angaben: bool = False) -> ProfilEintrag:
@@ -79,7 +90,7 @@ async def ich(p: Profil) -> Ich:
     s = _stufe(p)
     return Ich(profil=eintrag(p, mit_angaben=True), faehigkeiten=sorted(rechte.faehigkeiten(p)), darstellung=darstellung(p) or {},
                lesehilfen=lesehilfen(p), lesezeit=await lesezeit.stand(p), katze=katze(p), einblick=s.einblick if s else [],
-               gestaltung=gestaltung(p), uhr=uhr(p))
+               gestaltung=gestaltung(p), uhr=uhr(p), vorlesen=await vorlesen(p))
 
 
 async def schrift_waehlen(p: Profil, wahl: Leseschrift) -> Ich:

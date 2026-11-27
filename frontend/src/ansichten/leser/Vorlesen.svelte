@@ -62,11 +62,11 @@
   {:else}
     <div class="tastenraster" style:--spalten="2" role="group" aria-label="Vorlesen">
       {#if gemerkt}
-        <Knopf klasse="kachel weiter" text="Weiterlesen" symbol="forward" laeuft={laedt === "weiter"} gesperrt={!quelle || !vorlesen.stimmen.length} titel="Weiter an der Stelle, an der es stehen blieb" onclick={() => void starte("weiter", gemerkt?.umfang || "Weiterlesen")}><span class="ab">ab {gemerkt.ort}</span></Knopf>
+        <Knopf klasse="kachel weiter" text="Weiterlesen" symbol="forward" laeuft={laedt === "weiter"} gesperrt={!quelle || !vorlesen.bereit} titel="Weiter an der Stelle, an der es stehen blieb" onclick={() => void starte("weiter", gemerkt?.umfang || "Weiterlesen")}><span class="ab">ab {gemerkt.ort}</span></Knopf>
       {/if}
       {#each UMFAENGE as [u, name, symbol] (u)}
         {#if u !== "kapitel" || quelle?.mitKapiteln}
-          <Knopf klasse="kachel" text={name} {symbol} laeuft={laedt === u} gesperrt={!quelle || !vorlesen.stimmen.length} titel={u === "buch" ? "Ganzes Buch von vorn" : undefined} onclick={() => void starte(u, name)} />
+          <Knopf klasse="kachel" text={name} {symbol} laeuft={laedt === u} gesperrt={!quelle || !vorlesen.bereit} titel={u === "buch" ? "Ganzes Buch von vorn" : undefined} onclick={() => void starte(u, name)} />
         {/if}
       {/each}
     </div>
@@ -75,7 +75,7 @@
     <div class="regelzeile">
       <span class="klein">Stimme</span>
       <Auswahl name="Stimme" gruppen={vorlesen.gruppen} wert={vorlesen.stimme} onwahl={(id) => vorlesen.waehle(id)} />
-      <Knopf text="Probe hören" symbol="play" nur klein gesperrt={vorlesen.aktiv} onclick={() => { vorlesen.entsperre(); vorlesen.probe(); }} />
+      <Knopf text="Probe hören" symbol="play" nur klein gesperrt={vorlesen.aktiv || !vorlesen.bereit} onclick={() => { vorlesen.entsperre(); vorlesen.probe(); }} />
     </div>
     <div class="regelzeile">
       <span class="klein">Tempo</span>
@@ -95,6 +95,7 @@
     <p class="klein leise">{vorlesen.hinweis || "Hier gibt es keine Stimme zum Vorlesen."}</p>
   {/if}
   {#if vorlesen.hinweis && vorlesen.stimmen.length}<p class="klein leise">{vorlesen.hinweis}</p>{/if}
+  {#if vorlesen.freigabe}<p class="klein leise">{vorlesen.freigabe}</p>{/if}
 </div>
 
 <style>

@@ -16,6 +16,7 @@ from backend.app.familie.stufen import (
 )
 from backend.app.models.book import BookListItem
 from backend.app.models.grenzen import FarbeOderLeer, Nr
+from backend.app.vorlesen.modelle import Stimmwahl, Vorlesestand, Vorlesewahl
 
 
 def _stufe_gibt_es(schluessel: str) -> str:
@@ -47,8 +48,6 @@ def _bilder(bilder: list[str]) -> list[str]:
 
 
 Profilname = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
-# eine Stimme aus dem Katalog des Sprechdienstes (katalog:<name>), die des Geräts (geraet) oder keine (leer)
-Stimmwahl = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200, pattern=r"^(katalog:.{1,150}|geraet)?$")]
 Zeichen = Annotated[str, StringConstraints(strip_whitespace=True, max_length=50, pattern=r"^[a-z0-9-]*$")]
 Stufenname = Annotated[str, AfterValidator(_stufe_gibt_es)]
 Geburtsjahr = Annotated[int, AfterValidator(_geburtsjahr)]
@@ -72,7 +71,7 @@ class LesehilfenWahl(BaseModel):
     schrift_wahl: Leseschrift | None = None                  # normal oder Kinderschrift; in Groß ändert das Kind sie selbst
     hinweise_sprechen: bool | None = None
     tasten_ansagen: bool | None = None
-    stimme: Stimmwahl | None = None                          # leer: die Vorlesestimme der Familie
+    stimme: Stimmwahl | None = None                          # eine der Vertonung oder die des Geräts; leer: die Stimme der Familie
 
 
 class Lesezeitregel(BaseModel):
@@ -100,6 +99,7 @@ class Einstellungen(BaseModel):
     katze: KatzeWahl = Field(default_factory=KatzeWahl)
     gestaltung: Gestaltungsart | None = None                 # leer: wie die Stufe (BF-88)
     uhr: Uhrart | None = None                                # leer: wie die Stufe
+    vorlesen: Vorlesewahl = Field(default_factory=Vorlesewahl)   # Stimme im Leser (Erwachsene) und Werte der Vertonung (BF-14)
 
 
 class EinstellungenEingabe(BaseModel):
@@ -110,6 +110,7 @@ class EinstellungenEingabe(BaseModel):
     katze: KatzeWahl | None = None
     gestaltung: Gestaltungsart | None = None
     uhr: Uhrart | None = None
+    vorlesen: Vorlesewahl | None = None
 
 
 class Katze(BaseModel):
@@ -128,6 +129,7 @@ class Profileinstellungen(BaseModel):
     katze: Katze
     gestaltung: Gestaltungsart | None                        # leer: kein Kinderbereich (Jugend)
     uhr: Uhrart
+    vorlesen: Vorlesewahl                                    # Werte der Vertonung für Vorlesen (BF-14); die Stimme steht in lesehilfen
 
 
 # -- Profile -------------------------------------------------------------------------------------------------------------------
@@ -207,6 +209,7 @@ class Ich(BaseModel):
     einblick: list[Einblickart]                              # was die Eltern sehen, für das Kind sichtbar; leer bei Erwachsenen
     gestaltung: Gestaltungsart | None = None                 # Kinderbereich klein oder groß; leer: die Oberfläche der App
     uhr: Uhrart | None = None                                # Uhr im Kopf der Gestaltung groß; leer bei Erwachsenen
+    vorlesen: Vorlesestand                                   # Stimme und Werte, mit denen dieses Profil vorgelesen bekommt (BF-14)
 
 
 # -- Stufen für die Oberfläche --------------------------------------------------------------------------------------------------

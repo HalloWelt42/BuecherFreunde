@@ -1,4 +1,4 @@
-"""Anschlüsse und Schlüsseldatei (BF-82): Kellerwolke, Leitstelle und Nachschlag mit Adresse und "Verbindung prüfen". Der
+"""Anschlüsse und Schlüsseldatei (BF-82): Kellerwolke, Leitstelle, Vertonung und Nachschlag mit Adresse und "Verbindung prüfen". Der
 Schlüssel geht nur in die eigene Schlüsseldatei (Modus 0600) und nie zurück; eine Datei aus der Einrichtung gilt weiter, bis in
 der App einer eingetragen ist. Gegenstellen sind Antworten aus einem Netz im Speicher, nie die echten."""
 
@@ -16,6 +16,7 @@ from backend.app.core.config import settings
 from backend.app.einrichtung import anschluesse
 from backend.app.services.ki import ki
 from tests.api.einrichtung_hilfen import APP_ZUGANG, LEITSTELLE, WOLKE, json_antwort, netz, neu, orte  # noqa: F401 - Fixtures
+from tests.api.vertonung_hilfen import VERTONUNG, vertonung  # noqa: F401 - Fixture
 
 pytestmark = pytest.mark.asyncio
 LEITSTELLE_SCHLUESSEL = "ls_probe_schluessel_abcdef"
@@ -37,7 +38,6 @@ def _gegenstellen(monkeypatch, *, wolke_ok: bool = True) -> list[httpx.Request]:
 
     monkeypatch.setattr(anschluesse, "_client", netz({
         "GET /api/v1/ablage/ich": ich, "GET /v1/models": modelle,
-        f"GET /v1/dienste/{settings.sprechdienst}/tts/voices": json_antwort({"speakers": [f"Stimme {i}" for i in range(18)]}),
         "GET /api/v1/buecher": json_antwort({"buecher": [{"kennung": "lex", "titel": "Probelexikon"}]}),
     }))
     return gesehen
@@ -56,7 +56,7 @@ async def test_schluessel_geht_nur_in_die_eigene_datei_und_nie_zurueck(neu, clie
     eintrag = {a["art"]: a for a in liste.json()}["leitstelle"]
     assert eintrag["adresse"] == LEITSTELLE and eintrag["herkunft"] == "app"
     assert eintrag["schluessel"] == {"eingetragen": True, "herkunft": "app", "vorgemerkt": False}
-    assert eintrag["pruefung"]["ok"] and eintrag["pruefung"]["text"] == "KI mit 2 Modellen, Sprechdienst mit 18 Stimmen"
+    assert eintrag["pruefung"]["ok"] and eintrag["pruefung"]["text"] == "KI mit 2 Modellen"
     assert ki.bereit and settings.leitstelle_adresse == LEITSTELLE, "die KI liest denselben Schlüsselbund"
     assert [p.name for p in datei.parent.iterdir()] == [datei.name], "keine Teildatei bleibt liegen"
 
@@ -96,6 +96,34 @@ async def test_nachschlag_ohne_schluessel(neu, client_ohne_auth, monkeypatch):
     n = {a["art"]: a for a in (await client_ohne_auth.get("/api/einrichtung/anschluesse")).json()}["nachschlag"]
     assert n["schluessel"] is None and n["pruefung"]["text"] == "1 Lexika und Handbücher"
     assert (await client_ohne_auth.put("/api/einrichtung/anschluesse/nachschlag", json={"adresse": "ftp://x"})).status_code == 422
+
+
+async def test_vertonung_ohne_eigenen_schluessel_mit_stimmen_und_freigabe(neu, vertonung, client_ohne_auth, monkeypatch):
+    monkeypatch.setattr(settings, "vertonung_url", "")
+    await client_ohne_auth.post("/api/einrichtung/ausgangslage", json={"ausgangslage": "neu"})
+    p = (await client_ohne_auth.post("/api/einrichtung/anschluesse/vertonung/pruefen", json={"adresse": VERTONUNG})).json()
+    assert p["ok"] and p["text"].startswith("Stimmen: 2 eingebaut, 1 fremd; ") and "in der Vertonung unter Private Stimmen für" in p["text"]
+    assert vertonung.anfragen[-1].headers["authorization"].startswith("Bearer kw_app_"), "der App-Zugang der Kellerwolke"
+    r = await client_ohne_auth.put("/api/einrichtung/anschluesse/vertonung", json={"adresse": VERTONUNG + "/"})
+    assert r.status_code == 200 and settings.vertonung_url == VERTONUNG
+    v = {a["art"]: a for a in (await client_ohne_auth.get("/api/einrichtung/anschluesse")).json()}["vertonung"]
+    assert (v["schluessel"], v["herkunft"], v["pruefung"]["ok"]) == (None, "app", True)
+    r = await client_ohne_auth.put("/api/einrichtung/anschluesse/vertonung", json={"adresse": VERTONUNG, "schluessel": "irgendein-schluessel"})
+    assert r.status_code == 422 and "keinen" in r.json()["detail"]
+    vertonung.privat_frei = True
+    p = (await client_ohne_auth.post("/api/einrichtung/anschluesse/vertonung/pruefen", json={})).json()
+    assert p["text"] == "Stimmen: 2 eingebaut, 1 fremd, 1 privat"
+    vertonung.ablehnen = (401, "Anmeldung erforderlich")
+    p = (await client_ohne_auth.post("/api/einrichtung/anschluesse/vertonung/pruefen", json={})).json()
+    assert p["ok"] is False and "lässt das nicht zu" in p["grund"]
+    r = await client_ohne_auth.put("/api/einrichtung/anschluesse/vertonung", json={"adresse": "https://andere-vertonung.probe.test"})
+    assert r.status_code == 422 and settings.vertonung_url == VERTONUNG, "die alte gilt weiter"
+
+
+async def test_vertonung_ohne_app_zugang_der_kellerwolke_nennt_den_grund(neu, client_ohne_auth):
+    await client_ohne_auth.post("/api/einrichtung/ausgangslage", json={"ausgangslage": "neu"})
+    p = (await client_ohne_auth.post("/api/einrichtung/anschluesse/vertonung/pruefen", json={"adresse": VERTONUNG})).json()
+    assert p["ok"] is False and "App-Zugang der Kellerwolke" in p["grund"], "geprüft wird ohne Aufruf, der Verbund hält vorher an"
 
 
 async def test_konto_mit_der_kellerwolke_traegt_adresse_und_schluessel_ein(neu, client_ohne_auth, monkeypatch):

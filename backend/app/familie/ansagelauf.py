@@ -1,10 +1,11 @@
-"""Der Auftrag "Ansagen erstellen" (BF-78): spricht je eingebauter Stimme vorab, was fehlt (familie/ansagen.py, `bedarf`), mit
-dem Sprechdienst über `services/vorlesen.satz` im Hintergrund (Vorrang "hintergrund"). Angestoßen nach der Wahl einer Stimme,
-nach einer Freigabe, dem Namen der Katze, einem neuen Profil oder Titel; beim Start und im Takt (`ANSAGEN_TAKT_S`) sieht er
-selbst nach. Was fertig ist, liegt als Datei; nach einem Neustart geht es mit dem weiter, was noch fehlt.
+"""Der Auftrag "Ansagen erstellen" (BF-78, BF-14): spricht je gewählter Stimme vorab, was fehlt (familie/ansagen.py, `bedarf`),
+über die Vertonung (`vorlesen/sprechen.ton`), eine Ansage nach der anderen. Angestoßen nach der Wahl einer Stimme, nach einer
+Freigabe, dem Namen der Katze, einem neuen Profil oder Titel; beim Start und im Takt (`ANSAGEN_TAKT_S`) sieht er selbst nach.
+Was fertig ist, liegt als Datei; nach einem Neustart geht es mit dem weiter, was noch fehlt.
 
-Der Stand je Stimme steht in `ansage_auftrag` (wartet, laeuft, fertig, fehler, mit Zahlen und Zeiten). Alte Töne einer Stimme
-räumt er erst weg, wenn die neuen fertig sind; die Probe bleibt. Eine Stimme, die niemand mehr hört, verliert ihre Töne."""
+Der Stand je Stimme steht in `ansage_auftrag` (wartet, laeuft, fertig, fehler, mit Zahlen und Zeiten). Wechselt ein Hörer die
+Stimme, entstehen seine Ansagen in der neuen neu; bis sie ganz sind, bleiben die Töne der bisherigen (`ansage_hoerer`) und gelten
+weiter. Alte Töne räumt er erst weg, wenn niemand sie mehr braucht; die Probe bleibt."""
 
 from __future__ import annotations
 
@@ -13,16 +14,18 @@ import logging
 import os
 from pathlib import Path
 
+from appkern.vorlesen import VorlesenFehler
+
 from backend.app.core.config import settings
 from backend.app.core.database import db
 from backend.app.familie import ansagen
 from backend.app.familie.ansagen import Eintrag
 from backend.app.familie.modelle import Ansagestand
-from backend.app.services import vorlesen
+from backend.app.vorlesen import sprechen, zugang
+from backend.app.vorlesen.modelle import vertont
 
 logger = logging.getLogger("buecherfreunde.familie.ansagen")
 JETZT = "strftime('%Y-%m-%dT%H:%M:%SZ', 'now')"
-OHNE_DIENST = "Es ist kein Sprechdienst angeschlossen (Leitstelle)"
 
 
 def ablegen(datei: Path, ton: bytes) -> None:
@@ -100,38 +103,68 @@ class Ansagelauf:
                 logger.exception("Ansagen erstellen")
 
     async def runde(self) -> None:
-        """Je Stimme, was fehlt; danach die Töne von Stimmen, die niemand mehr hört."""
-        bedarf = await ansagen.bedarf()
+        """Je Stimme, was fehlt; dann merkt sich jeder Hörer, welche Stimme er ganz hat; zuletzt fallen Töne weg, die niemand
+        mehr braucht."""
+        hoerende = await ansagen.je_hoerer()
+        bedarf = ansagen.bedarf(hoerende)
         for stimme, eintraege in bedarf.items():
             await self._stimme(stimme, eintraege)
+        schutz = await _hoerer_nachfuehren(hoerende)
+        probe = ansagen.probe().datei
+        for stimme, dateien in schutz.items():
+            # erst, wenn eine Stimme ganz ist, gehen ihre alten Töne; die bisherige eines Hörers behält, was er noch hört
+            if stimme not in bedarf or ansagen.ganz(stimme, bedarf[stimme]):
+                await asyncio.to_thread(_aufraeumen, ansagen.pfad(stimme), dateien | {probe})
         for alt in await staende():
-            if alt.stimme not in bedarf:
-                _aufraeumen(ansagen.pfad(alt.stimme), {ansagen.probe().datei})
+            if alt.stimme not in bedarf and alt.stimme not in schutz:
+                await asyncio.to_thread(_aufraeumen, ansagen.pfad(alt.stimme), {probe})
                 await db.execute("DELETE FROM ansage_auftrag WHERE stimme = ?", (alt.stimme,))
 
     async def _stimme(self, stimme: str, eintraege: list[Eintrag]) -> None:
         ort = ansagen.pfad(stimme)
         fehlen = [e for e in eintraege if not (ort / e.datei).exists()]
         gesamt, fertig = len(eintraege), len(eintraege) - len(fehlen)
-        if fehlen and not vorlesen.bereit():
-            await _stand(stimme, "fehler", gesamt, fertig, OHNE_DIENST)
+        if fehlen and not zugang.bereit():
+            await _stand(stimme, "fehler", gesamt, fertig, zugang.NICHT_EINGERICHTET if not zugang.adresse() else zugang.OHNE_ZUGANG)
             return
         if fehlen:
             await _stand(stimme, "laeuft", gesamt, fertig)
             logger.info("Ansagen erstellen für %s: %d fehlen", stimme, len(fehlen))
         for e in fehlen:
             try:
-                ton = await vorlesen.satz(e.text, stimme, prioritaet="hintergrund")
-            except vorlesen.VorlesenFehler as f:
+                ton = await sprechen.ton(e.text, stimme)
+            except VorlesenFehler as f:
                 await _stand(stimme, "fehler", gesamt, fertig, f.meldung)
                 return
             await asyncio.to_thread(ablegen, ort / e.datei, ton)
             fertig += 1
             await _stand(stimme, "laeuft", gesamt, fertig)
-        weg = await asyncio.to_thread(_aufraeumen, ort, {e.datei for e in eintraege} | {ansagen.probe().datei})
         alt = next(iter(await staende(stimme)), None)
-        if fehlen or weg or alt is None or (alt.stand, alt.gesamt, alt.fertig) != ("fertig", gesamt, fertig):
+        if fehlen or alt is None or (alt.stand, alt.gesamt, alt.fertig) != ("fertig", gesamt, fertig):
             await _stand(stimme, "fertig", gesamt, fertig)
+
+
+async def _hoerer_nachfuehren(hoerende: dict[str, tuple[str, list[Eintrag]]]) -> dict[str, set[str]]:
+    """Wer seine Stimme ganz hat, merkt sie sich; wer die Stimme gewechselt hat und die neue noch nicht ganz hat, behält die
+    Töne der bisherigen. Antwort: je Stimme die Dateien, die bleiben müssen (alles, was ein Hörer gerade mit ihr hört)."""
+    bisher = await ansagen.zuletzt_alle()
+    schutz: dict[str, set[str]] = {}
+    for wer, (stimme, eintraege) in hoerende.items():
+        ganz = vertont(stimme) and ansagen.ganz(stimme, eintraege)
+        if ganz or not vertont(stimme):                      # ganz da, oder das Gerät spricht selbst: nichts mehr zu überbrücken
+            gilt = stimme if ganz else ""
+            if bisher.get(wer, "") != gilt:
+                await db.execute("INSERT INTO ansage_hoerer (hoerer, stimme) VALUES (?, ?) ON CONFLICT(hoerer) DO UPDATE SET stimme = excluded.stimme",
+                                 (wer, gilt))
+            if ganz:
+                schutz.setdefault(stimme, set()).update(e.datei for e in eintraege)
+        else:
+            schutz.setdefault(stimme, set()).update(e.datei for e in eintraege)
+            if vorher := bisher.get(wer, ""):
+                schutz.setdefault(vorher, set()).update(e.datei for e in eintraege)
+    for wer in set(bisher) - set(hoerende):                  # ein Profil, das es nicht mehr gibt
+        await db.execute("DELETE FROM ansage_hoerer WHERE hoerer = ?", (wer,))
+    return schutz
 
 
 ansagelauf = Ansagelauf()

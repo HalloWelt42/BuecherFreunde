@@ -38,8 +38,27 @@ export interface Lesehilfen {
   hinweise_sprechen: boolean;
   /** Eine gedrückte Taste sagt, was sie tut */
   tasten_ansagen: boolean;
-  /** Stimme der Ansagen: "katalog:<name>" aus dem Sprechdienst, "geraet" oder leer: die Stimme der Familie */
+  /** Stimme für Vorlesen und Ansagen: eine der Vertonung ("katalog:<name>" oder die Kennung einer Klonstimme), "geraet" oder leer:
+   *  die Stimme der Familie */
   stimme?: string;
+}
+
+/** Ein Wert für eine Einstellung der Vertonung (Tempo, Sprache und mehr, nach ihrer Beschreibung) */
+export type Sprechwert = boolean | number | string;
+
+/** Vorlesen je Profil (BF-14), gespeichert: die Stimme im Leser (nur Erwachsene) und die Werte der Vertonung */
+export interface Vorlesewahl {
+  stimme: string | null;
+  werte: Record<string, Sprechwert>;
+}
+
+/** Womit das aktive Profil vorgelesen bekommt */
+export interface Vorlesestand {
+  /** Wie die Vertonung sie schreibt, "geraet" oder "geraet:<Stimme des Browsers>"; leer: die Stimme ab Werk der Vertonung */
+  stimme: string;
+  werte: Record<string, Sprechwert>;
+  /** Erwachsene wählen im Leser selbst, für Kinder die Eltern */
+  eigene_wahl: boolean;
 }
 
 export interface Lesezeitregel {
@@ -69,6 +88,8 @@ export interface Profileinstellungen {
   /** null: kein Kinderbereich, die Oberfläche der App (Jugend) */
   gestaltung: Gestaltung | null;
   uhr: Kopfuhr;
+  /** Werte der Vertonung für Vorlesen; die Stimme steht in den Lesehilfen */
+  vorlesen?: Vorlesewahl;
 }
 
 /** Ein Profil, ohne Geheimnisse */
@@ -149,6 +170,7 @@ export interface Ich {
   gestaltung: Gestaltung | null;
   /** Uhr im Kopf der Gestaltung groß; null bei Erwachsenen */
   uhr: Kopfuhr | null;
+  vorlesen: Vorlesestand;
 }
 
 /** Was die Eltern im Einblick sehen */
@@ -255,7 +277,7 @@ export interface Einblick {
   eintraege: Einblickeintrag[];
 }
 
-/** Die Ansagen spricht das Gerät selbst; gedacht für Installationen ohne Sprechdienst */
+/** Die Ansagen spricht das Gerät selbst; gedacht für Installationen ohne Vertonung */
 export const GERAETESTIMME = "geraet";
 
 /** Der Auftrag "Ansagen erstellen" für eine Stimme: wie weit, seit wann, warum nicht */
@@ -265,7 +287,7 @@ export interface Ansagenstand {
   stand: "wartet" | "laeuft" | "fertig" | "fehler";
   gesamt: number;
   fertig: number;
-  /** Warum es nicht weitergeht, etwa ohne Sprechdienst */
+  /** Warum es nicht weitergeht, etwa ohne Vertonung */
   grund: string;
   begonnen: string | null;
   geaendert: string | null;
@@ -293,6 +315,8 @@ export const ladeIch = (): Promise<Ich> => get(`${WEG}/ich`);
 export const waehleProfil = (profil_id: string, nachweis: Nachweis = {}): Promise<Wahl> => post(`${WEG}/wahl`, { profil_id, ...nachweis });
 export const verlasseProfil = (eltern_pin?: string): Promise<unknown> => post(`${WEG}/verlassen`, eltern_pin ? { eltern_pin } : {});
 export const setzeKatzenname = (name: string): Promise<Katze> => patch(`${WEG}/ich/katze`, { name });
+/** Die eigene Stimme im Leser (Erwachsene); leer: die Stimme ab Werk der Vertonung */
+export const setzeVorlesestimme = (stimme: string): Promise<Vorlesestand> => patch(`${WEG}/ich/vorlesen`, { stimme });
 export const meldeLesezeit = (sekunden: number, vorlesen: boolean): Promise<Lesezeitstand> => post(`${WEG}/lesezeit`, { sekunden, vorlesen });
 
 export const legeProfilAn = (angaben: Profilangaben): Promise<Profil> => post(`${WEG}/profile`, angaben);

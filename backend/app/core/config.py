@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     fundus_sammlung: str = "Bücher"
     assistent_url: str = ""
     nachschlag_url: str = ""           # Nachschlagen in Lexika und Handbüchern; leer: die Fähigkeit fehlt
+    # Vorlesen und feste Ansagen über die Vertonung (BF-14), angemeldet mit dem App-Zugang der Kellerwolke; leer: nur die Stimme des Geräts
+    vertonung_url: str = ""
     # Codestellen ausführen (BF-29): Sandbox der Codeschmiede; leer: die Fähigkeit fehlt, die Erkennung läuft trotzdem
     codeschmiede_url: str = ""
     codestellen_je_runde: int = Field(default=3, ge=0)        # so viele Bücher erkennt die Pflege je Runde nach (alle 10 Minuten)
@@ -55,7 +57,6 @@ class Settings(BaseSettings):
     leitstelle_adresse: str = ""
     leitstelle_schluessel_datei: str = ""                     # Schlüssel der Anwendung (Datei, Modus 0600)
     ki_modell: str = "qwen/qwen3-next-80b"                    # Modellwahl der App; die Leitstelle wählt nie eins
-    sprechdienst: str = "klangwerk-sprechen"                  # Vorlesen über diesen Dienst der Leitstelle; ohne: Stimmen des Geräts
     # Bücher übersetzen (BF-71): Englisch nach Deutsch über die Leitstelle, je Buch auf Wunsch
     uebersetzen_s_je_seite: float = Field(default=30, gt=0)         # Schätzung vor dem ersten fertigen Lauf, mit Prüfung
     uebersetzen_woerter_je_seite: int = Field(default=400, ge=50)   # so viele Wörter Text gelten als eine Seite

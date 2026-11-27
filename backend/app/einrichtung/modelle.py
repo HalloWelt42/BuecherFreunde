@@ -13,7 +13,7 @@ from backend.app.core.schluessel import Schluesselstand
 Modus = Literal["neu", "wartung", "aus"]
 Ausgangslagename = Literal["neu", "sicherung", "kellerwolke", "umzug"]
 Schrittstand = Literal["offen", "erledigt", "uebersprungen", "entfaellt"]
-Anschlussart = Literal["kellerwolke", "leitstelle", "nachschlag"]
+Anschlussart = Literal["kellerwolke", "leitstelle", "vertonung", "nachschlag"]
 Auftragsart = Literal["pruefung", "neuaufbau", "kopieren"]
 Auftragsstandart = Literal["", "wartet", "laeuft", "pause", "fertig", "fehler"]
 
@@ -98,7 +98,7 @@ class Orte(BaseModel):
 
 class Verbindungspruefung(BaseModel):
     ok: bool
-    text: str = ""                    # etwa "BücherFreunde, Konto anna" oder "KI mit 3 Modellen, Sprechdienst mit 18 Stimmen"
+    text: str = ""                    # etwa "BücherFreunde, Konto anna", "KI mit 3 Modellen" oder "Stimmen: 9 eingebaut, 2 fremd"
     grund: str = ""                   # warum nicht
     am: str | None = None
     app: str = ""                     # nur Kellerwolke: der Name der App und das Konto, dem der App-Zugang gehört

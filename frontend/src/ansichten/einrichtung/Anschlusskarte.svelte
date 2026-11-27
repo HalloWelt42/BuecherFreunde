@@ -13,8 +13,9 @@
   /** `children`: was zum Anschluss gehört, etwa die Sicherungen in der Kellerwolke */
   let { anschluss, ongeaendert, children = undefined }: { anschluss: Anschluss; ongeaendert: () => Promise<void>; children?: Snippet } = $props();
 
-  const ZEICHEN = { kellerwolke: "cloud", leitstelle: "tower-broadcast", nachschlag: "book-atlas" };
-  const PLATZHALTER = { kellerwolke: "https://wolke.beispiel.lan", leitstelle: "https://leitstelle.beispiel.lan", nachschlag: "https://nachschlag.beispiel.lan" };
+  const ZEICHEN = { kellerwolke: "cloud", leitstelle: "tower-broadcast", vertonung: "volume-high", nachschlag: "book-atlas" };
+  const PLATZHALTER = { kellerwolke: "https://wolke.beispiel.lan", leitstelle: "https://leitstelle.beispiel.lan", vertonung: "https://vertonung.beispiel.lan",
+    nachschlag: "https://nachschlag.beispiel.lan" };
 
   let adresse = $state(untrack(() => anschluss.adresse));
   let schluessel = $state("");

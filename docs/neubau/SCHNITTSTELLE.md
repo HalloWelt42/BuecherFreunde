@@ -627,6 +627,57 @@ Plan, Begriffe und alle Wege unter `/api/katalog` stehen in [KATALOG.md](KATALOG
   Neustart weiter), `katalog_alt_vorschlag` (`regal_id`, `kategorie_id` leer für Schlagwort, `grund`, `geprueft_am`): was die
   KI je altem Regal vorschlägt.
 
+## Vorlesen über die Vertonung (BF-14)
+
+Plan und Entscheidungen in [STIMMEN.md](STIMMEN.md); gebaut in `backend/app/vorlesen/` (`zugang.py` Adresse und Verbund, `stimmen.py`,
+`sprechen.py`, `beschreibung.py` mit den deutschen Namen in `beschriftungen.json`, Formen in `modelle.py`), Wege in
+`backend/app/api/vorlesen.py`. Gesprochen wird nur von der Vertonung (`VERTONUNG_URL` oder Anschlüsse, Vertonung), angemeldet mit dem
+App-Zugang der Kellerwolke über den Verbund des Appkerns (`appkern.verbund`); Form der Stimmen, Teile und Zeilen kommen aus dem
+Baustein `appkern.vorlesen`. Ohne Vertonung bleibt die Stimme des Geräts als ausdrückliche Wahl, die spricht die Oberfläche selbst.
+
+**Stimmen** heißen, wie die Vertonung sie schreibt: `katalog:<name>` (eingebaut) oder die Kennung einer Klonstimme (UUID, privat oder
+fremd). Dazu `geraet` (die Stimme des Geräts, für Ansagen und Kinder) und im Leser `geraet:<Name der Stimme im Browser>`. Frühere
+Werte `katalog:<name>` gelten unverändert, die Vertonung schreibt ihre eingebauten Stimmen genauso.
+
+| Weg | Zweck |
+|---|---|
+| `GET /api/vorlesen/stimmen` | `Stimmenliste`, jedes Mal neu aus der Vertonung (`GET /api/v1/stimmen` je Bereich) |
+| `GET /api/vorlesen/beschreibung` | `Beschreibung`: was die Vertonung zum Sprechen anbietet |
+| `POST /api/vorlesen` `{text, stimme}` | der Strom Satz für Satz (NDJSON), mit den Werten des aktiven Profils |
+| `PATCH /api/familie/ich/vorlesen` `{stimme?, werte?}` | ein Erwachsener wählt im Leser seine Stimme und seine Werte, was fehlt, bleibt; Antwort `Vorlesestand`; Kinder 403 |
+
+```
+Stimmenliste:  { da, stimmen: [Stimme], bereiche: [Bereichsstand], hinweis }
+Stimme:        { id, name, bereich: "privat" | "fremd" | "katalog", sprache }
+Bereichsstand: { bereich, frei, hinweis }
+Beschreibung:  { da, felder: [Feld], hinweis }
+Feld:          { schluessel, name, art: "zahl" | "ganzzahl" | "schalter" | "text" | "wahl", von, bis, vorgabe, werte: [{wert, name}],
+                 erklaerung, mehr }
+Vorlesestand:  { stimme, werte, eigene_wahl }
+```
+
+- **Bereiche** in der Folge der Vertonung: privat, fremd, katalog. Gibt sie BücherFreunde keine privaten Stimmen frei (401 oder 403 nur
+  für diesen Bereich), steht `privat` mit `frei` false und `hinweis` da: ihr Grund und "Freigabe in der Vertonung unter Private
+  Stimmen für"; die übrigen Bereiche kommen trotzdem. Antwortet sie nicht, `da` false mit `hinweis`; ohne eingetragene Vertonung `da`
+  false ohne Hinweis. `sprache` ist die Sprache der Probe einer Klonstimme.
+- **Strom**: der Text geht in Teilen bis 7500 Zeichen an Satzgrenzen an `POST /api/v1/sprechen/strom` (die Vertonung nimmt 8000), mit
+  `ausschreiben` true, den Werten des Profils und der Stimme (`{art: katalog, name}` oder `{art: klon, knoten_id}`; ohne Stimme ihre
+  Stimme ab Werk). Zeilen `{art: satz, nr, text, gesprochen, von_zeichen, bis_zeichen, dauer_ms, ton}` (Ton als Base64-WAV, `nr`
+  über alle Teile), zuletzt `{art: ende, saetze, dauer_ms}`. Was vor dem ersten Satz scheitert, ist eine Antwort mit Grund: 403, wenn
+  die Vertonung ablehnt (nie 401), 503 ohne Vertonung oder wenn sie nicht erreichbar ist, 400 für eine Stimme, die sie nicht spricht
+  (auch `geraet`); danach eine Zeile `{art: fehler, meldung}`.
+- **Kurze Texte** (feste Ansagen, Probe) gehen an `POST /api/v1/sprechen` und kommen als eine WAV.
+- **Beschreibung**: aus dem Schema der Vertonung (`GET /api/v1/schnittstelle`, Modell der Anfrage an den Strom); jedes Feld außer
+  `text` und `stimme` ist eine Einstellung mit Art, Grenzen (`minimum`, `maximum`) und Vorgabe. Namen aus `vorlesen/beschriftungen.json`;
+  ein Feld, das dort fehlt, behält den Namen der Vertonung und hat `mehr` true. Listen und Objekte bleiben weg. Zeigt die Vertonung ihr
+  Schema nicht (heute nur Menschen in ihrer Oberfläche, 403 für Apps), ist `da` false mit Hinweis.
+- **Je Profil** in `profil.einstellungen.vorlesen` `{stimme, werte}`: Werte gelten nur, wenn sie zur Beschreibung passen (422 sonst, auch
+  ohne Beschreibung); leer geht immer. Ein Kind hat dort keine Stimme (422), seine steht in `lesehilfen.stimme`; seine Werte setzen die
+  Eltern mit `PATCH /api/familie/profile/{id}` `{einstellungen: {vorlesen: {werte}}}`. Die Werte gehen mit jedem Strom des Profils an
+  die Vertonung; für die festen Ansagen gelten sie noch nicht. Bedienelemente für die Werte gibt es erst mit einem Entwurf.
+- **Verbindungen**: `GET /api/verbindungen` nennt die Vertonung (`kennung` vertonung): `gut` mit der Zahl der Stimmen, `warn` mit dem
+  Hinweis, wenn private Stimmen nicht frei sind, `schlecht`, wenn sie nicht antwortet.
+
 ## Familie (BF-78)
 
 Plan und Grundform der Wege in `docs/neubau/FAMILIE.md` (Schnittstelle); hier, was dazukam oder genauer feststeht. Die Arbeit
@@ -654,7 +705,7 @@ tut `backend/app/familie/`, die Wege stehen in `backend/app/api/familie.py`, Stu
   hat_bild_pin, geburtsjahr, einstellungen}`; Geburtsjahr und Einstellungen nur für die, die das Profil ändern dürfen, und für
   das Profil selbst (sonst null). `einstellungen` (nur Kinder) ist, was wirkt: `{lesehilfen: {mitlesen, tempo, silben,
   lesezeile, schrift, schrift_wahl, hinweise_sprechen, tasten_ansagen, stimme}, lesezeit: {an, minuten, ruhe_an, ruhe_von, ruhe_bis, vorlesen_zaehlt}, katze: {an, name, schnurren,
-  name_eingabe}, gestaltung, uhr}`; ohne Wahl der Eltern gelten die Lesehilfen, Katze, Gestaltung und Uhr der Stufe und die
+  name_eingabe}, gestaltung, uhr, vorlesen: {stimme, werte}}` (`vorlesen` siehe Vorlesen über die Vertonung); ohne Wahl der Eltern gelten die Lesehilfen, Katze, Gestaltung und Uhr der Stufe und die
   Lesezeit nach dem Alter. Beim Anlegen und Ändern ersetzt jeder genannte Teil von `einstellungen` den gespeicherten, die übrigen
   bleiben. `schrift`: klein, mittel, gross (Anteil an der Größe der Stufe, `gestaltung.schriftgroessen`). `GET /api/familie/profile/{id}` gibt ein Profil einzeln.
 - **GET /api/familie** dazu `aktiv` (das Profil des Schlüssels, wenn er gilt), `geraet: {gebunden_an, fest_auf, offen}`
@@ -690,11 +741,12 @@ tut `backend/app/familie/`, die Wege stehen in `backend/app/api/familie.py`, Stu
   `PATCH /api/familie/ich/schrift {schrift_wahl}`: das Kind schaltet beim Lesen selbst um, nur in der Gestaltung groß (sonst 403,
   dann wählen die Eltern); es ändert nur die Leseschrift und antwortet mit dem neuen Ich.
 - **Hinweise sprechen, Tasten ansagen**: `lesehilfen.hinweise_sprechen` und `lesehilfen.tasten_ansagen`, Vorgabe an in Vorlesen
-  und Erstes Lesen, aus ab Lesen und Lernen (Gestaltung groß); die Eltern ändern beides. `lesehilfen.stimme`: eine Stimme aus dem Katalog des Sprechdienstes
-  (`katalog:<name>`, aus `GET /api/vorlesen/stimmen`), `geraet` für die Stimme des Geräts (nur für Installationen ohne
-  Sprechdienst, immer eine ausdrückliche Wahl, nie ein stiller Rückfall) oder leer: die Vorlesestimme der Familie. Gibt es keine,
-  schweigen die Ansagen und der Elternbereich zeigt "Stimme wählen".
-- **Feste Ansagen** (`familie/ansagen.json`, `familie/ansagen.py`): vorab gesprochen mit der eingebauten Stimme und dauerhaft im
+  und Erstes Lesen, aus ab Lesen und Lernen (Gestaltung groß); die Eltern ändern beides. `lesehilfen.stimme`: eine Stimme der Vertonung
+  (`katalog:<name>` oder die Kennung einer Klonstimme, privat oder fremd, aus `GET /api/vorlesen/stimmen`), `geraet` für die Stimme des
+  Geräts (nur für Installationen ohne Vertonung, immer eine ausdrückliche Wahl, nie ein stiller Rückfall) oder leer: die Vorlesestimme
+  der Familie. Sie gilt für die Ansagen und das Vorlesen des Kindes. Gibt es keine, schweigen die Ansagen und der Elternbereich zeigt
+  "Stimme wählen".
+- **Feste Ansagen** (`familie/ansagen.json`, `familie/ansagen.py`): vorab gesprochen über die Vertonung mit der gewählten Stimme und dauerhaft im
   Ort texte unter `ansagen/<ordner der stimme>/<schluessel>-<pruefsumme>.wav` (Prüfsumme aus Fassung und Text: ein geänderter
   Text gibt einen neuen Ton). Die Schlüssel heißen `gruppe.name`:
   - `tasten.<name>`: weiter, zurueck, pause, vorlesen, silben_an, silben_aus, zeile_an, zeile_aus, mein_regal, lieblinge,
@@ -709,24 +761,28 @@ tut `backend/app/familie/`, die Wege stehen in `backend/app/api/familie.py`, Stu
     `katze.<vorschlag>` im Vorlesealter (die Vorschläge aus `stufen.json`, `katze.vorschlaege`), `ruhezeit` ("Jetzt ist
     Ruhezeit. Ab sechs Uhr dreißig kannst du wieder lesen.", mit dem Ende seiner Ruhezeit), `profil.<profil>` (die Namen für
     "Wer liest?", in der Stimme der Familie); `probe` ist der Probesatz.
-- **Ansagen erstellen** (`familie/ansagelauf.py`): ein Auftrag im Hintergrund (Vorrang "hintergrund" bei der Leitstelle), je
+- **Ansagen erstellen** (`familie/ansagelauf.py`): ein Auftrag im Hintergrund über die Vertonung (`POST /api/v1/sprechen`), je
   Stimme nur, was fehlt; angestoßen nach der Wahl einer Stimme, nach Freigaben, dem Namen der Katze, Anlegen, Ändern und
   Löschen von Profilen und einem neuen Titel, beim Start und im Takt `ANSAGEN_TAKT_S` (600). Nach einem Neustart geht er mit dem
-  weiter, was fehlt. Alte Töne einer Stimme räumt er erst weg, wenn die neuen fertig sind; die Probe bleibt; eine Stimme, die
-  niemand mehr hört, verliert ihre Töne. Ohne Sprechdienst steht der Grund am Auftrag.
+  weiter, was fehlt. Wechselt ein Hörer (ein Kind oder die Profilwahl) die Stimme, entstehen seine Ansagen in der neuen; bis sie
+  ganz sind, gilt je Ansage der Ton der bisherigen (Tabelle `ansage_hoerer`: je Hörer die Stimme, die er zuletzt ganz hatte). Alte
+  Töne einer Stimme räumt er erst weg, wenn die neuen fertig sind und niemand sie mehr braucht; die Probe bleibt. Ohne Vertonung
+  steht der Grund am Auftrag.
 - **Wege der Ansagen**:
   - `GET /api/familie/ansagen`: `{stimme, fertig, gesamt, laeuft, eintraege: {schluessel: {text, url}}}` für das aktive
-    Profil, ohne Profil für die Profilwahl (Hinweise, Tasten, Uhr, `profil.<id>`); nur fertige Einträge. Mit der Stimme des
-    Geräts alle Texte mit `url` null, ohne Stimme keine.
+    Profil, ohne Profil für die Profilwahl (Hinweise, Tasten, Uhr, `profil.<id>`); nur fertige Einträge, nach einem Wechsel der
+    Stimme je Eintrag auch der Ton der bisherigen, bis die neue ihn ersetzt. Mit der Stimme des Geräts alle Texte mit `url` null,
+    ohne Stimme keine.
   - `GET /api/familie/ansagen/ton/{ordner}/{datei}`: der Ton (`audio/wav`, `Cache-Control` ein Jahr, `immutable`, `ETag`, 304
     auf `If-None-Match`), ohne Kopf über die Cookies der Anmeldung und der Wahl. Ein Kind nur für seine Stimme, die Profilwahl
-    nur für die der Familie, Erwachsene jede (403 sonst).
+    nur für die der Familie, beide bis zum Ersatz auch für die bisherige; Erwachsene jede (403 sonst).
   - `POST /api/familie/ansagen/probe {stimme}` für Erwachsene mit `profile` oder `freigeben`: `{text, url}` des Probesatzes
-    ("Hallo, ich lese dir vor. Tippe auf ein Buch."), abgelegt wie die Ansagen; mit `geraet` nur der Text; ohne Sprechdienst
-    503 mit Grund.
+    ("Hallo, ich lese dir vor. Tippe auf ein Buch."), gesprochen von der Vertonung und abgelegt wie die Ansagen; mit `geraet` nur
+    der Text; ohne Vertonung 503 mit Grund.
   - `GET /api/familie/ansagen/stand?stimme=`: `[{was: "Ansagen erstellen", stimme, stand (wartet, laeuft, fertig, fehler),
     gesamt, fertig, grund, begonnen, geaendert, fertig_am}]`, ebenso nur für Erwachsene mit `profile` oder `freigeben`.
-- **GET /api/familie/ich**: `{profil, faehigkeiten, darstellung, lesehilfen, lesezeit, katze, einblick, gestaltung, uhr}`; für
+- **GET /api/familie/ich**: `{profil, faehigkeiten, darstellung, lesehilfen, lesezeit, katze, einblick, gestaltung, uhr, vorlesen}`
+  (`vorlesen`: Stimme und Werte, mit denen das Profil vorgelesen bekommt, siehe Vorlesen über die Vertonung); für
   Erwachsene `darstellung` `{}`, `lesehilfen` null, `lesezeit.an` false, `katze.an` false, `einblick` leer, `gestaltung` und `uhr`
   null. `lesezeit`: `{an, heute_s, grenze_s, rest_s, hinweis_ab_s, ruht, ruhe_bis}`. `PATCH /api/familie/ich/katze {name}`
   antwortet mit der Katze, `PATCH /api/familie/ich/schrift {schrift_wahl}` mit dem Ich (Gestaltung).
@@ -820,16 +876,18 @@ Platte fehlt). `text` sagt, was eingerichtet ist ("Leer begonnen") oder dass üb
 ### Anschlüsse
 
 ```
-Anschluss: { art: "kellerwolke" | "leitstelle" | "nachschlag", name, adresse, herkunft: "app" | "einrichtung" | "",
+Anschluss: { art: "kellerwolke" | "leitstelle" | "vertonung" | "nachschlag", name, adresse, herkunft: "app" | "einrichtung" | "",
              schluessel: { eingetragen, herkunft: "app" | "einrichtung" | "", vorgemerkt } | null, hinweis, pruefung: Verbindungspruefung | null }
 Verbindungspruefung: { ok, text, grund, am }
 ```
 
 `herkunft` der Adresse: `app` in der App eingetragen (`app_settings` `anschluss_<art>`, gilt vor der .env), `einrichtung` aus der
-.env, leer keine. `schluessel` null: dieser Anschluss hat keinen (Nachschlag; er kennt die App über ihren Zugang der Kellerwolke).
+.env, leer keine. `schluessel` null: dieser Anschluss hat keinen (Vertonung und Nachschlag; sie kennen die App über ihren Zugang der
+Kellerwolke). Die Prüfung der Vertonung fragt ihre Stimmen je Bereich wie das Vorlesen.
 `hinweis` bei der Kellerwolke: dass Persönliches je Buch dort liegt und wer die Kellerwolke verwaltet, es lesen könnte. `pruefung`:
-die letzte Prüfung seit dem Start; `text` etwa `"BücherFreunde, Konto mira"`, `"KI mit 2 Modellen, Sprechdienst mit 18 Stimmen"`,
-`"12 Lexika und Handbücher"`, `grund` etwa `"Die Kellerwolke kennt diesen App-Zugang nicht"`.
+die letzte Prüfung seit dem Start; `text` etwa `"BücherFreunde, Konto mira"`, `"KI mit 2 Modellen"`, `"Stimmen: 9 eingebaut, 2 fremd"`
+(dazu der Hinweis, wenn private Stimmen nicht frei sind), `"12 Lexika und Handbücher"`, `grund` etwa `"Die Kellerwolke kennt diesen
+App-Zugang nicht"`.
 
 | Weg | Zweck |
 |---|---|

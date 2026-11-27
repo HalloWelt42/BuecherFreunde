@@ -32,7 +32,7 @@
     if (!stand) return "";
     if (stand.stand === "fehler") return stand.grund || "Die Ansagen entstehen gerade nicht";
     if (entsteht) return `werden erstellt: ${stand.fertig} von ${stand.gesamt}`;
-    return `${stand.gesamt} feste Ansagen fertig, auch ohne Sprechdienst`;
+    return `${stand.gesamt} feste Ansagen fertig, auch ohne Vertonung`;
   });
 
   // Stand der festen Ansagen; solange sie entstehen, wieder und wieder

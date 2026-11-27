@@ -1,17 +1,49 @@
-// Vorlesen über den Server: Stimmen zur Wahl, der Ton als Strom und je Buch die Stelle, an der es stehen blieb
+// Vorlesen über den Server und die Vertonung (BF-14): Stimmen zur Wahl mit ihren Bereichen, der Ton als Strom und je Buch die
+// Stelle, an der es stehen blieb
 import { anfrage, get } from "./client";
 
+/** Wo eine Stimme der Vertonung herkommt: freigegebene private, fremde Klonstimmen, ihr Katalog */
+export type Stimmbereich = "privat" | "fremd" | "katalog";
+
 export interface Dienststimme {
+  /** Wie die Vertonung sie schreibt: "katalog:<name>" oder die Kennung einer Klonstimme */
   id: string;
   name: string;
-  gruppe: "eigene" | "weitere" | "eingebaut";
+  bereich: Stimmbereich;
+  /** Sprache der Probe einer Klonstimme */
+  sprache: string | null;
+}
+
+export interface Bereichsstand {
+  bereich: Stimmbereich;
+  /** Gibt die Vertonung diesen Bereich BücherFreunde frei? */
+  frei: boolean;
+  /** Gesperrt: Grund und Weg zur Freigabe */
+  hinweis: string;
 }
 
 export interface Dienststimmen {
   da: boolean;
   stimmen: Dienststimme[];
+  bereiche: Bereichsstand[];
   hinweis: string;
 }
+
+/** Die Bereiche als Gruppen der Stimmenwahl, in der Folge der Vertonung */
+export const BEREICHSNAMEN: Record<Stimmbereich, string> = { privat: "Private Stimmen", fremd: "Fremde Stimmen", katalog: "Eingebaute Stimmen" };
+
+/** Die Stimmen gruppiert nach Bereich, als [Gruppe, [Wert, Name]]; `wert` macht aus der Kennung den Wert der Auswahl */
+export function stimmgruppen(d: Dienststimmen | null, wert: (id: string) => string = (id) => id): [string, [string, string][]][] {
+  const aus: [string, [string, string][]][] = [];
+  for (const bereich of Object.keys(BEREICHSNAMEN) as Stimmbereich[]) {
+    const liste = (d?.stimmen ?? []).filter((s) => s.bereich === bereich).map((s): [string, string] => [wert(s.id), s.name]);
+    if (liste.length) aus.push([BEREICHSNAMEN[bereich], liste]);
+  }
+  return aus;
+}
+
+/** Warum private Stimmen fehlen und wo man sie freigibt; leer, wenn sie frei sind */
+export const freigabeHinweis = (d: Dienststimmen | null): string => d?.bereiche.find((b) => !b.frei)?.hinweis ?? "";
 
 export const ladeDienststimmen = (): Promise<Dienststimmen> => get("/api/vorlesen/stimmen");
 

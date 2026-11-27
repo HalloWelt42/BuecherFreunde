@@ -59,7 +59,7 @@ BEGIN DELETE FROM freigabe WHERE art = 'buch' AND ziel_id = OLD.id; END;
 CREATE TRIGGER IF NOT EXISTS freigabe_kategorie_fort AFTER DELETE ON categories
 BEGIN DELETE FROM freigabe WHERE art = 'kategorie' AND ziel_id = OLD.id; END;
 CREATE TABLE IF NOT EXISTS ansage_auftrag (          -- der Auftrag "Ansagen erstellen" je Stimme (familie/ansagelauf.py)
-    stimme TEXT PRIMARY KEY,                         -- katalog:<name>
+    stimme TEXT PRIMARY KEY,                         -- wie die Vertonung sie schreibt: katalog:<name> oder die Kennung einer Klonstimme
     stand TEXT NOT NULL DEFAULT 'wartet',            -- wartet, laeuft, fertig, fehler
     gesamt INTEGER NOT NULL DEFAULT 0,
     fertig INTEGER NOT NULL DEFAULT 0,
@@ -67,6 +67,10 @@ CREATE TABLE IF NOT EXISTS ansage_auftrag (          -- der Auftrag "Ansagen ers
     begonnen TEXT DEFAULT NULL,
     geaendert TEXT NOT NULL DEFAULT {JETZT},
     fertig_am TEXT DEFAULT NULL
+);
+CREATE TABLE IF NOT EXISTS ansage_hoerer (           -- je Hörer die Stimme, deren Ansagen er zuletzt ganz hatte (BF-14)
+    hoerer TEXT PRIMARY KEY,                         -- die Kennung eines Kindes oder 'profilwahl'
+    stimme TEXT NOT NULL                             -- nach einem Wechsel gelten ihre Töne, bis die der neuen Stimme da sind
 );
 CREATE TABLE IF NOT EXISTS lesezeit (                -- je Kind und Tag, gezählt im Takt des Lesers
     profil_id TEXT NOT NULL REFERENCES profil(id) ON DELETE CASCADE,

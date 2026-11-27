@@ -5,6 +5,7 @@ andere ein Profil."""
 from __future__ import annotations
 
 from appkern.anmeldung import AnmeldungsFehler, Konto
+from appkern.vorlesen import VorlesenFehler
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response, status
 from fastapi.responses import FileResponse
 
@@ -14,13 +15,14 @@ from backend.app.core.auth import braucht, profil, verify_konto, verify_konto_in
 from backend.app.core.database import db
 from backend.app.familie import ansagen, einblick, freigaben, geraet, ich, lesezeit, profile, rechte, sitzung
 from backend.app.familie.ansagelauf import ablegen, ansagelauf, laeuft, staende
-from backend.app.services import vorlesen
 from backend.app.familie.fehler import Familienfehler, ZuVieleVersuche
 from backend.app.familie.modelle import (
-    Einblicksantwort, Familie, Freigabeauftrag, Freigaben, Geraetestand, GeraetBinden, GeraetLoesen, Gewaehlt, Ich, Katze, KatzeName,
-    Lesezeitmeldung, Lesezeitstand, Loeschfolgen, PinSetzen, PinVergessen, Profil, ProfilAenderung, ProfilEintrag, ProfilNeu,
-    Schriftwechsel, Stufenansicht, Verlassen, Wahl, Ansageeintrag, Ansagen, Ansagestand, Stimmeingabe,
+    Einblicksantwort, Familie, Freigabeauftrag, Freigaben, Geraetestand, GeraetBinden, GeraetLoesen, Gewaehlt, Ich,
+    Katze, KatzeName, Lesezeitmeldung, Lesezeitstand, Loeschfolgen, PinSetzen, PinVergessen, Profil, ProfilAenderung, ProfilEintrag,
+    ProfilNeu, Schriftwechsel, Stufenansicht, Verlassen, Wahl, Ansageeintrag, Ansagen, Ansagestand, Stimmeingabe,
 )
+from backend.app.vorlesen import sprechen
+from backend.app.vorlesen.modelle import GERAET, Vorlesestand, Vorlesewahl, vertont
 
 router = APIRouter(prefix="/api/familie", tags=["Familie"])
 COOKIE_DAUER = 400 * 24 * 60 * 60                  # das Cookie gilt so lange wie der Schlüssel; abgemeldet wird mit verlassen
@@ -170,6 +172,16 @@ async def katze_benennen(k: KatzeName, p: Profil = Depends(profil)) -> Katze:
     return katze
 
 
+@router.patch("/ich/vorlesen", response_model=Vorlesestand)
+async def vorlesen_waehlen(w: Vorlesewahl, p: Profil = Depends(profil)) -> Vorlesestand:
+    """Ein Erwachsener wählt im Leser seine Stimme und seine Werte (BF-14); was nicht genannt ist, bleibt. Kinder: 403, dort
+    wählen die Eltern."""
+    try:
+        return await ich.vorlesen(await profile.vorlesen_waehlen(p, w))
+    except Familienfehler as f:
+        raise _http(f) from f
+
+
 @router.patch("/ich/schrift", response_model=Ich)
 async def schrift_waehlen(w: Schriftwechsel, p: Profil = Depends(profil)) -> Ich:
     """Das Kind schaltet beim Lesen zwischen normal und Kinderschrift (nur in der Gestaltung groß); zurück kommt das neue Ich."""
@@ -311,11 +323,16 @@ async def ansagen_lesen(request: Request, _konto: Konto = Depends(verify_konto))
     des Geräts alle Texte ohne Ton; ohne Stimme keine (der Elternbereich zeigt dann "Stimme wählen")."""
     betrachter = await _betrachter(await sitzung.zum_schluessel(sitzung.schluessel_aus(request, inhalt=True)))
     stimme, eintraege = await ansagen.fuer(betrachter)
-    if stimme == ansagen.GERAET:
+    if stimme == GERAET:
         fertige = {e.schluessel: Ansageeintrag(text=e.text, url=None) for e in eintraege}
-    elif ansagen.gesprochen(stimme):
-        ort = ansagen.pfad(stimme)
-        fertige = {e.schluessel: Ansageeintrag(text=e.text, url=ansagen.adresse(stimme, e)) for e in eintraege if (ort / e.datei).exists()}
+    elif vertont(stimme):
+        # nach einem Wechsel der Stimme gilt, was in der bisherigen da ist, bis die neue es ersetzt
+        vorher = await ansagen.zuletzt(ansagen.hoerer(betrachter))
+        stimmen = [stimme] + ([vorher] if vertont(vorher) and vorher != stimme else [])
+        fertige = {}
+        for e in eintraege:
+            if (da := next((s for s in stimmen if ansagen.pfad(s, e).exists()), None)) is not None:
+                fertige[e.schluessel] = Ansageeintrag(text=e.text, url=ansagen.adresse(da, e))
     else:
         fertige = {}
     return Ansagen(stimme=stimme, fertig=len(fertige), gesamt=len(eintraege), laeuft=await laeuft(stimme), eintraege=fertige)
@@ -324,10 +341,12 @@ async def ansagen_lesen(request: Request, _konto: Konto = Depends(verify_konto))
 @router.get("/ansagen/ton/{ordner}/{datei}", response_class=FileResponse, responses={200: {"content": {"audio/wav": {}}}})
 async def ansage_ton(request: Request, ordner: str = Ordner, datei: str = Tondatei, _konto: Konto = Depends(verify_konto_inhalt)) -> Response:
     """Ein Ton mit langer Zeit im Speicher des Browsers und ETag. Ein Kind hört nur seine Stimme, die Profilwahl nur die der
-    Familie; Erwachsene jede (Probe)."""
+    Familie, beide bis zum Ersatz auch die bisherige; Erwachsene jede (Probe)."""
     betrachter = await _betrachter(await sitzung.zum_schluessel(sitzung.schluessel_aus(request, inhalt=True)))
-    if (betrachter is None or betrachter.kind) and ordner != ansagen.ordner(await ansagen.stimme_fuer(betrachter)):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Diese Stimme gehört nicht zu diesem Profil")
+    if betrachter is None or betrachter.kind:
+        eigene = {await ansagen.stimme_fuer(betrachter), await ansagen.zuletzt(ansagen.hoerer(betrachter))}
+        if ordner not in {ansagen.ordner(s) for s in eigene if vertont(s)}:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Diese Stimme gehört nicht zu diesem Profil")
     kopf = {"ETag": f'"{datei}"', "Cache-Control": f"private, max-age={TON_GILT_S}, immutable"}
     if request.headers.get("if-none-match") == kopf["ETag"]:
         return Response(status_code=304, headers=kopf)
@@ -339,18 +358,19 @@ async def ansage_ton(request: Request, ordner: str = Ordner, datei: str = Tondat
 
 @router.post("/ansagen/probe", response_model=Ansageeintrag)
 async def ansage_probe(s: Stimmeingabe, p: Profil = Depends(profil)) -> Ansageeintrag:
-    """Ein fester Probesatz in dieser Stimme, abgelegt wie die Ansagen; mit der Stimme des Geräts nur der Text."""
+    """Ein fester Probesatz in dieser Stimme, gesprochen von der Vertonung und abgelegt wie die Ansagen; mit der Stimme des
+    Geräts nur der Text."""
     _darf_vorhoeren(p)
     e = ansagen.probe()
-    if not ansagen.gesprochen(s.stimme):
-        if s.stimme != ansagen.GERAET:
-            raise HTTPException(422, "Stimme: eine aus dem Katalog oder die des Geräts")
+    if not vertont(s.stimme):
+        if s.stimme != GERAET:
+            raise HTTPException(422, "Stimme: eine der Vertonung oder die des Geräts")
         return Ansageeintrag(text=e.text, url=None)
     datei = ansagen.pfad(s.stimme, e)
     if not datei.is_file():
         try:
-            ton = await vorlesen.satz(e.text, s.stimme)
-        except vorlesen.VorlesenFehler as f:
+            ton = await sprechen.ton(e.text, s.stimme)
+        except VorlesenFehler as f:
             raise HTTPException(f.status, f.meldung) from f
         ablegen(datei, ton)
     return Ansageeintrag(text=e.text, url=ansagen.adresse(s.stimme, e))

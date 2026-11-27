@@ -90,7 +90,7 @@ export class Zulauf {
         return;
       } catch (e) {
         if (this.#abbruch.signal.aborted || !text.slice(geholt).trim()) return;
-        if (versuch >= VERSUCHE) throw wache.eingeschlafen() ? new Error("Der Sprechdienst antwortet nicht") : e;
+        if (versuch >= VERSUCHE) throw wache.eingeschlafen() ? new Error("Die Vertonung antwortet nicht") : e;
       } finally {
         wache.ende();
       }

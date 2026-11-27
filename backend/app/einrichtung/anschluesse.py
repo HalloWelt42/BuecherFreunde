@@ -1,10 +1,11 @@
-"""Anschlüsse (BF-82): Kellerwolke, Leitstelle (KI und Sprechdienst) und Nachschlag, je mit Adresse und "Verbindung prüfen".
+"""Anschlüsse (BF-82): Kellerwolke, Leitstelle (KI), Vertonung (Vorlesen, BF-14) und Nachschlag, je mit Adresse und "Verbindung
+prüfen".
 
 Eine Adresse, die in der App eingetragen ist, steht in `app_settings` (`anschluss_<art>`) und gilt vor der aus der Einrichtung
 (.env); `anwenden` legt sie beim Start, nach dem Wiederherstellen und nach jeder Änderung über die Einstellungen, danach
 verbinden sich Kellerwolke, Anmeldung und Nachschlag neu. Schlüssel gehen nur in den Schlüsselbund (`core/schluessel.py`); die
 Antworten nennen nur, ob einer eingetragen ist. Ein neuer Schlüssel gilt erst, wenn die Prüfung mit ihm besteht; bis dahin
-bleibt der alte. Der Nachschlag hat keinen eigenen Schlüssel, er kennt die App über ihren Zugang der Kellerwolke."""
+bleibt der alte. Vertonung und Nachschlag haben keinen eigenen Schlüssel, sie kennen die App über ihren Zugang der Kellerwolke."""
 
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ from backend.app.core.config import settings
 from backend.app.einrichtung.modelle import Anschluss, AnschlussEingabe, Verbindungspruefung
 from backend.app.einrichtung.zustand import Einrichtungsfehler, jetzt
 from backend.app.services import ki as ki_modul, lexikon_nachschlag
+from backend.app.vorlesen import stimmen as vertonung_stimmen
 
 logger = logging.getLogger("buecherfreunde.einrichtung.anschluesse")
 
@@ -36,7 +38,10 @@ ARTEN: dict[str, Beschreibung] = {
     "kellerwolke": Beschreibung("Kellerwolke", "kellerwolke_url", schluessel.Art.KELLERWOLKE,
                                 "Originale und je Buch ein Auszug liegen dort; mit \"Persönliches in der Kellerwolke\" je Buch auch Notizen, "
                                 "Markierungen, Etiketten, Lesestand und Freigaben je Profil. Wer die Kellerwolke verwaltet, könnte sie lesen."),
-    "leitstelle": Beschreibung("Leitstelle", "leitstelle_adresse", schluessel.Art.LEITSTELLE, "KI zum Einordnen und Prüfen, Sprechdienst zum Vorlesen"),
+    "leitstelle": Beschreibung("Leitstelle", "leitstelle_adresse", schluessel.Art.LEITSTELLE, "KI zum Einordnen und Prüfen"),
+    "vertonung": Beschreibung("Vertonung", "vertonung_url", None,
+                              "Vorlesen und Ansagen mit ihren Stimmen, auch privaten und geklonten; ohne Schlüssel, sie kennt die App über "
+                              "ihren Zugang der Kellerwolke"),
     "nachschlag": Beschreibung("Nachschlag", "nachschlag_url", None, "Lexika und Handbücher beim Lesen; ohne Schlüssel"),
 }
 _zuletzt: dict[str, Verbindungspruefung] = {}             # die letzte Prüfung je Anschluss seit dem Start
@@ -110,14 +115,19 @@ async def _leitstelle(c: httpx.AsyncClient, adresse: str, wert: str) -> Verbindu
         modelle = await l.modelle()
     except LeitstellenFehler as f:
         return Verbindungspruefung(ok=False, grund=ki_modul.fehler(f, settings.ki_modell).grund)
-    teile = [f"KI mit {len(modelle)} {'Modell' if len(modelle) == 1 else 'Modellen'}"]
-    if settings.sprechdienst.strip():
-        try:
-            stimmen = (await l.dienst(settings.sprechdienst).json("GET", "/tts/voices", titel="Stimmen prüfen")).get("speakers") or []
-            teile.append(f"Sprechdienst mit {len(stimmen)} Stimmen")
-        except LeitstellenFehler as f:
-            teile.append(f"Sprechdienst nicht frei: {f.meldung}")
-    return Verbindungspruefung(ok=True, text=", ".join(teile))
+    return Verbindungspruefung(ok=True, text=f"KI mit {len(modelle)} {'Modell' if len(modelle) == 1 else 'Modellen'}")
+
+
+async def _vertonung(adresse: str) -> Verbindungspruefung:
+    """Über den Verbund wie beim Vorlesen, mit dem App-Zugang der Kellerwolke: welche Stimmen sie BücherFreunde anbietet."""
+    liste = await vertonung_stimmen.liste(adresse)
+    if not liste.da:
+        return Verbindungspruefung(ok=False, grund=liste.hinweis or "Die Vertonung antwortet nicht")
+    zahl = {b.bereich: sum(s.bereich == b.bereich for s in liste.stimmen) for b in liste.bereiche if b.frei}
+    teile = [f"{n} {name}" for b, name in (("katalog", "eingebaut"), ("fremd", "fremd"), ("privat", "privat")) if (n := zahl.get(b))]
+    text = "Stimmen: " + (", ".join(teile) if teile else "keine")
+    gesperrt = next((b.hinweis for b in liste.bereiche if not b.frei), "")
+    return Verbindungspruefung(ok=True, text=f"{text}; {gesperrt}" if gesperrt else text)
 
 
 async def _nachschlag(c: httpx.AsyncClient, adresse: str) -> Verbindungspruefung:
@@ -139,9 +149,12 @@ async def pruefen(art: str, adresse: str | None = None, wert: str | None = None)
         p = Verbindungspruefung(ok=False, grund="Kein Schlüssel eingetragen")
     else:
         try:
-            async with _client() as c:
-                p = await (_kellerwolke(c, adresse, wert) if art == "kellerwolke" else _leitstelle(c, adresse, wert) if art == "leitstelle"
-                           else _nachschlag(c, adresse))
+            if art == "vertonung":
+                p = await _vertonung(adresse)
+            else:
+                async with _client() as c:
+                    p = await (_kellerwolke(c, adresse, wert) if art == "kellerwolke" else _leitstelle(c, adresse, wert) if art == "leitstelle"
+                               else _nachschlag(c, adresse))
         except httpx.HTTPError as f:
             p = Verbindungspruefung(ok=False, grund=f"{b.name} antwortet nicht ({type(f).__name__})")
     p.am = jetzt()

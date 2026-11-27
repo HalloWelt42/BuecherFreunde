@@ -39,8 +39,9 @@ nach `Bücher` um. Doppel, fremde Formate und Unlesbares bleiben liegen und steh
 
 - Docker und die [[Kellerwolke]] mit einem App-Zugang als Datei `zugang/kellerwolke.schluessel`, dazu die Hausstelle als
   `zugang/hausstelle.pem`; Adresse der Kellerwolke `{{umgebung:KELLERWOLKE_URL}}`.
-- Ohne sie läuft sie weiter, ihr fehlt nur die Fähigkeit: [[Fundus]] für die Suche nach Bedeutung, der Sprechdienst der
-  [[Leitstelle]] zum Vorlesen (`SPRECHDIENST`, ohne ihn die Stimmen des Geräts), Nachschlag zum Nachschlagen im Leser (`NACHSCHLAG_URL`; ohne ihn schlägt der Leser im öffentlichen Lexikon
+- Ohne sie läuft sie weiter, ihr fehlt nur die Fähigkeit: [[Fundus]] für die Suche nach Bedeutung, die [[Vertonung]] zum
+  Vorlesen und für die Ansagen der Kinder (`VERTONUNG_URL`, angemeldet mit dem App-Zugang der Kellerwolke; private Stimmen nur, wenn
+  die Vertonung BücherFreunde unter "Private Stimmen für" führt; ohne sie die Stimmen des Geräts), Nachschlag zum Nachschlagen im Leser (`NACHSCHLAG_URL`; ohne ihn schlägt der Leser im öffentlichen Lexikon
   im Netz nach, solange `WIKIPEDIA_ENABLED` an ist), Assistent für das Gespräch über eine Stelle (`ASSISTENT_URL`). Ohne [[Kellerwolke]] gelten eigene Konten und die Ablage auf dem Gerät; hier ist sie angeschlossen.
 - Codestellen in Lehrbüchern erkennt die App selbst (im Hintergrund, je Buch einmal, Begleiter `codestellen.json` neben
   dem Volltext). Ausgeführt werden sie in der Sandbox der Codeschmiede (`CODESCHMIEDE_URL`; die Codeschmiede muss
@@ -87,10 +88,11 @@ Neu beginnen, Schritt für Schritt:
    Adresse und den App-Zugang ein; der Schritt Anschlüsse zeigt sie dann als verbunden. Das Konto wird das erste Profil Verwaltung.
 2. **Speicherorte**: jeder Ort mit Platz und Lampe. Fehlt eine Platte, steht das rot da und Weiter ist gesperrt, bis "Neu suchen"
    sie findet. Die Orte selbst stellt man in der `.env` ein (siehe "Orte festlegen"); sie ändern sich mit einem Neustart.
-3. **Anschlüsse**: Kellerwolke, Leitstelle (KI und Sprechdienst) und Nachschlag, je Adresse und "Verbindung prüfen". Den Schlüssel
+3. **Anschlüsse**: Kellerwolke, Leitstelle (KI), Vertonung (Vorlesen) und Nachschlag, je Adresse und "Verbindung prüfen". Den Schlüssel
    fügt man einmal ein; der Server prüft ihn und legt ihn in seiner eigenen Schlüsseldatei ab (`schluessel.json` beim Bestand,
    Modus 0600). Danach steht nur noch "eingetragen" und "Ersetzen" da; ein neuer Schlüssel gilt erst, wenn seine Prüfung besteht.
-   Der Nachschlag braucht keinen. Ohne Anschlüsse läuft die App voll. Solange es noch kein Konto gibt, nimmt der Assistent nur
+   Vertonung und Nachschlag brauchen keinen. Die Prüfung der Vertonung nennt ihre Stimmen und, ob sie private freigibt. Ohne
+   Anschlüsse läuft die App voll. Solange es noch kein Konto gibt, nimmt der Assistent nur
    Adressen mit https und Namen an (keine IP-Adresse, kein localhost, kein Port unter 1024 außer 443) und prüft höchstens wenige
    Male je Minute; nach dem Konto gilt das nicht mehr, dann braucht es die Anmeldung.
 4. **Katalog**: der mitgelieferte, leer beginnen, oder der mitgelieferte mit einem Vorschlag aus dem Bestand nach dem Abschluss.

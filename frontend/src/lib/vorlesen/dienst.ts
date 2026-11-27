@@ -1,4 +1,4 @@
-// Vorlesen mit dem Sprechdienst: Satz für Satz als Ton vom Server. Gespielt wird über ein Tonelement, weil nur das am
+// Vorlesen mit der Vertonung: Satz für Satz als Ton vom Server. Gespielt wird über ein Tonelement, weil nur das am
 // gesperrten Telefon weiterläuft und auf Kopfhörertasten hört.
 import { vorleseStrom } from "../api/vorlesen";
 import { lageAb } from "./saetze";
@@ -68,7 +68,7 @@ export class Dienstsprecher implements Sprecher {
       yield { text: z.text ?? "", von, bis, ...mitPause(tonAus(z.ton), PAUSE_S) };
     }
     // Ohne die Schlusszeile ist der Strom gerissen; was fehlt, holt der Nächste
-    if (text.slice(ab).trim()) throw new Error("Der Sprechdienst hat mitten im Text aufgehört");
+    if (text.slice(ab).trim()) throw new Error("Die Vertonung hat mitten im Text aufgehört");
   }
 
   spiele(satz: Tonsatz, _stimme: string, fortschritt: (anteil: number) => void): Promise<void> {

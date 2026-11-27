@@ -15,6 +15,8 @@ from backend.app.familie.modelle import (
     Einstellungen, EinstellungenEingabe, Loeschfolgen, PinSetzen, Profil, ProfilAenderung, ProfilEintrag, ProfilNeu,
 )
 from backend.app.familie.stufen import Leseschrift, Rollenname, stufenbuch
+from backend.app.vorlesen import beschreibung
+from backend.app.vorlesen.modelle import Sprechwerte, Vorlesewahl
 
 SPALTEN = """id, name, zeichen, farbe, rolle, stufe, pin != '' AS hat_pin, bild_pin != '' AS hat_bild_pin, geburtsjahr, einstellungen,
              sortierung, angelegt_am, name_vom_konto"""
@@ -33,9 +35,21 @@ def eintrag(p: Profil) -> ProfilEintrag:
                          hat_bild_pin=p.hat_bild_pin)
 
 
-def einstellungen_mit(bisher: Einstellungen, neu: EinstellungenEingabe) -> Einstellungen:
-    """Jeder genannte Teil ersetzt den gespeicherten; die übrigen bleiben."""
+def einstellungen_mit(bisher: Einstellungen, neu: EinstellungenEingabe, rolle: Rollenname) -> Einstellungen:
+    """Jeder genannte Teil ersetzt den gespeicherten; die übrigen bleiben. Die Vorlesestimme eines Kindes steht in seinen
+    Lesehilfen (die Wahl der Eltern, auch für die Ansagen), nicht unter Vorlesen."""
+    if rolle == "kind" and neu.vorlesen is not None and neu.vorlesen.stimme:
+        raise Unpassend("Vorlesen: die Stimme eines Kindes steht in seinen Lesehilfen")
     return bisher.model_copy(update={teil: getattr(neu, teil) for teil in neu.model_fields_set if getattr(neu, teil) is not None})
+
+
+async def werte_pruefen(werte: Sprechwerte | None) -> None:
+    """Werte fürs Vorlesen gelten nur, wenn sie zur Beschreibung der Vertonung passen; leer geht immer (alles ab Werk)."""
+    if werte:
+        try:
+            beschreibung.pruefen(werte, await beschreibung.lesen())
+        except beschreibung.Unpassend as f:
+            raise Unpassend(f"Vorlesen: {f.meldung}") from f
 
 
 def alter(geburtsjahr: int | None, heute: date | None = None) -> int | None:
@@ -113,11 +127,12 @@ async def anlegen(neu: ProfilNeu, von: Profil) -> Profil:
         raise NichtErlaubt("Neue Profile legt die Verwaltung an; Erwachsene legen nur Kinder an")
     await _name_frei(neu.name)
     stufe = _stufe(neu.rolle, neu.stufe, neu.geburtsjahr)
+    await werte_pruefen(neu.einstellungen.vorlesen.werte if neu.einstellungen.vorlesen else None)
     pid = str(uuid.uuid4())
     await db.execute("""INSERT INTO profil (id, name, zeichen, farbe, rolle, geburtsjahr, stufe, einstellungen, sortierung)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sortierung), -1) + 1 FROM profil))""",
                      (pid, neu.name, neu.zeichen, neu.farbe, neu.rolle, neu.geburtsjahr, stufe,
-                      einstellungen_mit(Einstellungen(), neu.einstellungen).model_dump_json()))
+                      einstellungen_mit(Einstellungen(), neu.einstellungen, neu.rolle).model_dump_json()))
     return await noetig(pid)
 
 
@@ -140,13 +155,27 @@ async def aendern(pid: str, a: ProfilAenderung, von: Profil) -> Profil:
     stufe = a.stufe if "stufe" in gesetzt else (ziel.stufe if rolle == "kind" else None)
     werte |= {"rolle": rolle, "geburtsjahr": geburtsjahr, "stufe": _stufe(rolle, stufe, geburtsjahr)}
     if "einstellungen" in gesetzt and a.einstellungen is not None:
-        werte["einstellungen"] = einstellungen_mit(ziel.einstellungen, a.einstellungen).model_dump_json()
+        werte["einstellungen"] = einstellungen_mit(ziel.einstellungen, a.einstellungen, rolle).model_dump_json()
+        await werte_pruefen(a.einstellungen.vorlesen.werte if a.einstellungen.vorlesen else None)
     await db.execute(f"UPDATE profil SET {', '.join(f'{k} = ?' for k in werte)} WHERE id = ?", (*werte.values(), pid))
     return await noetig(pid)
 
 
 async def katze_benennen(p: Profil, name: str) -> Profil:
     e = p.einstellungen.model_copy(update={"katze": p.einstellungen.katze.model_copy(update={"name": name})})
+    await db.execute("UPDATE profil SET einstellungen = ? WHERE id = ?", (e.model_dump_json(), p.id))
+    return await noetig(p.id)
+
+
+async def vorlesen_waehlen(p: Profil, wahl: Vorlesewahl) -> Profil:
+    """Ein Erwachsener wählt im Leser seine Stimme und seine Werte; was nicht genannt ist, bleibt. Für ein Kind wählen die
+    Eltern (Profil ändern)."""
+    if p.kind:
+        raise NichtErlaubt("Die Stimme zum Vorlesen wählen hier die Eltern")
+    if "werte" in wahl.model_fields_set:
+        await werte_pruefen(wahl.werte)
+    neu = p.einstellungen.vorlesen.model_copy(update={feld: getattr(wahl, feld) for feld in wahl.model_fields_set})
+    e = p.einstellungen.model_copy(update={"vorlesen": neu})
     await db.execute("UPDATE profil SET einstellungen = ? WHERE id = ?", (e.model_dump_json(), p.id))
     return await noetig(p.id)
 

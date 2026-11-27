@@ -21,6 +21,7 @@ from backend.app.services.ki import ki
 from backend.app.services.lexikon import Lexikon
 from backend.app.services.storage import get_sidecar_path
 from backend.app.models.grenzen import Nr
+from backend.app.vorlesen import stimmen as vertonung_stimmen
 
 router = APIRouter(prefix="/api", tags=["Neubau"])
 
@@ -83,6 +84,16 @@ async def _mit_frist(kennung: str, name: str, pruefung: Awaitable[dict]) -> dict
         return {"kennung": kennung, "name": name, "stand": "schlecht", "text": f"antwortet nicht binnen {FRIST_S:.0f} Sekunden"}
 
 
+async def _vertonung() -> dict:
+    eintrag = {"kennung": "vertonung", "name": "Vertonung"}
+    liste = await vertonung_stimmen.liste()
+    if not liste.da:
+        return eintrag | {"stand": "schlecht", "text": liste.hinweis or "antwortet nicht"}
+    text = f"liest vor mit {len(liste.stimmen)} {'Stimme' if len(liste.stimmen) == 1 else 'Stimmen'}"
+    gesperrt = next((b.hinweis for b in liste.bereiche if not b.frei), "")
+    return eintrag | ({"stand": "warn", "text": f"{text}; {gesperrt}"} if gesperrt else {"stand": "gut", "text": text})
+
+
 @router.get("/verbindungen", dependencies=[Depends(braucht("ki"))])
 async def verbindungen(_=Depends(verify_token)):
     """Nur, was angeschlossen ist; alle zugleich geprüft, jede mit Frist."""
@@ -99,6 +110,8 @@ async def verbindungen(_=Depends(verify_token)):
         pruefungen.append(("assistent", "Assistent", _assistent()))
     if lexikon := nachschlagen.lexikon():
         pruefungen.append(("nachschlag", "Nachschlag", _nachschlag(lexikon)))
+    if settings.vertonung_url.strip():
+        pruefungen.append(("vertonung", "Vertonung", _vertonung()))
     return list(await asyncio.gather(*(_mit_frist(*p) for p in pruefungen)))
 
 

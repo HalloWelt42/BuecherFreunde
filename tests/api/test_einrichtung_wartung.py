@@ -23,7 +23,6 @@ def gegenstellen(monkeypatch):
     def modelle(a: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"data": [{"id": "probe/modell"}]})
 
-    monkeypatch.setattr(settings, "sprechdienst", "")
     monkeypatch.setattr(anschluesse, "_client", netz({"GET /v1/models": modelle}))
 
 

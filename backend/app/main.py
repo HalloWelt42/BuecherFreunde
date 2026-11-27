@@ -63,6 +63,7 @@ from backend.app.material.textlauf import textlauf as material_textlauf
 from backend.app.katalog.einordnen import einordner as katalog_einordner
 from backend.app.services.einordnung import einordner
 from backend.app.services.ki import ki
+from backend.app.vorlesen import zugang as vertonung
 from backend.app.services.sammlungsfinder import sammlungsfinder
 from backend.app.services.begriffsliste import vorgaben_einspielen
 from backend.app.services.uebersetzungslauf import uebersetzungslauf
@@ -154,6 +155,7 @@ async def lifespan(app: FastAPI):
     await bedeutung.schliessen()
     await nachschlagen.schliessen()
     await gespraech.dienst.schliessen()
+    await vertonung.verbund.schliessen()
     await wolke.schliessen()
     await anmeldung_schliessen()
     await db.disconnect()

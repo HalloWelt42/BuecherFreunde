@@ -20,7 +20,7 @@
 
   let { schritt }: { schritt: Schritt } = $props();
 
-  const NAMEN: Record<string, string> = { kellerwolke: "Kellerwolke", leitstelle: "Leitstelle", nachschlag: "Nachschlag" };
+  const NAMEN: Record<string, string> = { kellerwolke: "Kellerwolke", leitstelle: "Leitstelle", vertonung: "Vertonung", nachschlag: "Nachschlag" };
 
   let adresse = $state("");
   let code = $state("");
