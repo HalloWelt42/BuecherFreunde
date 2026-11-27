@@ -1,6 +1,7 @@
 """Wo im Buch eine ISBN steht. Literaturliste, Anmerkungen und Verlagsanzeige an ihrer Überschrift (gilt ab dort, bis ein neuer
 Teil beginnt), das Impressum an seinen Angaben (Copyright, Nationalbibliothek, Auflage), die Rückseite an Preis oder Strichcode
-auf den letzten Seiten, die Titelei an den ersten Seiten; alles andere ist Text.
+auf den letzten Seiten, die Titelei an den ersten Seiten; alles andere ist Text. Die Überschrift "Impressum" oder ein sicheres
+Zeichen ("©", "Alle Rechte vorbehalten") beginnt das Impressum auch mitten auf einer Seite und beendet eine Liste davor.
 
 Überschriften in der Titelei zählen nicht, dort stehen sie im Inhaltsverzeichnis. Eine Verlagsanzeige vorn im Buch endet mit
 ihrer Seite; erst im hinteren Teil gilt sie auch für die Seiten danach, wie Literaturliste und Anmerkungen."""
@@ -37,6 +38,9 @@ _IMPRESSUM_SICHER = re.compile(r"©|\(c\)\s*\d{4}|copyright|alle rechte vorbehal
                                r"nationalbibliothek|printed in|cip-titelaufnahme", re.IGNORECASE)
 _IMPRESSUM_HINWEIS = re.compile(r"\bauflage\b|gesamtherstellung|umschlaggestaltung|umschlagabbildung|\blektorat\b|\bsatz\b|\bherstellung\b|"
                                 r"gedruckt auf|\bdruck und bindung\b|\boriginalausgabe\b|\blizenzausgabe\b", re.IGNORECASE)
+# eine Zeile, mit der auf ihrer Seite ein Impressum beginnt, auch mitten in einer Liste davor (E-Books legen Verlagsanzeige,
+# Quellen und Impressum oft in ein Dokument): die Überschrift oder ein sicheres Zeichen; "Copyright" allein steht auch in Titeln
+_IMPRESSUM_ZEILE = re.compile(r"^impressum\s*:?$|©|\(c\)\s*\d{4}|alle rechte vorbehalten|all rights reserved", re.IGNORECASE)
 _RUECKSEITE = re.compile(r"\d+[,.]\d{2}\s*(?:€|eur\b)|€\s*\d|\((?:d|a|ch)\)|\bsfr\b|\bchf\b|\b97[89]\s\d{6}\s\d{6}\b", re.IGNORECASE)
 
 
@@ -55,13 +59,16 @@ class Buchlage:
 
 
 def _abschnitt(zeile: str, titelei: bool) -> tuple[Fundort | None, bool] | None:
-    """Was eine Zeile beginnt: (Abschnitt, gilt über die Seite hinaus) oder None, wenn sie nichts beginnt. In der Titelei zählt nur
-    eine Verlagsanzeige ("Von ... ist außerdem erschienen"), Überschriften dort gehören zum Inhaltsverzeichnis."""
+    """Was eine Zeile beginnt: (Abschnitt, gilt über die Seite hinaus) oder None, wenn sie nichts beginnt. In der Titelei zählen nur
+    eine Verlagsanzeige ("Von ... ist außerdem erschienen") und das Impressum, Überschriften dort gehören zum Inhaltsverzeichnis.
+    Ein Impressum gilt bis zum Ende seiner Seite, eine Verlagsanzeige nur im hinteren Teil darüber hinaus."""
     z = " ".join(zeile.split())
     if not z:
         return None
     if _VERLAGSANZEIGE.match(z):
         return Fundort.VERLAGSANZEIGE, False
+    if _IMPRESSUM_ZEILE.search(z):
+        return Fundort.IMPRESSUM, False
     if titelei or len(z) > UEBERSCHRIFT_LAENGE:
         return None
     if _LITERATUR.match(z):
@@ -90,7 +97,7 @@ def lage(seiten: list[str]) -> Buchlage:
             beginnt = _abschnitt(zeile, nr < titelei)
             if beginnt is not None:
                 ort, bleibt = beginnt
-                jetzt = ort if bleibt or nr >= n * HINTERER_TEIL else None
+                jetzt = ort if bleibt or (ort is Fundort.VERLAGSANZEIGE and nr >= n * HINTERER_TEIL) else None
                 hier.append((lage_im_text, ort))
             lage_im_text += len(zeile) + 1
         abschnitte.append(hier)

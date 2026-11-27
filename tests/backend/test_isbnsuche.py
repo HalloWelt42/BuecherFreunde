@@ -76,6 +76,24 @@ def test_fundorte():
     assert orte.fundort(lage, 100, 0) == Fundort.TEXT and orte.fundort(lage, 1, 0) == Fundort.TITELEI, "das Inhaltsverzeichnis beginnt keine Literaturliste"
 
 
+@pytest.mark.parametrize("seite", [
+    # Verlagsanzeige vorn, darunter das Impressum (E-Book: alles in einem Dokument)
+    f"Weitere Titel in dieser Reihe:\nLene Probe: Watt im Nebel\nOkke Probe: Ebbe\n\n1. Auflage 2014\n© 2014 Beispielverlag\nISBN {strich(DRUCK)}",
+    # Quellenverzeichnis, dann die Überschrift Impressum
+    f"Quellenverzeichnis\nMein Weg zum Deich - Erstveröffentlichung\n\nImpressum\nCover: Atelier Beispiel\nISBN E-Book: {strich(DRUCK)}",
+    # Werbung für andere Bücher, dann das Impressum mit "Alle Rechte vorbehalten"
+    f"Außerdem im Beispielverlag erschienen: »Das Wehr«, »Die Schleuse«\n\nCovergestaltung: Atelier Beispiel\nAlle Rechte vorbehalten.\nISBN {strich(DRUCK)}",
+])
+def test_ein_impressum_beendet_die_liste_davor(seite):
+    for vorn in (True, False):
+        seiten = ["Im Hafen von Musterstadt lag Nebel."] * 30
+        seiten[0 if vorn else 25] = seite             # hinten gälte eine Liste sonst auch für die Seiten danach
+        lage = orte.lage(seiten)
+        f = next(f for f in finde(seiten) if f.isbn13 == DRUCK)
+        assert orte.fundort(lage, f.seite, f.anfang) == Fundort.IMPRESSUM
+        assert orte.fundort(lage, f.seite + 1, 0) in (Fundort.TITELEI, Fundort.TEXT), "das Impressum gilt nur auf seiner Seite"
+
+
 # -- Kandidaten --------------------------------------------------------------------------------------------------------
 def test_kandidaten_wie_im_entwurf():
     liste = kandidaten(buch(), FRAGE)
