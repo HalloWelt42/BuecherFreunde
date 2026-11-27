@@ -5,7 +5,9 @@
 .lesetext .blatt { letter-spacing: var(--hilfe-zeichen, normal); word-spacing: var(--hilfe-woerter, normal); }
 .lesetext .satz :is(p, li, .schlichttext) { text-align: var(--hilfe-ausrichtung, start); hyphens: var(--hilfe-trennung, auto); -webkit-hyphens: var(--hilfe-trennung, auto); }
 .lesetext .satz img { filter: var(--hilfe-bilder, none); }
-.lesetext .satz p + p { margin-top: var(--hilfe-absatz, .85em); }
+/* Ein Abstand zwischen allen Bausteinen des Satzes (Absätze, Abbildungen, Code, Kästen), mit der Lesehilfe einstellbar */
+.lesetext .satz { --absatzabstand: var(--hilfe-absatz, .85em); }
+.lesetext .satz p + p { margin-top: var(--absatzabstand); }
 .markdown .satz :is(p, ul, ol, pre, blockquote, table) { margin-bottom: var(--hilfe-absatz, .9em); }
 .markdown .satz p + p { margin-top: 0; }
 /* Ersatz für Hervorhebungen, wo der Browser sie nicht selbst malt: Rechtecke hinter dem Text, der Satz bleibt unberührt */

@@ -1,5 +1,5 @@
-"""Codestellen erkennen (BF-29): Kästen, Zeilennummern, Fortsetzung über den Seitenwechsel, Einrückung, Sprache; dazu
-Markdown und EPUB. Alle Dateien entstehen hier im Test, keine Buchkopien."""
+"""Codestellen erkennen (BF-29, BF-103, BF-104): Kästen, Zeilennummern, Fortsetzung über den Seitenwechsel, Einrückung,
+Sprache; dazu Markdown und EPUB. Alle Dateien entstehen hier im Test, keine Buchkopien."""
 
 import fitz
 
@@ -169,3 +169,119 @@ def test_zeilen_je_teil(tmp_path):
     assert [t.zeilen for t in summe.teile] == [4, 3]
     assert summe.zeilen_der_teile() == [["def summe(zahlen):", "    gesamt = 0", "    for z in zahlen:", "        gesamt += z"],
                                         ["    return gesamt", "", "print(summe([1, 2, 3]))"]]
+
+
+# -- BF-103 und BF-104: Festbreite gemessen, Seitenhintergrund, Zeilennummern, Abstand ---------------------------------------
+
+TEXTZEILEN = ["Ein Leuchtturm steht am Rand der kleinen Insel und zeigt den Schiffen den Weg zum Hafen,",
+              "auch wenn der Nebel so dicht ist, dass man die eigene Hand vor den Augen kaum noch sieht.",
+              "Die Wärterin steigt jeden Abend die hundert Stufen hinauf und putzt das Glas der Lampe,",
+              "dann schreibt sie in ihr Buch, wie das Wetter war und welche Schiffe vorbeigefahren sind."]
+
+
+def test_lange_zeilen_in_textschrift_sind_keine_festbreite(tmp_path):
+    """Die mittlere Zeichenbreite langer Zeilen ist auch in einer Textschrift fast gleich; gemessen wird je Buchstabe."""
+    doc = fitz.open()
+    seite = doc.new_page(width=595, height=842)
+    for i, z in enumerate(TEXTZEILEN):
+        seite.insert_text((74, 120 + i * 18), z, fontname="tiro", fontsize=11)
+    x = 74 + fitz.get_text_length("Der Operator ", "tiro", 11)
+    seite.insert_text((74, 210), "Der Operator ", fontname="tiro", fontsize=11)              # ein Wort Code im Text
+    seite.insert_text((x, 210), "**", fontname="cour", fontsize=11)
+    seite.insert_text((x + fitz.get_text_length("**", "cour", 11), 210), " rechnet hoch.", fontname="tiro", fontsize=11)
+    pfad = tmp_path / "text.pdf"
+    doc.save(pfad)
+    assert aus_pdf(pfad) == []
+
+
+def test_weisser_seitenhintergrund_ist_kein_kasten(tmp_path):
+    """Aus E-Books gedruckte PDF legen eine weiße Fläche über das ganze Kapitel; ein Wort in Festbreite am Zeilenanfang wird
+    so kein Listing, das die ganze Seite deckt."""
+    doc = fitz.open()
+    seite = doc.new_page(width=595, height=842)
+    seite.draw_rect(fitz.Rect(60, -3000, 540, 9000), color=None, fill=(1, 1, 1))
+    for i, z in enumerate(TEXTZEILEN):
+        seite.insert_text((74, 120 + i * 18), z, fontname="helv", fontsize=11)
+    seite.insert_text((74, 120 + 4 * 18), "nachname", fontname="cour", fontsize=11)
+    seite.insert_text((74 + fitz.get_text_length("nachname", "cour", 11), 120 + 4 * 18), ":", fontname="helv", fontsize=11)
+    pfad = tmp_path / "hintergrund.pdf"
+    doc.save(pfad)
+    assert all(fitz.Rect(t.rechteck).height < 100 for s in aus_pdf(pfad) for t in s.teile)
+
+
+def test_zeilennummer_in_textschrift_gleich_vor_dem_code(tmp_path):
+    """Die Nummer steht in der Textschrift, der Code beginnt mit einem Leerzeichen: abgenommen, die Einrückung bleibt."""
+    doc = fitz.open()
+    seite = doc.new_page(width=595, height=842)
+    seite.insert_textbox(fitz.Rect(74, 80, 521, 160), FLIESSTEXT, fontsize=10.9)
+    for i, zeile in enumerate(['def gruss(name):', '    print("Hallo", name)', 'gruss("Welt")']):
+        y = 200 + i * 13
+        seite.insert_text((90, y), str(i + 1), fontname="helv", fontsize=GROESSE)
+        x = 90 + fitz.get_text_length(str(i + 1), "helv", GROESSE)
+        seite.insert_text((x, y), " " + zeile, fontname="cour", fontsize=GROESSE)
+    pfad = tmp_path / "nummern.pdf"
+    doc.save(pfad)
+    (stelle,) = aus_pdf(pfad)
+    assert stelle.code == 'def gruss(name):\n    print("Hallo", name)\ngruss("Welt")' and stelle.zeilennummern_ab == 1
+
+
+def test_nummer_im_code_vor_seiner_flaeche(tmp_path):
+    """Nummer und Code in einem Stück Festbreite, die Nummer auf einer eigenen Spalte links der Codefläche."""
+    doc = fitz.open()
+    seite = doc.new_page(width=595, height=842)
+    seite.insert_textbox(fitz.Rect(74, 80, 521, 160), FLIESSTEXT, fontsize=10.9)
+    seite.draw_rect(fitz.Rect(74, 190, 100, 206), color=None, fill=(0.85, 0.85, 0.85))     # Spalte der Nummern
+    seite.draw_rect(fitz.Rect(100, 190, 521, 206), color=None, fill=(0.93, 0.93, 0.93))    # Fläche des Codes
+    breite = fitz.get_text_length("x", "cour", GROESSE)
+    seite.insert_text((100 - 2 * breite, 201), "3 zahl = zahl + 1", fontname="cour", fontsize=GROESSE)
+    pfad = tmp_path / "spalte.pdf"
+    doc.save(pfad)
+    (stelle,) = aus_pdf(pfad)
+    assert stelle.code == "zahl = zahl + 1" and stelle.zeilennummern_ab == 3
+
+
+def test_weit_auseinander_stehende_codezeilen_ohne_leerzeilen(tmp_path):
+    """Setzt das Buch jede Codezeile mit großem Abstand, ist das der Schritt, keine Leerzeile dazwischen."""
+    doc = fitz.open()
+    seite = doc.new_page(width=595, height=842)
+    seite.insert_textbox(fitz.Rect(74, 80, 521, 160), FLIESSTEXT, fontsize=10.9)
+    kasten(seite, fitz.Rect(74, 180, 521, 380))
+    for i, zeile in enumerate(["breite = 3", "hoehe = 4", "print(breite * hoehe)"]):
+        code(seite, 220 + i * 49, zeile)
+    pfad = tmp_path / "weit.pdf"
+    doc.save(pfad)
+    (stelle,) = aus_pdf(pfad)
+    assert stelle.code == "breite = 3\nhoehe = 4\nprint(breite * hoehe)"
+
+
+def test_verschachtelte_einrueckung_aus_der_lage(tmp_path):
+    """Der Text trägt keine Einrückung, nur die waagerechte Lage der Zeilen; Nummern in Textschrift davor."""
+    doc = fitz.open()
+    seite = doc.new_page(width=595, height=842)
+    seite.insert_textbox(fitz.Rect(74, 80, 521, 160), FLIESSTEXT, fontsize=10.9)
+    breite = fitz.get_text_length("x", "cour", GROESSE)
+    zeilen = ["def zaehle(liste):", "    anzahl = 0", "    for wert in liste:", "        if wert:", "            anzahl += 1",
+              "    return anzahl"]
+    for i, zeile in enumerate(zeilen):
+        y = 200 + i * 13
+        seite.insert_text((90, y), str(i + 1), fontname="helv", fontsize=GROESSE)
+        tief = len(zeile) - len(zeile.lstrip())
+        seite.insert_text((104 + tief * breite, y), zeile.strip(), fontname="cour", fontsize=GROESSE)
+    pfad = tmp_path / "einrueckung.pdf"
+    doc.save(pfad)
+    (stelle,) = aus_pdf(pfad)
+    assert stelle.code == "\n".join(zeilen) and stelle.zeilennummern_ab == 1
+
+
+def test_code_der_textansicht_in_textschrift_wird_eine_stelle(tmp_path):
+    """Eine Tafel mit Code in Textschrift (ohne Festbreite) ist eine Stelle wie ein Listing, damit sie eine Taste bekommt."""
+    doc = fitz.open()
+    seite = doc.new_page(width=595, height=842)
+    seite.insert_textbox(fitz.Rect(74, 80, 521, 160), FLIESSTEXT, fontsize=10.9)
+    seite.draw_rect(fitz.Rect(74, 180, 521, 330), color=None, fill=(0.93, 0.95, 0.96))
+    seite.insert_text((96, 220), "werte = [3, 4]", fontname="tiro", fontsize=11)
+    seite.insert_text((96, 280), "print(sum(werte))", fontname="tiro", fontsize=11)
+    pfad = tmp_path / "tafel.pdf"
+    doc.save(pfad)
+    (stelle,) = aus_pdf(pfad)
+    assert stelle.code == "werte = [3, 4]\nprint(sum(werte))" and stelle.sprache == "python"

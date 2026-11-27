@@ -112,10 +112,15 @@
     springe(ab);
   }
 
+  // Ein Absatz, der am Ende einer Seite mitten im Satz beginnt, steht ganz am Anfang der nächsten (BF-103): dort steht der
+  // gesuchte Wortlaut dann
+  const fortsetzung = (nr: number) => abschnitt(nr + 1)?.querySelector<HTMLElement>(":scope > p") ?? null;
+
   function springe(nr: number) {
     const a = abschnitt(nr);
     if (!a || !fluss) return;
-    const treffer = gesucht && nr === startSeite ? zeichneWortlaut(a, gesucht, ersatzschicht) : null;
+    const finde = (wo: HTMLElement | null) => (wo ? zeichneWortlaut(wo, gesucht, ersatzschicht) : null);
+    const treffer = gesucht && nr === startSeite ? (finde(a) ?? finde(fortsetzung(nr))) : null;
     if (treffer) gesucht = "";
     gemeldet = nr;
     fluss.zu(treffer ?? a);
@@ -324,22 +329,23 @@
     font-size: 0.8em;
     opacity: 0.7;
   }
+  /* Abstände: überall derselbe zwischen den Bausteinen (lesetext.css), damit Absätze, Code und Abbildungen ruhig folgen */
   .seitenmarke {
     font-size: 0.75em;
     opacity: 0.65;
     text-align: center;
-    padding: 1.25em 0 0.5em;
+    padding: calc(var(--absatzabstand) / 0.75) 0 0.25em;
   }
   .satz h2 {
     font-family: inherit;
-    margin: 1em 0 0.5em;
+    margin: calc(var(--absatzabstand) * 1.25) 0 calc(var(--absatzabstand) * 0.5);
   }
   .unterschrift {
     font-size: 0.85em;
     opacity: 0.8;
   }
   .kasten {
-    margin: 1em 0;
+    margin: var(--absatzabstand) 0;
     padding: 0.75em 1em;
     border-radius: var(--r2);
     border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
@@ -347,13 +353,13 @@
   }
   .abbildung {
     display: block;
-    margin: 1em auto;
+    margin: var(--absatzabstand) auto;
     cursor: zoom-in;
   }
   /* Code wie im Text der Bücher (Markdown): Festbreite, dunkel hinterlegt; Zeilen und Einrückung bleiben, wie gedruckt,
      zu lange Zeilen rollen im Block */
   .codeteil {
-    margin: 1em 0;
+    margin: var(--absatzabstand) 0;
   }
   .codekopf {
     display: flex;
@@ -399,7 +405,7 @@
     max-width: 100%;
     height: auto;
     border-radius: 3px;
-    background: #fff;
+    background: color-mix(in srgb, currentColor 6%, transparent);
   }
   /* Geblättert passt jede Abbildung ganz auf einen Schirm, ohne weißen Rand daneben */
   :global(.schirmweise) .abbildung img {

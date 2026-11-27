@@ -139,11 +139,12 @@ class Auftrag(ABC):
 
 def auftraege() -> dict[str, Auftrag]:
     from backend.app.einrichtung.kopieren import kopieren
+    from backend.app.einrichtung.ligaturen import ligaturen
     from backend.app.einrichtung.neuaufbau import neuaufbau
     from backend.app.einrichtung.pruefung import pruefung
     from backend.app.einrichtung.wiederherstellen import einspielen
 
-    return {a.art: a for a in (einspielen, pruefung, neuaufbau, kopieren)}
+    return {a.art: a for a in (einspielen, pruefung, neuaufbau, kopieren, ligaturen)}
 
 
 async def stand_von(art: str) -> Auftragsstand:

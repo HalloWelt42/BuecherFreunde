@@ -15,6 +15,8 @@ export const ABRUFE = {
   werkarten: "bearbeiten",
   /** GET /api/books/rescan/status: Ergänzen der Bibliothek */
   ergaenzung: "einstellungen",
+  /** GET /api/einrichtung/auftraege: lange Aufträge des Servers (Prüfung, Neuaufbau, Volltexte neu lesen) */
+  langeAuftraege: "einstellungen",
   /** GET /api/annahme und ihr Ereignisstrom: Aufnahmen, Einlesen, Zum Bestätigen */
   annahme: "hinzufuegen",
   /** GET /api/fassungen: Übersetzungen in Arbeit */
@@ -28,6 +30,6 @@ export type Abruf = keyof typeof ABRUFE;
 export const darfAbrufen = (abruf: Abruf): boolean => ich.darf(ABRUFE[abruf]);
 
 /** Woraus die Aufträge im Kopf bestehen; ohne eine davon gibt es die Taste nicht */
-const AUFTRAGSQUELLEN: readonly Abruf[] = ["annahme", "ergaenzung", "werkarten", "uebersetzungen"];
+const AUFTRAGSQUELLEN: readonly Abruf[] = ["annahme", "ergaenzung", "langeAuftraege", "werkarten", "uebersetzungen"];
 
 export const mitAuftraegen = (): boolean => AUFTRAGSQUELLEN.some(darfAbrufen);

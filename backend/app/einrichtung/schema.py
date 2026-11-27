@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS einrichtung_aenderung (   -- Wartung: was der Assiste
     angelegt_am TEXT NOT NULL DEFAULT {JETZT}
 );
 CREATE TABLE IF NOT EXISTS einrichtung_auftrag (     -- Prüfung, Neuaufbau, Originale kopieren: fortsetzbar über einen Neustart
-    art TEXT PRIMARY KEY,                            -- pruefung, neuaufbau, kopieren
+    art TEXT PRIMARY KEY,                            -- pruefung, neuaufbau, kopieren, ligaturen
     stand TEXT NOT NULL DEFAULT 'wartet',            -- wartet, laeuft, pause, fertig, fehler
     gesamt INTEGER NOT NULL DEFAULT 0,
     fertig INTEGER NOT NULL DEFAULT 0,
@@ -85,6 +85,13 @@ CREATE TABLE IF NOT EXISTS original_befund (         -- Bericht der Prüfung: je
     text TEXT NOT NULL DEFAULT '',
     texte INTEGER NOT NULL DEFAULT 0,                -- 1: Volltext oder Umschlag kamen aus dem Auszug zurück
     geprueft_am TEXT NOT NULL DEFAULT {JETZT}
+);
+CREATE TABLE IF NOT EXISTS ligatur_befund (         -- Volltexte mit falschen Ligaturen neu lesen (BF-104): je PDF-Buch ein Stück
+    book_id INTEGER PRIMARY KEY REFERENCES books(id) ON DELETE CASCADE,
+    stand TEXT NOT NULL DEFAULT 'offen',             -- offen, heil, neu, ohne (Original nicht zu holen), fehler
+    zeichen INTEGER NOT NULL DEFAULT 0,              -- so viele Fehlzeichen mitten im Wort standen im alten Volltext
+    text TEXT NOT NULL DEFAULT '',
+    geaendert_am TEXT NOT NULL DEFAULT {JETZT}
 );
 CREATE TABLE IF NOT EXISTS neuaufbau_datei (         -- Neuaufbau: die Originale im gewählten Ordner der Kellerwolke
     knoten TEXT PRIMARY KEY,

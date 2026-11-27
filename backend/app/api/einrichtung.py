@@ -226,7 +226,7 @@ async def auftraege_lesen(_z: Zugang = Depends(zugang)) -> list[Auftragsstand]:
 
 
 @router.post("/auftraege/{art}/{aktion}", response_model=Auftragsstand)
-async def auftrag_steuern(art: Literal["einspielen", "pruefung", "neuaufbau", "kopieren"], aktion: Literal["pause", "fortsetzen"],
+async def auftrag_steuern(art: Literal["einspielen", "pruefung", "neuaufbau", "kopieren", "ligaturen"], aktion: Literal["pause", "fortsetzen"],
                           _z: Zugang = Depends(zugang)) -> Auftragsstand:
     a = auftraege()[art]
     return await (a.pause() if aktion == "pause" else a.fortsetzen())
@@ -238,6 +238,13 @@ async def pruefung_starten(p: PruefungStarten, _z: Zugang = Depends(zugang)) -> 
     wiedergefundene Orte einträgt; eine laufende Installation prüft unter Wartung mit "Dateien prüfen"."""
     await _tun(zustand.nur_neu())
     return await pruefung_modul.pruefung.beginnen(pruefsummen=p.pruefsummen)
+
+
+@router.post("/ligaturen", response_model=Auftragsstand)
+async def ligaturen_starten(_z: Zugang = Depends(zugang)) -> Auftragsstand:
+    """Volltexte von PDF, die noch mit falsch gelesenen Ligaturen gewonnen wurden, neu lesen (BF-104), von vorn; läuft schon
+    ein Lauf, bleibt es bei ihm. Auch in einer laufenden Installation: er ersetzt nur, was er neu gewonnen hat."""
+    return await auftraege()["ligaturen"].beginnen()
 
 
 async def _nur_sichtbare(request: Request, ids: list[int]) -> set[int]:

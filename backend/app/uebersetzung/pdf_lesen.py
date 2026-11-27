@@ -1,8 +1,8 @@
 """Ein PDF Seite für Seite lesen (BF-71): Zeilen mit ihren Schriften, Abbildungen, Kästen, Tabellen und Code, ohne Kopf- und
 Fußzeilen, je Seite in Lesefolge, auch bei mehreren Spalten. Alles ohne Datenbank und Netz, nur aus der Datei.
 
-- Zeilen: aus der Textschicht (PyMuPDF), Ligaturen aufgelöst. Eine Zeile, die über eine breite Lücke reicht (Spalten,
-  Zellen), wird dort geteilt.
+- Zeilen: aus der Textschicht (PyMuPDF), Ligaturen aufgelöst, auch falsch abgebildete (services/pdfseite.py). Eine Zeile,
+  die über eine breite Lücke reicht (Spalten, Zellen), wird dort geteilt.
 - Code: die Erkennung der Codestellen (codestellen/pdf.py: Festbreite, Kasten, Titel, Fortsetzung über Seiten) wie die
   Textansicht; Zeilen darin und Zeilennummern daneben gehören nicht mehr zum Text.
 - Tabellen: aus den Linien der Seite (PyMuPDF find_tables), ab zwei Zeilen und zwei Spalten, mit Text in mindestens der
@@ -33,9 +33,9 @@ from functools import cached_property
 import fitz
 
 from backend.app.codestellen import pdf as codestellen_pdf
+from backend.app.services.pdfseite import TEXTART, fehlzeichen_der_seite, gerade, ligaturen_aufloesen
 from backend.app.services.textansicht import lesbar
 
-TEXTART = fitz.TEXT_PRESERVE_WHITESPACE | fitz.TEXT_MEDIABOX_CLIP    # ohne TEXT_PRESERVE_LIGATURES: Ligaturen werden ihre Zeichen
 RAND = 0.12                     # Anteil der Seitenhöhe oben und unten, in dem Kopf- und Fußzeilen stehen
 WIEDERKEHR_NAEHE = 4.0          # Punkte: so genau steht eine Kopfzeile auf jeder Seite an derselben Stelle
 LUECKE = 1.6                    # Schriftgrößen: eine so breite Lücke ohne Zeichen teilt eine Zeile
@@ -180,9 +180,9 @@ def rechteck_von(stueck: Stueck) -> fitz.Rect:
 
 # -- Zeilen ---------------------------------------------------------------------------------------------------------------
 
-def _spanne(s: dict) -> Spanne:
+def _spanne(s: dict, fehlzeichen: frozenset[str] = frozenset()) -> Spanne:
     schrift, merkmale = s.get("font", ""), s.get("flags", 0)
-    text = STEUERZEICHEN.sub("", s["text"])
+    text = ligaturen_aufloesen(STEUERZEICHEN.sub("", s["text"]), fehlzeichen)
     return Spanne(text=text, x0=s["bbox"][0], x1=s["bbox"][2], groesse=s["size"],
                   fett=bool(merkmale & FETT_MERKMAL or FETT_NAME.search(schrift)),
                   kursiv=bool(merkmale & KURSIV_MERKMAL or KURSIV_NAME.search(schrift)),
@@ -203,7 +203,9 @@ def _verbunden(spannen: list[Spanne]) -> list[Spanne]:
 def zeilen_der_seite(seite: fitz.Page, nr: int) -> list[Zeile]:
     """Alle Zeilen mit Text; eine Zeile über eine breite Lücke hinweg wird geteilt."""
     aus = []
-    for block in seite.get_text("dict", flags=TEXTART)["blocks"]:
+    bloecke = seite.get_text("dict", flags=TEXTART)["blocks"]
+    fehlzeichen = fehlzeichen_der_seite(seite)
+    for block in bloecke:
         for z in block.get("lines", []):
             if abs(z.get("dir", (1, 0))[1]) > 0.1:                  # gedrehter Text (Achsen, Randnotizen) bleibt draußen
                 continue
@@ -222,7 +224,7 @@ def zeilen_der_seite(seite: fitz.Page, nr: int) -> list[Zeile]:
                 r = fitz.Rect(sichtbar[0]["bbox"])
                 for s in sichtbar[1:]:
                     r |= fitz.Rect(s["bbox"])
-                spannen = _verbunden([_spanne(s) for s in teil])
+                spannen = _verbunden([_spanne(s, fehlzeichen) for s in teil])
                 basis = statistics.median(s["origin"][1] for s in sichtbar if not s["flags"] & HOCH_MERKMAL) \
                     if any(not s["flags"] & HOCH_MERKMAL for s in sichtbar) else sichtbar[0]["origin"][1]
                 zeile = Zeile(nr, _ohne_rand(spannen), r, basis)
@@ -368,23 +370,10 @@ def _flaechen(seite: fitz.Page, aussparen: list[fitz.Rect]) -> tuple[list[fitz.R
     return _vereinigen(zeichnungen + [r for r, _ in bilder], NAEHE), bilder
 
 
-def _gerade(zeichnung: dict) -> bool:
-    """Besteht eine Zeichnung nur aus Rechtecken und waagerechten oder senkrechten Linien?"""
-    for item in zeichnung["items"]:
-        if item[0] == "re":
-            continue
-        if item[0] == "l" and (abs(item[1].x - item[2].x) < 0.5 or abs(item[1].y - item[2].y) < 0.5):
-            continue
-        if item[0] == "qu" and item[1].is_rectangular:
-            continue
-        return False
-    return True
-
-
 def _rahmenartig(zeichnung: dict, f: fitz.Rect) -> bool:
     """Hintergrund oder Rand der Fläche: gerade und so groß wie sie, oder eine Linie über ihre ganze Breite oder Höhe."""
     r = fitz.Rect(zeichnung["rect"])
-    if not _gerade(zeichnung):
+    if not gerade(zeichnung):
         return False
     return (r.width * r.height >= RAHMEN_ANTEIL * f.width * f.height or r.width >= 0.9 * f.width and r.height <= DUENN
             or r.height >= 0.9 * f.height and r.width <= DUENN)

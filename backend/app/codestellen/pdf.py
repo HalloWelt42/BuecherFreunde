@@ -2,17 +2,22 @@
 
 1. Codezeile: mindestens 85 % der sichtbaren Zeichen in Festbreitenschrift. Festbreite über den Namen der Schrift (viele
    Bücher markieren JetBrains Mono, DejaVu Sans Mono oder LM Mono nicht als Festbreite), das Merkmal der Schrift und als
-   Rückfall gleiche Breite aller Zeichen. Seiten ohne Festbreitenschrift werden gar nicht erst gelesen.
-2. Nicht dazu: Kopf- und Fußzeilen, Zeilennummern links neben dem Code (Ziffern in Textschrift oder kleiner gesetzt; sie
-   werden als Nummern der Zeile gemerkt), Fußnoten aus lauter Adressen.
+   Rückfall gleiche Breite aller Zeichen: verschiedene Buchstaben, jeder mit seinem eigenen Vorschub gemessen (die mittlere
+   Breite langer Spannen ist auch in Textschriften fast gleich, BF-103). Seiten ohne Festbreitenschrift werden gar nicht erst
+   gelesen. Die Textschicht kommt ohne Ligaturen (services/pdfseite.py).
+2. Nicht dazu: Kopf- und Fußzeilen, Zeilennummern links neben dem Code (Ziffern in Textschrift oder kleiner gesetzt, mit
+   sichtbarem Abstand zum Code, oder im selben Stück, aber vor der Fläche des Codes; sie werden als Nummern der Zeile
+   gemerkt), Fußnoten aus lauter Adressen. Nur nach dieser Lage, nie nach dem Text: eine Zahl am Anfang einer Codezeile
+   kann echter Code sein ("20 + 30"; Entscheidung des Nutzers, BF-104).
 3. Block: aufeinanderfolgende Codezeilen gleicher Größe. In derselben Fläche (Kasten, hinterlegte Zeilen) gehören sie
-   zusammen, auch über Leerzeilen; ohne Fläche bis zu einem Abstand von gut drei Zeilen, und nie über eine Zeile Fließtext
+   zusammen, auch über Leerzeilen, ebenso auf eigenen Bändern in einem gemeinsamen Kasten; ohne Fläche bis zu einem Abstand von gut drei Zeilen, und nie über eine Zeile Fließtext
    hinweg. Fängt die Nummerierung neu an, beginnt ein neues Listing.
 4. Rahmen: die kleinste Fläche, die den Block umschließt; ist sie an einer Kante bündig mit der Fläche darum (geteilter
    Kasten), geht der Kasten dort weiter. Titel: Kastentitel auf der oberen Kante, sonst eine Beschriftung darüber
    ("Listing 4.2: ..."); Dateizeile darunter ("Quellcode auf GitHub: ...py").
 5. Text: Einrückung aus der Lage jedes Stücks geteilt durch die Zeichenbreite, Leerzeilen aus den Zeilennummern oder dem
-   Abstand, Zeilen mit dem Umbruchzeichen an die vorige gehängt.
+   Abstand (gemessen am üblichen Schritt des Blocks; stehen alle Zeilen weit auseinander, ist das der Schritt), Zeilen mit
+   dem Umbruchzeichen an die vorige gehängt.
 6. Über Seitenwechsel: endet eine Seite mit einem Codeblock und beginnt die nächste mit einem ohne Titel, gleicher Größe
    und in derselben Spalte, ist es eine Stelle, solange nichts widerspricht (beide Kästen an der Bruchkante geschlossen,
    Nummern, die nicht weiterlaufen). Ketten gehen über beliebig viele Seiten.
@@ -30,12 +35,15 @@ from pathlib import Path
 import fitz
 
 from backend.app.codestellen.sprache import dateiname
+from backend.app.services.pdfseite import TEXTART_ROH, fehlzeichen_der_seite, ligaturen_aufloesen, sichtbare_zeichnungen
 
 RAND_OBEN, RAND_UNTEN = 0.075, 0.94       # Anteil der Seitenhöhe: darüber Kopfzeile, darunter Fußzeile (wie die Textansicht)
 MONO_ANTEIL = 0.85
 MONO_NAME = re.compile(r"mono|courier|cursor|consol|menlo|typewriter|inconsolata|source ?code|fira ?code|jetbrains|cmtt|sftt|"
                        r"ectt|lmmono|hack-|nimbusmono", re.I)
 FESTBREITE_MERKMAL = 8                    # Schriftmerkmal in PyMuPDF
+GLEICH_BREIT = 0.03                       # Anteil: so weit liegen die Vorschübe der Zeichen einer Festbreitenschrift auseinander
+BUCHSTABEN_MINDESTENS = 8                 # so viele verschiedene Buchstaben braucht der Rückfall, bevor er entscheidet
 UMBRUCH = re.compile(r"^\s*,?\s*[\u21aa\u2937\u21b3\u2192]")   # Zeichen am Anfang einer umbrochenen Zeile (",->" aus Formelsatz)
 MARKENZEICHEN = set(",\u21aa\u2937\u21b3\u2192")
 NACH_MARKE = 0.8                          # Zeichenbreiten: so viel Abstand setzt das Buch selbst hinter das Umbruchzeichen
@@ -48,6 +56,7 @@ LIGATUREN = [(re.compile(m), e) for m, e in [
 ]]
 GLEICHES_PAAR = re.compile(r"\^+(?=[/?_.:&|])")
 ZIFFERN = re.compile(r"^\d{1,4}$")
+NUMMER_VORN = re.compile(r"^(\s*)(\d{1,4})(\s+)(?=\S)")
 ADRESSE = re.compile(r"https?://|www\.", re.I)
 BESCHRIFTUNG = re.compile(r"^(Listing|Quelltext|Quellcode|Codebeispiel|Beispiel|Code)\s*[\dA-Z.:-]", re.I)
 DATEIZEILE = re.compile(r"^(Quellcode|Quelltext|Code online|Ganzes Programm|Begleitmaterial|Datei|Vollständig|Siehe)\b", re.I)
@@ -58,37 +67,49 @@ TITEL_NAEHE = 14.0                        # Punkte: so weit über oder unter der
 BESCHRIFTUNG_NAEHE = 30.0                 # Punkte: so weit über dem Block steht eine Beschriftung, darunter eine Dateizeile
 FLAECHE_MINDESTENS = (20.0, 6.0)          # Breite und Höhe, ab der eine Zeichnung als Fläche zählt
 HUELLE = 70.0                             # Punkte: so viel größer als die Fläche darf eine Hülle des Kastens sein
+NUMMER_ABSTAND = 1.5                      # Punkte: so viel Platz steht mindestens zwischen einer Zeilennummer und dem Code
 
 
 # -- Schriften -----------------------------------------------------------------------------------------------------------
+
+def festbreit_nach_name(schrift: str, merkmale: int) -> bool:
+    """Festbreite, wie Name oder Merkmal der Schrift sie nennen (ohne die Zeichen zu messen)."""
+    return bool(MONO_NAME.search(schrift) or merkmale & FESTBREITE_MERKMAL)
+
 
 class Schriften:
     """Welche Schrift Festbreite hat, einmal je Datei bestimmt."""
 
     def __init__(self) -> None:
         self._mono: dict[str, bool] = {}
-        self._breiten: dict[str, list[float]] = {}
+        self._breiten: dict[str, dict[str, float]] = {}       # Schrift -> Buchstabe -> Vorschub je Schriftgröße
 
     def mono(self, schrift: str, merkmale: int) -> bool | None:
         if schrift not in self._mono:
-            if MONO_NAME.search(schrift) or merkmale & FESTBREITE_MERKMAL:
+            if festbreit_nach_name(schrift, merkmale):
                 self._mono[schrift] = True
             else:
                 return None                    # noch offen: entscheidet die Breite der Zeichen
         return self._mono[schrift]
 
-    def breite_lernen(self, schrift: str, text: str, breite: float, groesse: float) -> None:
-        zeichen = text.strip()
-        if schrift in self._mono or len(zeichen) < 6 or groesse <= 0 or zeichen != text:
+    def breite_lernen(self, schrift: str, zeichen: list[tuple[str, float]], groesse: float) -> None:
+        """Der Vorschub einzelner Buchstaben (Zeichen und Breite), solange die Schrift nicht entschieden ist."""
+        if schrift in self._mono or groesse <= 0:
             return
-        self._breiten.setdefault(schrift, []).append(breite / (len(zeichen) * groesse))
+        je = self._breiten.setdefault(schrift, {})
+        for c, breite in zeichen:
+            if c.isalpha() and c not in je and breite > 0:
+                je[c] = breite / groesse
 
     def ist_mono(self, schrift: str, merkmale: int) -> bool:
-        """Name oder Merkmal, sonst als Rückfall gleiche Breite je Zeichen über viele Spannen mit verschiedenem Text."""
+        """Name oder Merkmal, sonst als Rückfall: alle gemessenen Buchstaben gleich breit. Mit zu wenigen Buchstaben bleibt
+        die Schrift offen und gilt vorerst als Textschrift."""
         bekannt = self.mono(schrift, merkmale)
         if bekannt is None:
-            werte = self._breiten.get(schrift, [])
-            self._mono[schrift] = bekannt = len(werte) >= 3 and statistics.pstdev(werte) / statistics.mean(werte) < 0.02
+            werte = list(self._breiten.get(schrift, {}).values())
+            if len(werte) < BUCHSTABEN_MINDESTENS:
+                return False
+            self._mono[schrift] = bekannt = max(werte) - min(werte) <= GLEICH_BREIT * max(werte)
         return bekannt
 
 
@@ -111,6 +132,21 @@ class Spanne:
     text: str
     mono: bool
     ligaturen: bool = False
+    von: float | None = None                  # Anfang des ersten und Ende des letzten sichtbaren Zeichens (ohne Leerraum)
+    bis: float | None = None
+
+    @property
+    def sichtbar_von(self) -> float:
+        return self.x0 if self.von is None else self.von
+
+    @property
+    def sichtbar_bis(self) -> float:
+        return self.x1 if self.bis is None else self.bis
+
+    def ohne_vorlauf(self) -> Spanne:
+        """Dieselbe Spanne ohne den Leerraum vorn, beginnend am ersten sichtbaren Zeichen."""
+        return Spanne(self.sichtbar_von, self.x1, self.y0, self.y1, self.basis, self.groesse, self.text.lstrip(), self.mono,
+                      self.ligaturen, self.sichtbar_von, self.bis)
 
 
 @dataclass
@@ -169,22 +205,30 @@ class Zeile:
 
 
 def _spannen(seite: fitz.Page, schriften: Schriften) -> list[Spanne]:
+    """Die Spannen der Seite mit ihren Zeichen (rawdict): die Zeichen lehren die Breite der Schrift und zeigen, wo der
+    sichtbare Text beginnt und endet."""
     hoehe = seite.rect.height
+    bloecke = seite.get_text("rawdict", flags=TEXTART_ROH)["blocks"]
+    fehlzeichen = fehlzeichen_der_seite(seite)
     roh = []
-    for block in seite.get_text("dict")["blocks"]:
+    for block in bloecke:
         for zeile in block.get("lines", []):
             for s in zeile["spans"]:
-                if not s["text"].strip():
+                zeichen = s.get("chars", [])
+                sichtbar = [c for c in zeichen if not c["c"].isspace()]
+                if not sichtbar:
                     continue
                 x0, y0, x1, y1 = s["bbox"]
                 if y1 < hoehe * RAND_OBEN or y0 > hoehe * RAND_UNTEN:
                     continue
-                schriften.breite_lernen(s["font"], s["text"], x1 - x0, s["size"])
-                roh.append((s, x0, y0, x1, y1))
+                schriften.breite_lernen(s["font"], [(c["c"], c["bbox"][2] - c["bbox"][0]) for c in zeichen], s["size"])
+                text = ligaturen_aufloesen("".join(c["c"] for c in zeichen), fehlzeichen)
+                roh.append((s, x0, y0, x1, y1, text, sichtbar[0]["bbox"][0], sichtbar[-1]["bbox"][2]))
     aus = []
-    for s, x0, y0, x1, y1 in roh:
+    for s, x0, y0, x1, y1, text, von, bis in roh:
         mono = schriften.ist_mono(s["font"], s["flags"])
-        aus.append(Spanne(x0, x1, y0, y1, s["origin"][1], s["size"], s["text"], mono, bool(LIGATURSCHRIFT.search(s["font"]))))
+        aus.append(Spanne(x0, x1, y0, y1, s["origin"][1], s["size"], text, mono, bool(LIGATURSCHRIFT.search(s["font"])),
+                          von, bis))
     return aus
 
 
@@ -203,8 +247,9 @@ def _zeilen(spannen: list[Spanne]) -> list[Zeile]:
         erste = teile[0]
         if ZIFFERN.match(erste.text.strip()):
             rest = teile[1:]
-            if rest and (not erste.mono or erste.groesse < 0.8 * rest[0].groesse) and rest[0].x0 - erste.x1 > 1.5:
-                z = Zeile(rest, nummer=int(erste.text.strip()))
+            if (rest and (not erste.mono or erste.groesse < 0.8 * rest[0].groesse)
+                    and rest[0].sichtbar_von - erste.sichtbar_bis > NUMMER_ABSTAND):
+                z = Zeile([rest[0].ohne_vorlauf(), *rest[1:]], nummer=int(erste.text.strip()))
             elif not rest and not erste.mono:              # Festbreite: erst die Größe entscheidet (seite_lesen)
                 z = Zeile(teile, nummer=int(erste.text.strip()), nur_nummer=True)
         aus.append(z)
@@ -220,10 +265,13 @@ class Flaeche:
 
 
 def _flaechen(seite: fitz.Page) -> list[Flaeche]:
-    """Gefüllte und gerahmte Rechtecke; gleich gefärbte, die bündig aufeinander liegen (hinterlegte Zeilen), als eine."""
+    """Gefüllte und gerahmte Rechtecke; gleich gefärbte, die bündig aufeinander liegen (hinterlegte Zeilen), als eine. Nur
+    sichtbare Zeichnungen, auf die Seite beschnitten (services/pdfseite.py): der weiße Hintergrund eines aus einem E-Book
+    gedruckten Kapitels ist kein Kasten (BF-104)."""
     breite, hoehe = FLAECHE_MINDESTENS
     flaechen: list[Flaeche] = []
-    for d in seite.get_drawings():
+    zeichnungen = sichtbare_zeichnungen(seite)
+    for d in zeichnungen:
         r = fitz.Rect(d["rect"])
         if r.width >= breite and r.height >= hoehe and (d.get("fill") is not None or any(i[0] == "re" for i in d["items"])):
             flaechen.append(Flaeche(r, tuple(round(c, 3) for c in d["fill"]) if d.get("fill") is not None else None))
@@ -237,12 +285,37 @@ def _flaechen(seite: fitz.Page) -> list[Flaeche]:
         else:
             vereint.append(Flaeche(fitz.Rect(f.rechteck), f.farbe))
     # Rahmen aus einzelnen Linien (lstlisting mit frame=single)
-    for r in seite.cluster_drawings():
+    for r in seite.cluster_drawings(drawings=zeichnungen):
         if r.width >= breite and r.height >= 3 * hoehe and not any(abs(r.x0 - f.rechteck.x0) < 1 and abs(r.y0 - f.rechteck.y0) < 1
                                                                     and abs(r.x1 - f.rechteck.x1) < 1 and abs(r.y1 - f.rechteck.y1) < 1
                                                                     for f in vereint):
             vereint.append(Flaeche(fitz.Rect(r), None))
     return vereint
+
+
+def _nummer_vor_der_flaeche(z: Zeile, flaechen: list[Flaeche]) -> Zeile:
+    """Eine Zeilennummer im selben Stück wie der Code: sie steht vor der Fläche, auf der der Code beginnt (eine eigene Spalte
+    für die Nummern). Ohne Fläche oder mit der Zahl darauf ("20 + 30") bleibt die Zeile, wie sie ist."""
+    erste = z.spannen[0] if z.spannen else None
+    treffer = NUMMER_VORN.match(erste.text) if erste is not None and erste.mono and z.nummer is None else None
+    if treffer is None or not flaechen:
+        return z
+    breite = (erste.x1 - erste.x0) / len(erste.text)
+    zahl_bis, code_ab = erste.x0 + treffer.end(2) * breite, erste.x0 + treffer.end() * breite
+    unter_code = _umschliessend(flaechen, fitz.Rect(code_ab, z.y0, z.x1, z.y1))
+    if not unter_code or unter_code[0].rechteck.x0 < zahl_bis - 0.5:
+        return z
+    rest = Spanne(code_ab, erste.x1, erste.y0, erste.y1, erste.basis, erste.groesse, erste.text[treffer.end():], erste.mono,
+                  erste.ligaturen, code_ab, erste.bis)
+    return Zeile([rest, *z.spannen[1:]], nummer=int(treffer.group(2)))
+
+
+def _gemeinsame_flaeche(flaechen: list[Flaeche], a: Flaeche, b: Flaeche) -> Flaeche | None:
+    """Die kleinste Fläche, die zwei umschließt (ein Kasten, in dem jede Zeile ihr eigenes Band hat; auch eine der beiden
+    selbst), oder None."""
+    beide = [f for f in flaechen if (f.rechteck + (-2, -2, 2, 2)).contains(a.rechteck)
+             and (f.rechteck + (-2, -2, 2, 2)).contains(b.rechteck)]
+    return min(beide, key=lambda f: f.rechteck.get_area(), default=None)
 
 
 def _umschliessend(flaechen: list[Flaeche], r: fitz.Rect) -> list[Flaeche]:
@@ -274,8 +347,13 @@ class Block:
 
     @property
     def zeilenhoehe(self) -> float:
-        schritte = [b.basis - a.basis for a, b in zip(self.zeilen, self.zeilen[1:]) if 0 < b.basis - a.basis <= self.groesse * 2.0]
-        return statistics.median(schritte) if schritte else self.groesse * 1.3
+        """Der übliche Schritt von Zeile zu Zeile; stehen alle Zeilen weiter als zwei Schriftgrößen auseinander, der
+        kleinste."""
+        schritte = [b.basis - a.basis for a, b in zip(self.zeilen, self.zeilen[1:]) if b.basis - a.basis > 0]
+        eng = [d for d in schritte if d <= self.groesse * 2.0]
+        if eng:
+            return statistics.median(eng)
+        return min(schritte) if schritte else self.groesse * 1.3
 
     @property
     def rechteck(self) -> fitz.Rect:
@@ -392,6 +470,7 @@ def seite_lesen(seite: fitz.Page, nr: int, schriften: Schriften) -> Seite:
                 z.nur_nummer, z.nummer = True, int(z.text.strip())
     textgroesse = _textgroesse(zeilen)
     flaechen = _flaechen(seite) if any(z.code for z in zeilen) else []
+    zeilen = [_nummer_vor_der_flaeche(z, flaechen) for z in zeilen]
     bloecke: list[Block] = []
     offen: Block | None = None
     nummern_ohne_code: list[Zeile] = []
@@ -408,6 +487,10 @@ def seite_lesen(seite: fitz.Page, nr: int, schriften: Schriften) -> Seite:
             continue
         umschliessend = _umschliessend(flaechen, z.rechteck)
         flaeche = umschliessend[0] if umschliessend else None
+        if offen is not None and offen.flaeche is not None and flaeche is not None and offen.flaeche is not flaeche:
+            gemeinsam = _gemeinsame_flaeche(flaechen, offen.flaeche, flaeche)   # Zeilen auf eigenen Bändern eines Kastens
+            if gemeinsam is not None:
+                offen.flaeche = flaeche = gemeinsam
         if offen is not None and _passt(offen, z, flaeche):
             offen.zeilen.append(z)
         else:

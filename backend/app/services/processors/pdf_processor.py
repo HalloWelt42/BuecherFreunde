@@ -7,6 +7,7 @@ import fitz
 
 from backend.app.services.processors.base import BaseProcessor, BookProcessingResult
 from backend.app.services.isbn_extractor import extract_isbn_from_pages
+from backend.app.services.pdfseite import seitentext
 
 logger = logging.getLogger("buecherfreunde.processor.pdf")
 
@@ -33,11 +34,10 @@ class PdfProcessor(BaseProcessor):
             result.page_count = len(doc)
             result.metadata_raw = meta
 
-            # Text extrahieren (seitenweise für ISBN-Suche)
+            # Text extrahieren (seitenweise für ISBN-Suche), Ligaturen als Buchstaben (BF-104)
             page_texts = []
             for page in doc:
-                text = page.get_text("text")
-                page_texts.append(text or "")
+                page_texts.append(seitentext(page))
             # je Dateiseite ein Teil, getrennt mit Seitenvorschub (Regel in services/seiten.py)
             result.fulltext = "\f".join(t.replace("\f", "\n") for t in page_texts)
 

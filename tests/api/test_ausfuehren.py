@@ -299,7 +299,8 @@ def test_fehlerzeile():
 
 async def test_textansicht_zeigt_codestellen_als_code(client, buch):
     vorher = (await client.get(f"/api/books/{buch}/textseiten", params={"ab": 1, "anzahl": 2})).json()
-    assert not any(b["art"] == "code" for s in vorher["seiten"] for b in s["bausteine"])      # noch nicht erkannt: wie bisher
+    vorher_code = [b for s in vorher["seiten"] for b in s["bausteine"] if b["art"] == "code"]
+    assert vorher_code and not any(b["kennung"] for b in vorher_code)     # noch nicht erkannt: Festbreite als Code ohne Stelle
     await codestellen.erkennen(buch)
     seiten = (await client.get(f"/api/books/{buch}/textseiten", params={"ab": 1, "anzahl": 2})).json()["seiten"]
     code = [b for s in seiten for b in s["bausteine"] if b["art"] == "code"]

@@ -44,8 +44,10 @@ def seiten_aus(text: str, page_count: int | None) -> list[str]:
 def pdf_seitentexte(pfad: Path) -> list[str]:
     import fitz
 
+    from backend.app.services.pdfseite import seitentext
+
     with fitz.open(str(pfad)) as doc:
-        return [(seite.get_text("text") or "") for seite in doc]
+        return [seitentext(seite) for seite in doc]
 
 
 def pdf_seitenzahl(pfad: Path) -> int:

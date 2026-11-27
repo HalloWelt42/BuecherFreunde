@@ -1,5 +1,6 @@
 // Was im Hintergrund läuft: Ergänzen der Bibliothek und eigene Aufträge einzelner Ansichten. Einlesen von Ordnern und
 // gemeinfreie Bücher stehen in der einen Liste der Annahme (lib/stand/annahme.svelte.ts) und werden hier als Auftrag gezeigt.
+import { ladeAuftraege, steuereAuftrag, type Auftragsart, type Auftragsstand } from "../api/einrichtung";
 import { brecheRescanAb, holeRescanStatus } from "../api/imports";
 import { EINLESEN, ERLEDIGT, GEMEINFREI, WARTEND, type Sammelstand } from "../annahme/sammlung";
 import { darfAbrufen } from "./abrufe";
@@ -38,6 +39,10 @@ export interface EigenerAuftrag {
 }
 
 const GEMEINFREI_AUFTRAG = "gemeinfrei";
+/** Vorsilbe der langen Aufträge des Servers in der Liste; gezeigt, solange einer nicht fertig ist */
+const LANG = "lang-";
+const LANGE_ARTEN: readonly Auftragsart[] = ["einspielen", "pruefung", "neuaufbau", "kopieren", "ligaturen"];
+const LANG_OFFEN = new Set<Auftragsstand["stand"]>(["wartet", "laeuft", "pause", "fehler"]);
 const ERGAENZUNG: Ergaenzung = { laeuft: false, typ: "", gesamt: 0, fortschritt: 0, aktuelles_buch: "", cover_gefunden: 0, isbn_gefunden: 0, metadaten_aktualisiert: 0, volltext_extrahiert: 0, fehler: 0 };
 const TAKT_AKTIV_MS = 1500;
 const TAKT_RUHE_MS = 10_000;
@@ -48,6 +53,17 @@ function gemeinfreiAuftrag(s: Sammelstand): EigenerAuftrag | null {
   const neben = [s.da ? `${s.da} gab es schon` : "", s.gescheitert ? `${s.gescheitert} gescheitert` : ""].filter(Boolean);
   const jetzt = s.aktuell ? s.aktuell.name.replace(/\.(?:epub|txt)$/, "") : s.laeuft ? "" : "fertig";
   return { id: GEMEINFREI_AUFTRAG, titel: "Gemeinfreie Bücher holen", text: [`${s.erledigt} von ${s.gesamt}`, jetzt, ...neben].filter(Boolean).join(", "), anteil: s.erledigt / s.gesamt, laeuft: s.laeuft, weg: "/import" };
+}
+
+/** Ein langer Auftrag des Servers (Prüfung, Neuaufbau, Volltexte neu lesen) wie ein eigener Auftrag einer Ansicht; angehalten
+ *  oder mit Fehler lässt er sich fortsetzen */
+function langerAuftrag(a: Auftragsstand, steuern: (art: Auftragsart, aktion: "pause" | "fortsetzen") => void): EigenerAuftrag {
+  const laeuft = a.stand === "wartet" || a.stand === "laeuft";
+  return {
+    id: LANG + a.art, titel: a.was, text: [`${a.fertig} von ${a.gesamt}`, a.grund].filter(Boolean).join(", "),
+    anteil: a.gesamt ? a.fertig / a.gesamt : null, laeuft, pausiert: !laeuft,
+    pause: () => steuern(a.art, "pause"), fortsetzen: () => steuern(a.art, "fortsetzen"),
+  };
 }
 
 class Auftraege {
@@ -88,11 +104,13 @@ class Auftraege {
   async #takt(): Promise<void> {
     await this.auffrischen();
     if (!this.#an) return;
-    this.#uhr = setTimeout(() => void this.#takt(), this.ergaenzung.laeuft ? TAKT_AKTIV_MS : TAKT_RUHE_MS);
+    const aktiv = this.ergaenzung.laeuft || this.eigene.some((e) => e.id.startsWith(LANG) && e.laeuft);
+    this.#uhr = setTimeout(() => void this.#takt(), aktiv ? TAKT_AKTIV_MS : TAKT_RUHE_MS);
   }
 
-  /** Der Stand der Ergänzung; das Einlesen kommt mit dem Ereignisstrom der Annahme */
+  /** Der Stand der Ergänzung und der langen Aufträge; das Einlesen kommt mit dem Ereignisstrom der Annahme */
   async auffrischen(): Promise<void> {
+    await this.#langeAuffrischen();
     if (!darfAbrufen("ergaenzung")) return;
     try {
       const stand = await holeRescanStatus();
@@ -100,6 +118,17 @@ class Auftraege {
       this.ergaenzung = { ...ERGAENZUNG, ...stand };
       if (this.#ergaenzungLief && !this.ergaenzung.laeuft) bestand.geaendert();
       this.#ergaenzungLief = this.ergaenzung.laeuft;
+    } catch {
+      // ohne Antwort bleibt der letzte Stand stehen
+    }
+  }
+
+  async #langeAuffrischen(): Promise<void> {
+    if (!darfAbrufen("langeAuftraege")) return;
+    try {
+      const offen = (await ladeAuftraege()).filter((a) => LANGE_ARTEN.includes(a.art) && LANG_OFFEN.has(a.stand));
+      const steuern = (art: Auftragsart, aktion: "pause" | "fortsetzen") => void steuereAuftrag(art, aktion).then(() => this.auffrischen());
+      this.eigene = [...this.eigene.filter((e) => !e.id.startsWith(LANG)), ...offen.map((a) => langerAuftrag(a, steuern))];
     } catch {
       // ohne Antwort bleibt der letzte Stand stehen
     }

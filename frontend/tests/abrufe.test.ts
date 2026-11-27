@@ -15,7 +15,7 @@ import Kopf from "../src/lib/schale/Kopf.svelte";
 const JUGEND: Faehigkeit[] = ["lesen", "vorlesen", "lesezeichen", "suche", "favoriten", "sammeln", "markierungen", "notizen", "etiketten", "privat", "ausfuehren"];
 const VERWALTUNG: Faehigkeit[] = [...JUGEND, "nachschlagen", "katalog", "hinzufuegen", "bearbeiten", "freigeben", "ki", "loeschen", "einstellungen", "profile", "luecken"];
 /** Die Wege, die die Stufe Jugend bisher mit 403 beantwortet bekam */
-const VERBOTEN = ["/api/katalog", "/api/verbindungen", "/api/config/update-check", "/api/einordnung/stand", "/api/books/rescan/status", "/api/annahme", "/api/fassungen"];
+const VERBOTEN = ["/api/katalog", "/api/verbindungen", "/api/config/update-check", "/api/einordnung/stand", "/api/books/rescan/status", "/api/annahme", "/api/fassungen", "/api/einrichtung/auftraege"];
 
 const profil = (rolle: Profil["rolle"]): Profil => ({ id: "p-7", name: "Malve", zeichen: "feather", farbe: "#6366f1", rolle, stufe: rolle === "kind" ? "jugend" : null, hat_pin: false, hat_bild_pin: false });
 
@@ -29,7 +29,7 @@ function ichAls(rolle: Profil["rolle"], faehigkeiten: Faehigkeit[]): Ich {
 function server() {
   const f = vi.fn((weg: string) => {
     const pfad = weg.split("?")[0];
-    const leer = ["/api/categories", "/api/collections", "/api/verbindungen", "/api/fassungen"].includes(pfad) ? [] : {};
+    const leer = ["/api/categories", "/api/collections", "/api/verbindungen", "/api/fassungen", "/api/einrichtung/auftraege"].includes(pfad) ? [] : {};
     const daten = pfad === "/api/annahme" ? { eintraege: [], zaehler: { alle: 0, laeuft: 0, klaeren: 0, da: 0, fertig: 0 } } : leer;
     return Promise.resolve(new Response(JSON.stringify(daten), { status: 200 }));
   });
