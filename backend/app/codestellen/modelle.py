@@ -22,8 +22,9 @@ SICHER = 0.6
 Quelle = Literal["titel", "datei", "inhalt", ""]
 
 # Eine Zahl am Anfang einer Codezeile ist ohne Ausnahme eine Zählung des Buchs (Entscheidung des Nutzers, BF-104): sie fällt samt
-# direktem Trennzeichen und genau einem Leerzeichen weg, die Einrückung danach bleibt.
-ZEILENNUMMER = re.compile(r"^[ \t]*\d+[.:)]?(?:[ \t]|$)", re.M)
+# direktem Trennzeichen und genau einem Leerzeichen weg, die Einrückung danach bleibt. Auch gegliedert ("6.5") und mit
+# besonderen Leerzeichen der Bücher (schmal, fest); hängt Code direkt an der Zahl ("2**3"), ist es keine Zählung.
+ZEILENNUMMER = re.compile(r"^[^\S\n]*\d+(?:\.\d+)*[.:)]?(?:[^\S\n]|$)", re.M)
 
 
 def ohne_zeilennummern(code: str) -> str:

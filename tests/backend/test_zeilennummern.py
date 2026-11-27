@@ -19,3 +19,8 @@ def test_auch_gespeicherte_stellen_kommen_ohne_zaehlung_die_kennung_bleibt():
     c = Codestelle.model_validate(gespeichert)
     assert c.code == 'print("Hallo Welt!")\nzahl = 42'
     assert c.kennung == "s3-120-abcdef12" and c.pruefsumme == pruefsumme(c.code)
+
+
+def test_gegliedert_und_mit_besonderen_leerzeichen_aber_nicht_wenn_code_an_der_zahl_haengt():
+    buch = "   6.5 if wert:\n\u20027\u2002weiter = 1\n3\u00a0x = 2\n2.5\n2**3\n"
+    assert ohne_zeilennummern(buch) == "if wert:\nweiter = 1\nx = 2\n\n2**3\n"
