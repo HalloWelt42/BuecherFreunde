@@ -166,6 +166,7 @@ app = FastAPI(
     title="BuecherFreunde",
     version=settings.version,
     description="Selbst gehostete Buchverwaltung",
+    license_info={"name": "AGPL-3.0-only", "identifier": "AGPL-3.0-only"},
     lifespan=lifespan,
 )
 app.add_middleware(Einheiten)                   # jede Anfrage eine Transaktion (BF-49)

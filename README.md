@@ -342,3 +342,33 @@ docker compose --env-file ../.env up -d --build --force-recreate
 |--------|------|-------------|
 | Frontend (Nginx) | 8160 (konfigurierbar) | Externer Zugang |
 | Backend (Uvicorn) | 8000 (intern) | Nur via Nginx erreichbar |
+
+## Lizenz
+
+**GNU Affero General Public License, nur Version 3 (AGPL-3.0-only)** - Siehe [LICENSE](LICENSE)
+
+Erlaubt: Nutzung für jeden Zweck, privat und gewerblich, Veränderung, Weitergabe
+
+Bedingungen: Weitergabe nur unter derselben Lizenz und mit Quelltext; wer eine veränderte Fassung anderen über ein Netz anbietet, bietet ihnen ihren Quelltext an; Urheberhinweise bleiben erhalten
+
+Fassungen bis einschließlich 0.43.1 sind unter der AGPL-3.0 erschienen und bleiben es. Bausteine Dritter behalten ihre eigenen Lizenzen; die App nennt sie unter Einstellungen, Rechtliches, Drittanbieter.
+
+---
+
+## Unterstützen
+
+BücherFreunde ist ein privates Hobby-Projekt. Kein Tracking, keine Werbung, keine Kompromisse.
+
+Wenn dir das Projekt gefällt, kannst du in der App "Danke sagen" - oder direkt hier:
+
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/HalloWelt42)
+
+**Crypto:**
+
+| Coin | Adresse |
+|------|---------|
+| BTC | `bc1qnd599khdkv3v3npmj9ufxzf6h4fzanny2acwqr` |
+| DOGE | `DL7tuiYCqm3xQjMDXChdxeQxqUGMACn1ZV` |
+| ETH | `0x8A28fc47bFFFA03C8f685fa0836E2dBe1CA14F27` |
+
+Copyright (c) 2026 HalloWelt42

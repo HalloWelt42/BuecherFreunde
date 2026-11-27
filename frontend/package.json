@@ -2,6 +2,7 @@
   "name": "buecherfreunde-frontend",
   "private": true,
   "version": "0.2.4",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
     "dev": "vite --port 5173",

@@ -1,15 +1,19 @@
 # Haftungsausschluss
 
-BücherFreunde wird ohne jede Gewährleistung bereitgestellt, weder ausdrücklich noch stillschweigend.
+## Gewährleistung und Haftung
 
-## Haftungsbeschränkung
+BücherFreunde wird unentgeltlich überlassen. Der Urheber haftet nach den gesetzlichen Vorschriften für Vorsatz und grobe Fahrlässigkeit, für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit und für Mängel, die er arglistig verschwiegen hat. Im Übrigen ist seine Haftung ausgeschlossen, soweit das Gesetz es zulässt. Eine zwingende gesetzliche Haftung, etwa nach dem Produkthaftungsgesetz, bleibt unberührt.
 
-- Der Autor übernimmt keine Haftung für Schäden, die durch die Nutzung der Software entstehen.
-- Die Software ist für den persönlichen, nicht-kommerziellen Gebrauch auf eigener Hardware gedacht.
-- Der Nutzer ist selbst für Backups seiner Daten verantwortlich.
-- Für die über externe APIs abgerufenen Daten (Metadaten, Cover, Gutenberg-Bücher) gelten die jeweiligen Nutzungsbedingungen der Anbieter.
-- Project Gutenberg-Bücher sind gemeinfrei. Die Nutzung unterliegt den Bedingungen von `gutenberg.org`.
+Die Abschnitte 15 bis 17 der AGPL-3.0 (Gewährleistung und Haftung) gelten, soweit das anwendbare Recht es zulässt.
 
-## Urheberrecht
+## Daten
 
-BücherFreunde ist ein Werkzeug zur Verwaltung eigener Bücher und Dokumente. Der Nutzer ist dafür verantwortlich, dass er die Rechte an den importierten Dateien besitzt oder diese gemeinfrei sind. Die Software prüft keine Urheberrechte.
+Die App sichert ihre Datenbank regelmäßig. Ob die Sicherungen vollständig sind und sich zurückspielen lassen, prüfst du selbst.
+
+## Inhalte aus Quellen
+
+Für Angaben, Umschläge, Lexikonartikel und Bücher aus Quellen gelten die Bedingungen ihrer Anbieter; Artikel der Wikipedia etwa stehen unter CC BY-SA 4.0. Für ihre Richtigkeit steht der Urheber der App nicht ein.
+
+## Urheberrecht an Büchern
+
+BücherFreunde verwaltet Bücher und Dokumente, die du hinzufügst. Du bist dafür verantwortlich, dass du sie nutzen darfst. Die App prüft keine Urheberrechte.

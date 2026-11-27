@@ -1,42 +1,27 @@
 # Nutzungsbedingungen
 
-## Geltungsbereich
+## Was BücherFreunde ist
 
-Diese Bedingungen gelten für die Nutzung der BücherFreunde Software.
+BücherFreunde ist eine Bücherei zum Selbstbetreiben: Server und Oberfläche laufen auf einem Gerät, das du betreibst. Der Urheber betreibt keinen Dienst dafür und erhält keine Daten.
 
-## Nutzung
+## Lizenz
 
-- BücherFreunde ist eine selbst gehostete Buchverwaltung für den persönlichen Gebrauch.
-- Die Software wird unter der AGPL-3.0 Lizenz bereitgestellt und darf gemäß deren Bedingungen genutzt, verändert und weiterverbreitet werden.
-- Die Nutzung erfolgt auf eigene Verantwortung.
-- Der Nutzer ist für die Einhaltung des Urheberrechts bei importierten Dateien selbst verantwortlich.
+Es gilt die GNU Affero General Public License, Version 3 (siehe Lizenz). Diese Seite fasst zusammen, maßgeblich ist der Lizenztext.
 
-## Haftung
+## Deine Verantwortung
 
-Der Entwickler übernimmt keine Haftung für:
+- Du betreibst die App auf eigene Verantwortung. Sie sichert ihre Datenbank regelmäßig, mit Kellerwolke auch dorthin, solange das eingeschaltet ist. Prüfe gelegentlich, ob sich eine Sicherung zurückspielen lässt.
+- Für Dateien, die du hinzufügst, sorgst du dafür, dass du sie nutzen darfst. Die App prüft keine Urheberrechte.
+- Angaben, Umschläge, Lexikonartikel und Bücher aus Quellen bleiben unter den Rechten und Bedingungen ihrer Anbieter.
 
-- Schäden, die durch die Nutzung der Software entstehen
-- Datenverlust durch fehlerhafte Konfiguration, Hardware-Ausfälle oder Bedienfehler
-- Die Richtigkeit oder Vollständigkeit von Metadaten aus externen Quellen (Open Library, Google Books, Wikipedia, Gutendex)
-- Inhalte gemeinfreier Bücher, die über Project Gutenberg importiert werden
+## Quellen und Dienste
 
-## Inhalte
+Welche Quellen und Dienste die App fragt und was sie dabei sendet, steht im Datenschutz. Jede Quelle lässt sich in der Einstellungsdatei `.env` abschalten, jeder Dienst im Haus, indem seine Adresse leer bleibt.
 
-BücherFreunde stellt keine eigenen Buchinhalte bereit. Die Software verwaltet ausschließlich vom Nutzer bereitgestellte Dateien und aus öffentlichen Quellen importierte gemeinfreie Werke.
+## Gemeinfreie Bücher
 
-## Externe Dienste
+Bücher von Project Gutenberg sind in den USA gemeinfrei. In Deutschland kann ein Werk noch geschützt sein, bis 70 Jahre nach dem Tod seines Urhebers. Prüfe das vor dem Hinzufügen.
 
-BücherFreunde kann optional folgende externe Dienste nutzen:
+## Gewährleistung und Haftung
 
-- **Open Library** (openlibrary.org) - Metadaten-Anreicherung
-- **Google Books** (googleapis.com) - Metadaten und Cover
-- **Wikipedia/Wikidata** (wikidata.org) - Autoren-Informationen
-- **Gutendex** (gutendex.com) - Gemeinfreie Bücher von Project Gutenberg
-- **KI-Dienst im Haus** (konfigurierbar) - Einordnung in Regale
-
-Für die Nutzung dieser Dienste gelten deren jeweilige Nutzungsbedingungen. Alle externen Verbindungen können in den Einstellungen deaktiviert werden.
-
-## Backups
-
-Der Nutzer ist selbst für regelmäßige Backups seiner Daten verantwortlich. Die Software bietet Backup-Funktionen an, übernimmt aber keine Garantie für deren Vollständigkeit.
-
+Siehe Haftungsausschluss.

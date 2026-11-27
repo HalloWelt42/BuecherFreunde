@@ -1,32 +1,36 @@
 # Lizenz
 
-## BücherFreunde - GNU Affero General Public License v3.0
+## BücherFreunde - GNU Affero General Public License, Version 3
 
-Copyright (c) 2024-{{YEAR}} HalloWelt42
+Copyright (c) 2026 HalloWelt42
 
-BücherFreunde ist freie Software: Du kannst sie unter den Bedingungen der **GNU Affero General Public License** (AGPL-3.0), wie von der Free Software Foundation veröffentlicht, weiterverbreiten und/oder modifizieren - entweder gemäß Version 3 der Lizenz oder (nach deiner Wahl) jeder späteren Version.
+BücherFreunde ist freie Software. Du darfst es nach den Bedingungen der GNU Affero General Public License, Version 3 (AGPL-3.0-only), nutzen, verändern und weitergeben. Es gilt nur diese Fassung der Lizenz, keine spätere.
 
 ### Erlaubt
 
-- Private und kommerzielle Nutzung
+- Nutzung für jeden Zweck, privat und gewerblich
 - Veränderung und Anpassung
-- Weiterverbreitung
-- Patentnutzung
+- Weitergabe, verändert oder unverändert
 
 ### Bedingungen
 
-- **Quellcode-Pflicht:** Wenn du die Software veränderst und als Netzwerkdienst anbietest, musst du den vollständigen Quellcode veröffentlichen.
-- **Copyleft:** Abgeleitete Werke müssen ebenfalls unter AGPL-3.0 oder einer kompatiblen Lizenz stehen.
-- **Lizenztext:** Eine Kopie der Lizenz muss beiliegen.
-- **Namensnennung:** Der ursprüngliche Copyright-Hinweis muss erhalten bleiben.
-- **Änderungen kennzeichnen:** Wesentliche Änderungen müssen dokumentiert werden.
+- **Gleiche Lizenz:** Wer BücherFreunde weitergibt, verändert oder unverändert, gibt es unter der AGPL-3.0 weiter, mit dem Lizenztext und mit dem Quelltext oder einem Weg zu ihm.
+- **Netz:** Wer eine veränderte Fassung anderen über ein Netz zur Nutzung anbietet, bietet ihnen den Quelltext dieser Fassung an.
+- **Hinweise:** Urheberhinweis und Lizenztext bleiben erhalten; wer etwas ändert, kennzeichnet seine Änderungen mit Datum.
 
-### Keine Gewährleistung
+### Bausteine Dritter
 
-Diese Software wird ohne jede Gewährleistung bereitgestellt, weder ausdrücklich noch stillschweigend, einschließlich - aber nicht beschränkt auf - die implizite Gewährleistung der Marktgängigkeit oder Eignung für einen bestimmten Zweck.
+Die Bausteine Dritter behalten ihre eigenen Lizenzen (siehe Drittanbieter).
 
-### Vollständiger Lizenztext
+### Frühere Fassungen
 
-Der vollständige Lizenztext befindet sich in der Datei `LICENSE` im Projektverzeichnis oder unter:
-https://www.gnu.org/licenses/agpl-3.0.html
+Fassungen bis einschließlich 0.43.1 sind unter der AGPL-3.0 erschienen und bleiben es.
 
+### Gewährleistung und Haftung
+
+Siehe Haftungsausschluss.
+
+### Lizenztext und Quelltext
+
+- Lizenztext: Datei `LICENSE` im Quelltext und https://www.gnu.org/licenses/agpl-3.0.html
+- Quelltext: https://github.com/HalloWelt42/BuecherFreunde

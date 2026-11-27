@@ -1,0 +1,43 @@
+{
+ "beschreibung": "Wofür BücherFreunde ein Paket nutzt (Seite Drittanbieter, BF-90): je Paket aus frontend/package.json und backend/requirements.txt, mit dem Namen wie dort (Server normiert: klein, - statt _ und .). Welche Pakete es gibt, mit Fassung und Lizenz, steht nur in den erzeugten Listen; ein Test prüft, dass hier jedes eingetragene Paket steht und nichts anderes.",
+ "oberflaeche": {
+  "@fontsource/andika": "Leseschrift für leichteres Lesen",
+  "@fontsource/atkinson-hyperlegible": "Leseschrift",
+  "@fontsource/barlow": "Schrift der Oberfläche",
+  "@fontsource/jetbrains-mono": "Schrift für Quelltext",
+  "@fontsource/lexend": "Leseschrift für leichteres Lesen",
+  "@fontsource/literata": "Schrift der Bücher",
+  "@fontsource/merriweather": "Leseschrift",
+  "@fontsource/opendyslexic": "Leseschrift für leichteres Lesen",
+  "@fontsource/source-serif-4": "Leseschrift",
+  "@fontsource/vollkorn": "Leseschrift",
+  "@fortawesome/fontawesome-free": "Zeichen",
+  "@humanspeak/svelte-markdown": "Markdown zeigen",
+  "appkern-oberflaeche": "Editor und Debugger für Code",
+  "foliate-js": "EPUB und MOBI lesen",
+  "hash-wasm": "Prüfsumme beim Hochladen",
+  "highlight.js": "Farben in Quelltext",
+  "hyphen": "Silben im Kinderbereich",
+  "mermaid": "Diagramme in Markdown",
+  "pdfjs-dist": "PDF im Browser zeigen",
+  "samtpfote": "Katze im Kinderbereich",
+  "svelte": "Oberfläche"
+ },
+ "server": {
+  "fastapi": "Schnittstelle des Servers",
+  "uvicorn": "Dienst, der Anfragen annimmt",
+  "aiosqlite": "Datenbank",
+  "pymupdf": "PDF: Text, Umschlag, Angaben",
+  "ebooklib": "EPUB lesen",
+  "mobi": "MOBI lesen",
+  "httpx": "Verbindung zu Kellerwolke und Hausdiensten",
+  "python-multipart": "Hochladen",
+  "pillow": "Bilder der Umschläge",
+  "pydantic-settings": "Einrichtung",
+  "beautifulsoup4": "Text aus HTML",
+  "isbnlib": "ISBN prüfen und umrechnen",
+  "requests": "Abruf der Quellen",
+  "setuptools": "für isbnlib",
+  "appkern": "Anmeldung, Zugang zu Kellerwolke und Leitstelle"
+ }
+}

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { reiterAus } from "../src/ansichten/einstellungen/reiter";
-import { strenge } from "../src/ansichten/einstellungen/drittanbieter";
 import { codeAusAnker, codeNormal, geraetename } from "../src/ansichten/anmeldung/kopplung";
 import { alsHex, hexZuTon, tonZuHex } from "../src/lib/farbton";
 import { findeSymbole, symbole } from "../src/lib/teile/symbole";
@@ -66,14 +65,5 @@ describe("Symbole", () => {
 
   it("führt jedes Zeichen einmal", () => {
     expect(new Set(symbole.map(([n]) => n)).size).toBe(symbole.length);
-  });
-});
-
-describe("Lizenzen", () => {
-  it("ordnet nach Strenge", () => {
-    expect(strenge("MIT")).toBe("gut");
-    expect(strenge("LGPL-3.0")).toBe("warn");
-    expect(strenge("AGPL-3.0")).toBe("schlecht");
-    expect(strenge("GPL-3.0")).toBe("schlecht");
   });
 });

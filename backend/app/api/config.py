@@ -1,5 +1,6 @@
 """API-Endpunkte für Konfiguration und Systemstatus."""
 
+import asyncio
 import logging
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from fastapi.responses import FileResponse
 from backend.app.core.auth import braucht, profil, verify_konto, verify_konto_inhalt
 from backend.app.core.config import settings
 from backend.app.core.database import db
+from backend.app.drittanbieter.pakete import Paket, pakete
 from backend.app.familie.modelle import Profil
 from backend.app.familie.sichtbar import Sicht
 from backend.app.services import buchliste, schnellfilter
@@ -34,6 +36,12 @@ async def get_config(_konto=Depends(verify_konto)) -> dict:
 async def get_version() -> dict:
     """Gibt die aktuelle Version zurück (ohne Authentifizierung)."""
     return {"version": settings.version}
+
+
+@router.get("/drittanbieter")
+async def get_drittanbieter(_konto=Depends(verify_konto)) -> list[Paket]:
+    """Die installierten Pakete des Servers für die Seite Drittanbieter (BF-90); nichts Persönliches, darum ohne Profil."""
+    return await asyncio.to_thread(pakete)
 
 
 @router.get("/paths")

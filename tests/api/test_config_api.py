@@ -110,3 +110,29 @@ async def test_version_format(client: AsyncClient):
     # Mindestens x.y.z Format
     teile = version.split(".")
     assert len(teile) >= 2, f"Version '{version}' hat kein gueltiges Format"
+
+
+# Drittanbieter (BF-90)
+
+
+@pytest.mark.asyncio
+async def test_drittanbieter_aus_den_installierten_paketen(client: AsyncClient):
+    """Die Pakete des Servers mit Fassung, Lizenz, Adresse und dem Weg über requirements.txt."""
+    response = await client.get("/api/config/drittanbieter")
+    assert response.status_code == 200
+    pakete = response.json()
+    fastapi = next(p for p in pakete if p["name"] == "fastapi")
+    assert set(fastapi) == {"name", "fassung", "lizenz", "adresse", "ueber"}
+    assert fastapi["ueber"] == ["fastapi"]
+
+
+@pytest.mark.asyncio
+async def test_drittanbieter_ohne_auth_gibt_fehler(client_ohne_auth: AsyncClient):
+    response = await client_ohne_auth.get("/api/config/drittanbieter")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_schnittstelle_nennt_ihre_lizenz(client: AsyncClient):
+    response = await client.get("/openapi.json")
+    assert response.json()["info"]["license"] == {"name": "AGPL-3.0-only", "identifier": "AGPL-3.0-only"}

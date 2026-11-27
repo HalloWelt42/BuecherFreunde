@@ -21,7 +21,7 @@
     try {
       const antwort = await fetch(`/legal/de/${abschnitt}.md`);
       if (!antwort.ok) throw new Error(`Der Text kam nicht an (${antwort.status})`);
-      texte[abschnitt] = (await antwort.text()).replaceAll("{{YEAR}}", String(new Date().getFullYear()));
+      texte[abschnitt] = await antwort.text();
     } catch (e) {
       fehler = e instanceof Error ? e.message : String(e);
     }
