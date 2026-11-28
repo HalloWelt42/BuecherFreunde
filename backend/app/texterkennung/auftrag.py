@@ -317,6 +317,12 @@ class Texterkennung(Auftrag):
         await db.commit()
 
     # -- Für den Leser ----------------------------------------------------------------------------------------------------
+    async def ist_scan(self, buch: int) -> bool:
+        """Hat das Durchsehen das Buch als Scan eingestuft (`ist_scan`)? Dann zeigt der Leser nur das Original (BF-123).
+        Vor dem Durchsehen nicht."""
+        befund = await db.fetch_one("SELECT scan FROM texterkennung_buch WHERE book_id = ?", (buch,))
+        return bool(befund and befund["scan"])
+
     async def wartende(self, buch: int, seiten: Iterable[int]) -> set[int]:
         """Welche dieser Seiten noch auf ihre Erkennung warten. Keine, wenn die Erkennung nicht bereit oder von Hand angehalten
         ist; bei einem Buch, das noch nicht durchgesehen ist, jede, sofern es laut Volltext ein Scan sein kann."""

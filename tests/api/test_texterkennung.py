@@ -88,6 +88,7 @@ async def test_scan_wird_erkannt_und_alles_zieht_nach(laufend, test_db, client, 
     vorher = (await db.fetch_one("SELECT updated_at FROM books WHERE id = ?", (scan,)))["updated_at"]
     wartet = (await client.get(f"/api/books/{scan}/textseiten", params={"ab": 1, "anzahl": 3})).json()["seiten"]
     assert [s["schicht"] for s in wartet] == ["wartet"] * 3            # noch nicht durchgesehen, laut Volltext ein Scan
+    assert (await client.get(f"/api/books/{scan}")).json()["scan"] is False   # als Scan gilt es erst nach dem Durchsehen (BF-123)
 
     await asyncio.sleep(1.1)                                            # updated_at zählt Sekunden
     vorgemerkt.clear()                                                  # das Öffnen der Textansicht merkt selbst vor
@@ -97,6 +98,8 @@ async def test_scan_wird_erkannt_und_alles_zieht_nach(laufend, test_db, client, 
     befund = {z["book_id"]: (z["scan"], z["ohne_text"], z["fertig_am"] is not None)
               for z in await db.fetch_all("SELECT book_id, scan, ohne_text, fertig_am FROM texterkennung_buch")}
     assert befund == {scan: (1, 3, True), eigen: (0, 0, False)}
+    # Der Leser zeigt einen Scan nur im Original (BF-123)
+    assert [(await client.get(f"/api/books/{b}")).json()["scan"] for b in (scan, eigen)] == [True, False]
     assert len(programm.aufrufe()) == 3                                 # nur die Seiten des Scans
     text = load_fulltext("erkennung00scan")
     assert text.count("\f") == 2 and text.split("\f")[1].endswith("putzt das Glas.") and WORT in text.split("\f")[0]

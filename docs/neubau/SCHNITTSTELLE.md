@@ -180,6 +180,8 @@ liegt es im Speicher je Prüfsumme.
 
 - `GET /api/books/{id}` trägt `dateien: [{id, format, name, groesse, haupt}]` (das Original zuerst) und `material` (Anzahl);
   die Bücherliste trägt `material`.
+- `GET /api/books/{id}` trägt `scan`: die Texterkennung hat das Buch beim Durchsehen als Scan eingestuft (BF-123); der Leser
+  zeigt es dann nur im Original. Vor dem Durchsehen `false`.
 - `GET /api/books/{id}/file?format=epub` liest ein bestimmtes Format, ohne `format` das Original; ein Format, das das Buch
   nicht hat: 404.
 - `GET /api/books/{id}/loeschfolgen` dazu `formate` und `material`, je `[{pfad, groesse, papierkorb}]`; `DELETE /api/books/{id}`

@@ -533,6 +533,7 @@ async def get_book(book_id: Nr, p: Profil = Depends(profil)):
         dateien=await formate.dateien(book_id),
         material=(await material_dienst.anzahlen([book_id])).get(book_id, 0),
         original=await original_pruefung.hinweis(book_id),
+        scan=await texterkennung.ist_scan(book_id),
     )
 
 

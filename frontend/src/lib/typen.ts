@@ -285,6 +285,8 @@ export interface Buch {
   material?: number;
   /** Die Prüfung der Originale fand die Datei nicht (BF-82); null: das Original ist da oder ungeprüft */
   original?: { text: string; geprueft_am: string | null } | null;
+  /** Die Texterkennung hat es als Scan eingestuft: der Leser zeigt nur das Original, keine Textansicht (BF-123) */
+  scan?: boolean;
 }
 
 /** Eine Datei des Buchs (BF-80): das Original oder ein weiteres Format */

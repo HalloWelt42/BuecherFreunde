@@ -194,6 +194,7 @@ class BookResponse(Umschlagangaben):
     dateien: list[Buchdatei] = Field(default_factory=list)   # das Original zuerst, dann weitere Formate (BF-80)
     material: int = 0                               # so viele Dateien Begleitmaterial (BF-81)
     original: Originalhinweis | None = None         # das Original fehlt (Prüfung der Originale, BF-82); leer: erreichbar oder ungeprüft
+    scan: bool = False                              # die Texterkennung hat es als Scan eingestuft: nur das Original, keine Textansicht (BF-123)
     created_at: str = ""
     updated_at: str = ""
 

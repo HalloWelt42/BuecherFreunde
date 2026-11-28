@@ -228,6 +228,7 @@ Blätter (PDF, MD, TXT, Vorgabe Scrollen), einmal für Bücher mit eigenem Umbru
 | Stelle bleibt beim Drehen, bei Schrift und Zeilen, beim Wechsel der Art, beim Nachladen | `Textfluss` | ja (MD, TXT, PDF als Text) |
 | Wischen, Tippen am Rand (Mitte: Leisten aus und ein), Rad ein Schritt je Dreh, Pfeile, Bild- und Leertaste; Auswahl, Links und Felder gehen vor | `leser/blaettergesten`, `leser/blaettertasten` | ja |
 | PDF als Text: Seiten vorn und hinten nachgeladen, Markieren und Fundstelle auch hier | `Textansicht`, `pdf/textseiten` | ja |
+| Scans nur im Original (BF-123): stuft die Texterkennung ein Buch als Scan ein (`scan` am Buch), gibt es weder Umschalter noch "Nur Text", auch nicht über die Adresse | `PdfLeser` | Tests, Prüfstand |
 | Links im PDF-Original (BF-125): Links der Datei nach außen (neues Fenster) und auf eine Seite des Buchs (springt dorthin), dazu Adressen, die nur als Text dastehen, auch über einen Umbruch; unsichtbare Flächen über der Textebene, beim Darüberfahren leicht getönt | `pdf/verweise`, `pdf/anzeige` | Tests, Prüfstand |
 | PDF Original: eine Seite je Schirm, Nachbarn vorab gezeichnet; vergrößert erst schieben, dann blättern; Telefon quer in Abschnitten | `PdfSeiten`, `pdf/anzeige` | ja (390, 844 quer, 834, 1440) |
 | EPUB und MOBI: scrollen, am Kapitelende weiterziehen | `epub/anzeige`, `epub/kapitelrand` | ja |

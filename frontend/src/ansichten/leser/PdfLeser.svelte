@@ -45,6 +45,8 @@
   // Was gelesen wird (lib/leser/lesefassung): das Original mit dem Text des Servers, sonst nur die Datei
   const fassung = untrack(() => sitzung.fassung);
   const mitBuchtext = fassung.mitBuchtext;
+  // Ein Scan zeigt nur das Original (BF-123): die Textansicht gibt es nur, wo die Datei selbst Text trägt
+  const mitTextansicht = mitBuchtext && !untrack(() => buch.scan);
   const alt: Lesewerte = untrack(() => gemerkt(ziel, lesewerte(fassung.position)));
   const meine = telefon ? (alt.telefon ?? {}) : alt;
   const start = untrack(() => ziel);
@@ -60,7 +62,7 @@
   let zoom = $state<number | null>(ersteAnsicht === "scroll" ? (start.zoom || meine.zoom || 100) / 100 : null);
   let mass = $state(1);
   let papierWahl = $state(start.papier || alt.papier || "");
-  let nurText = $state(mitBuchtext && (telefon ? textansicht.an : (start.ansicht || alt.ansicht) === "text"));
+  let nurText = $state(mitTextansicht && (telefon ? textansicht.an : (start.ansicht || alt.ansicht) === "text"));
   // Nur was für dieses Buch von Hand gewählt wurde, wird mit ihm gemerkt: Telefon und Rechner überschreiben einander nicht
   let ansichtGewaehlt = $state(false);
   let fundstelle = $state(start.stelle || start.wort);
@@ -288,11 +290,11 @@
   {/if}
 
   {#snippet darstellung()}
-    <PdfDarstellung {ansicht} {nurText} {mass} {papier} stufen={STUFEN} mitText={mitBuchtext} onansicht={setzeAnsicht} onzoom={zoome} onoriginalgroesse={() => setzeZoom(1)} onpapier={(p) => { papierWahl = p; merke(); }} />
+    <PdfDarstellung {ansicht} {nurText} {mass} {papier} stufen={STUFEN} mitText={mitTextansicht} onansicht={setzeAnsicht} onzoom={zoome} onoriginalgroesse={() => setzeZoom(1)} onpapier={(p) => { papierWahl = p; merke(); }} />
   {/snippet}
 
   {#snippet fuss()}
-    <Fussleiste {sitzung} {anteil} anAnfang={nurText ? textstand.amAnfang : seite <= 1 && !rest.oben} amEnde={nurText ? textstand.amEnde : seite >= gesamt && !rest.unten} onzurueck={zurueck} onvor={vor} onanteil={(a) => geheZu(Math.round(1 + a * (gesamt - 1)))} schalter={mitBuchtext ? umschalter : undefined}>
+    <Fussleiste {sitzung} {anteil} anAnfang={nurText ? textstand.amAnfang : seite <= 1 && !rest.oben} amEnde={nurText ? textstand.amEnde : seite >= gesamt && !rest.unten} onzurueck={zurueck} onvor={vor} onanteil={(a) => geheZu(Math.round(1 + a * (gesamt - 1)))} schalter={mitTextansicht ? umschalter : undefined}>
       <Seitenstand {seite} {gesamt} gedruckt={gedruckt.zahl} onseite={geheZu} />
     </Fussleiste>
   {/snippet}
