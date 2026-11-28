@@ -292,13 +292,14 @@
   {/snippet}
 
   {#snippet fuss()}
-    <Fussleiste {sitzung} {anteil} anAnfang={nurText ? textstand.amAnfang : seite <= 1 && !rest.oben} amEnde={nurText ? textstand.amEnde : seite >= gesamt && !rest.unten} onzurueck={zurueck} onvor={vor} onanteil={(a) => geheZu(Math.round(1 + a * (gesamt - 1)))} schalter={geraet.telefon && mitBuchtext ? umschalter : undefined}>
+    <Fussleiste {sitzung} {anteil} anAnfang={nurText ? textstand.amAnfang : seite <= 1 && !rest.oben} amEnde={nurText ? textstand.amEnde : seite >= gesamt && !rest.unten} onzurueck={zurueck} onvor={vor} onanteil={(a) => geheZu(Math.round(1 + a * (gesamt - 1)))} schalter={mitBuchtext ? umschalter : undefined}>
       <Seitenstand {seite} {gesamt} gedruckt={gedruckt.zahl} onseite={geheZu} />
     </Fussleiste>
   {/snippet}
 </Leserahmen>
 
 {#snippet umschalter()}
-  <!-- Am Telefon nur das Zeichen (BF-63), der Name bleibt Beschriftung und Hinweis -->
+  <!-- Auf jedem Gerät unten in der Leiste; am Rechner mit Wort (BF-122), am Telefon nur das Zeichen (BF-63), der Name bleibt
+       Beschriftung und Hinweis -->
   <Knopf klasse="umschalter" text={schale.telefon ? (nurText ? "Seiten des Originals" : "Als Text lesen") : nurText ? "Original" : "Text"} symbol={nurText ? "file-pdf" : "align-left"} titel={nurText ? "Seiten des Originals" : "Als Text lesen"} nur={schale.telefon} klein onclick={schalteText} />
 {/snippet}
