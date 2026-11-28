@@ -12,7 +12,7 @@ import { Dienstsprecher } from "../vorlesen/dienst";
 import { Vorlesefolge, type Schlaf } from "../vorlesen/folge";
 import { Stimmprobe } from "../vorlesen/stimmprobe.svelte";
 import { GEDULD_BUCH_S, GEDULD_KURZ_S } from "../vorlesen/zulauf";
-import { geraetDa, geraetestimmen, Geraetesprecher } from "../vorlesen/geraet";
+import { beiNeuenStimmen, geraetDa, geraetestimmen, Geraetesprecher } from "../vorlesen/geraet";
 import { medienAus, medienStand, zeigeMedien, type Werk } from "../vorlesen/mediensitzung";
 import type { Lesequelle, Sprecher, Stimme, Strecke } from "../vorlesen/typen";
 import { Vorlauf } from "../vorlesen/vorlauf";
@@ -143,7 +143,7 @@ class Vorlesestand {
     if (this.#geraetGefragt || !geraetDa()) return;
     this.#geraetGefragt = true;
     this.#geraet = geraetestimmen();
-    speechSynthesis.addEventListener?.("voiceschanged", () => (this.#geraet = geraetestimmen()));
+    beiNeuenStimmen(() => (this.#geraet = geraetestimmen()));
   }
 
   /** Was gesagt wird, wenn keine Stimme bereitsteht */

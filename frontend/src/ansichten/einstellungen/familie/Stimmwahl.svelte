@@ -23,6 +23,7 @@
   import { melde } from "../../../lib/stand/meldungen.svelte";
   import Auswahl from "../../../lib/teile/Auswahl.svelte";
   import Knopf from "../../../lib/teile/Knopf.svelte";
+  import { sprichEinmal } from "../../../lib/vorlesen/geraet";
   import { Stimmprobe } from "../../../lib/vorlesen/stimmprobe.svelte";
   import Wertchip from "./Wertchip.svelte";
 
@@ -70,12 +71,9 @@
     void katalogHolen().then((k) => (katalog = k));
   });
 
-  /** Die Stimme des Geräts spricht den Probesatz selbst */
+  /** Die Stimme des Geräts spricht den Probesatz selbst; sperrt der Browser sie, sagt es eine Meldung */
   function geraetSpricht(text: string) {
-    speechSynthesis.cancel();
-    const sprich = new SpeechSynthesisUtterance(text);
-    sprich.lang = "de-DE";
-    speechSynthesis.speak(sprich);
+    if (!sprichEinmal(text)) melde.warn("Der Browser lässt die Stimme des Geräts nicht sprechen");
   }
 
   /** Im Tippen rufen, sonst bleibt das Telefon stumm */

@@ -1,18 +1,71 @@
 // Vorlesen mit den Stimmen, die Browser und Gerät mitbringen; geht überall und ohne Anschluss. Jeder Satz ist eine eigene
 // Äußerung, weil Browser lange still abbrechen.
+//
+// Nur hier wird die Sprachausgabe des Browsers angefasst. Manche Browser sperren sie zum Schutz vor Wiedererkennung und werfen
+// dann schon beim Fragen nach den Stimmen (BF-121: so brach das ganze Feld Vorlesen ab). Gesperrt heißt hier: keine Stimme des
+// Geräts; die Stimmen der Vertonung bleiben.
 import { saetzeMitLage } from "./saetze";
 import type { Sprecher, Stimme, Tonsatz } from "./typen";
 
-export const geraetDa = () => typeof window !== "undefined" && "speechSynthesis" in window;
+/** Die Sprachausgabe des Browsers, wenn er sie zulässt */
+function sprachausgabe(): SpeechSynthesis | null {
+  try {
+    return typeof window !== "undefined" && "speechSynthesis" in window ? window.speechSynthesis : null;
+  } catch {
+    return null;
+  }
+}
 
-/** Stimmen des Geräts, deutsche zuerst. Manche Browser liefern sie erst nach einem Augenblick (`voiceschanged`). */
+/** Was der Browser an Stimmen nennt; gesperrt: keine */
+function stimmenDesBrowsers(): SpeechSynthesisVoice[] {
+  try {
+    return sprachausgabe()?.getVoices() ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export const geraetDa = () => sprachausgabe() !== null;
+
+/** Stimmen des Geräts, deutsche zuerst. Manche Browser liefern sie erst nach einem Augenblick (`beiNeuenStimmen`). */
 export function geraetestimmen(): Stimme[] {
-  if (!geraetDa()) return [];
   const deutsch = (s: SpeechSynthesisVoice) => s.lang.toLowerCase().startsWith("de");
-  return speechSynthesis
-    .getVoices()
+  return stimmenDesBrowsers()
     .toSorted((a, b) => Number(deutsch(b)) - Number(deutsch(a)) || a.name.localeCompare(b.name, "de"))
     .map((s) => ({ id: `geraet:${s.voiceURI}`, name: deutsch(s) ? s.name : `${s.name} (${s.lang})`, gruppe: "Dieses Gerät" }));
+}
+
+/** Meldet der Browser später (andere) Stimmen, ruft er `tun` */
+export function beiNeuenStimmen(tun: () => void): void {
+  try {
+    sprachausgabe()?.addEventListener?.("voiceschanged", tun);
+  } catch {
+    // gesperrt: es kommen keine
+  }
+}
+
+/** Was gerade gesprochen wird, endet */
+function verstumme(): void {
+  try {
+    sprachausgabe()?.cancel();
+  } catch {
+    // gesperrt: es spricht nichts
+  }
+}
+
+/** Ein Satz mit der Stimme, die das Gerät für Deutsch nimmt (Probe der Gerätestimme); false, wenn der Browser es nicht zulässt */
+export function sprichEinmal(text: string): boolean {
+  const s = sprachausgabe();
+  if (!s) return false;
+  try {
+    s.cancel();
+    const a = new SpeechSynthesisUtterance(text);
+    a.lang = "de-DE";
+    s.speak(a);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 const ZEICHEN_JE_S = 14;
@@ -23,7 +76,7 @@ export class Geraetesprecher implements Sprecher {
   #jetzt: { sprich: () => void; fertig: () => void } | null = null;
 
   entsperre(): void {
-    if (geraetDa() && !this.#jetzt) speechSynthesis.cancel();
+    if (!this.#jetzt) verstumme();
   }
 
   async *saetze(text: string): AsyncIterable<Tonsatz> {
@@ -31,7 +84,7 @@ export class Geraetesprecher implements Sprecher {
   }
 
   spiele(satz: Tonsatz, stimme: string, fortschritt: (anteil: number) => void): Promise<void> {
-    const wahl = speechSynthesis.getVoices().find((s) => s.voiceURI === stimme);
+    const wahl = stimmenDesBrowsers().find((s) => s.voiceURI === stimme);
     return new Promise<void>((gut, schlecht) => {
       const fertig = () => {
         this.#lauf++;
@@ -51,7 +104,14 @@ export class Geraetesprecher implements Sprecher {
           this.#jetzt = null;
           schlecht(new Error("Die Stimme des Geräts brach ab"));
         };
-        speechSynthesis.speak(a);
+        try {
+          const s = sprachausgabe();
+          if (!s) throw new Error("ohne Sprachausgabe");
+          s.speak(a);
+        } catch {
+          this.#jetzt = null;
+          schlecht(new Error("Der Browser lässt die Stimme des Geräts nicht sprechen"));
+        }
       };
       this.#jetzt = { sprich, fertig };
       sprich();
@@ -61,13 +121,13 @@ export class Geraetesprecher implements Sprecher {
   // Anhalten und Weitersprechen können viele Browser nicht zuverlässig: der Satz beginnt neu
   pause(): void {
     this.#lauf++;
-    if (geraetDa()) speechSynthesis.cancel();
+    verstumme();
   }
   weiter(): void {
     this.#jetzt?.sprich();
   }
   halt(): void {
     this.#jetzt?.fertig();
-    if (geraetDa()) speechSynthesis.cancel();
+    verstumme();
   }
 }

@@ -119,6 +119,29 @@ describe("Stimmenauswahl", () => {
     vorlesen.pruefe();
     expect(anfragen).toBe(2);                                                              // einmal je Seite, wenn es gelang
   });
+  // BF-121: ein Browser, der seine Sprachausgabe zum Schutz vor Wiedererkennung sperrt, warf schon beim Fragen nach den Stimmen;
+  // das brach das ganze Feld Vorlesen ab ("keine Stimme", die Taste ging danach nicht mehr)
+  it("sperrt der Browser seine Stimmen, gelten die der Vertonung, und nichts bricht ab", async () => {
+    vi.resetModules();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(antwort))));
+    const gesperrt = () => {
+      throw new Error("gesperrt");
+    };
+    vi.stubGlobal("speechSynthesis", { getVoices: gesperrt, addEventListener: gesperrt, cancel: gesperrt, speak: gesperrt });
+    const { anschluesse } = await import("../src/lib/stand/anschluesse.svelte");
+    anschluesse.jetzt = { ...anschluesse.jetzt, vorlesen: true };
+    const { ich } = await import("../src/lib/stand/ich.svelte");
+    ich.setze(erwachsen() as unknown as Parameters<typeof ich.setze>[0]);
+    const { vorlesen } = await import("../src/lib/stand/vorlesen.svelte");
+    expect(() => vorlesen.pruefe()).not.toThrow();
+    await new Promise((r) => setTimeout(r, 5));
+    expect([vorlesen.stimme, vorlesen.stimmen.every((s) => s.id.startsWith("dienst:"))]).toEqual(["dienst:", true]);
+    const { geraetestimmen, sprichEinmal, Geraetesprecher } = await import("../src/lib/vorlesen/geraet");
+    expect([geraetestimmen(), sprichEinmal("Probe")]).toEqual([[], false]);
+    const sprecher = new Geraetesprecher();
+    expect(() => sprecher.entsperre()).not.toThrow();
+    await expect(sprecher.spiele({ text: "Ein Satz.", von: 0, bis: 9, ton: null, dauer: 1 }, "", () => {})).rejects.toThrow("nicht sprechen");
+  });
   it("ist die Vertonung beim ersten Blick noch nicht bekannt, fragt es, sobald sie angeschlossen ist", async () => {
     const { v } = await frisch(antwort, { angeschlossen: false, profil: erwachsen() });
     const { anschluesse } = await import("../src/lib/stand/anschluesse.svelte");
