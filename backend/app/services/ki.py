@@ -13,6 +13,7 @@ die Leitstelle ihren Namen anbietet (BF-91). Gelöscht wird dabei keine Wahl."""
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import re
@@ -243,6 +244,21 @@ class Ki:
             return await fragen()
         except LeitstellenFehler as f:
             raise fehler(f, self.modell()) from f
+
+    async def bildantwort(self, anweisung: str, bild: bytes, *, modell: str, titel: str, typ: str = "image/jpeg",
+                          prioritaet: Prioritaet | None = None, **optionen: Any) -> tuple[str, str]:
+        """Eine Antwort zu einem Bild (Fähigkeit bild_beschreiben der Leitstelle, etwa die Nachbesserung einer Seite, BF-118):
+        der Text und das Modell, das antwortete. `modell` nennt die Aufgabe selbst (ein Bildmodell aus ihren Einstellungen);
+        bietet die Leitstelle es nicht an, sagt das der Fehler."""
+        url = f"data:{typ};base64,{base64.b64encode(bild).decode('ascii')}"
+        nachricht = Nachricht(rolle="user", inhalt=[{"type": "text", "text": anweisung}, {"type": "image_url", "image_url": {"url": url}}])
+        try:
+            a = await self.leitstelle().chat([nachricht], modell=modell, titel=titel, prioritaet=prioritaet, **optionen)
+        except LeitstellenFehler as f:
+            raise fehler(f, modell) from f
+        if a.abgebrochen:
+            raise KiFehler("In der Leitstelle abgebrochen", "einzeln")
+        return a.text, a.modell or modell
 
     async def json_antwort(self, system: str, nutzer: str, schema_name: str, schema: dict[str, Any], **art: Any) -> Any:
         """Eine Antwort in fester Form (JSON-Schema; die Leitstelle stuft ab, wenn ein Modell das nicht kann)."""

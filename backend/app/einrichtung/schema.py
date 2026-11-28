@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS einrichtung_aenderung (   -- Wartung: was der Assiste
     angelegt_am TEXT NOT NULL DEFAULT {JETZT}
 );
 CREATE TABLE IF NOT EXISTS einrichtung_auftrag (     -- Prüfung, Neuaufbau, Originale kopieren: fortsetzbar über einen Neustart
-    art TEXT PRIMARY KEY,                            -- pruefung, neuaufbau, kopieren, ligaturen, stimmproben, texterkennung
+    art TEXT PRIMARY KEY,                            -- pruefung, neuaufbau, kopieren, ligaturen, stimmproben, texterkennung, nachbesserung
     stand TEXT NOT NULL DEFAULT 'wartet',            -- wartet, laeuft, pause, fertig, fehler
     gesamt INTEGER NOT NULL DEFAULT 0,
     fertig INTEGER NOT NULL DEFAULT 0,
@@ -118,6 +118,14 @@ CREATE TABLE IF NOT EXISTS texterkennung_seite (     -- Texte erkennen: je Seite
     grund TEXT NOT NULL DEFAULT '',
     dauer_s REAL NOT NULL DEFAULT 0,
     geaendert_am TEXT NOT NULL DEFAULT {JETZT},
+    PRIMARY KEY (book_id, seite)
+);
+CREATE TABLE IF NOT EXISTS texterkennung_nachbessern ( -- Texte nachbessern (BF-118, texterkennung/nachbesserung.py): je gewünschter Seite
+    book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    seite INTEGER NOT NULL,                          -- Dateiseite ab 1
+    stand TEXT NOT NULL DEFAULT 'offen',             -- offen, fertig, fehler
+    grund TEXT NOT NULL DEFAULT '',
+    gewuenscht_am TEXT NOT NULL DEFAULT {JETZT},
     PRIMARY KEY (book_id, seite)
 );
 CREATE TABLE IF NOT EXISTS texterkennung_vorrang (   -- Texte erkennen: hier liest jemand, diese Seiten zuerst

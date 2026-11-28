@@ -355,8 +355,10 @@ andere läuft wie bisher.
 - **Ablage**: je Buch `erkennung.jsonl` im Ort texte neben `fulltext.txt`, je erkannter Seite eine Zeile
   `{seite, herkunft: klassisch|ki, werkzeug, fassung, sprachen, dpi, erkannt_am, dauer_s, zeilen: [{block, absatz, zeile,
   woerter: [{text, lage: [x0, y0, x1, y1], sicherheit}]}], flaechen: [[x0, y0, x1, y1]]}`, Lage in PDF-Punkten, Sicherheit 0 bis 100,
-  `flaechen` die Blöcke ohne Text (Bilder in der Seite). Nur angehängt; die jüngste Zeile einer Seite gilt. Der Auszug in der
-  Kellerwolke trägt die Datei mit (`ablage/auszug.py`), damit sie einen Neuaufbau übersteht.
+  `flaechen` die Blöcke ohne Text (Bilder in der Seite); eine Nachbesserung (Herkunft `ki`, BF-118) trägt statt `zeilen` die Seite
+  als `markdown` und die Flächen der klassischen. Nur angehängt; je Seite gilt die gewählte Fassung (eine Zeile `{seite, gilt,
+  gewaehlt_am}`, die jüngste Wahl zählt), sonst die jüngste. Der Auszug in der Kellerwolke trägt die Datei mit (`ablage/auszug.py`),
+  damit sie mit allen Fassungen und der Wahl einen Neuaufbau übersteht.
 - **Eine Textschicht** (`texterkennung/textschicht.py`): ohne lesbaren Text ist eine Seite mit weniger als
   `TEXTERKENNUNG_MINDESTZEICHEN` (20) Buchstaben und Ziffern oder mit Zeichensalat. Nur für eine solche Seite gilt ihre Erkennung,
   wenn sie lesbaren Text trägt (Wörter ab einer Sicherheit von 20); Textansicht, Volltext, Suche und Codestellen lesen sie dann
@@ -367,10 +369,16 @@ andere läuft wie bisher.
   Erkennung; Größen aus der Höhe der Wörter, ohne Festbreite, das Seitenbild ist keine Abbildung, Bildflächen der Erkennung sind
   es), `wartet` (noch ohne Text, die Erkennung kommt) oder `ohne` (ohne lesbaren Text und ohne Erkennung, auch wenn das Programm
   fehlt oder der Auftrag von Hand angehalten ist). Bilder einer erkannten Seite holt der Bild-Endpunkt mit derselben Erkennung.
+  Zu einer erkannten Seite dazu (BF-118): `fassung` (`klassisch` oder `ki`, welche gilt), `andere_fassung` (es gibt beide),
+  `nachbesserung` (`wartet`: wird nachgebessert, `fehler`: gescheitert mit `nachbesserung_grund`). Eine nachgebesserte Seite
+  bekommt ihre Bausteine aus dem Markdown (`texterkennung/markdown.py`), dazu den Baustein `tabelle` mit `tabelle: {kopf, reihen,
+  zahlen}` (`zahlen`: je Spalte, ob sie nur Zahlen trägt).
 
 | Weg | Zweck |
 |---|---|
 | `POST /api/books/{id}/texterkennung/vorrang` `{seite}` | hier wird gelesen: die Dateiseite und `TEXTERKENNUNG_VORRANG_SEITEN` (5) danach zuerst, die jüngste Bitte zuerst; stößt den Auftrag an. `{bereit, grund, von, bis, wartet}`: ist die Erkennung bereit (sonst `grund` in Worten) und welche Seiten von `von` bis `bis` noch warten. Wiederholt ist es das Nachfragen (die Textansicht fragt sanft, im Abstand von 3 bis 20 Sekunden). Jedes Profil, nur Bücher, die es sieht (sonst 404); 422 für ein Buch, das kein PDF ist |
+| `POST /api/books/{id}/texterkennung/nachbessern` `{seite}` | die erkannte Dateiseite und die nächsten (`TEXTERKENNUNG_KI_SEITEN` zusammen, 3) über die Leitstelle nachbessern, soweit sie noch keine Nachbesserung haben (eine gescheiterte kommt wieder dran); stößt den Auftrag Texte nachbessern an. `{bereit, grund, seiten}`: ohne Leitstelle `bereit` false mit Grund. Rechte wie beim Vorrang |
+| `POST /api/books/{id}/texterkennung/fassung` `{seite, gilt}` | welche Fassung einer erkannten Seite gilt (`klassisch` oder `ki`), die andere bleibt; danach zieht das Buch im Hintergrund nach (Volltext, Suche, Seiten, Codestellen). 204; 404, wenn es die Fassung für die Seite nicht gibt |
 
 Auftrag **Texte erkennen** (`texterkennung`, in `GET /api/einrichtung/auftraege`, anhalten und fortsetzen wie die anderen): je
 Seite ohne Text eines Scans ein Stück (Tabelle `texterkennung_seite`). Zuerst der Vorrang, dann das Durchsehen jedes PDF-Buchs
@@ -384,6 +392,13 @@ kommt im nächsten Lauf wieder dran; erkannt wird sonst nur, was keine Zeile hat
 dem Start und danach im Takt `TEXTERKENNUNG_TAKT_S` (1800) nach und stößt ihn an, wenn es Arbeit gibt. Ohne Programm oder
 Sprachdaten sieht er weiter durch und ruht dann mit Grund; von Hand angehalten bleibt er stehen; nach einem Neustart geht er
 weiter. `teile`: `buecher` (durchgesehen von allen PDF-Büchern), `erkannt`, `leer` (erkannt, aber ohne lesbaren Text), `fehler`.
+
+Auftrag **Texte nachbessern** (`nachbesserung`, BF-118, in `GET /api/einrichtung/auftraege`, anhalten und fortsetzen wie die
+anderen): je gewünschter Seite ein Stück (Tabelle `texterkennung_nachbessern`), die älteste Bitte zuerst. Das Seitenbild geht in
+Graustufen (längste Kante `TEXTERKENNUNG_KI_KANTE`, 1600 Bildpunkte, JPEG) mit der Anweisung aus `texterkennung/nachbessern.md` an
+das Bildmodell `TEXTERKENNUNG_KI_MODELL` (Vorgabe `qwen/qwen3.8-27b`, Fähigkeit `bild_beschreiben` der Leitstelle), höchstens
+`TEXTERKENNUNG_KI_TOKEN` (6000) lang. Ist die letzte gewünschte Seite eines Buchs durch, zieht es nach. Eine Seite, die scheitert
+(Leitstelle, Modell, Antwort ohne lesbaren Text), bleibt mit Grund liegen; ohne Leitstelle ruht der Auftrag mit Grund.
 
 ## Gestaltete Deckblätter (BF-59)
 

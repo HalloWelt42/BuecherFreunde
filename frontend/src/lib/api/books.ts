@@ -114,6 +114,19 @@ export interface Vorrangstand {
 /** Hier wird gelesen: diese Seite und die nächsten zuerst erkennen; wiederholt ist es das Nachfragen */
 export const texterkennungVorrang = (id: number, seite: number): Promise<Vorrangstand> => post(`/api/books/${id}/texterkennung/vorrang`, { seite });
 
+/** Antwort auf die Bitte um Nachbesserung (BF-118): welche Seiten jetzt drankommen; ohne Leitstelle mit Grund */
+export interface Nachbesserungsantwort {
+  bereit: boolean;
+  grund: string;
+  seiten: number[];
+}
+
+/** Die erkannte Seite und die nächsten über die Leitstelle nachbessern */
+export const texterkennungNachbessern = (id: number, seite: number): Promise<Nachbesserungsantwort> => post(`/api/books/${id}/texterkennung/nachbessern`, { seite });
+
+/** Welche Fassung einer erkannten Seite gilt; die andere bleibt gespeichert */
+export const texterkennungFassung = (id: number, seite: number, gilt: "klassisch" | "ki"): Promise<void> => post(`/api/books/${id}/texterkennung/fassung`, { seite, gilt });
+
 export function textBildUrl(id: number, seite: number, nr: number): string {
   return `/api/books/${id}/textseiten/${seite}/bild/${nr}`;
 }

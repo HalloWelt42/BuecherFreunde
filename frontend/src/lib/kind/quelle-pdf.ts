@@ -18,7 +18,7 @@ function stueckeAus(buch: number, seite: number, bausteine: Baustein[]): Stueck[
     } else if (b.art === "kasten") {
       aus.push({ art: "titel", text: b.titel });
       b.inhalt.forEach(nimm);
-    } else if (b.art !== "code") {
+    } else if (b.art !== "code" && b.art !== "tabelle") {
       aus.push({ art: b.art === "ueberschrift" ? "titel" : "absatz", text: b.text });
     }
   };

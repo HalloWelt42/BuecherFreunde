@@ -226,7 +226,7 @@ async def auftraege_lesen(_z: Zugang = Depends(zugang)) -> list[Auftragsstand]:
 
 
 @router.post("/auftraege/{art}/{aktion}", response_model=Auftragsstand)
-async def auftrag_steuern(art: Literal["einspielen", "pruefung", "neuaufbau", "kopieren", "ligaturen", "stimmproben", "texterkennung"],
+async def auftrag_steuern(art: Literal["einspielen", "pruefung", "neuaufbau", "kopieren", "ligaturen", "stimmproben", "texterkennung", "nachbesserung"],
                           aktion: Literal["pause", "fortsetzen"],
                           _z: Zugang = Depends(zugang)) -> Auftragsstand:
     a = auftraege()[art]

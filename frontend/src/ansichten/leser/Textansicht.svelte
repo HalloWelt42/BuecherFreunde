@@ -9,8 +9,9 @@
   import { blattrand } from "../../lib/leser/blattrand.svelte";
   import type { Leseart } from "../../lib/leser/fluss/fluss";
   import { Textfluss } from "../../lib/leser/fluss/textfluss";
-  import { Textseiten, type Baustein } from "../../lib/leser/pdf/textseiten.svelte";
+  import { Textseiten, type Baustein, type Textseite } from "../../lib/leser/pdf/textseiten.svelte";
   import { Erkennungswarten } from "../../lib/leser/pdf/erkennungswarten";
+  import { Nachbesserung } from "../../lib/leser/pdf/nachbesserung.svelte";
   import type { Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { kannHervorheben, Rechteckschicht } from "../../lib/leser/hervorhebung";
   import { imBlick, Mitlauf, sichtVon } from "../../lib/leser/mitlauf";
@@ -23,6 +24,7 @@
   import { nutzeSchrift } from "../../lib/leser/schriften";
   import { textansicht } from "../../lib/leser/textansicht.svelte";
   import { schreibweise } from "../../lib/leser/typen";
+  import { anschluesse } from "../../lib/stand/anschluesse.svelte";
   import { schale } from "../../lib/stand/schale.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
   import Symbol from "../../lib/teile/Symbol.svelte";
@@ -81,6 +83,13 @@
   $effect(() => {
     void text.wartend;
     untrack(() => warten.pruefe());
+  });
+
+  // Erkannte Seiten nachbessern (BF-118): je Seite eine Zeile am Ende, nachgefragt, solange gezeigte Seiten nachgebessert werden
+  const nachbesserung = new Nachbesserung(untrack(() => sitzung.buch.id), text);
+  $effect(() => {
+    void text.nachbessernd;
+    untrack(() => nachbesserung.pruefe());
   });
 
   // Nachladen, bevor man an den Rand des Geladenen kommt. Vorn von selbst nur beim Blättern: ein Schwung mit dem Finger
@@ -271,6 +280,7 @@
 
   onDestroy(() => {
     warten.halte();
+    nachbesserung.halte();
     fluss?.zerstoere();
     mitlauf?.zerstoere();
     ersatzschicht?.zerstoere();
@@ -285,6 +295,30 @@
   <button type="button" class="abbildung" aria-label="Abbildung vergrößern" onclick={() => (lupe = { quelle, beschreibung: worte })}>
     <img src={quelle} alt={worte} loading="lazy" use:inhaltsbild style:aspect-ratio={b.verhaeltnis ?? "auto"} style:--verhaeltnis={b.verhaeltnis ?? undefined} style:width={b.breite_em ? `${b.breite_em}em` : undefined} />
   </button>
+{/snippet}
+
+<!-- Am Ende einer erkannten Seite (BF-118): woher ihr Text kommt und die Taste, die dazu passt; nachbessern nur mit KI
+     (Leitstelle angeschlossen, das Profil darf sie), die Fassung wählen immer -->
+{#snippet seitenfuss(s: Textseite)}
+  {@const wirkt = nachbesserung.arbeit === s.nr}
+  <div class="seitenfuss">
+    {#if s.nachbesserung === "wartet"}
+      <span class="herkunft"><Symbol name="circle-notch" dreht />Wird nachgebessert</span>
+    {:else if s.fassung === "ki"}
+      <span class="herkunft"><Symbol name="wand-magic-sparkles" />Nachgebessert</span>
+      <Knopf text="Klassisch zeigen" symbol="file-image" klein laeuft={wirkt} onclick={() => void nachbesserung.waehle(s.nr, "klassisch")} />
+    {:else}
+      <span class="herkunft"><Symbol name="file-image" />Erkannt</span>
+      {#if s.andere_fassung}
+        <Knopf text="Nachgebessert zeigen" symbol="wand-magic-sparkles" klein laeuft={wirkt} onclick={() => void nachbesserung.waehle(s.nr, "ki")} />
+      {:else if s.nachbesserung === "fehler" && anschluesse.jetzt.ki}
+        <Knopf text="Erneut versuchen" symbol="rotate-right" klein laeuft={wirkt} onclick={() => void nachbesserung.bitte(s.nr)} />
+        <span class="grund">Nicht nachgebessert: {s.nachbesserung_grund}</span>
+      {:else if anschluesse.jetzt.ki}
+        <Knopf text="Nachbessern" symbol="wand-magic-sparkles" klein laeuft={wirkt} onclick={() => void nachbesserung.bitte(s.nr)} />
+      {/if}
+    {/if}
+  </div>
 {/snippet}
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
@@ -321,8 +355,14 @@
                 {/if}
                 <pre><code>{(b.zeilen ?? []).join("\n")}</code></pre>
               </div>
+            {:else if b.art === "tabelle" && b.tabelle}
+              <div class="tabelle"><table>
+                <thead><tr>{#each b.tabelle.kopf as zelle, i (i)}<th class:zahl={b.tabelle.zahlen[i]}>{zelle}</th>{/each}</tr></thead>
+                <tbody>{#each b.tabelle.reihen as reihe, r (r)}<tr>{#each reihe as zelle, i (i)}<td class:zahl={b.tabelle.zahlen[i]}>{zelle}</td>{/each}</tr>{/each}</tbody>
+              </table></div>
             {:else}<p>{b.text}</p>{/if}
           {/each}
+          {#if s.schicht === "erkannt"}{@render seitenfuss(s)}{/if}
         </section>
       {/each}
       {#if text.fehler}<p>Der Text ließ sich nicht laden: {text.fehler}</p><div class="mitte"><Knopf text="Erneut versuchen" symbol="rotate-right" klein onclick={() => void (text.seiten.length ? text.unten() : beginne(startSeite))} /></div>{/if}
@@ -376,6 +416,65 @@
   }
   /* Code wie im Text der Bücher (Markdown): Festbreite, dunkel hinterlegt; Zeilen und Einrückung bleiben, wie gedruckt,
      zu lange Zeilen rollen im Block */
+  /* Zeile am Ende einer erkannten Seite (BF-118), leise wie die Seitenmarke; die Taste in den Farben des Blatts, nur Fläche und
+     Schrift wie ein Kasten im Text */
+  .seitenfuss {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375em 0.75em;
+    margin-top: var(--absatzabstand);
+    padding-top: 0.5em;
+    border-top: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+    font-size: 0.8em;
+  }
+  .seitenfuss .herkunft {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    opacity: 0.7;
+  }
+  .seitenfuss .grund {
+    flex-basis: 100%;
+    text-align: center;
+    opacity: 0.7;
+  }
+  .seitenfuss :global(.knopf.klein) {
+    color: inherit;
+    background: color-mix(in srgb, currentColor 9%, transparent);
+    box-shadow: none;
+    font-size: 1em;
+  }
+  .seitenfuss :global(.knopf.klein:hover) {
+    background: color-mix(in srgb, currentColor 15%, transparent);
+  }
+  /* Tabelle der Nachbesserung: wächst mit der Schrift, rollt in sich, wenn sie breiter ist als das Blatt */
+  .tabelle {
+    margin: var(--absatzabstand) 0;
+    overflow-x: auto;
+  }
+  .tabelle table {
+    border-collapse: collapse;
+    font-size: 0.9em;
+    line-height: 1.4;
+    min-width: 100%;
+  }
+  .tabelle :is(th, td) {
+    padding: 0.35em 0.7em;
+    border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+    text-align: start;
+    vertical-align: top;
+    hyphens: manual;
+  }
+  .tabelle th {
+    font-weight: 600;
+    background: color-mix(in srgb, currentColor 7%, transparent);
+  }
+  .tabelle .zahl {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
   .codeteil {
     margin: var(--absatzabstand) 0;
   }

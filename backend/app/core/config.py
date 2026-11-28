@@ -76,6 +76,12 @@ class Settings(BaseSettings):
     texterkennung_erst_s: float = Field(default=120, ge=0)     # so lange nach dem Start sieht die Wache zum ersten Mal nach
     texterkennung_takt_s: float = Field(default=1800, ge=60)   # danach so oft: gibt es Arbeit, stößt sie den Auftrag an
     texterkennung_abstand_s: float = Field(default=1.0, ge=0)  # Pause zwischen zwei Stücken, damit das Gerät frei bleibt; Vorrang ohne
+    # Nachbesserung erkannter Seiten über die Leitstelle (BF-118): Bildmodell (Fähigkeit bild_beschreiben, gemessen am 28.11.2026:
+    # Qwen3.8 27B liest Spalten, Tabellen und Code am genauesten), so viele Seiten ab der gelesenen, so groß das Seitenbild
+    texterkennung_ki_modell: str = "qwen/qwen3.8-27b"
+    texterkennung_ki_seiten: int = Field(default=3, ge=1, le=10)
+    texterkennung_ki_kante: int = Field(default=1600, ge=600, le=4000)   # längste Kante des Seitenbilds in Bildpunkten
+    texterkennung_ki_token: int = Field(default=6000, ge=500)  # so viel darf die Antwort je Seite höchstens lang sein
     vorpruefung_abstand_s: float = Field(default=5.0, ge=0)   # Pause zwischen zwei Vorprüfungen, damit die Sandbox frei bleibt
     # Leitstelle: der eine Weg zur KI (Vorprüfung, Einordnen); leer: ohne KI, eingeordnet wird von Hand
     leitstelle_adresse: str = ""

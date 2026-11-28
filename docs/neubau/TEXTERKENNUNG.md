@@ -67,5 +67,27 @@ und Fußzeilen fallen weg, Fotos und eine Tabelle als Ausschnitt der Seite. Schw
 Absatz), farbiger Code (teils falsch gelesen) und Text, der um ein Symbol fließt (in Zeilen geteilt); hier hilft die
 Nachbesserung.
 
-Offen: Nachbesserung über die Leitstelle (Schritt 5); die Übersetzung liest Scans noch nicht über die Textschicht; Prüfung im
-Betrieb an Buch 3899 (Schritt 4).
+Offen: die Übersetzung liest Scans noch nicht über die Textschicht.
+
+## Nachbesserung über die Leitstelle (Schritt 5, BF-118, 28.11.2026)
+
+Entscheidungen im Dialog: Freigabe in der Leitstelle für Bild beschreiben und Bild erkennen; auslösen am Ende der erkannten Seite
+(eine leise Zeile mit der Taste Nachbessern, gilt für die Seite und die nächsten zwei); Tabellen als eigener Baustein der
+Textansicht; "das alte design muss aber auswählbar bleiben": je Seite zwischen nachgebesserter und klassischer Fassung umschalten,
+beide bleiben gespeichert, die Wahl gilt für Textansicht, Suche und Vorlesen. Entwürfe 1 und 2 privat unter Entwürfe/BücherFreunde
+Glaswelt/nachbessern.
+
+Messung (private Probe, je eine Seite mit Tabelle im Codekasten, mit Code und zweispaltig aus einem Schulbuch):
+
+| Weg | je Seite | Tabelle | Code | zwei Spalten |
+|---|---|---|---|---|
+| Bild erkennen (Apple Vision) | unter 1 s | zerfällt in Zellen | Zeichenfehler | gemischt, Ordnen fehlt |
+| GLM 4.6V Flash | 50 bis 80 s | fast richtig | ändert Namen | rechte Spalte zuerst, Wörter getauscht |
+| Qwen3.8 27B | 60 bis 112 s | sauber | fast genau | richtig, Trennungen aufgelöst, Zeilennummern weg |
+
+Gebaut: `texterkennung/nachbessern.py` (Seitenbild, Anweisung in `nachbessern.md`, Aufruf über `services/ki.py` `bildantwort`),
+`texterkennung/markdown.py` (eine Stelle, die das Markdown liest: Blöcke für die Textansicht, schlichter Text für Volltext und
+Suche), `texterkennung/nachbesserung.py` (Auftrag Texte nachbessern), Fassungen und Wahl in der Ablage (`erkennung.jsonl`),
+`services/textansicht/nachgebessert.py` (Bausteine einer nachgebesserten Seite, Bilder aus den Flächen der klassischen Erkennung),
+in der Textansicht die Zeile am Seitenende und die Tabelle. Wege und Auftrag in
+[SCHNITTSTELLE.md](SCHNITTSTELLE.md#texterkennung-gescannter-bücher-bf-109).

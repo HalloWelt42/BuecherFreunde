@@ -7,13 +7,21 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class TextTabelle(BaseModel):
+    """Eine Tabelle (aus der Nachbesserung, BF-118): Kopf, Reihen, je Spalte, ob sie nur Zahlen trägt (rechtsbündig)."""
+
+    kopf: list[str]
+    reihen: list[list[str]]
+    zahlen: list[bool]
+
+
 class TextBaustein(BaseModel):
     """Ein Baustein einer Seite. Abbildungen tragen ihre Nummer auf der Seite (Bild-Endpunkt), das Seitenverhältnis
     (damit die Oberfläche den Platz freihält, bevor das Bild geladen ist) und ihre Breite im Verhältnis zur Schrift des
     Fließtexts, damit Formeln und Abbildungen mit der eingestellten Schriftgröße mitwachsen. Codestellen kommen als "code"
     mit ihren Zeilen statt als Ausschnitt."""
 
-    art: Literal["absatz", "ueberschrift", "unterschrift", "kasten", "bild", "code"]
+    art: Literal["absatz", "ueberschrift", "unterschrift", "kasten", "bild", "code", "tabelle"]
     text: str = ""
     titel: str = ""
     inhalt: list[TextBaustein] = Field(default_factory=list)
@@ -28,6 +36,7 @@ class TextBaustein(BaseModel):
     kennung: str = ""
     teil: int | None = None
     teile: int | None = None
+    tabelle: TextTabelle | None = None
 
 
 class TextSeite(BaseModel):
@@ -39,6 +48,11 @@ class TextSeite(BaseModel):
     gedruckt: str = ""
     bausteine: list[TextBaustein]
     schicht: Literal["pdf", "erkannt", "wartet", "ohne"] = "pdf"
+    # Nachbesserung einer erkannten Seite (BF-118): welche Fassung gilt, ob es die andere gibt, und wo die Nachbesserung steht
+    fassung: Literal["klassisch", "ki"] | None = None
+    andere_fassung: bool = False
+    nachbesserung: Literal["", "wartet", "fehler"] = ""
+    nachbesserung_grund: str = ""
 
 
 class TextSeitenAntwort(BaseModel):

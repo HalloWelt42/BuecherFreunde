@@ -1,4 +1,5 @@
-"""Was die Texterkennung über eine Seite festhält: eine Zeile in `erkennung.jsonl` (ablage.py)."""
+"""Was die Texterkennung über eine Seite festhält: Zeilen in `erkennung.jsonl` (ablage.py), je Fassung eine `Seitenerkennung`
+und, wenn jemand umgeschaltet hat, eine `Fassungswahl`."""
 
 from __future__ import annotations
 
@@ -6,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-Herkunft = Literal["klassisch", "ki"]           # klassisch: das Programm der Erkennung; ki: die Nachbesserung (später)
+Herkunft = Literal["klassisch", "ki"]           # klassisch: das Programm der Erkennung; ki: die Nachbesserung über die Leitstelle
 Lage = tuple[float, float, float, float]        # x0, y0, x1, y1 in PDF-Punkten, wie die Textschicht der Seite
 
 
@@ -26,7 +27,8 @@ class ErkannteZeile(BaseModel):
 
 class Seitenerkennung(BaseModel):
     """Eine erkannte Dateiseite (ab 1) mit Herkunft, Werkzeug, Fassung und Zeit; `flaechen` sind Blöcke ohne Text (Bilder,
-    Linien), wie das Programm sie abgrenzt."""
+    Linien), wie das Programm sie abgrenzt. Eine Nachbesserung (Herkunft ki, BF-118) trägt die Seite als `markdown` statt in
+    `zeilen`; ihre Flächen sind die der klassischen Erkennung, damit die Bilder der Seite ihren Ausschnitt behalten."""
     seite: int = Field(ge=1)
     herkunft: Herkunft = "klassisch"
     werkzeug: str
@@ -37,6 +39,21 @@ class Seitenerkennung(BaseModel):
     dauer_s: float
     zeilen: list[ErkannteZeile] = Field(default_factory=list)
     flaechen: list[Lage] = Field(default_factory=list)
+    markdown: str = ""
 
 
-Erkennungen = dict[int, Seitenerkennung]        # je Dateiseite die geltende (jüngste) Erkennung
+class Fassungswahl(BaseModel):
+    """Welche Fassung einer Seite gilt, von Hand gewählt (BF-118); ohne Wahl gilt die jüngste."""
+    seite: int = Field(ge=1)
+    gilt: Herkunft
+    gewaehlt_am: str                            # Zeitpunkt in UTC, ISO 8601
+
+
+class Fassungsstand(BaseModel):
+    """Was es zu einer Seite gibt und was davon gilt."""
+    klassisch: bool = False
+    ki: bool = False
+    gilt: Herkunft = "klassisch"
+
+
+Erkennungen = dict[int, Seitenerkennung]        # je Dateiseite die geltende Erkennung (gewählt, sonst die jüngste)

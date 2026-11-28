@@ -23,8 +23,16 @@ class Codeteil:
 
 
 @dataclass
+class Tabelle:
+    """Eine Tabelle der Nachbesserung (BF-118): Kopf, Reihen mit je so vielen Zellen, je Spalte, ob sie nur Zahlen trägt."""
+    kopf: list[str]
+    reihen: list[list[str]]
+    zahlen: list[bool]
+
+
+@dataclass
 class Baustein:
-    art: str                    # absatz, ueberschrift, unterschrift, kasten, bild, code
+    art: str                    # absatz, ueberschrift, unterschrift, kasten, bild, code, tabelle
     oben: float
     links: float
     text: str = ""
@@ -34,6 +42,7 @@ class Baustein:
     bild: int | None = None     # Nummer der Abbildung auf der Seite (Bild-Endpunkt)
     breite_em: float | None = None  # Breite einer Abbildung in Schriftgrößen des Fließtexts
     code: Codeteil | None = None    # bei art "code"
+    tabelle: Tabelle | None = None  # bei art "tabelle"
 
 
 @dataclass

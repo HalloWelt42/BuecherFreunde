@@ -93,6 +93,32 @@ def befund_laut_volltext(file_hash: str, seitenzahl: int | None) -> Befund | Non
     return befund_aus(text.split(SEITENTRENNER))
 
 
+async def nachziehen(buch: int, file_hash: str) -> bool:
+    """Volltext, Seiten und Suchindex neu aus der Textschicht (mit den geltenden Erkennungen), eine fehlende Seitenzahl gefüllt,
+    Codestellen neu erkennen; nach der Erkennung eines Buchs und nach jeder Nachbesserung oder Wahl einer Fassung (BF-118). False,
+    wenn es nicht ging (das Original fehlt, es ließ sich nicht lesen); antwortet die Kellerwolke nicht, kommt WolkeFehler."""
+    try:
+        original = await asyncio.to_thread(get_original_file, file_hash)
+        if original is None:
+            raise FileNotFoundError(OHNE_ORIGINAL)
+        text = await asyncio.to_thread(pdf_volltext, original, await asyncio.to_thread(ablage.lesen, file_hash))
+    except WolkeFehler:
+        raise
+    except Exception as f:                              # noqa: BLE001 - ein Buch hält die übrigen nie auf
+        logger.warning("Texterkennung: Buch %d nicht nachgezogen: %s", buch, f)
+        return False
+    await asyncio.to_thread(save_fulltext, file_hash, text)
+    await asyncio.to_thread(get_sidecar_path(file_hash, SEITEN_BEGLEITER).unlink, True)   # die gedruckten Seiten neu
+    async with db.einheit():                           # über fts_content in den Suchindex (Trigger), dann wieder leer
+        await db.execute("UPDATE books SET fts_content = ?, page_count = CASE WHEN COALESCE(page_count, 0) = 0 THEN ? "
+                         "ELSE page_count END, updated_at = datetime('now') WHERE id = ?",
+                         (text[:SUCHTEXT_ZEICHEN], text.count(SEITENTRENNER) + 1, buch))
+        await db.execute("UPDATE books SET fts_content = '' WHERE id = ?", (buch,))
+    codestellen.vormerken(buch)
+    logger.info("Texterkennung: Buch %d nachgezogen, Volltext, Suche und Seiten neu", buch)
+    return True
+
+
 class Texterkennung(Auftrag):
     art = "texterkennung"
     was = "Texte erkennen"
@@ -281,31 +307,14 @@ class Texterkennung(Auftrag):
 
     @staticmethod
     async def _buch_fertig(buch: int, file_hash: str) -> None:
-        """Alles erkannt: Volltext, Seiten und Suchindex neu, eine fehlende Seitenzahl gefüllt, Codestellen neu erkennen. Geht
-        das nicht, bekommt das Buch einen Grund und kommt im nächsten Lauf wieder dran."""
-        try:
-            original = await asyncio.to_thread(get_original_file, file_hash)
-            if original is None:
-                raise FileNotFoundError(OHNE_ORIGINAL)
-            text = await asyncio.to_thread(pdf_volltext, original, await asyncio.to_thread(ablage.lesen, file_hash))
-        except WolkeFehler:
-            raise
-        except Exception as f:                              # noqa: BLE001 - ein Buch hält die übrigen nie auf
-            logger.warning("Texterkennung: Buch %d nicht nachgezogen: %s", buch, f)
+        """Alles erkannt: das Buch nachziehen (`nachziehen`). Geht das nicht, bekommt es einen Grund und kommt im nächsten Lauf
+        wieder dran."""
+        if not await nachziehen(buch, file_hash):
             await db.execute("UPDATE texterkennung_buch SET grund = ? WHERE book_id = ?", (NICHT_NACHGEZOGEN, buch))
             await db.commit()
             return
-        await asyncio.to_thread(save_fulltext, file_hash, text)
-        await asyncio.to_thread(get_sidecar_path(file_hash, SEITEN_BEGLEITER).unlink, True)   # die gedruckten Seiten neu
-        async with db.einheit():                           # über fts_content in den Suchindex (Trigger), dann wieder leer
-            await db.execute("UPDATE books SET fts_content = ?, page_count = CASE WHEN COALESCE(page_count, 0) = 0 THEN ? "
-                             "ELSE page_count END, updated_at = datetime('now') WHERE id = ?",
-                             (text[:SUCHTEXT_ZEICHEN], text.count(SEITENTRENNER) + 1, buch))
-            await db.execute("UPDATE books SET fts_content = '' WHERE id = ?", (buch,))
         await db.execute("UPDATE texterkennung_buch SET fertig_am = ? WHERE book_id = ?", (jetzt(), buch))
         await db.commit()
-        codestellen.vormerken(buch)
-        logger.info("Texterkennung: Buch %d fertig, Volltext, Suche und Seiten neu", buch)
 
     # -- Für den Leser ----------------------------------------------------------------------------------------------------
     async def wartende(self, buch: int, seiten: Iterable[int]) -> set[int]:

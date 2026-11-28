@@ -23,6 +23,7 @@ import fitz
 
 from backend.app.core.config import settings
 from backend.app.services import pdfseite
+from backend.app.texterkennung import markdown
 from backend.app.texterkennung.modelle import ErkannteZeile, Seitenerkennung, Wort
 
 SICHER_AB = 20                  # Sicherheit eines Worts, ab der es zählt (gemessen: Fließtext über 90, schwierige echte Wörter
@@ -50,7 +51,10 @@ def sichere_woerter(zeile: ErkannteZeile) -> list[Wort]:
 
 
 def erkannter_text(e: Seitenerkennung) -> str:
-    """Der schlichte Text einer Erkennung: Zeile für Zeile, wie das Programm sie gliedert (wie `pdfseite.seitentext`)."""
+    """Der schlichte Text einer Erkennung: Zeile für Zeile, wie das Programm sie gliedert (wie `pdfseite.seitentext`); eine
+    Nachbesserung Block für Block aus ihrem Markdown."""
+    if e.markdown:
+        return markdown.schlichter_text(e.markdown)
     zeilen = (" ".join(w.text for w in sichere_woerter(z)) for z in e.zeilen)
     return "\n".join(z for z in zeilen if z)
 

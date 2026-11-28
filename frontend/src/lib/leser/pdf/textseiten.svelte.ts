@@ -1,8 +1,15 @@
 // Die Textseiten eines PDF in Ausschnitten: ab der gelesenen Seite, unten und oben nachgeladen
 import { textSeiten } from "../../api/books";
 
+/** Eine Tabelle der Nachbesserung (BF-118): Kopf, Reihen, je Spalte, ob sie nur Zahlen trägt */
+export interface Tabelle {
+  kopf: string[];
+  reihen: string[][];
+  zahlen: boolean[];
+}
+
 export interface Baustein {
-  art: "ueberschrift" | "absatz" | "unterschrift" | "bild" | "kasten" | "code";
+  art: "ueberschrift" | "absatz" | "unterschrift" | "bild" | "kasten" | "code" | "tabelle";
   text: string;
   titel: string;
   inhalt: Baustein[];
@@ -15,6 +22,7 @@ export interface Baustein {
   kennung?: string;
   teil?: number | null;
   teile?: number | null;
+  tabelle?: Tabelle | null;
 }
 
 /** Woher der Text einer Seite kommt (BF-109): Textschicht des PDF, Texterkennung, noch in der Erkennung, ohne lesbaren Text */
@@ -26,6 +34,11 @@ export interface Textseite {
   bausteine: Baustein[];
   /** fehlt: aus der Textschicht des PDF */
   schicht?: Schicht;
+  /** Erkannte Seite (BF-118): welche Fassung gilt, ob es die andere gibt, wo die Nachbesserung steht und warum sie scheiterte */
+  fassung?: "klassisch" | "ki" | null;
+  andere_fassung?: boolean;
+  nachbesserung?: "" | "wartet" | "fehler";
+  nachbesserung_grund?: string;
 }
 
 export interface Textantwort {
@@ -34,7 +47,7 @@ export interface Textantwort {
 }
 
 /** Trägt ein Baustein lesbaren Text, auch in einem Kasten? */
-const mitText = (b: Baustein): boolean => (b.art !== "bild" && !!(b.text.trim() || b.titel.trim() || b.zeilen?.length)) || b.inhalt.some(mitText);
+const mitText = (b: Baustein): boolean => (b.art !== "bild" && !!(b.text.trim() || b.titel.trim() || b.zeilen?.length || b.tabelle?.reihen.length)) || b.inhalt.some(mitText);
 
 type Hole = (buch: number, ab: number, anzahl: number) => Promise<Textantwort>;
 
@@ -52,6 +65,8 @@ export class Textseiten {
   letzte = $derived(this.seiten.at(-1)?.nr ?? 0);
   /** Seiten, deren Text die Texterkennung noch liest */
   wartend = $derived(this.seiten.filter((s) => s.schicht === "wartet").map((s) => s.nr));
+  /** Seiten, die gerade nachgebessert werden (BF-118) */
+  nachbessernd = $derived(this.seiten.filter((s) => s.nachbesserung === "wartet").map((s) => s.nr));
   /** Nur Bilder, kein lesbarer Text (eingescannt) und keiner unterwegs: die Seitenbilder zählen nicht als Text */
   ohneText = $derived(this.seiten.length > 0 && !this.seiten.some((s) => s.bausteine.some(mitText)) && !this.wartend.length);
   mitVorn = $derived(this.seiten.length > 0 && this.erste > 1);

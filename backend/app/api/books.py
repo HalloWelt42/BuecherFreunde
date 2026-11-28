@@ -28,13 +28,15 @@ from backend.app.models.book import (
     DARSTELLUNG, FELDER_DER_EINORDNUNG, FELDER_DES_ALTERS, LEERBAR, VON_HAND, BookListResponse, BookListItem, BookResponse, BookUpdate, BuchEintrag,
     Listeneintrag, SammlungsEintrag, Sammlungsstapel, Werkart, typ_pruefen,
 )
-from backend.app.models.textansicht import TextBaustein, TextSeite, TextSeitenAntwort
+from backend.app.models.textansicht import TextBaustein, TextSeite, TextSeitenAntwort, TextTabelle
 from backend.app.services.textansicht import Baustein, Codeteil, abbildung_png, seiten_lesen
+from backend.app.services.textansicht.modelle import Textseite
 import fitz
 
 from backend.app.codestellen.dienst import codestellen
 from backend.app.texterkennung import ablage as erkennungsablage
 from backend.app.texterkennung.auftrag import texterkennung
+from backend.app.texterkennung.nachbesserung import nachbesserung
 from backend.app.ablage import formate
 from backend.app.ablage.antwort import FEHLT, original_antwort
 from backend.app.material import dienst as material_dienst
@@ -950,6 +952,8 @@ def _baustein(b: Baustein) -> TextBaustein:
     if b.code is not None:
         c = b.code
         return TextBaustein(art="code", titel=b.titel, zeilen=c.zeilen, sprache=c.sprache, kennung=c.kennung, teil=c.teil, teile=c.teile)
+    if b.tabelle is not None:
+        return TextBaustein(art="tabelle", tabelle=TextTabelle(kopf=b.tabelle.kopf, reihen=b.tabelle.reihen, zahlen=b.tabelle.zahlen))
     verhaeltnis = round(b.rechteck.width / b.rechteck.height, 4) if b.rechteck and b.rechteck.height else None
     return TextBaustein(art=b.art, text=b.text, titel=b.titel, inhalt=[_baustein(t) for t in b.inhalt],
                         bild=b.bild, verhaeltnis=verhaeltnis, breite_em=b.breite_em)
@@ -996,12 +1000,18 @@ async def text_seiten(
     gesamt, seiten = await asyncio.to_thread(seiten_lesen, pfad, ab, anzahl, await _codeteile(book_id), erkennungen)
     _texte, gedruckt = await asyncio.to_thread(buch_seiten, book["hash"], book["file_format"], book["page_count"])
     wartend = await texterkennung.wartende(book_id, [s.nr for s in seiten if s.schicht == "ohne"])
-    return TextSeitenAntwort(
-        gesamt=gesamt,
-        seiten=[TextSeite(nr=s.nr, gedruckt=gedruckt[s.nr - 1] if s.nr <= len(gedruckt) else "",
-                          bausteine=[_baustein(b) for b in s.bausteine], schicht="wartet" if s.nr in wartend else s.schicht)
-                for s in seiten],
-    )
+    erkannt = [s.nr for s in seiten if s.schicht == "erkannt"]
+    fassungen = await asyncio.to_thread(erkennungsablage.fassungen, book["hash"]) if erkannt else {}
+    wuensche = await nachbesserung.wuensche(book_id, erkannt)
+
+    def seite(s: Textseite) -> TextSeite:
+        f, w = fassungen.get(s.nr), wuensche.get(s.nr)
+        return TextSeite(nr=s.nr, gedruckt=gedruckt[s.nr - 1] if s.nr <= len(gedruckt) else "",
+                         bausteine=[_baustein(b) for b in s.bausteine], schicht="wartet" if s.nr in wartend else s.schicht,
+                         fassung=f.gilt if f and s.schicht == "erkannt" else None, andere_fassung=bool(f and f.klassisch and f.ki),
+                         nachbesserung=("wartet" if w.stand == "offen" else "fehler") if w else "", nachbesserung_grund=w.grund if w else "")
+
+    return TextSeitenAntwort(gesamt=gesamt, seiten=[seite(s) for s in seiten])
 
 
 @router.get("/{book_id}/textseiten/{seite}/bild/{nr}")

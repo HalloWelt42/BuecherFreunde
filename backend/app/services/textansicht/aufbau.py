@@ -11,6 +11,7 @@ from backend.app.codestellen.pdf import ADRESSE, MONO_ANTEIL
 from backend.app.services.pdfseite import gruppen as zeichnungsgruppen, lesbar, sichtbare_zeichnungen
 from backend.app.services.textansicht.code import (KASTEN_TEXT_AB, codebaustein, kastenrest, lose_codezeilen, tafel, tafelart,
                                                     tafelcode)
+from backend.app.services.textansicht import nachgebessert
 from backend.app.services.textansicht.erkannt import bilder_der_erkennung, zeilen_der_erkennung
 from backend.app.services.textansicht.modelle import Baustein, Codeteil, Textseite
 from backend.app.services.textansicht.zeilen import (SATZENDE, UEBERSCHRIFT_FAKTOR, Block, Zeile, abgesetzte_formel,
@@ -264,6 +265,8 @@ class _Seitenbau:
 
 
 def _bauen(seite: fitz.Page, codeteile: list[Codeteil] | None, zuschneiden: bool, schicht: textschicht.Schicht) -> list[Baustein]:
+    if schicht.erkennung is not None and schicht.erkennung.markdown:     # nachgebessert (BF-118): die Gestalt kommt aus dem Markdown
+        return nachgebessert.bausteine(seite, schicht.erkennung, zuschneiden)
     return _Seitenbau(seite, codeteile or [], zuschneiden, schicht).bauen()
 
 
