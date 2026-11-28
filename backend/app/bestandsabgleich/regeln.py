@@ -5,8 +5,9 @@ Nennt die Seite eine andere Auflage, ist es nur ähnlich. Ähnlich ist auch ein 
 gleich ist, aber der Titel nur ungefähr; ein gleicher Titel von einem anderen Autor ebenso. Wie nah "ungefähr" ist, stellt die
 Erweiterung ein (`aehnlich_ab`). Ohne Autor wird nie etwas vorhanden: ein gleicher Titel allein sagt zu wenig ("Gedichte").
 
-Fremde Seiten hängen Zusätze an den Titel: Klammern ohne Zahl ("(Roman)", "[Taschenbuch]") zählen darum auch weg; eine Zahl in
-Klammern bleibt, sie nennt oft den Band."""
+Fremde Seiten hängen Zusätze an den Titel: Klammern ohne Zahl ("(Roman)", "[Taschenbuch]") zählen darum auch weg. Eine Zahl in
+Klammern nennt oft den Band; passt ein Titel erst ohne eine solche Klammer, ist er darum nur ähnlich, nie vorhanden. Kataloge
+stellen den Artikel nach ("Hafenmauer, die"); er zählt wie vorangestellt. An Namen fallen Zusätze in Klammern weg ("[Brodersen, Lene]")."""
 
 from __future__ import annotations
 
@@ -18,6 +19,8 @@ from backend.app.quellen import isbn as nummern
 from backend.app.quellen.abgleich import MIT_AUTOR, OHNE_AUTOR, SICHER, autor_passt, echte_autoren, norm, titel_naehe
 
 _KLAMMER = re.compile(r"\s*[(\[][^()\[\]\d]*[)\]]")
+_JEDE_KLAMMER = re.compile(r"\s*[(\[][^()\[\]]*[)\]]")
+_ARTIKEL_HINTEN = re.compile(r"^(.+?),\s*(der|die|das|ein|eine|the|a|an|le|la|les|el|il)$", re.IGNORECASE)
 _AUFLAGE = re.compile(r"\b(\d{1,2})\s*\.\s*(?:,\s*)?(?:[a-zäöüß]+\s+){0,3}(?:auflage|aufl\b)|\b(\d{1,2})(?:st|nd|rd|th)\s+(?:[a-z]+\s+)?edition",
                       re.IGNORECASE)
 
@@ -46,6 +49,21 @@ def ohne_klammern(titel: str) -> str:
     return " ".join(_KLAMMER.sub(" ", titel or "").split())
 
 
+def ohne_jede_klammer(titel: str) -> str:
+    return " ".join(_JEDE_KLAMMER.sub(" ", titel or "").split())
+
+
+def artikel_vorn(titel: str) -> str:
+    """"Hafenmauer, die" als "die Hafenmauer"; sonst wie es ist."""
+    m = _ARTIKEL_HINTEN.match((titel or "").strip())
+    return f"{m.group(2)} {m.group(1)}" if m else titel
+
+
+def namen(autoren: list[str] | tuple[str, ...]) -> list[str]:
+    """Ohne Zusätze in Klammern, ohne Platzhalter."""
+    return echte_autoren(" ".join(_JEDE_KLAMMER.sub(" ", a).split()) for a in autoren)
+
+
 def auflage(text: str) -> int | None:
     m = _AUFLAGE.search(text or "")
     return int(m.group(1) or m.group(2)) if m else None
@@ -58,10 +76,22 @@ def isbn13(werte: list[str] | tuple[str, ...] | str) -> frozenset[str]:
     return frozenset(nummern.dreizehn(z) for z in funde if nummern.gueltig(z))
 
 
+def _naehe(formen: set[str], untertitel: str, titel: str) -> float:
+    return max((max(titel_naehe(f, titel), titel_naehe(titel, f, untertitel)) for f in formen - {""}), default=0.0)
+
+
+def titelvergleich(angebot: Angebot, titel: str) -> tuple[float, bool]:
+    """Nähe in beide Richtungen, mit und ohne Klammerzusätze der Seite, Artikel vorn; dazu, ob es erst ohne eine Klammer mit
+    Zahl so nah ist (dann nie mehr als ähnlich)."""
+    eigen = artikel_vorn(titel)
+    formen = {angebot.titel, ohne_klammern(angebot.titel), artikel_vorn(angebot.titel), artikel_vorn(ohne_klammern(angebot.titel))}
+    nah = _naehe(formen, angebot.untertitel, eigen)
+    ohne = _naehe({ohne_jede_klammer(angebot.titel), artikel_vorn(ohne_jede_klammer(angebot.titel))}, angebot.untertitel, eigen)
+    return (ohne, True) if ohne > nah + 0.05 else (nah, False)
+
+
 def titelnaehe(angebot: Angebot, titel: str) -> float:
-    """In beide Richtungen, mit und ohne Klammerzusätze der Seite."""
-    formen = {angebot.titel, ohne_klammern(angebot.titel)} - {""}
-    return max((max(titel_naehe(f, titel), titel_naehe(titel, f, angebot.untertitel)) for f in formen), default=0.0)
+    return titelvergleich(angebot, titel)[0]
 
 
 def _auflage_der_seite(angebot: Angebot) -> int | None:
@@ -83,12 +113,14 @@ def einstufen(angebot: Angebot, buch: Bestandsbuch, aehnlich_ab: float) -> Einst
     """Vorhanden, ähnlich oder kein Treffer."""
     if isbn13(angebot.isbn) & buch.isbn13:
         return Einstufung(Fundart.VORHANDEN, 1.0, "gleiche ISBN")
-    t = titelnaehe(angebot, buch.title)
+    t, nur_ohne_zusatz = titelvergleich(angebot, buch.title)
     if t < min(aehnlich_ab, MIT_AUTOR):
         return None
-    autor = autor_passt(echte_autoren(angebot.autoren), echte_autoren(buch.autoren))
+    autor = autor_passt(namen(angebot.autoren), namen(buch.autoren))
     if autor:
         if t >= MIT_AUTOR:
+            if nur_ohne_zusatz:
+                return Einstufung(Fundart.AEHNLICH, t, "Titel gleich bis auf einen Zusatz mit Zahl")
             if _andere_auflage(angebot, buch):
                 return Einstufung(Fundart.AEHNLICH, t, _grund_auflage(angebot, buch))
             return Einstufung(Fundart.VORHANDEN, t, "Titel und Autor passen")
@@ -121,7 +153,7 @@ def vergleich(angebot: Angebot, buch: Bestandsbuch) -> list[Vergleichszeile]:
     zeilen = [Vergleichszeile(feld="Titel", seite=seite_titel, mein=buch.title, gleich=titelnaehe(angebot, buch.title) >= SICHER)]
     if angebot.autoren:
         zeilen.append(Vergleichszeile(feld="Autor", seite=", ".join(angebot.autoren), mein=buch.author,
-                                      gleich=bool(autor_passt(echte_autoren(angebot.autoren), echte_autoren(buch.autoren)))))
+                                      gleich=bool(autor_passt(namen(angebot.autoren), namen(buch.autoren)))))
     if (seite := _auflage_der_seite(angebot)) is not None:
         mein = auflage(buch.title) or 1
         zeilen.append(Vergleichszeile(feld="Auflage", seite=f"{seite}.", mein=f"{mein}.", gleich=seite == mein))

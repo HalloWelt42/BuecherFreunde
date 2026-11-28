@@ -60,3 +60,20 @@ def test_freitext_nennt_titel_oder_autor():
 def test_suchwoerter_ohne_fuellwoerter_die_laengsten_zuerst():
     assert suchwoerter("Die Werft am Fluss: Roman (German Edition)") == ["werft", "fluss"]
     assert suchwoerter("Es") == ["es"]
+
+
+HAFEN = Bestandsbuch(id=2, title="Die Hafenmauer", author="Lene Brodersen", autoren=("Lene Brodersen",), year=2011)
+
+
+def test_nachgestellter_artikel_und_zusaetze_an_namen():
+    e = einstufen(Angebot(nr=0, titel="Hafenmauer, die", autoren=["Brodersen, Lene"]), HAFEN, 0.8)
+    assert (e.art, e.grund) == (Fundart.VORHANDEN, "Titel und Autor passen")
+    e = einstufen(Angebot(nr=0, titel="Die Hafenmauer", autoren=["Lene Brodersen [Brodersen, Lene]"]), HAFEN, 0.8)
+    assert e.art is Fundart.VORHANDEN
+
+
+def test_erst_ohne_klammer_mit_zahl_nur_aehnlich():
+    e = einstufen(Angebot(nr=0, titel="Die Hafenmauer (Gesammelte Romane 2)", autoren=["Lene Brodersen"]), HAFEN, 0.8)
+    assert (e.art, e.grund) == (Fundart.AEHNLICH, "Titel gleich bis auf einen Zusatz mit Zahl")
+    e = einstufen(Angebot(nr=0, titel="Die Hafenmauer (Band 3)", autoren=["Lene Brodersen"]), HAFEN, 0.8)
+    assert e.art is Fundart.AEHNLICH                                    # ein anderer Band ist nie vorhanden
