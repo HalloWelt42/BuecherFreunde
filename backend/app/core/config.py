@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     texterkennung_ki_seiten: int = Field(default=3, ge=1, le=10)
     texterkennung_ki_kante: int = Field(default=1600, ge=600, le=4000)   # längste Kante des Seitenbilds in Bildpunkten
     texterkennung_ki_token: int = Field(default=6000, ge=500)  # so viel darf die Antwort je Seite höchstens lang sein
+    # so lange darf eine Seite dauern, Laden des Modells eingeschlossen (gemessen: 60 bis 112 s je Seite, Laden etwa 330 s); danach
+    # bleibt sie mit Grund liegen und lässt sich erneut versuchen
+    texterkennung_ki_frist_s: float = Field(default=900, gt=0)
     vorpruefung_abstand_s: float = Field(default=5.0, ge=0)   # Pause zwischen zwei Vorprüfungen, damit die Sandbox frei bleibt
     # Leitstelle: der eine Weg zur KI (Vorprüfung, Einordnen); leer: ohne KI, eingeordnet wird von Hand
     leitstelle_adresse: str = ""

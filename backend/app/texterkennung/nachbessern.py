@@ -48,15 +48,20 @@ def seitenbild(pfad: Path, seite: int, kante: int) -> tuple[bytes, int]:
 
 
 async def seite_nachbessern(pfad: Path, seite: int, klassisch: Seitenerkennung | None) -> Seitenerkennung:
-    """Die Dateiseite `seite` nachbessern. Wirft `Nachbesserungsfehler` mit Grund (Leitstelle, Modell, Antwort ohne lesbaren
-    Text) und IndexError, wenn es die Seite nicht gibt."""
+    """Die Dateiseite `seite` nachbessern, höchstens `TEXTERKENNUNG_KI_FRIST_S` lang. Wirft `Nachbesserungsfehler` mit Grund
+    (Leitstelle, Modell, Frist, Antwort ohne lesbaren Text) und IndexError, wenn es die Seite nicht gibt."""
     beginn = time.monotonic()
     bild, dpi = await asyncio.to_thread(seitenbild, pfad, seite, settings.texterkennung_ki_kante)
     try:
-        antwort, modell = await ki.bildantwort(anweisung(), bild, modell=settings.texterkennung_ki_modell, titel=TITEL,
-                                               temperature=0, max_tokens=settings.texterkennung_ki_token)
+        antwort, modell = await asyncio.wait_for(
+            ki.bildantwort(anweisung(), bild, modell=settings.texterkennung_ki_modell, titel=TITEL, temperature=0,
+                           max_tokens=settings.texterkennung_ki_token),
+            settings.texterkennung_ki_frist_s)
     except KiFehler as f:
         raise Nachbesserungsfehler(f.grund) from f
+    except TimeoutError as f:
+        minuten = round(settings.texterkennung_ki_frist_s / 60)
+        raise Nachbesserungsfehler(f"Die Leitstelle hat binnen {minuten} Minuten nicht geantwortet") from f
     md = markdown.bereinigt(antwort)
     if not pdfseite.lesbar(markdown.schlichter_text(md)):
         raise Nachbesserungsfehler("Die KI lieferte für diese Seite keinen lesbaren Text")

@@ -122,3 +122,21 @@ async def test_nachbessern_nimmt_die_flaechen_der_klassischen_und_prueft_die_ant
         await nachbessern.seite_nachbessern(pfad, 1, _klassisch())
     with pytest.raises(IndexError):
         await nachbessern.seite_nachbessern(pfad, 7, None)
+
+
+async def test_nachbessern_hat_eine_frist(tmp_path, monkeypatch):
+    import asyncio
+
+    from backend.app.core.config import settings
+
+    doc = fitz.open()
+    doc.new_page(width=480, height=640)
+    doc.save(tmp_path / "buch.pdf")
+
+    async def haengt(anweisung, bild, **art):
+        await asyncio.sleep(60)
+
+    monkeypatch.setattr(nachbessern.ki, "bildantwort", haengt)
+    monkeypatch.setattr(settings, "texterkennung_ki_frist_s", 0.05)
+    with pytest.raises(nachbessern.Nachbesserungsfehler, match="nicht geantwortet"):
+        await nachbessern.seite_nachbessern(tmp_path / "buch.pdf", 1, None)

@@ -397,7 +397,7 @@ Auftrag **Texte nachbessern** (`nachbesserung`, BF-118, in `GET /api/einrichtung
 anderen): je gewünschter Seite ein Stück (Tabelle `texterkennung_nachbessern`), die älteste Bitte zuerst. Das Seitenbild geht in
 Graustufen (längste Kante `TEXTERKENNUNG_KI_KANTE`, 1600 Bildpunkte, JPEG) mit der Anweisung aus `texterkennung/nachbessern.md` an
 das Bildmodell `TEXTERKENNUNG_KI_MODELL` (Vorgabe `qwen/qwen3.8-27b`, Fähigkeit `bild_beschreiben` der Leitstelle), höchstens
-`TEXTERKENNUNG_KI_TOKEN` (6000) lang. Ist die letzte gewünschte Seite eines Buchs durch, zieht es nach. Eine Seite, die scheitert
+`TEXTERKENNUNG_KI_TOKEN` (6000) lang und höchstens `TEXTERKENNUNG_KI_FRIST_S` (900) Sekunden, Laden des Modells eingeschlossen. Ist die letzte gewünschte Seite eines Buchs durch, zieht es nach. Eine Seite, die scheitert
 (Leitstelle, Modell, Antwort ohne lesbaren Text), bleibt mit Grund liegen; ohne Leitstelle ruht der Auftrag mit Grund.
 
 ## Gestaltete Deckblätter (BF-59)
