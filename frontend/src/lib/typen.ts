@@ -439,6 +439,8 @@ export interface Markierung {
   label_name: string;
   label_note: string;
   created_at: string;
+  /** Über ein Rechteck einer gescannten Seite (BF-123): wo das Lesen seines Textes steht */
+  lesen?: { stand: "offen" | "fertig" | "fehler"; grund: string } | null;
 }
 
 export interface Etikett {
@@ -480,6 +482,18 @@ export interface Materialtreffer {
   titel: string;
   autor: string;
   name: string;
+  seite: number | null;
+  auszug: string;
+  deckblatt: Deckblattangaben | null;
+}
+
+/** Ein Treffer der Wortsuche in einer eigenen Markierung (BF-123): nennt das Buch und die Stelle */
+export interface Markierungstreffer {
+  markierung_id: number;
+  buch_id: number;
+  titel: string;
+  autor: string;
+  stelle: string;
   seite: number | null;
   auszug: string;
   deckblatt: Deckblattangaben | null;

@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS einrichtung_aenderung (   -- Wartung: was der Assiste
     angelegt_am TEXT NOT NULL DEFAULT {JETZT}
 );
 CREATE TABLE IF NOT EXISTS einrichtung_auftrag (     -- Prüfung, Neuaufbau, Originale kopieren: fortsetzbar über einen Neustart
-    art TEXT PRIMARY KEY,                            -- pruefung, neuaufbau, kopieren, ligaturen, stimmproben, texterkennung, nachbesserung
+    art TEXT PRIMARY KEY,                            -- pruefung, neuaufbau, kopieren, ligaturen, stimmproben, texterkennung, nachbesserung, markierungslesen
     stand TEXT NOT NULL DEFAULT 'wartet',            -- wartet, laeuft, pause, fertig, fehler
     gesamt INTEGER NOT NULL DEFAULT 0,
     fertig INTEGER NOT NULL DEFAULT 0,
@@ -128,6 +128,19 @@ CREATE TABLE IF NOT EXISTS texterkennung_nachbessern ( -- Texte nachbessern (BF-
     gewuenscht_am TEXT NOT NULL DEFAULT {JETZT},
     PRIMARY KEY (book_id, seite)
 );
+CREATE TABLE IF NOT EXISTS markierung_lesen (       -- Markierungen lesen (BF-123, markierungen/lesen.py): je gezogenem Rechteck
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    profil_id TEXT NOT NULL REFERENCES profil(id) ON DELETE CASCADE,
+    book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    stelle TEXT NOT NULL,                            -- page:N:bereich:x0,y0,x1,y1 (markierungen/stelle.py)
+    markierung INTEGER DEFAULT NULL REFERENCES book_highlights(id) ON DELETE CASCADE,  -- leer: nur fürs Menü, noch keine Markierung
+    stand TEXT NOT NULL DEFAULT 'offen',             -- offen, fertig, fehler
+    text TEXT NOT NULL DEFAULT '',                   -- der gelesene Text; bei fehler der Notbehelf der klassischen Erkennung
+    grund TEXT NOT NULL DEFAULT '',
+    gewuenscht_am TEXT NOT NULL DEFAULT {JETZT},
+    gelesen_am TEXT DEFAULT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_markierung_lesen_markierung ON markierung_lesen(markierung);
 CREATE TABLE IF NOT EXISTS texterkennung_vorrang (   -- Texte erkennen: hier liest jemand, diese Seiten zuerst
     book_id INTEGER PRIMARY KEY REFERENCES books(id) ON DELETE CASCADE,
     von INTEGER NOT NULL,                            -- Dateiseiten von bis

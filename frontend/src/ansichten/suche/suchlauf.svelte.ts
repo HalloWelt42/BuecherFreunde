@@ -2,7 +2,7 @@
 import { suche as sucheWoerter } from "../../lib/api/search";
 import { sucheBedeutung } from "../../lib/api/orte";
 import type { Suchart } from "../../lib/stand/suche.svelte";
-import type { Bedeutungstreffer, Materialtreffer, Treffer } from "../../lib/typen";
+import type { Bedeutungstreffer, Markierungstreffer, Materialtreffer, Treffer } from "../../lib/typen";
 import { nurText } from "./suchsprache";
 
 const JE_SEITE = 20;
@@ -10,17 +10,25 @@ const JE_SEITE = 20;
 export type Fund =
   | { art: "wort"; schluessel: string; wort: Treffer }
   | { art: "sinn"; schluessel: string; sinn: Bedeutungstreffer }
-  | { art: "material"; schluessel: string; material: Materialtreffer };
+  | { art: "material"; schluessel: string; material: Materialtreffer }
+  | { art: "markierung"; schluessel: string; markierung: Markierungstreffer };
 
-/** Treffer im Begleitmaterial stehen gleich hinter dem Buch, zu dem sie gehören; die übrigen danach (BF-81) */
-export function mitMaterial(funde: Fund[], material: readonly Materialtreffer[]): Fund[] {
+/** Zu welchem Buch ein Fund gehört */
+export const buchVon = (f: Fund): number =>
+  f.art === "wort" ? f.wort.book_id : f.art === "sinn" ? f.sinn.buch_id : f.art === "material" ? f.material.buch_id : f.markierung.buch_id;
+
+/** Treffer im Begleitmaterial (BF-81) und in eigenen Markierungen (BF-123) stehen gleich hinter dem Buch, zu dem sie gehören;
+ *  die übrigen danach */
+export function mitBeitreffern(funde: Fund[], material: readonly Materialtreffer[], markierungen: readonly Markierungstreffer[] = []): Fund[] {
   const aus = [...funde];
-  for (const m of material) {
-    const fund: Fund = { art: "material", schluessel: `m${m.material_id}-${m.seite ?? 0}`, material: m };
+  const beitreffer: Fund[] = [
+    ...markierungen.map((m): Fund => ({ art: "markierung", schluessel: `k${m.markierung_id}`, markierung: m })),
+    ...material.map((m): Fund => ({ art: "material", schluessel: `m${m.material_id}-${m.seite ?? 0}`, material: m })),
+  ];
+  for (const fund of beitreffer) {
     let hinter = -1;
     aus.forEach((f, n) => {
-      const buch = f.art === "wort" ? f.wort.book_id : f.art === "sinn" ? f.sinn.buch_id : f.material.buch_id;
-      if (buch === m.buch_id) hinter = n;
+      if (buchVon(f) === buchVon(fund)) hinter = n;
     });
     aus.splice(hinter >= 0 ? hinter + 1 : aus.length, 0, fund);
   }
@@ -33,6 +41,7 @@ export class Suchlauf {
   filter = $state<Record<string, string>>({});
   sinn = $state<Bedeutungstreffer[]>([]);
   material = $state<Materialtreffer[]>([]);
+  markierungen = $state<Markierungstreffer[]>([]);
   /** Warum die Suche nach Bedeutung nichts liefert; leer, wenn sie läuft */
   grund = $state("");
   laedt = $state(false);
@@ -49,15 +58,15 @@ export class Suchlauf {
       if (s) aus.push({ art: "sinn", schluessel: `s${n}-${s.buch_id}-${s.seite}`, sinn: s });
       if (w) aus.push({ art: "wort", schluessel: `w${w.book_id}`, wort: w });
     }
-    return mitMaterial(aus, this.material);
+    return mitBeitreffern(aus, this.material, this.markierungen);
   });
 
   /** Alle bekannten Stellen: Bücher mit den Wörtern und Stellen nach Bedeutung */
-  zahl = $derived(this.gesamt + this.sinn.length + this.material.length);
+  zahl = $derived(this.gesamt + this.sinn.length + this.material.length + this.markierungen.length);
 
   async starte(frage: string, art: Suchart): Promise<void> {
     const lauf = ++this.#lauf;
-    Object.assign(this, { woerter: [], gesamt: 0, filter: {}, sinn: [], material: [], grund: "", fehler: "", fertig: false, laedt: true });
+    Object.assign(this, { woerter: [], gesamt: 0, filter: {}, sinn: [], material: [], markierungen: [], grund: "", fehler: "", fertig: false, laedt: true });
     await Promise.all([art !== "bedeutung" && this.#woerter(frage, 0, lauf), art !== "woerter" && this.#bedeutung(frage, lauf)]);
     if (lauf === this.#lauf) Object.assign(this, { laedt: false, fertig: true });
   }
@@ -77,7 +86,7 @@ export class Suchlauf {
       this.woerter = [...this.woerter, ...a.treffer.filter((t) => !bekannt.has(t.book_id))];
       this.gesamt = a.treffer.length || !ab ? a.gesamt : this.woerter.length;
       this.filter = a.aktive_filter ?? {};
-      if (!ab) this.material = a.material ?? [];
+      if (!ab) [this.material, this.markierungen] = [a.material ?? [], a.markierungen ?? []];
     } catch (e) {
       if (lauf === this.#lauf) this.fehler = e instanceof Error ? e.message : String(e);
     }

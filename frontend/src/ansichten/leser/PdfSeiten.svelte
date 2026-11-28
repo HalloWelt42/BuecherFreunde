@@ -6,6 +6,10 @@
   import { PdfAnzeige } from "../../lib/leser/pdf/anzeige";
   import type { PdfBuch } from "../../lib/leser/pdf/dokument";
   import { Pdfmarkierungen } from "../../lib/leser/pdf/markierung";
+  import { alsLage, bereichAus, stelleVon as bereichsstelle, type Bereich } from "../../lib/leser/pdf/bereich";
+  import { bereichszug } from "../../lib/leser/pdf/bereichszug";
+  import { Bereichsauswahl, istBereich, Lesung } from "../../lib/leser/pdf/lesung.svelte";
+  import { durchsichtig } from "../../lib/leser/farben";
   import { blattbreite, hoechsteSeitenbreite } from "../../lib/leser/leseraum.svelte";
   import type { Codestellenstand } from "../../lib/leser/codestellen.svelte";
   import type { Codestelle } from "../../lib/api/ausfuehren";
@@ -97,6 +101,39 @@
   // Markierungen und Fundstelle zeichengenau, je gezeichneter Seite (BF-38)
   const markierungen = new Pdfmarkierungen();
 
+  // Markieren mit einem Rechteck (BF-123): auf gescannten Seiten, solange es Notizen und Markierungen gibt
+  let mitBereichen = $derived(!!sitzung.buch.scan && sitzung.mitStellen);
+  let zug = $state<{ seite: number; lage: Bereich } | null>(null);
+  let fundBereich = $derived(bereichAus(fundstelle));
+  /** Je Seite die Rechtecke, die sie zeigt: Markierungen in ihrer Farbe (wie im Text zu 40 % deckend), das gewählte und das, das gerade entsteht, schwächer */
+  let bereiche = $derived.by(() => {
+    const je = new Map<number, { schluessel: string; id: number | null; lage: Bereich; farbe: string }[]>();
+    const dazu = (seite: number, e: { schluessel: string; id: number | null; lage: Bereich; farbe: string }) => je.set(seite, [...(je.get(seite) ?? []), e]);
+    for (const m of sitzung.markierungen) {
+      const b = bereichAus(m.cfi_range);
+      if (b) dazu(b.seite, { schluessel: `m${m.id}`, id: m.id, lage: b.bereich, farbe: durchsichtig(m.color, 0.4) });
+    }
+    const a = sitzung.auswahl;
+    if (istBereich(a)) dazu(a.seite, { schluessel: "auswahl", id: null, lage: a.lage, farbe: durchsichtig(sitzung.stiftfarbe, 0.25) });
+    if (zug) dazu(zug.seite, { schluessel: "zug", id: null, lage: zug.lage, farbe: durchsichtig(sitzung.stiftfarbe, 0.25) });
+    return je;
+  });
+
+  /** Ein Rechteck ist gezogen: mit dem Stift gleich markiert, sonst das Menü daran, dessen Lesung sofort beginnt */
+  function nimmBereich(nr: number, lage: Bereich, rahmen: DOMRect) {
+    const lesung = sitzung.stift ? null : new Lesung(sitzung.buch.id, bereichsstelle(nr, lage));
+    const a = new Bereichsauswahl(nr, lage, rahmen.left + ((lage.x0 + lage.x1) / 2) * rahmen.width, rahmen.top + lage.y0 * rahmen.height,
+      rahmen.top + lage.y1 * rahmen.height, schreibweise.seite(nr), lesung);
+    nimmAuswahl(sitzung, a);
+  }
+
+  /** Ein Rechteck in den Blick rollen (Sprung aus der Liste oder der Suche); false, wenn es nicht gezeichnet ist */
+  export function zeigeBereich(stelle: string): boolean {
+    const marke = flaeche?.querySelector<HTMLElement>(`.bereichsmarke[data-stelle="${CSS.escape(stelle)}"]`);
+    marke?.scrollIntoView({ block: "center" });
+    return !!marke;
+  }
+
   function beschrifte(nr: number, ebene: HTMLElement) {
     const fund = markierungen.beschrifte(nr, ebene, sitzung.markierungen, nr === fundseite ? fundstelle : "");
     if (!fund || gerolltZurFundstelle || blaettert) return;
@@ -106,6 +143,8 @@
 
   function gezeichnet(nr: number, ebene: HTMLElement) {
     beschrifte(nr, ebene);
+    // Fundstelle ein Rechteck (Treffer der Suche in einer Markierung, BF-123): einmal dorthin
+    if (fundBereich && nr === fundBereich.seite && !gerolltZurFundstelle && !blaettert) gerolltZurFundstelle = zeigeBereich(fundstelle);
     onbeschriftet(nr);
   }
 
@@ -228,6 +267,8 @@
     if (!flaeche || !r || !seiteImBlick(nr)) return null;
     const s = sichtVon(flaeche);
     if (e.art === "Markierung") {
+      const rechteck = r.querySelector(`.bereichsmarke[data-id="${(e.quelle as { id: number }).id}"]`)?.getBoundingClientRect();
+      if (rechteck && rechteck.bottom > s.oben && rechteck.top < s.unten) return rechteck.top;
       const b = markierungen.bereich((e.quelle as { id: number }).id);
       const q = b && umrissVon(b);
       if (q && q.bottom > s.oben && q.top < s.unten) return q.top;
@@ -279,7 +320,15 @@
     const f = flaeche;
     if (!f) return;
     const seiteVon = (b: Range) => Number((b.startContainer.parentElement?.closest("[data-seite]") as HTMLElement | null)?.dataset.seite) || seite;
-    return beobachteAuswahl(f, (b) => ({ cfi: `page:${seiteVon(b)}`, ort: schreibweise.seite(seiteVon(b)) }), (a) => nimmAuswahl(sitzung, a) && getSelection()?.removeAllRanges());
+    // Ein gezogenes Rechteck (BF-123) ist keine Textauswahl: dass dabei kein Text gewählt ist, schließt sein Menü nicht
+    const nimm = (a: Parameters<typeof nimmAuswahl>[1]) => (!a && istBereich(sitzung.auswahl) ? false : nimmAuswahl(sitzung, a));
+    return beobachteAuswahl(f, (b) => ({ cfi: `page:${seiteVon(b)}`, ort: schreibweise.seite(seiteVon(b)) }), (a) => nimm(a) && getSelection()?.removeAllRanges());
+  });
+
+  $effect(() => {
+    const f = flaeche;
+    if (!f || !mitBereichen) return;
+    return bereichszug(f, { darf: (e) => e.pointerType === "mouse" || sitzung.stift, zieht: (z) => (zug = z), fertig: nimmBereich });
   });
 
   // Die Größe der Fläche ändert sich: eingepasste Ansichten neu rechnen
@@ -301,6 +350,13 @@
   });
 </script>
 
+{#snippet bereichsmarken(nr: number)}
+  {#each bereiche.get(nr) ?? [] as b (b.schluessel)}
+    {@const l = alsLage(b.lage)}
+    <div class="bereichsmarke" data-id={b.id} data-stelle={bereichsstelle(nr, b.lage)} style:left={l.left} style:top={l.top} style:width={l.width} style:height={l.height} style:background={b.farbe}></div>
+  {/each}
+{/snippet}
+
 {#snippet code(nr: number)}
   {#if codestellen}
     {@const stellen = codestellen.aufSeite(nr)}
@@ -309,12 +365,12 @@
 {/snippet}
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-<div class="seiten pdf rollen" class:blaettert tabindex="0" role="document" aria-label="Seiten" bind:this={flaeche} onscroll={gerollt}>
+<div class="seiten pdf rollen" class:blaettert class:stift={mitBereichen && sitzung.stift} class:ziehbar={mitBereichen} tabindex="0" role="document" aria-label="Seiten" bind:this={flaeche} onscroll={gerollt}>
   {#if blaettert}
     {#each boegen as b (b[0])}
-      <div class="bogen" class:wartet={b[0] !== bogen[0]}>{#each b as nr (nr)}<div class="pdfseite" data-seite={nr}><span class="nummer">{nr}</span>{@render code(nr)}</div>{/each}</div>
+      <div class="bogen" class:wartet={b[0] !== bogen[0]}>{#each b as nr (nr)}<div class="pdfseite" data-seite={nr}><span class="nummer">{nr}</span>{@render bereichsmarken(nr)}{@render code(nr)}</div>{/each}</div>
     {/each}
   {:else}
-    {#each { length: pdf.seiten } as _, n (n)}<div class="pdfseite" data-seite={n + 1}><span class="nummer">{n + 1}</span>{@render code(n + 1)}</div>{/each}
+    {#each { length: pdf.seiten } as _, n (n)}<div class="pdfseite" data-seite={n + 1}><span class="nummer">{n + 1}</span>{@render bereichsmarken(n + 1)}{@render code(n + 1)}</div>{/each}
   {/if}
 </div>

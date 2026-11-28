@@ -128,8 +128,9 @@
       <Knopf text="Zurück" symbol="arrow-left" nur frei klein onclick={onzurueck} />
       <b title={sitzung.fassung.titel ?? sitzung.buch.title}>{sitzung.fassung.titel ?? sitzung.buch.title}</b>
       <Knopf text="Inhaltsverzeichnis" symbol="list" nur frei klein gesperrt={!sitzung.kapitel.length} titel={sitzung.kapitel.length ? "Inhaltsverzeichnis" : "Dieses Buch hat kein Inhaltsverzeichnis"} gedrueckt={sitzung.feld === "inhalt"} onclick={() => sitzung.schalteFeld("inhalt")} />
-      <!-- Notizen und Markierungen hängen am Original; in einer Übersetzung gibt es sie noch nicht (BF-71) -->
-      {#if sitzung.mitStellen}<Knopf text="Notizen und Markierungen" symbol="highlighter" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "stellen"} onclick={() => sitzung.schalteFeld("stellen")} />{/if}
+      <!-- Notizen und Markierungen hängen am Original; in einer Übersetzung gibt es sie noch nicht (BF-71). Gedrückt auch, solange der
+           Markierstift an ist: am Telefon zeichnet der Finger dann Rechtecke, statt zu rollen (BF-123) -->
+      {#if sitzung.mitStellen}<Knopf text="Notizen und Markierungen" symbol="highlighter" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "stellen" || sitzung.stift} onclick={() => sitzung.schalteFeld("stellen")} />{/if}
       <!-- Am Telefon steht das Vorlesen im Feld; liest es gerade, auch hier -->
       <span class="reihe" class:nur-breit={!liestHier}><Knopf text="Vorlesen" symbol={liestHier ? zustand : "volume-high"} nur frei klein gesperrt={!bereit} gedrueckt={liestHier} aufgeklappt={vorlesenOffen} bind:element={vorleseKnopf} onclick={() => (vorlesenOffen = !vorlesenOffen)} /></span>
       <span class="nur-breit reihe">

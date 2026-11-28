@@ -1,6 +1,6 @@
 // Suche nach Wörtern
 import { get, post } from "./client";
-import type { Materialtreffer, Treffer } from "../typen";
+import type { Materialtreffer, Markierungstreffer, Treffer } from "../typen";
 
 export interface Suchantwort {
   treffer: Treffer[];
@@ -8,6 +8,8 @@ export interface Suchantwort {
   aktive_filter: Record<string, string>;
   /** Treffer im Begleitmaterial, nur auf der ersten Seite (BF-81) */
   material?: Materialtreffer[];
+  /** Treffer in den eigenen Markierungen, nur auf der ersten Seite (BF-123) */
+  markierungen?: Markierungstreffer[];
 }
 
 export interface Suchvorschlag {

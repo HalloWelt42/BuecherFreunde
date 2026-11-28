@@ -1,12 +1,15 @@
-"""API-Endpunkte für Textmarkierungen (Highlights) - Farbmarkierungen mit optionalem Label, je Profil (BF-78)."""
+"""API-Endpunkte für Textmarkierungen (Highlights) - Farbmarkierungen mit optionalem Label, je Profil (BF-78). Eine Markierung
+über ein Rechteck einer gescannten Seite (Stelle `page:N:bereich:...`, BF-123) bekommt ihren Text über den Auftrag
+"Markierungen lesen" (markierungen/lesen.py); die Liste nennt dazu, wo das Lesen steht (`lesen`)."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.app.api import vorhanden
 from backend.app.core.auth import braucht
 from backend.app.core.database import db
 from backend.app.familie.modelle import Profil
+from backend.app.markierungen.lesen import Lesestand, markierungslesen
 from backend.app.models.grenzen import Etikett, EtikettNotiz, Farbe, Nr, Stelle, Textauszug
 
 router = APIRouter(prefix="/api", tags=["Highlights"])
@@ -21,6 +24,16 @@ class HighlightCreate(BaseModel):
     text_snippet: Textauszug = ""
     label_name: Etikett = ""
     label_note: EtikettNotiz = ""
+    lesung: Nr | None = None             # über ein Rechteck: die Lesung, die das Menü schon begonnen hat (BF-123)
+
+
+class Lesewunsch(BaseModel):
+    stelle: Stelle                       # page:N:bereich:x0,y0,x1,y1
+
+
+def _mit_lesen(zeile, lesen: Lesestand | None) -> dict:
+    """Eine Markierung, wie die Oberfläche sie bekommt: mit dem Stand ihres Lesens, wenn sie ein Rechteck ist."""
+    return dict(zeile) | {"lesen": {"stand": lesen.stand, "grund": lesen.grund} if lesen else None}
 
 
 class HighlightUpdate(BaseModel):
@@ -37,7 +50,8 @@ async def liste_highlights(book_id: Nr, p: Profil = Depends(MARKIERUNGEN)):
         "SELECT * FROM book_highlights WHERE profil_id = ? AND book_id = ? ORDER BY created_at",
         (p.id, book_id),
     )
-    return [dict(r) for r in rows]
+    lesen = await markierungslesen.je_markierung(p.id, book_id)
+    return [_mit_lesen(r, lesen.get(r["id"])) for r in rows]
 
 
 @router.post("/books/{book_id}/highlights")
@@ -52,7 +66,37 @@ async def erstelle_highlight(
         (p.id, book_id, daten.cfi_range, daten.color, daten.text_snippet, daten.label_name, daten.label_note),
     )
     await db.commit()
-    return await db.fetch_one("SELECT * FROM book_highlights WHERE id = ?", (cursor.lastrowid,))
+    lesen = await markierungslesen.fuer_markierung(p.id, cursor.lastrowid, daten.lesung)
+    return _mit_lesen(await db.fetch_one("SELECT * FROM book_highlights WHERE id = ?", (cursor.lastrowid,)), lesen)
+
+
+@router.post("/books/{book_id}/lesen", response_model=Lesestand)
+async def lies_bereich(book_id: Nr, daten: Lesewunsch, p: Profil = Depends(MARKIERUNGEN)):
+    """Den Text eines Rechtecks lesen, das gerade gezogen ist (für das Menü daran, BF-123); der Stand kommt über GET /lesen/{id}."""
+    await vorhanden.buch(book_id)
+    try:
+        return await markierungslesen.beginnen_fuer(p.id, book_id, daten.stelle)
+    except ValueError as f:
+        raise HTTPException(status_code=422, detail=str(f)) from f
+
+
+@router.get("/lesen/{lesung}", response_model=Lesestand)
+async def lesestand(lesung: Nr, p: Profil = Depends(MARKIERUNGEN)):
+    """Wo das Lesen eines Rechtecks steht, mit dem Text, sobald er da ist."""
+    stand = await markierungslesen.lesestand(p.id, lesung)
+    if stand is None:
+        raise HTTPException(status_code=404, detail="Lesung nicht gefunden")
+    return stand
+
+
+@router.post("/highlights/{highlight_id}/lesen", response_model=Lesestand)
+async def lies_markierung_erneut(highlight_id: Nr, p: Profil = Depends(MARKIERUNGEN)):
+    """Eine Markierung über ein Rechteck noch einmal lesen (Erneut lesen)."""
+    await vorhanden.eigenes("book_highlights", highlight_id, p.id, FEHLT)
+    stand = await markierungslesen.erneut(p.id, highlight_id)
+    if stand is None:
+        raise HTTPException(status_code=422, detail="Diese Markierung ist kein Rechteck")
+    return stand
 
 
 @router.delete("/highlights/{highlight_id}")
@@ -75,4 +119,5 @@ async def aktualisiere_highlight(
             f"UPDATE book_highlights SET {', '.join(f'{k} = ?' for k in updates)} WHERE id = ?", (*updates.values(), highlight_id)
         )
         await db.commit()
-    return await db.fetch_one("SELECT * FROM book_highlights WHERE id = ?", (highlight_id,))
+    zeile = await db.fetch_one("SELECT * FROM book_highlights WHERE id = ?", (highlight_id,))
+    return _mit_lesen(zeile, await markierungslesen.von_markierung(p.id, highlight_id))

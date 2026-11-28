@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from backend.app.core.auth import braucht
 from backend.app.familie.modelle import Profil
 from backend.app.familie.sichtbar import Sicht
+from backend.app.markierungen import suche as markierungen_suche
 from backend.app.material import suche as material_suche
 from backend.app.models.grenzen import VERSATZ
 from backend.app.services import deckblattangaben
@@ -32,6 +33,7 @@ class SearchResponse(BaseModel):
     offset: int
     aktive_filter: dict = {}
     material: list[dict] = []          # Treffer im Begleitmaterial (BF-81), nur auf der ersten Seite: je mit Buch und Datei
+    markierungen: list[dict] = []      # Treffer in den eigenen Markierungen (BF-123), nur auf der ersten Seite: je mit Buch und Stelle
 
 
 class SuggestResponse(BaseModel):
@@ -59,7 +61,8 @@ async def search(
     results, parsed = await search_books(q, limit, offset, sicht=Sicht.von(p))
     total = await search_count(q, sicht=Sicht.von(p))
     im_material = await material_suche.suchen(q, Sicht.von(p), limit) if offset == 0 else []
-    angaben = await deckblattangaben.fuer(list({*(r.book_id for r in results), *(m.buch_id for m in im_material)}))
+    in_markierungen = await markierungen_suche.suchen(q, p.id, Sicht.von(p), limit) if offset == 0 else []
+    angaben = await deckblattangaben.fuer(list({*(r.book_id for r in results), *(m.buch_id for m in im_material), *(m.buch_id for m in in_markierungen)}))
 
     treffer = [
         {
@@ -81,6 +84,7 @@ async def search(
         offset=offset,
         aktive_filter=parsed.aktive_filter,
         material=[m.model_dump() | {"deckblatt": angaben[m.buch_id].model_dump() if m.buch_id in angaben else None} for m in im_material],
+        markierungen=[m.model_dump() | {"deckblatt": angaben[m.buch_id].model_dump() if m.buch_id in angaben else None} for m in in_markierungen],
     )
 
 

@@ -115,7 +115,7 @@ export interface Auftragsteil {
   fertig: number;
 }
 
-export type Auftragsart = "einspielen" | "pruefung" | "neuaufbau" | "kopieren" | "ligaturen" | "stimmproben" | "texterkennung" | "nachbesserung" | "nachfuehren";
+export type Auftragsart = "einspielen" | "pruefung" | "neuaufbau" | "kopieren" | "ligaturen" | "stimmproben" | "texterkennung" | "nachbesserung" | "markierungslesen" | "nachfuehren";
 
 export interface Auftragsstand {
   art: Auftragsart;

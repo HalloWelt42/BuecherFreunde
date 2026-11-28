@@ -404,6 +404,28 @@ klassisch erkannten Text mit der Lage seiner Blöcke, bei zwei Spalten geteilt (
 `TEXTERKENNUNG_KI_TOKEN` (6000) lang und höchstens `TEXTERKENNUNG_KI_FRIST_S` (900) Sekunden, Laden des Modells eingeschlossen. Ist die letzte gewünschte Seite eines Buchs durch, zieht es nach. Eine Seite, die scheitert
 (Leitstelle, Modell, Antwort ohne lesbaren Text), bleibt mit Grund liegen; ohne Leitstelle ruht der Auftrag mit Grund.
 
+### Markierungen über ein Rechteck (BF-123)
+
+Auf einer gescannten Seite markiert man mit einem Rechteck; seine Stelle ist `page:N:bereich:x0,y0,x1,y1` (Ecken in Anteilen der
+Seite, vier Stellen, `markierungen/stelle.py`, in der Oberfläche `lib/leser/pdf/bereich.ts`). Den Text liest der Auftrag
+**Markierungen lesen** (`markierungslesen`, in `GET /api/einrichtung/auftraege`, Tabelle `markierung_lesen`) über die Leitstelle mit
+`TEXTERKENNUNG_KI_MODELL`: kann es Bilder lesen, den Ausschnitt als Bild (Anweisung `texterkennung/ausschnitt_bild.md`), sonst die
+Wörter der klassischen Erkennung, deren Mitte im Rechteck liegt (`ausschnitt_text.md`); heraus kommt schlichter Text. Ohne Wörter im
+Rechteck ist er leer (Grund "Im Ausschnitt steht kein Text"); scheitert die Leitstelle, bleibt der Grund stehen und der Text der
+klassischen Erkennung wird als Notbehelf Text der Markierung.
+
+| Weg | Wirkung |
+|---|---|
+| `POST /api/books/{id}/lesen` `{stelle}` | ein gerade gezogenes Rechteck lesen (für das Menü daran); Antwort `{id, stand, text, grund}`, 422 ohne gültiges Rechteck |
+| `GET /api/lesen/{id}` | wo das Lesen steht: `offen`, `fertig` (mit Text), `fehler` (mit Grund); nur die eigenen |
+| `POST /api/books/{id}/highlights` `{cfi_range, color, ..., lesung?}` | über ein Rechteck: die Lesung aus dem Menü hängt danach an der Markierung, ihr Text wird der Text der Markierung; ohne `lesung` (Markierstift) beginnt eine eigene |
+| `GET /api/books/{id}/highlights` | je Markierung über ein Rechteck `lesen: {stand, grund}`, sonst `null` |
+| `POST /api/highlights/{id}/lesen` | noch einmal lesen (Erneut lesen); 422, wenn die Markierung kein Rechteck ist |
+
+Lesungen, aus denen keine Markierung wurde, sind nach 24 Stunden vergessen. `GET /api/search` trägt auf der ersten Seite
+`markierungen: [{markierung_id, buch_id, titel, autor, stelle, seite, auszug, deckblatt}]`: Treffer im Text der eigenen
+Markierungen (jedes Wort der Anfrage muss vorkommen), nur in Büchern, die die Sicht sieht.
+
 ## Gestaltete Deckblätter (BF-59)
 
 Bücher mit schlichtem Umschlag (fast weiß, ohne Farbe, oft die Titelseite eines PDFs) bekommen in der Oberfläche ein

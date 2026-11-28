@@ -1,6 +1,6 @@
 // Eine Lesesitzung: Markierungen, Notizen und Etiketten des Buchs, offenes Feld, Auswahl, Stift. Der Leser jedes Formats
 // hängt seine Griffe ein (springen, zeigen), die Felder rufen nur diese Sitzung.
-import { aktualisiereHighlight, erstelleHighlight, highlightsFuerBuch, loescheHighlight } from "../api/highlights";
+import { aktualisiereHighlight, erstelleHighlight, highlightsFuerBuch, liesMarkierungErneut, loescheHighlight } from "../api/highlights";
 import { aktualisiereLabel, erstelleLabel, labelsFuerBuch, loescheLabel } from "../api/labels";
 import { aktualisiereNotiz, erstelleNotiz, loescheNotiz, notizenFuerBuch } from "../api/notes";
 import { randeintraege } from "./randmarken";
@@ -24,6 +24,8 @@ import type { Feldname, Kapitel, Textauswahl } from "./typen";
 import { Verzoegert } from "./verzoegert";
 
 const SPIELER_MS = 3500;
+/** So oft fragt die Sitzung nach, solange eine Markierung über ein Rechteck gelesen wird (BF-123) */
+export const LESEN_NACHFRAGE_MS = 2000;
 
 /** Wo die Marken am Rand stehen: der Leser des Formats weiß es */
 export interface Randort {
@@ -134,6 +136,7 @@ export class Lesesitzung {
     if (!this.mitStellen) return;
     const [m, n, e] = await Promise.allSettled([highlightsFuerBuch(this.buch.id), notizenFuerBuch(this.buch.id), labelsFuerBuch(this.buch.id)]);
     if (m.status === "fulfilled") this.markierungen = m.value;
+    this.#beobachteLesen();
     if (n.status === "fulfilled") this.notizen = n.value;
     if (e.status === "fulfilled") this.etiketten = e.value;
     this.griffe?.zeichne();
@@ -196,6 +199,36 @@ export class Lesesitzung {
   /** Ausstehende Änderungen sofort schicken */
   beende(): void {
     this.#spaeter.alle();
+    clearTimeout(this.#lesenUhr);
+  }
+
+  #lesenUhr: ReturnType<typeof setTimeout> | undefined;
+  /** Solange eine Markierung über ein Rechteck gelesen wird: nachfragen und nur Text und Stand übernehmen (was jemand gerade an
+   *  Name oder Notiz schreibt, bleibt) */
+  #beobachteLesen(): void {
+    clearTimeout(this.#lesenUhr);
+    if (!this.markierungen.some((m) => m.lesen?.stand === "offen")) return;
+    this.#lesenUhr = setTimeout(async () => {
+      try {
+        const neu = new Map((await highlightsFuerBuch(this.buch.id)).map((m) => [m.id, m]));
+        this.markierungen = this.markierungen.map((m) => {
+          const n = neu.get(m.id);
+          return n && m.lesen?.stand === "offen" ? { ...m, text_snippet: n.text_snippet, lesen: n.lesen } : m;
+        });
+      } catch {
+        // beim nächsten Mal wieder
+      }
+      this.#beobachteLesen();
+    }, LESEN_NACHFRAGE_MS);
+  }
+
+  /** Eine Markierung über ein Rechteck noch einmal lesen (Erneut lesen) */
+  async leseErneut(m: Markierung): Promise<void> {
+    await this.#versuche(async () => {
+      await liesMarkierungErneut(m.id);
+      this.markierungen = this.markierungen.map((x) => (x.id === m.id ? { ...x, lesen: { stand: "offen", grund: "" } } : x));
+      this.#beobachteLesen();
+    }, "Nicht gelesen");
   }
 
   async #versuche(tun: () => Promise<void>, vorab = "Nicht gespeichert"): Promise<boolean> {
@@ -214,8 +247,10 @@ export class Lesesitzung {
     if (!this.mitStellen) return;
     this.stiftfarbe = farbe;
     await this.#versuche(async () => {
-      const neu = await erstelleHighlight(this.buch.id, { cfi_range: a.cfi, color: farbe, text_snippet: a.text.slice(0, 500) });
+      const lesung = a.lesung?.id;
+      const neu = await erstelleHighlight(this.buch.id, { cfi_range: a.cfi, color: farbe, text_snippet: a.text.slice(0, 500), ...(lesung ? { lesung } : {}) });
       this.markierungen = [...this.markierungen, neu];
+      this.#beobachteLesen();
       this.griffe?.zeichne();
       void bestand.laden();
     });

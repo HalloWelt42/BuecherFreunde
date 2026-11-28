@@ -1,8 +1,10 @@
 <script lang="ts">
-  // Schwebt an der Auswahl: markieren, kopieren, vorlesen, in Schnellnotiz oder Buchnotiz
+  // Schwebt an der Auswahl: markieren, kopieren, vorlesen, in Schnellnotiz oder Buchnotiz. An einem Rechteck einer gescannten Seite
+  // (BF-123) steht darüber, was die Lesung gerade liest; markieren geht sofort, was den Text braucht, wartet auf ihn.
   import { offenesFeld } from "../../lib/flucht";
   import { kopiere } from "../../lib/kopieren";
   import { bezugAus } from "../../lib/leser/bezug";
+  import { istBereich } from "../../lib/leser/pdf/lesung.svelte";
   import { alsZitat, type Lesesitzung } from "../../lib/leser/sitzung.svelte";
   import { melde } from "../../lib/stand/meldungen.svelte";
   import { vorlesen } from "../../lib/stand/vorlesen.svelte";
@@ -10,6 +12,7 @@
   import { gespraech } from "../../lib/stand/gespraech.svelte";
   import { nachschlag } from "../../lib/stand/nachschlag.svelte";
   import Knopf from "../../lib/teile/Knopf.svelte";
+  import Symbol from "../../lib/teile/Symbol.svelte";
   import Farbreihe from "./Farbreihe.svelte";
 
   let { sitzung, rahmen, onabwahl }: { sitzung: Lesesitzung; rahmen: HTMLElement; onabwahl: () => void } = $props();
@@ -17,6 +20,8 @@
   const NOTIZEN_HOECHSTENS = 6;
   let schritt = $state<"tun" | "notiz">("tun");
   let a = $derived(sitzung.auswahl!);
+  let lesung = $derived(istBereich(a) ? a.lesung : null);
+  let wartet = $derived(istBereich(a) && !a.text);
   let breite = $state(0);
   let hoehe = $state(0);
 
@@ -37,6 +42,7 @@
   $effect(() => offenesFeld(() => [menue], zu));
 
   function zu() {
+    lesung?.beende();
     sitzung.auswahl = null;
     onabwahl();
   }
@@ -57,15 +63,20 @@
 <!-- Ein Druck auf das Menü darf die Auswahl im Text nicht aufheben -->
 <div class="auswahlmenue glas dicht" role="dialog" tabindex="-1" aria-label="Auswahl" bind:this={menue} bind:offsetWidth={breite} bind:offsetHeight={hoehe} style:left="{ort.links}px" style:top="{ort.oben}px" style:visibility={breite ? "visible" : "hidden"} onmousedown={(e) => e.preventDefault()}>
   {#if schritt === "tun"}
+    {#if lesung}
+      {#if lesung.stand === "offen"}<p class="lesezeile leise"><Symbol name="circle-notch" dreht />Text wird gelesen</p>
+      {:else if lesung.text}<p class="lesezeile gelesen">{lesung.text}</p>
+      {:else}<p class="lesezeile leise">{lesung.stand === "fehler" ? `Nicht gelesen: ${lesung.grund}` : lesung.grund}</p>{/if}
+    {/if}
     {#if a.cfi && sitzung.mitStellen}<Farbreihe name="Markieren" wert={sitzung.stift ? sitzung.stiftfarbe : ""} onwahl={(f) => void tun(() => sitzung.markiere(a, f))} />{/if}
     <div class="reihe knoepfe">
-      <Knopf text="Kopieren" symbol="copy" klein frei onclick={() => void tun(() => kopiere(a.text))} />
-      <Knopf text="Vorlesen" symbol="volume-low" klein frei onclick={lies} />
-      <Knopf text="Schnellnotiz" symbol="note-sticky" klein frei titel="An die Schnellnotiz anhängen" onclick={() => void tun(() => sitzung.anSchnellnotiz(alsZitat(a)))} />
-      <Knopf text="Schnellnotiz ersetzen" symbol="right-left" nur klein frei onclick={() => void tun(() => sitzung.ersetzeSchnellnotiz(alsZitat(a)))} />
-      {#if sitzung.mitStellen}<Knopf text="Buchnotiz" symbol="pen" klein frei onclick={() => (schritt = "notiz")} />{/if}
-      {#if anschluesse.jetzt.nachschlag}<Knopf text="Nachschlagen" symbol="book-atlas" klein frei onclick={() => void tun(() => nachschlag.oeffne(a.text))} />{/if}
-      {#if anschluesse.jetzt.assistent}<Knopf text="Assistent" symbol="comments" klein frei onclick={() => void tun(() => gespraech.oeffne(bezugAus(sitzung, a.text)))} />{/if}
+      <Knopf text="Kopieren" symbol="copy" klein frei gesperrt={wartet} onclick={() => void tun(() => kopiere(a.text))} />
+      <Knopf text="Vorlesen" symbol="volume-low" klein frei gesperrt={wartet} onclick={lies} />
+      <Knopf text="Schnellnotiz" symbol="note-sticky" klein frei gesperrt={wartet} titel="An die Schnellnotiz anhängen" onclick={() => void tun(() => sitzung.anSchnellnotiz(alsZitat(a)))} />
+      <Knopf text="Schnellnotiz ersetzen" symbol="right-left" nur klein frei gesperrt={wartet} onclick={() => void tun(() => sitzung.ersetzeSchnellnotiz(alsZitat(a)))} />
+      {#if sitzung.mitStellen}<Knopf text="Buchnotiz" symbol="pen" klein frei gesperrt={wartet} onclick={() => (schritt = "notiz")} />{/if}
+      {#if anschluesse.jetzt.nachschlag}<Knopf text="Nachschlagen" symbol="book-atlas" klein frei gesperrt={wartet} onclick={() => void tun(() => nachschlag.oeffne(a.text))} />{/if}
+      {#if anschluesse.jetzt.assistent}<Knopf text="Assistent" symbol="comments" klein frei gesperrt={wartet} onclick={() => void tun(() => gespraech.oeffne(bezugAus(sitzung, a.text)))} />{/if}
     </div>
   {:else}
     <div class="reihe knoepfe">
@@ -87,6 +98,25 @@
 <style>
   .knoepfe {
     gap: 0;
+  }
+  .lesezeile {
+    margin: 0 0.375rem 0.25rem;
+    max-width: 22rem;
+    font-size: 0.8125rem;
+  }
+  .lesezeile.leise {
+    display: flex;
+    gap: 0.4em;
+    align-items: center;
+    color: var(--leise);
+  }
+  .lesezeile.gelesen {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: pre-line;
   }
   .notizwahl {
     display: grid;

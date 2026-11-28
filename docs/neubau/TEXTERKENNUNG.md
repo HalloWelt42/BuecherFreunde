@@ -102,3 +102,17 @@ Suche), `texterkennung/nachbesserung.py` (Auftrag Texte nachbessern), Fassungen 
 `services/textansicht/nachgebessert.py` (Bausteine einer nachgebesserten Seite, Bilder aus den Flächen der klassischen Erkennung),
 in der Textansicht die Zeile am Seitenende und die Tabelle. Wege und Auftrag in
 [SCHNITTSTELLE.md](SCHNITTSTELLE.md#texterkennung-gescannter-bücher-bf-109).
+
+## Markierungen über ein Rechteck (BF-123, 28.11.2026)
+
+Nutzer: "wir lösen das anders, ich makiere und die ki und ocr übersetzen es, können tellen aufgrund der koordinaten immer wieder
+finden, legen intern textbasiert infos ab." Im Dialog: "Rechteck aufziehen", der Text dient "Liste der Markierungen, Suche,
+Vorlesen, Notiz dazu", und "Textansicht für Scans weg": ein Buch, das das Durchsehen als Scan einstuft (`scan` am Buch), zeigt der
+Leser nur im Original.
+
+Gebaut: `texterkennung/ausschnitt.py` liest ein Rechteck einer Seite auf demselben Weg wie die Nachbesserung (Bild oder Wörter der
+klassischen Erkennung im Rechteck, Anweisungen `ausschnitt_bild.md` und `ausschnitt_text.md`), `markierungen/lesen.py` ist der
+Auftrag Markierungen lesen, `markierungen/suche.py` die Suche im Text der eigenen Markierungen. In der Oberfläche zieht man das
+Rechteck mit der Maus, am Telefon mit dem Finger bei eingeschaltetem Markierstift (`lib/leser/pdf/bereichszug.ts`); das Menü daran
+liest sofort (`lib/leser/pdf/lesung.svelte.ts`). Wege in [SCHNITTSTELLE.md](SCHNITTSTELLE.md#markierungen-über-ein-rechteck-bf-123).
+

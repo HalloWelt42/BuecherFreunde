@@ -18,8 +18,9 @@
   import Suchanfang from "./Suchanfang.svelte";
   import Suchhilfe from "./Suchhilfe.svelte";
   import Worttreffer from "./Worttreffer.svelte";
+  import Markierungstreffer from "./Markierungstreffer.svelte";
   import Materialtreffer from "./Materialtreffer.svelte";
-  import { Suchlauf } from "./suchlauf.svelte";
+  import { buchVon, Suchlauf } from "./suchlauf.svelte";
   import { filtername, ohneFilter } from "./suchsprache";
 
   const lauf = new Suchlauf();
@@ -36,7 +37,7 @@
   $effect(() => {
     const erster = lauf.funde[0];
     if (!erster || wahl.buch || !schale.mitVorschau) return;
-    holeBuch(erster.art === "wort" ? erster.wort.book_id : erster.art === "sinn" ? erster.sinn.buch_id : erster.material.buch_id).then((b) => wahl.falls(b)).catch(() => {});
+    holeBuch(buchVon(erster)).then((b) => wahl.falls(b)).catch(() => {});
   });
 
   function nimmFilterWeg(name: string) {
@@ -69,7 +70,7 @@
     {#if lauf.fehler}<Zustand art="fehler" text={lauf.fehler} onerneut={() => void lauf.starte(frage, art)} />{/if}
     {#if lauf.laedt && !gezeigt}<Zustand art="laedt" text="Wird gesucht" />{/if}
     {#each lauf.funde as fund (fund.schluessel)}
-      {#if fund.art === "wort"}<Worttreffer treffer={fund.wort} {frage} />{:else if fund.art === "material"}<Materialtreffer treffer={fund.material} {frage} />{:else}<Sinntreffer treffer={fund.sinn} />{/if}
+      {#if fund.art === "wort"}<Worttreffer treffer={fund.wort} {frage} />{:else if fund.art === "material"}<Materialtreffer treffer={fund.material} {frage} />{:else if fund.art === "markierung"}<Markierungstreffer treffer={fund.markierung} />{:else}<Sinntreffer treffer={fund.sinn} />{/if}
     {/each}
     {#if lauf.fertig && !gezeigt && !lauf.fehler}
       <Zustand text={art === "bedeutung" && lauf.grund ? "Nach Bedeutung geht es gerade nicht." : "Nichts gefunden."}>

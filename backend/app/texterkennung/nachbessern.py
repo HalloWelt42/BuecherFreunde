@@ -154,7 +154,8 @@ def seite_als_text(e: Seitenerkennung, rahmen: fitz.Rect) -> str:
     return "\n\n".join(t for _y, _x, t in sorted(teile, key=lambda t: (round(t[0] / hoehe, 2), t[1])))
 
 
-async def _mit_frist(aufruf: Awaitable[tuple[str, str]]) -> tuple[str, str]:
+async def mit_frist(aufruf: Awaitable[tuple[str, str]]) -> tuple[str, str]:
+    """Eine Antwort der Leitstelle binnen TEXTERKENNUNG_KI_FRIST_S; sonst Nachbesserungsfehler mit dem Grund in Worten."""
     try:
         return await asyncio.wait_for(aufruf, settings.texterkennung_ki_frist_s)
     except KiFehler as f:
@@ -166,7 +167,7 @@ async def _mit_frist(aufruf: Awaitable[tuple[str, str]]) -> tuple[str, str]:
 
 async def _mit_bild(pfad: Path, seite: int, modell: str) -> tuple[str, str, int]:
     bild, dpi = await asyncio.to_thread(seitenbild, pfad, seite, settings.texterkennung_ki_kante)
-    antwort, name = await _mit_frist(ki.bildantwort(anweisung("bild"), bild, modell=modell, titel=TITEL, temperature=0,
+    antwort, name = await mit_frist(ki.bildantwort(anweisung("bild"), bild, modell=modell, titel=TITEL, temperature=0,
                                                     max_tokens=settings.texterkennung_ki_token))
     return antwort, name, dpi
 
@@ -180,7 +181,7 @@ async def _mit_text(pfad: Path, seite: int, modell: str, klassisch: Seitenerkenn
         return await ki.antwort(anweisung("text"), eingabe, titel=TITEL, modell=modell, temperature=0,
                                 max_tokens=settings.texterkennung_ki_token), modell
 
-    antwort, name = await _mit_frist(fragen())
+    antwort, name = await mit_frist(fragen())
     return antwort, name, klassisch.dpi
 
 

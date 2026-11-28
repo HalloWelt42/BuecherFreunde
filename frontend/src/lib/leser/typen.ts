@@ -21,6 +21,8 @@ export interface Textauswahl {
   cfi: string;
   /** Kurzform für Notizen: "S.41", "62%" */
   ort: string;
+  /** Rechteck einer gescannten Seite (BF-123): die Lesung, die das Menü schon begonnen hat; die Markierung daraus nimmt sie mit */
+  lesung?: { readonly id: number | null } | null;
 }
 
 export type Feldname = "" | "inhalt" | "stellen" | "darstellung" | "fokus" | "tasten";

@@ -5,7 +5,7 @@ import Begleitmaterial from "../src/ansichten/buch/Begleitmaterial.svelte";
 import { formatAdresse, gemerktesFormat, merkeFormat } from "../src/ansichten/buch/leseformat";
 import { folgensaetze } from "../src/ansichten/buch/loeschen";
 import { materialfolgensaetze, namensteile } from "../src/ansichten/buch/material.svelte";
-import { mitMaterial, type Fund } from "../src/ansichten/suche/suchlauf.svelte";
+import { mitBeitreffern, type Fund } from "../src/ansichten/suche/suchlauf.svelte";
 import type { Faehigkeit, Ich } from "../src/lib/api/familie";
 import type { Material } from "../src/lib/api/material";
 import { formatfassung, ladeLesefassung, materialfassung } from "../src/lib/leser/lesefassung";
@@ -118,7 +118,7 @@ describe("Treffer im Material (BF-81)", () => {
   const im = (buch_id: number, material_id: string): Materialtreffer => ({ material_id, buch_id, titel: "", autor: "", name: "", seite: 3, auszug: "", deckblatt: null });
 
   it("stehen gleich hinter dem Buch, zu dem sie gehören, die übrigen danach", () => {
-    const funde = mitMaterial([wort(1), wort(2)], [im(1, "a"), im(9, "b"), im(1, "c")]);
+    const funde = mitBeitreffern([wort(1), wort(2)], [im(1, "a"), im(9, "b"), im(1, "c")]);
     expect(funde.map((f) => f.schluessel)).toEqual(["w1", "ma-3", "mc-3", "w2", "mb-3"]);
   });
 });

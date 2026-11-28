@@ -27,7 +27,8 @@
 
 <h2>Markiert und notiert</h2>
 
-<Haekchen text="Markierstift: Auswählen markiert sofort" an={sitzung.stift} onwahl={(an) => (sitzung.stift = an)} />
+<!-- Auf einem Scan zeichnet der Stift Rechtecke (BF-123) -->
+<Haekchen text={sitzung.buch.scan ? "Markierstift: Rechteck ziehen markiert sofort" : "Markierstift: Auswählen markiert sofort"} an={sitzung.stift} onwahl={(an) => (sitzung.stift = an)} />
 {#if sitzung.stift}<Farbreihe name="Farbe des Stifts" wert={sitzung.stiftfarbe} onwahl={(f) => (sitzung.stiftfarbe = f)} />{/if}
 
 <section>

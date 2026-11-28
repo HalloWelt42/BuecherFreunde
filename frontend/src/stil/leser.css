@@ -99,6 +99,11 @@
 .verweisebene { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 .verweisebene .verweis { position: absolute; pointer-events: auto; cursor: pointer; border-radius: 2px; }
 .verweisebene .verweis:hover { background: rgb(0 100 255 / .14); }
+/* Rechtecke auf gescannten Seiten (BF-123): über dem Seitenbild, unter allem, was man anklickt; gezogen wird mit dem Fadenkreuz,
+   mit eingeschaltetem Markierstift auch mit dem Finger (dann rollt er die Seite nicht) */
+.bereichsmarke { position: absolute; z-index: 1; border-radius: 2px; pointer-events: none; }
+.seiten.pdf.ziehbar .pdfseite { cursor: crosshair; }
+.seiten.pdf.stift .pdfseite { touch-action: none; }
 /* EPUB */
 .epubflaeche { position: absolute; inset: 4.25rem calc(var(--rand-seite) + var(--raum-rechts, 0px)) 4.25rem var(--rand-seite); max-width: var(--lesebreite); margin-inline: auto; border-radius: 3px; overflow: hidden; box-shadow: 0 0 0 1px rgb(0 0 0 / .14), 0 18px 40px -18px rgb(0 0 0 / .6); }
 .epubflaeche.ohne-grund { box-shadow: none; }

@@ -1,6 +1,6 @@
 <script lang="ts">
   // PDF: Seiten als Bild mit wählbarem Text, oder als umfließender Text; geblättert oder gescrollt
-  import { onDestroy, untrack } from "svelte";
+  import { onDestroy, tick, untrack } from "svelte";
   import { volltextSuche } from "../../lib/api/books";
   import { blaettertaste } from "../../lib/leser/blaettertasten";
   import { FARBTHEMEN, istDunkel, PAPIERFARBEN, papierOder, vorgabeThema, type Papier } from "../../lib/leser/darstellung";
@@ -18,6 +18,7 @@
   import type { Randeintrag } from "../../lib/leser/randmarken";
   import { vorlesen } from "../../lib/stand/vorlesen.svelte";
   import { Gedruckt } from "../../lib/leser/pdf/gedruckt.svelte";
+  import { bereichAus } from "../../lib/leser/pdf/bereich";
   import { ansichtFuer, ansichtOder, artVon, naechsteStufe, STUFEN, type Ansicht } from "../../lib/leser/pdf/zoom";
   import { Positionsspeicher } from "../../lib/leser/position";
   import type { Lesegriffe, Lesesitzung } from "../../lib/leser/sitzung.svelte";
@@ -242,7 +243,11 @@
 
   const griffe: Lesegriffe = {
     zumKapitel: (k) => geheZu(k.ziel as number),
-    zurMarkierung: (m) => geheZu(Number(m.cfi_range.match(/^page:(\d+)/)?.[1] ?? seite)),
+    zurMarkierung: (m) => {
+      geheZu(Number(m.cfi_range.match(/^page:(\d+)/)?.[1] ?? seite));
+      // Ein Rechteck (BF-123) findet sich ohne Wortlaut: in den Blick, sobald die Seite steht
+      if (bereichAus(m.cfi_range)) void tick().then(() => seiten?.zeigeBereich(m.cfi_range));
+    },
     zurStelle: (ort, cfi) => {
       const nr = Number(cfi.match(/^page:(\d+)/)?.[1] ?? ort.match(/\d+/)?.[0] ?? 0);
       if (nr) geheZu(nr);
