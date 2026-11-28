@@ -142,6 +142,13 @@ describe("Stimmenauswahl", () => {
     expect(() => sprecher.entsperre()).not.toThrow();
     await expect(sprecher.spiele({ text: "Ein Satz.", von: 0, bis: 9, ton: null, dauer: 1 }, "", () => {})).rejects.toThrow("nicht sprechen");
   });
+  it("nennt jede Gerätestimme einmal, auch wenn der Browser sie doppelt meldet (BF-127)", async () => {
+    vi.resetModules();
+    const stimme = (name: string, voiceURI: string, lang = "de-DE") => ({ name, voiceURI, lang });
+    vi.stubGlobal("speechSynthesis", { getVoices: () => [stimme("Anna", "a"), stimme("Anna", "a"), stimme("Petra", "p"), stimme("Daniel", "d", "en-GB")], addEventListener: () => {} });
+    const { geraetestimmen } = await import("../src/lib/vorlesen/geraet");
+    expect(geraetestimmen().map((s) => s.id)).toEqual(["geraet:a", "geraet:p", "geraet:d"]);
+  });
   it("ist die Vertonung beim ersten Blick noch nicht bekannt, fragt es, sobald sie angeschlossen ist", async () => {
     const { v } = await frisch(antwort, { angeschlossen: false, profil: erwachsen() });
     const { anschluesse } = await import("../src/lib/stand/anschluesse.svelte");

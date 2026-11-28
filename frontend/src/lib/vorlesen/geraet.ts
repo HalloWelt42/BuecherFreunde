@@ -30,7 +30,10 @@ export const geraetDa = () => sprachausgabe() !== null;
 /** Stimmen des Geräts, deutsche zuerst. Manche Browser liefern sie erst nach einem Augenblick (`beiNeuenStimmen`). */
 export function geraetestimmen(): Stimme[] {
   const deutsch = (s: SpeechSynthesisVoice) => s.lang.toLowerCase().startsWith("de");
+  // Manche Browser melden dieselbe Stimme mehrfach (gleiche voiceURI); doppelt in der Liste bricht die Auswahl ab (BF-127)
+  const gesehen = new Set<string>();
   return stimmenDesBrowsers()
+    .filter((s) => !gesehen.has(s.voiceURI) && gesehen.add(s.voiceURI))
     .toSorted((a, b) => Number(deutsch(b)) - Number(deutsch(a)) || a.name.localeCompare(b.name, "de"))
     .map((s) => ({ id: `geraet:${s.voiceURI}`, name: deutsch(s) ? s.name : `${s.name} (${s.lang})`, gruppe: "Dieses Gerät" }));
 }
