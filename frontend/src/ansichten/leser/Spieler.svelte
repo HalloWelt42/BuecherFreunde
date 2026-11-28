@@ -8,7 +8,8 @@
 <div class="spieler" role="group" aria-label="Vorlesen steuern">
   <Knopf text="{art} zurück" symbol="backward-step" nur klein frei onclick={() => vorlesen.einheitZurueck()} />
   <Knopf text="Satz zurück" symbol="backward" nur klein frei onclick={() => vorlesen.satzZurueck()} />
-  <Knopf klasse="haupt-taste" text={vorlesen.pausiert ? "Weiter" : "Pause"} symbol={vorlesen.pausiert ? "play" : "pause"} nur klein laeuft={vorlesen.wartet && !vorlesen.pausiert} onclick={() => vorlesen.pauseOderWeiter()} />
+  <!-- Holt die Vertonung noch den Ton, dreht das Zeichen; Pause geht trotzdem (BF-121): angehalten bleibt es auch, wenn der Ton ankommt -->
+  <Knopf klasse="haupt-taste" text={vorlesen.pausiert ? "Weiter" : "Pause"} symbol={vorlesen.pausiert ? "play" : "pause"} nur klein dreht={vorlesen.wartet && !vorlesen.pausiert} onclick={() => vorlesen.pauseOderWeiter()} />
   <Knopf text="Satz vor" symbol="forward" nur klein frei onclick={() => vorlesen.satzVor()} />
   <Knopf text="{art} vor" symbol="forward-step" nur klein frei gesperrt={!vorlesen.kannVor} onclick={() => vorlesen.einheitVor()} />
   <Knopf text="Stopp" symbol="stop" nur klein frei onclick={() => vorlesen.halt()} />

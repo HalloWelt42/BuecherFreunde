@@ -15,7 +15,10 @@
     gedrueckt?: boolean;
     aufgeklappt?: boolean;
     gesperrt?: boolean;
+    /** Der Vorgang dieses Knopfs läuft: das Zeichen dreht, und der Knopf ist so lange gesperrt */
     laeuft?: boolean;
+    /** Es wird gerade etwas geholt: das Zeichen dreht, der Knopf bleibt bedienbar (Pause beim Vorlesen, BF-121) */
+    dreht?: boolean;
     href?: string;
     download?: string | boolean;
     extern?: boolean;
@@ -27,7 +30,7 @@
     children?: Snippet;
   }
 
-  let { text, symbol = "", nur = false, kurz = undefined, klein = false, haupt = false, frei = false, gedrueckt = undefined, aufgeklappt = undefined, gesperrt = false, laeuft = false,
+  let { text, symbol = "", nur = false, kurz = undefined, klein = false, haupt = false, frei = false, gedrueckt = undefined, aufgeklappt = undefined, gesperrt = false, laeuft = false, dreht = false,
     href = undefined, download = undefined, extern = false, titel = undefined, art = "button", klasse = "", element = $bindable(null), onclick = undefined, children = undefined }: Eigenschaften = $props();
 
   let klassen = $derived(["knopf", klasse, nur && "nur", klein && "klein", haupt && "haupt", frei && "frei"].filter(Boolean).join(" "));
@@ -35,7 +38,7 @@
 </script>
 
 {#snippet inhalt()}
-  {#if laeuft}<Symbol name="circle-notch" dreht />{:else if symbol}<Symbol name={symbol} />{/if}
+  {#if laeuft || dreht}<Symbol name="circle-notch" dreht />{:else if symbol}<Symbol name={symbol} />{/if}
   {#if nur}{:else if kurz}<span class="lang">{text}</span><span class="kurz">{kurz}</span>{:else}<span>{text}</span>{/if}
   {@render children?.()}
 {/snippet}
