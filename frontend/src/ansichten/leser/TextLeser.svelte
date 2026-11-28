@@ -264,7 +264,7 @@
   $effect(() => {
     const f = flaeche;
     if (!f) return;
-    return blaettergesten(f, { rahmen: () => f.getBoundingClientRect() }, { gilt: () => art === "blaettern", vor, zurueck, mitte: () => sitzung.tippeMitte(), belegt: (p) => sitzung.belegt(p) });
+    return blaettergesten(f, { rahmen: () => f.getBoundingClientRect() }, { gilt: () => art === "blaettern", vor, zurueck, mitte: () => sitzung.tippeMitte(), belegt: (p) => sitzung.belegt(p), klick: () => sitzung.schalteLeisten() });
   });
 
   const aufraeumen = speicher.starte();

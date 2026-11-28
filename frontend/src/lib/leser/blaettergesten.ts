@@ -1,5 +1,6 @@
 // Blättern mit Finger und Maus: wischen, am Rand tippen, ein Schritt je Dreh am Rad. Auswahl, Verweise und Tasten im Text
-// gehen vor. Gilt für die Fläche eines Lesers und ebenso für das Dokument eines Buchrahmens.
+// gehen vor. Gilt für die Fläche eines Lesers und ebenso für das Dokument eines Buchrahmens. Ein Mausklick ins Buch, der
+// nicht blättert, geht an "klick", auch beim Scrollen (BF-124).
 import { istBedienbar } from "./bedienbar";
 
 export interface Blaettergriffe {
@@ -13,6 +14,8 @@ export interface Blaettergriffe {
   belegt(punkt: { x: number; y: number }): boolean;
   /** Kann die Fläche in diese Richtung noch selbst schieben (vergrößerte Seite)? */
   schiebt?(achse: "x" | "y", richtung: 1 | -1): boolean;
+  /** Ein Klick mit der Maus ins Buch, der nicht blättert, nichts auswählt und nichts bedient (blättert es nicht, überall) */
+  klick?(): void;
 }
 
 export interface Blaetterort {
@@ -30,6 +33,8 @@ const TIPP_MS = 350;
 const FINGERRAND = 0.28;
 /** und so viele Punkte mit der Maus */
 const MAUSRAND = 56;
+/** So lange wartet ein Klick, ob ein zweiter folgt: ein Doppelklick wählt ein Wort und schaltet nichts */
+export const KLICK_WARTET_MS = 300;
 
 export function blaettergesten(flaeche: HTMLElement | Document, ort: Blaetterort, tun: Blaettergriffe): () => void {
   const dok = flaeche.nodeType === Node.DOCUMENT_NODE ? (flaeche as Document) : (flaeche as HTMLElement).ownerDocument;
@@ -89,18 +94,26 @@ export function blaettergesten(flaeche: HTMLElement | Document, ort: Blaetterort
     tippe(p.clientX, p.clientY, ort.rahmen().width * FINGERRAND);
   };
 
-  // Maus: nur die äußeren Ränder blättern, die Mitte bleibt für Auswahl und Verweise
+  // Maus: nur die äußeren Ränder blättern, die Mitte bleibt für Auswahl und Verweise; ein Klick dort geht an "klick",
+  // sobald feststeht, dass kein zweiter folgt und nichts ausgewählt ist
   let maus: { x: number; y: number; auswahl: boolean } | null = null;
+  let klickUhr: ReturnType<typeof setTimeout> | undefined;
   const runter = (e: PointerEvent) => {
+    clearTimeout(klickUhr);
     maus = e.pointerType === "mouse" && e.button === 0 ? { x: e.clientX, y: e.clientY, auswahl: gewaehlt() } : null;
   };
   const hoch = (e: PointerEvent) => {
     const m = maus;
     maus = null;
-    if (!m || !tun.gilt() || m.auswahl || gewaehlt() || Math.hypot(e.clientX - m.x, e.clientY - m.y) > TIPP_BIS || istBedienbar(e.target)) return;
+    if (!m || m.auswahl || gewaehlt() || Math.hypot(e.clientX - m.x, e.clientY - m.y) > TIPP_BIS || istBedienbar(e.target)) return;
     const r = ort.rahmen();
     const im = e.clientX + (ort.versatz?.() ?? 0) - r.left;
-    if (im < MAUSRAND || im > r.width - MAUSRAND) tippe(e.clientX, e.clientY, MAUSRAND);
+    if (tun.gilt() && (im < MAUSRAND || im > r.width - MAUSRAND)) return tippe(e.clientX, e.clientY, MAUSRAND);
+    if (!tun.klick) return;
+    const punkt = { x: e.clientX + (ort.versatz?.() ?? 0), y: e.clientY + (ort.versatzOben?.() ?? 0) };
+    klickUhr = setTimeout(() => {
+      if (!gewaehlt() && !tun.belegt(punkt)) tun.klick?.();
+    }, KLICK_WARTET_MS);
   };
 
   const rad = radschritt(tun);
@@ -116,6 +129,7 @@ export function blaettergesten(flaeche: HTMLElement | Document, ort: Blaetterort
   z.addEventListener("pointerup", hoch);
   z.addEventListener("wheel", rad, { passive: false });
   return () => {
+    clearTimeout(klickUhr);
     z.removeEventListener("touchstart", beginnt, fang);
     z.removeEventListener("touchmove", bewegt, aktiv);
     z.removeEventListener("touchend", endet, aktiv);

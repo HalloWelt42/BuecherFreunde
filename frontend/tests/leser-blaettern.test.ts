@@ -1,5 +1,5 @@
 // Blättern: Gesten, Rad, Tasten, Textstücke
-import { blaettergesten, radschritt, type Blaettergriffe } from "../src/lib/leser/blaettergesten";
+import { blaettergesten, KLICK_WARTET_MS, radschritt, type Blaettergriffe } from "../src/lib/leser/blaettergesten";
 import { blaettertaste } from "../src/lib/leser/blaettertasten";
 import { kapitelrand } from "../src/lib/leser/epub/kapitelrand";
 import { Textseiten, type Textantwort } from "../src/lib/leser/pdf/textseiten.svelte";
@@ -70,6 +70,71 @@ describe("Blättern mit dem Finger", () => {
     expect(finger(f, "touchmove", 10, 10).defaultPrevented).toBe(false);
     zug(f, [300, 100], [100, 100]);
     expect(tun.vor).not.toHaveBeenCalled();
+  });
+});
+
+// Ein Klick mit der Maus: drücken und loslassen an derselben Stelle
+function maus(ziel: EventTarget, x: number, y = 50) {
+  for (const art of ["pointerdown", "pointerup"]) ziel.dispatchEvent(new PointerEvent(art, { bubbles: true, button: 0, pointerType: "mouse", clientX: x, clientY: y }));
+}
+
+describe("Klick ins Buch (BF-124)", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+  const mitKlick = (mehr: Partial<Pick<Blaettergriffe, "gilt" | "belegt">> = {}) => ({ ...griffe(mehr), klick: vi.fn() });
+
+  it("schaltet beim Scrollen überall, erst wenn kein zweiter Klick folgt", () => {
+    const [f, tun] = [flaeche(), mitKlick({ gilt: () => false })];
+    blaettergesten(f, RAHMEN, tun);
+    maus(f, 110);
+    maus(f, 300);
+    expect(tun.klick).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(KLICK_WARTET_MS);
+    expect(tun.klick).toHaveBeenCalledOnce();
+    expect(tun.zurueck).not.toHaveBeenCalled();
+  });
+
+  it("ein Doppelklick schaltet nichts", () => {
+    const [f, tun] = [flaeche(), mitKlick({ gilt: () => false })];
+    blaettergesten(f, RAHMEN, tun);
+    maus(f, 300);
+    vi.advanceTimersByTime(KLICK_WARTET_MS / 2);
+    f.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse", clientX: 300, clientY: 50 }));
+    vi.advanceTimersByTime(KLICK_WARTET_MS);
+    expect(tun.klick).not.toHaveBeenCalled();
+  });
+
+  it("beim Blättern blättert der Rand, die Mitte schaltet", () => {
+    const [f, tun] = [flaeche(), mitKlick()];
+    blaettergesten(f, RAHMEN, tun);
+    maus(f, 110);
+    maus(f, 490);
+    vi.advanceTimersByTime(KLICK_WARTET_MS);
+    expect([tun.zurueck.mock.calls.length, tun.vor.mock.calls.length, tun.klick.mock.calls.length]).toEqual([1, 1, 0]);
+    maus(f, 300);
+    vi.advanceTimersByTime(KLICK_WARTET_MS);
+    expect(tun.klick).toHaveBeenCalledOnce();
+  });
+
+  it("lässt Links, Tasten, offene Felder und Marken vor", () => {
+    const belegt = vi.fn(() => true);
+    const [f, tun] = [flaeche('<a href="#x"><b>hin</b></a>'), mitKlick({ gilt: () => false, belegt })];
+    blaettergesten(f, RAHMEN, tun);
+    maus(f.querySelector("b")!, 300);
+    vi.advanceTimersByTime(KLICK_WARTET_MS);
+    expect(belegt).not.toHaveBeenCalled();
+    maus(f, 300);
+    vi.advanceTimersByTime(KLICK_WARTET_MS);
+    expect(belegt).toHaveBeenCalledOnce();
+    expect(tun.klick).not.toHaveBeenCalled();
+  });
+
+  it("hört mit dem Finger nicht darauf", () => {
+    const [f, tun] = [flaeche(), mitKlick({ gilt: () => false })];
+    blaettergesten(f, RAHMEN, tun);
+    for (const art of ["pointerdown", "pointerup"]) f.dispatchEvent(new PointerEvent(art, { bubbles: true, button: 0, pointerType: "touch", clientX: 300, clientY: 50 }));
+    vi.advanceTimersByTime(KLICK_WARTET_MS);
+    expect(tun.klick).not.toHaveBeenCalled();
   });
 });
 

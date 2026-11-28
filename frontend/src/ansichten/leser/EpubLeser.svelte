@@ -84,7 +84,7 @@
     fehler = null;
     anzeige?.schliesse();
     anzeige = new EpubAnzeige(flaeche, d, mass, {
-      beiStand: gerueckt, beiTaste: taste, mitte: () => sitzung.tippeMitte(), belegt: (p) => sitzung.belegt(p), geladen: (doc) => quelle?.geladen(doc), maus: (e) => zeige(e), gerollt: () => sitzung.bewegt(),
+      beiStand: gerueckt, beiTaste: taste, mitte: () => sitzung.tippeMitte(), klick: () => sitzung.schalteLeisten(), belegt: (p) => sitzung.belegt(p), geladen: (doc) => quelle?.geladen(doc), maus: (e) => zeige(e), gerollt: () => sitzung.bewegt(),
       beiAuswahl: (a) => nimmAuswahl(sitzung, a && { ...a, ort: schreibweise.prozent(prozent) }) && abwahl(),
     });
     try {

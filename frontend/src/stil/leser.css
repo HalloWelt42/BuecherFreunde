@@ -68,7 +68,7 @@
 .leser :is(.seiten, .epubflaeche) { filter: var(--hilfe-filter, none); }
 .leseleiste, .schwebezeichen, .zurstelle { transition: opacity .3s; }
 .leser.ruhig, .leser.ruhig * { cursor: none; }
-.leser.ruhig :is(.leseleiste, .schwebezeichen, .zurstelle) { opacity: 0; pointer-events: none; }
+.leser:is(.ruhig, .ohne-leisten) :is(.leseleiste, .schwebezeichen, .zurstelle):not(:has(:focus-visible), :focus-visible) { opacity: 0; pointer-events: none; }   /* ohne-leisten: Klick ins Buch (BF-124); mit der Tastatur darin bleibt sie */
 @media (prefers-reduced-motion: reduce) { .leseleiste, .schwebezeichen, .zurstelle { transition: none; } }
 .lesehinweis { position: absolute; inset: 0; display: grid; place-items: center; padding: 1rem; }
 .lesehinweis .karte { max-width: 30rem; width: 100%; }

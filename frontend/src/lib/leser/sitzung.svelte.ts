@@ -93,6 +93,8 @@ export class Lesesitzung {
   spieler = $state(false);
   /** Ruhe: Leisten und Zeiger sind ausgeblendet, bis sich etwas regt */
   ruhig = $state(false);
+  /** Per Klick ins Buch ausgeblendet: die schwebenden Leisten, bis der nächste Klick sie holt (BF-124) */
+  leistenAus = $state(false);
   #spielerUhr: ReturnType<typeof setTimeout> | undefined;
   /** Woraus vorgelesen wird; der Leser des Formats setzt sie, sobald das Buch steht */
   quelle = $state.raw<Buchquelle | null>(null);
@@ -150,6 +152,13 @@ export class Lesesitzung {
 
   schalteFeld(feld: Feldname): void {
     this.feld = this.feld === feld ? "" : feld;
+    // Ein Feld gehört zu seiner Leiste: öffnet es (etwa über ein Tastenkürzel), kommen die Leisten wieder
+    if (this.feld) this.leistenAus = false;
+  }
+
+  /** Klick ins Buch: die schwebenden Leisten aus und wieder ein (BF-124) */
+  schalteLeisten(): void {
+    this.leistenAus = !this.leistenAus;
   }
 
   /** Tippen in die Mitte: Leisten aus und wieder ein, ohne das Vollbild des Browsers. Liest es im Vollbild vor, kommt erst der Spieler. */

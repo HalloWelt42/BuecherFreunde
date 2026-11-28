@@ -264,7 +264,7 @@
 
   $effect(() => {
     if (!flaeche) return;
-    const griffe = { gilt: () => art === "blaettern", vor, zurueck, mitte: onmitte, belegt };
+    const griffe = { gilt: () => art === "blaettern", vor, zurueck, mitte: onmitte, belegt, klick: () => sitzung.schalteLeisten() };
     return blaettergesten(flaeche, { rahmen: () => flaeche!.getBoundingClientRect() }, griffe);
   });
 

@@ -112,7 +112,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="leser" onpointermove={(e) => sitzung.regt(e)} onclickcapture={tippeRand} class:mit-treffer={!!treffer && !schale.vollbild} class:randlos={schale.vollbild} class:ruhig={sitzung.ruhig} class:feld-daneben={raum.feldDaneben} style={hilfen} data-papier={papier} style:--randgrund={grund} style:--randtinte={tinte} style:--blattrand="{blattrand.wert}px" style:--blattrand-oben="{blattrand.oben(schale.vollbild)}px" style:--raum-rechts="{raum.rechts}px" style:--lesebreite="{blattbreite.wert}px" bind:this={rahmen} bind:clientWidth={raumbreite} use:kontext={imBuch}>
+<div class="leser" onpointermove={(e) => sitzung.regt(e)} onclickcapture={tippeRand} class:mit-treffer={!!treffer && !schale.vollbild} class:randlos={schale.vollbild} class:ruhig={sitzung.ruhig} class:ohne-leisten={sitzung.leistenAus} class:feld-daneben={raum.feldDaneben} style={hilfen} data-papier={papier} style:--randgrund={grund} style:--randtinte={tinte} style:--blattrand="{blattrand.wert}px" style:--blattrand-oben="{blattrand.oben(schale.vollbild)}px" style:--raum-rechts="{raum.rechts}px" style:--lesebreite="{blattbreite.wert}px" bind:this={rahmen} bind:clientWidth={raumbreite} use:kontext={imBuch}>
   {@render children()}
   {#if bereit && rahmen && sitzung.code}<Codetastenebene {sitzung} {rahmen} />{/if}
   {#if bereit && rahmen && randmarken.an && sitzung.mitStellen}<Randmarken {sitzung} {rahmen} {raum} feld={raum.feldDaneben ? feldflaeche : undefined} />{/if}

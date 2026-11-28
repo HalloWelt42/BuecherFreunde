@@ -265,9 +265,14 @@
   $effect(() => {
     const f = flaeche;
     if (!f) return;
-    if (blaettert) return blaettergesten(f, { rahmen: () => f.getBoundingClientRect() }, { gilt: () => true, vor, zurueck, mitte: () => sitzung.tippeMitte(), belegt, schiebt });
+    const gesten = blaettergesten(f, { rahmen: () => f.getBoundingClientRect() }, { gilt: () => blaettert, vor, zurueck, mitte: () => sitzung.tippeMitte(), belegt, schiebt, klick: () => sitzung.schalteLeisten() });
     // Fortlaufend und eingepasst: waagrecht wischen springt eine Seite
-    if (ansicht !== "scroll") return wischen(f, { links: vor, rechts: zurueck });
+    if (blaettert || ansicht === "scroll") return gesten;
+    const wisch = wischen(f, { links: vor, rechts: zurueck });
+    return () => {
+      gesten();
+      wisch();
+    };
   });
 
   $effect(() => {

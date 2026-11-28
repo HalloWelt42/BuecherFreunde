@@ -37,6 +37,8 @@ export interface Epubgriffe {
   beiTaste(e: KeyboardEvent): void;
   /** Tippen in die Mitte, und was vor dem Tippen kommt */
   mitte(): void;
+  /** Mausklick ins Kapitel, der nicht blättert (BF-124) */
+  klick(): void;
   belegt(punkt: { x: number; y: number }): boolean;
   /** Ein Abschnitt ist geladen */
   geladen(doc: Document): void;
@@ -202,7 +204,7 @@ export class EpubAnzeige {
     const rahmen = () => ("defaultView" in ort ? ort.defaultView?.frameElement?.getBoundingClientRect() : undefined);
     const versatz = () => rahmen()?.left ?? 0;
     const versatzOben = () => rahmen()?.top ?? 0;
-    const griffe: Blaettergriffe = { gilt: () => this.seite.art === "blaettern", vor: this.vor, zurueck: this.zurueck, mitte: () => this.griffe.mitte(), belegt: (p) => this.griffe.belegt(p) };
+    const griffe: Blaettergriffe = { gilt: () => this.seite.art === "blaettern", vor: this.vor, zurueck: this.zurueck, mitte: () => this.griffe.mitte(), belegt: (p) => this.griffe.belegt(p), klick: () => this.griffe.klick() };
     const blaettern = blaettergesten(ort, { rahmen: () => this.flaeche.getBoundingClientRect(), versatz, versatzOben }, griffe);
     const rand = kapitelrand(ort, { gilt: () => this.seite.art === "scrollen", amRand: (r) => this.#amRand(r), weiter: (r) => void (r > 0 ? this.vor() : this.zurueck()) });
     return () => {
