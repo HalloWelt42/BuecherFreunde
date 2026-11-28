@@ -91,9 +91,9 @@ def test_bausteine_einer_nachgebesserten_seite():
     seite.draw_rect(fitz.Rect(72, 150, 400, 280), color=(0, 0, 0), fill=(0.4, 0.4, 0.4))
     seite.draw_rect(fitz.Rect(72, 300, 400, 500), color=(0, 0, 0), fill=(0.6, 0.6, 0.6))
     b = nachgebessert.bausteine(seite, _ki(), zuschneiden=False)
-    assert [x.art for x in b] == ["ueberschrift", "bild", "unterschrift", "absatz", "absatz", "absatz", "tabelle", "code", "absatz", "absatz", "bild"]
+    assert [x.art for x in b] == ["ueberschrift", "bild", "unterschrift", "absatz", "absatz", "absatz", "tabelle", "code", "absatz", "absatz"]
     bilder = [x for x in b if x.art == "bild"]
-    assert [(x.bild, x.rechteck.y0) for x in bilder] == [(0, 150), (1, 300)]          # von oben nach unten, die übrige am Ende
+    assert [(x.bild, x.rechteck.y0) for x in bilder] == [(0, 150)]   # die oberste Fläche; die übrige nennt das Modell nicht, sie ist keins
     assert b[6].tabelle.kopf == ["Jahr", "Schiffe im Monat", "Kai"] and b[7].code.zeilen[0].startswith("$tage")
     assert [x.oben for x in b] == sorted(x.oben for x in b)
 

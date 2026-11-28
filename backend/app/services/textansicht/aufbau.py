@@ -13,7 +13,7 @@ from backend.app.services.textansicht.code import (KASTEN_TEXT_AB, codebaustein,
                                                     tafelcode)
 from backend.app.services.textansicht import nachgebessert
 from backend.app.services.textansicht.erkannt import bilder_der_erkennung, zeilen_der_erkennung
-from backend.app.services.textansicht.modelle import Baustein, Codeteil, Textseite
+from backend.app.services.textansicht.modelle import MINDESTGROESSE, Baustein, Codeteil, Textseite
 from backend.app.services.textansicht.zeilen import (SATZENDE, UEBERSCHRIFT_FAKTOR, Block, Zeile, abgesetzte_formel,
                                                      absaetze, masse, verbinde, zeilen_der_seite)
 from backend.app.services.textansicht.zuschnitt import zuschnitt
@@ -27,7 +27,6 @@ BESCHRIFTUNG_NAEHE_Y = 22.0     # Beschriftungen über und unter einer Abbildung
 BESCHRIFTUNG_HOECHSTENS = 100   # Zeichen; längere Blöcke sind Text, keine Beschriftung
 KASTEN_TITEL_NAEHE = 18.0       # Titel eines Kastens sitzt auf oder knapp über seinem Rahmen
 KASTEN_TITEL_HOECHSTENS = 100   # Zeichen eines Kastentitels
-MINDESTGROESSE = 24.0           # kleinere Zeichnungen und Bilder (Linien, Zierrat) zählen nicht
 FORMEL_NAEHE = 6.0              # Punkte: Teile einer mehrzeiligen Formel (Bruch) liegen so dicht
 FORMEL_TEIL_HOECHSTENS = 24     # Zeichen eines Formelteils ohne Formelzeichen (Nenner "8 s")
 INNEN_RAND = 4.0                # Punkte: so weit außerhalb einer Fläche zählt die Mitte eines Absatzes noch als darin

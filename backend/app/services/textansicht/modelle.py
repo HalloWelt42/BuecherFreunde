@@ -8,6 +8,8 @@ import fitz
 
 from backend.app.texterkennung.textschicht import Schichtart
 
+MINDESTGROESSE = 24.0           # kleinere Zeichnungen und Bilder (Linien, Zierrat) zählen nicht, in PDF-Punkten
+
 
 @dataclass
 class Codeteil:
