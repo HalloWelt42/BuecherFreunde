@@ -89,11 +89,18 @@ def json_aus(text: str) -> Any:
     raise KiFehler("Die Antwort der KI ist kein JSON", "einzeln")
 
 
-def bietet(modelle: list[Modell], name: str) -> bool:
-    """Ob die Leitstelle das Modell anbietet: Kennung, Name ohne Anbieter oder Anzeigename, wie sie selbst Namen auflöst.
+def finde(modelle: list[Modell], name: str) -> Modell | None:
+    """Das Modell im Angebot der Leitstelle: Kennung, Name ohne Anbieter oder Anzeigename, wie sie selbst Namen auflöst.
     Zweitnamen, die nur die Leitstelle kennt, sieht die App nicht; ein solcher Name gilt hier als nicht angeboten."""
     klein = name.strip().lower()
-    return bool(klein) and any(klein in (m.id.lower(), m.id.lower().split("/")[-1], (m.name or "").lower()) for m in modelle)
+    if not klein:
+        return None
+    return next((m for m in modelle if klein in (m.id.lower(), m.id.lower().split("/")[-1], (m.name or "").lower())), None)
+
+
+def bietet(modelle: list[Modell], name: str) -> bool:
+    """Ob die Leitstelle das Modell anbietet (siehe `finde`)."""
+    return finde(modelle, name) is not None
 
 
 class Ki:
@@ -244,6 +251,16 @@ class Ki:
             return await fragen()
         except LeitstellenFehler as f:
             raise fehler(f, self.modell()) from f
+
+    async def faehigkeiten(self, modell: str) -> list[str]:
+        """Was das Modell laut Leitstelle kann (etwa bild_beschreiben); bietet sie es nicht an, ein KiFehler mit Grund."""
+        try:
+            m = finde(await self.angebot(), modell)
+        except LeitstellenFehler as f:
+            raise fehler(f, modell) from f
+        if m is None:
+            raise KiFehler(f"Die Leitstelle bietet das Modell {modell} nicht an", "abgelehnt")
+        return list(m.faehigkeiten)
 
     async def bildantwort(self, anweisung: str, bild: bytes, *, modell: str, titel: str, typ: str = "image/jpeg",
                           prioritaet: Prioritaet | None = None, **optionen: Any) -> tuple[str, str]:

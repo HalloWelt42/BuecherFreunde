@@ -109,6 +109,10 @@ async def test_nachbessern_nimmt_die_flaechen_der_klassischen_und_prueft_die_ant
         gefragt.append({"anweisung": anweisung, "groesse": len(bild), **art})
         return ANTWORT, "Qwen3.8 27B"
 
+    async def bildmodell(modell):
+        return ["bild_beschreiben", "text"]
+
+    monkeypatch.setattr(nachbessern.ki, "faehigkeiten", bildmodell)
     monkeypatch.setattr(nachbessern.ki, "bildantwort", antwort)
     e = await nachbessern.seite_nachbessern(pfad, 1, _klassisch())
     assert (e.herkunft, e.werkzeug, e.flaechen, e.zeilen) == ("ki", "Qwen3.8 27B", _klassisch().flaechen, [])
@@ -136,7 +140,59 @@ async def test_nachbessern_hat_eine_frist(tmp_path, monkeypatch):
     async def haengt(anweisung, bild, **art):
         await asyncio.sleep(60)
 
+    async def bildmodell(modell):
+        return ["bild_beschreiben"]
+
+    monkeypatch.setattr(nachbessern.ki, "faehigkeiten", bildmodell)
     monkeypatch.setattr(nachbessern.ki, "bildantwort", haengt)
     monkeypatch.setattr(settings, "texterkennung_ki_frist_s", 0.05)
     with pytest.raises(nachbessern.Nachbesserungsfehler, match="nicht geantwortet"):
+        await nachbessern.seite_nachbessern(tmp_path / "buch.pdf", 1, None)
+
+
+def _zeile(block: int, nr: int, woerter: list[tuple[str, float, float]], y: float, sicherheit: int = 95) -> ErkannteZeile:
+    return ErkannteZeile(block=block, absatz=1, zeile=nr,
+                         woerter=[Wort(text=t, lage=(x0, y, x1, y + 10), sicherheit=sicherheit) for t, x0, x1 in woerter])
+
+
+def _zweispaltig() -> Seitenerkennung:
+    """Wie die klassische Erkennung ein Schulbuch liest: Zeilen über beide Spalten, dazu Rauschen aus einem Foto."""
+    zeilen = [_zeile(1, 1, [("Der", 50, 80), ("Hafen", 85, 130)], 40)]
+    for i in range(8):
+        y = 80 + 20 * i
+        zeilen.append(_zeile(2, i + 1, [(f"links{i}", 50, 110), ("Text", 115, 160), (f"rechts{i}", 320, 380), ("weiter", 385, 440)], y))
+    zeilen.append(_zeile(3, 1, [("ee", 60, 70), ("TR", 80, 90), ("a", 100, 104)], 300, sicherheit=30))
+    return Seitenerkennung(seite=1, werkzeug="tesseract", fassung="5", sprachen="deu", dpi=300, erkannt_am="2026-11-28T10:00:00Z",
+                           dauer_s=1.0, zeilen=zeilen, flaechen=[(50.0, 260.0, 250.0, 400.0)])
+
+
+def test_textmodell_bekommt_spalten_und_kein_rauschen():
+    text = nachbessern.seite_als_text(_zweispaltig(), fitz.Rect(0, 0, 500, 700))
+    links, rechts = text.split("Spalte rechts:")
+    assert links.startswith("Spalte links:\nDer Hafen\nlinks0 Text\nlinks1 Text") and "rechts" not in links.replace("Spalte rechts", "")
+    assert rechts.strip().startswith("rechts0 weiter\nrechts1 weiter") and "ee TR" not in text
+    assert "[Bildfläche, links 10%, oben 37%, Breite 40%, Höhe 20%]" in links
+    einspaltig = nachbessern.seite_als_text(_klassisch(), fitz.Rect(0, 0, 500, 700))
+    assert einspaltig.startswith("Block 1 (links 14%, oben 14%,") and "Spalte" not in einspaltig
+
+
+async def test_ohne_bild_bekommt_das_modell_den_erkannten_text(tmp_path, monkeypatch):
+    doc = fitz.open()
+    doc.new_page(width=500, height=700)
+    doc.save(tmp_path / "buch.pdf")
+    gefragt: list[tuple[str, str, str]] = []
+
+    async def textmodell(modell):
+        return ["text", "einordnen"]
+
+    async def antwort(system, nutzer, *, titel, modell, **art):
+        gefragt.append((system, nutzer, modell))
+        return "## Der Hafen\n\nlinks0 Text links1 Text, und rechts0 weiter."
+
+    monkeypatch.setattr(nachbessern.ki, "faehigkeiten", textmodell)
+    monkeypatch.setattr(nachbessern.ki, "antwort", antwort)
+    e = await nachbessern.seite_nachbessern(tmp_path / "buch.pdf", 1, _zweispaltig())
+    assert e.markdown.startswith("## Der Hafen") and e.fassung.endswith("(text)") and e.flaechen == _zweispaltig().flaechen
+    assert "Lesereihenfolge aus der Lage" in gefragt[0][0] and gefragt[0][1].startswith("Spalte links:")
+    with pytest.raises(nachbessern.Nachbesserungsfehler, match="keine klassische Erkennung"):
         await nachbessern.seite_nachbessern(tmp_path / "buch.pdf", 1, None)

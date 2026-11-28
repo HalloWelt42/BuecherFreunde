@@ -85,7 +85,18 @@ Messung (private Probe, je eine Seite mit Tabelle im Codekasten, mit Code und zw
 | GLM 4.6V Flash | 50 bis 80 s | fast richtig | ändert Namen | rechte Spalte zuerst, Wörter getauscht |
 | Qwen3.8 27B | 60 bis 112 s | sauber | fast genau | richtig, Trennungen aufgelöst, Zeilennummern weg |
 
-Gebaut: `texterkennung/nachbessern.py` (Seitenbild, Anweisung in `nachbessern.md`, Aufruf über `services/ki.py` `bildantwort`),
+Nachtrag (Nutzer 28.11.2026: "wir nutzen erstmal nur 80b was gerade da ist", im Dialog "80B bessert den erkannten Text"):
+Qwen3 Next 80B kann keine Bilder lesen. Kann das eingestellte Modell es nicht (Fähigkeit bild_beschreiben laut Leitstelle), bekommt
+es den klassisch erkannten Text mit der Lage seiner Blöcke (Anweisung `nachbessern_text.md`). Gemessen an denselben drei Seiten:
+zuerst ohne Vorbereitung unbrauchbar auf der zweispaltigen Seite (die klassische Erkennung liest Zeilen über beide Spalten, dazu
+Rauschen aus Fotos). Mit Vorbereitung (`seite_als_text`: eine gemeinsame Rinne in vielen Zeilen teilt die Seite in Spalten, Stücke
+mit mittlerer Sicherheit unter 50 fallen weg, gemessen Rauschen 25 bis 48, Code ab 56) liest das 80B die Spalten richtig,
+berichtigt Umlaute und Trennungen und braucht 8 bis 23 Sekunden je Seite. Grenzen: was die klassische Erkennung gar nicht gelesen
+hat, kann es nicht ergänzen (im Code blieb ein Rest eines Lesefehlers); das Bildmodell bleibt genauer und gilt, sobald es
+eingestellt ist (`TEXTERKENNUNG_KI_MODELL`).
+
+Gebaut: `texterkennung/nachbessern.py` (Weg Bild oder Text, Anweisungen in `nachbessern.md` und `nachbessern_text.md`, Aufrufe über
+`services/ki.py`),
 `texterkennung/markdown.py` (eine Stelle, die das Markdown liest: Blöcke für die Textansicht, schlichter Text für Volltext und
 Suche), `texterkennung/nachbesserung.py` (Auftrag Texte nachbessern), Fassungen und Wahl in der Ablage (`erkennung.jsonl`),
 `services/textansicht/nachgebessert.py` (Bausteine einer nachgebesserten Seite, Bilder aus den Flächen der klassischen Erkennung),

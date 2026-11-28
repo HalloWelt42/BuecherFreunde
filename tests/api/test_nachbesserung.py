@@ -65,7 +65,11 @@ def bildmodell(monkeypatch):
             raise a
         return a, "Qwen3.8 27B"
 
+    async def faehigkeiten(modell):
+        return ["bild_beschreiben", "text"]
+
     monkeypatch.setattr(ki, "bildantwort", bildantwort)
+    monkeypatch.setattr(ki, "faehigkeiten", faehigkeiten)
     return gefragt, antworten
 
 
@@ -91,7 +95,7 @@ async def test_nachbessern_umschalten_und_volltext(laufend, test_db, client, pro
     assert r.status_code == 200, r.text
     assert r.json() == {"bereit": True, "grund": "", "seiten": [2, 3]}
     await nachbesserung.warten()
-    assert gefragt == ["qwen/qwen3.8-27b"] * 2
+    assert gefragt == [settings.texterkennung_ki_modell] * 2
 
     s = await _seiten(client, buch)
     assert (s[1]["fassung"], s[1]["nachbesserung"], s[1]["nachbesserung_grund"]) == ("klassisch", "fehler", "Die Leitstelle antwortet nicht")

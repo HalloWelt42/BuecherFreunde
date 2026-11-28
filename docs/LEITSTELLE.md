@@ -19,7 +19,7 @@ Abschnitt 9).
 | `LEITSTELLE_ADRESSE` | Adresse der Leitstelle (mit oder ohne `/v1`); leer: ohne KI |
 | `LEITSTELLE_SCHLUESSEL_DATEI` | Schlüssel der Anwendung als Datei, Modus 0600; im Betrieb `zugang/leitstelle.schluessel`, im Container `/app/zugang/leitstelle.schluessel` (der Ordner `zugang` ist schon nur lesend eingehängt) |
 | `KI_MODELL` | Modellwahl der App (Vorgabe `qwen/qwen3-next-80b`); in den Einstellungen änderbar (`PATCH /api/ai/config`, gemerkt als `ki_modell` in `app_settings`), die Leitstelle wählt nie ein Modell |
-| `TEXTERKENNUNG_KI_MODELL` | Bildmodell für die Nachbesserung erkannter Seiten (BF-118, Vorgabe `qwen/qwen3.8-27b`, Fähigkeit `bild_beschreiben`); dazu `TEXTERKENNUNG_KI_SEITEN`, `TEXTERKENNUNG_KI_KANTE`, `TEXTERKENNUNG_KI_TOKEN` (docs/neubau/TEXTERKENNUNG.md) |
+| `TEXTERKENNUNG_KI_MODELL` | Modell für die Nachbesserung erkannter Seiten (BF-118, Vorgabe `qwen/qwen3-next-80b`): mit Fähigkeit `bild_beschreiben` bekommt es das Seitenbild, sonst den erkannten Text; dazu `TEXTERKENNUNG_KI_SEITEN`, `TEXTERKENNUNG_KI_KANTE`, `TEXTERKENNUNG_KI_TOKEN` (docs/neubau/TEXTERKENNUNG.md) |
 
 Die Zertifikatsstelle des Hauses gilt wie für die Kellerwolke (`KELLERWOLKE_CA`).
 
