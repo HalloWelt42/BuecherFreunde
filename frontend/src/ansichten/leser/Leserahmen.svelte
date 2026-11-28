@@ -45,11 +45,13 @@
     onzurueck: () => void;
     onabwahl: () => void;
     darstellung: Snippet;
+    /** Knöpfe des Formats in der Leiste oben, vor Schrift, Papier, Ansicht; nur am Rechner (BF-126) */
+    leiste?: Snippet;
     fuss: Snippet;
     treffer?: Snippet;
     children: Snippet;
   }
-  let { sitzung, papier = "normal", grund, tinte, art, onart, satz = true, bereit, onzurueck, onabwahl, darstellung, fuss, treffer = undefined, children }: Eigenschaften = $props();
+  let { sitzung, papier = "normal", grund, tinte, art, onart, satz = true, bereit, onzurueck, onabwahl, darstellung, leiste = undefined, fuss, treffer = undefined, children }: Eigenschaften = $props();
 
   /** Seitenrand der Bühne (--rand-seite) */
   const RAND_SEITE = 16;
@@ -135,6 +137,7 @@
         <Knopf text="Vollbild" symbol="expand" nur frei klein onclick={() => void schale.vollbildUmschalten()} />
         <Knopf text="Tastenkürzel" symbol="keyboard" nur frei klein gedrueckt={sitzung.feld === "tasten"} onclick={() => sitzung.schalteFeld("tasten")} />
       </span>
+      {#if leiste}<span class="nur-breit reihe">{@render leiste()}</span>{/if}
       <Knopf text="Schrift, Papier, Ansicht" symbol="font" nur frei klein gesperrt={!bereit} gedrueckt={sitzung.feld === "darstellung"} onclick={() => sitzung.schalteFeld("darstellung")} />
     </div>
   {/if}

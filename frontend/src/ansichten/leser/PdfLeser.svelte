@@ -148,13 +148,15 @@
   }
 
   function merke() {
-    const meinStand = { ansicht: telefon ? ansicht : nurText ? "text" : ansicht, zoom: ansicht === "scroll" ? Math.round((zoom ?? mass) * 100) : meine.zoom };
+    // Die gewählte Größe zählt, nicht die zuletzt gezeichnete: die Seite zeichnet sich erst nach diesem Aufruf neu
+    const groesse = zoom ?? mass;
+    const meinStand = { ansicht: telefon ? ansicht : nurText ? "text" : ansicht, zoom: ansicht === "scroll" ? Math.round(groesse * 100) : meine.zoom };
     const werte: Lesewerte = { ...alt, page: seite, ...(papierWahl ? { papier: papierWahl } : {}) };
     if (telefon && ansichtGewaehlt) werte.telefon = meinStand;
     if (!telefon) Object.assign(werte, ansichtGewaehlt || alt.ansicht ? meinStand : {});
     Object.assign(alt, werte);
     const inAdresse = ansichtGewaehlt && !telefon;
-    speicher.merke(werte, { page: seite > 1 ? seite : undefined, ansicht: inAdresse && ansicht !== "scroll" ? ansicht : undefined, zoom: inAdresse && ansicht === "scroll" && mass !== 1 ? Math.round(mass * 100) : undefined, papier: papierWahl || undefined });
+    speicher.merke(werte, { page: seite > 1 ? seite : undefined, ansicht: inAdresse && ansicht !== "scroll" ? ansicht : undefined, zoom: inAdresse && ansicht === "scroll" && groesse !== 1 ? Math.round(groesse * 100) : undefined, papier: papierWahl || undefined });
   }
 
   function geheZu(nr: number) {
@@ -176,6 +178,24 @@
     if (telefon) textansicht.an = nurText;
     if (neu !== "text") nimmAnsicht(neu);
     merke();
+  }
+
+  // Der Knopf Seitenbreite (BF-126) merkt sich, wovon er kam: der zweite Druck geht zu dieser Ansicht und Größe zurück, ohne
+  // Merker (die Seitenbreite kam aus dem Feld oder war schon beim Öffnen gewählt) zu fortlaufend
+  let vorBreite: { ansicht: Ansicht; zoom: number | null } | null = null;
+  function schalteBreite() {
+    if (ansicht !== "breite") {
+      vorBreite = { ansicht, zoom };
+      setzeAnsicht("breite");
+      return;
+    }
+    const vorher = vorBreite;
+    vorBreite = null;
+    setzeAnsicht(vorher?.ansicht ?? "scroll");
+    if (vorher?.ansicht === "scroll" && vorher.zoom !== null) {
+      zoom = vorher.zoom;
+      merke();
+    }
   }
 
   /** Hin und her zwischen Original und Text; die Ansicht des Originals bleibt */
@@ -280,7 +300,7 @@
 
 <svelte:window onkeydown={(e) => blaettertaste(e, art, { vor, zurueck, anfang: () => geheZu(1), ende: () => geheZu(gesamt), groesser: zoomtaste(1), kleiner: zoomtaste(-1) })} />
 
-<Leserahmen {sitzung} {papier} {art} satz={nurText} onart={setzeArt} grund={farben.bg} tinte={farben.fg} bereit={!!pdf} {onzurueck} onabwahl={abwahl}>
+<Leserahmen {sitzung} {papier} {art} satz={nurText} onart={setzeArt} grund={farben.bg} tinte={farben.fg} bereit={!!pdf} {onzurueck} onabwahl={abwahl} leiste={nurText ? undefined : breitenknopf}>
   {#if !pdf}
     <Ladehinweis {fehler} adresse={fassung.datei} name={fassung.dateiname === true ? buch.title : fassung.dateiname} onerneut={() => void lade()} />
   {:else if nurText}
@@ -299,6 +319,11 @@
     </Fussleiste>
   {/snippet}
 </Leserahmen>
+
+{#snippet breitenknopf()}
+  <!-- Seitenbreite mit einem Druck (BF-126, Entwurf Vorschlag A); gedrückt, solange sie gilt, ein zweiter Druck geht zurück (schalteBreite) -->
+  <Knopf text="Seitenbreite" symbol="arrows-left-right-to-line" nur frei klein gedrueckt={ansicht === "breite"} onclick={schalteBreite} />
+{/snippet}
 
 {#snippet umschalter()}
   <!-- Auf jedem Gerät unten in der Leiste; am Rechner mit Wort (BF-122), am Telefon nur das Zeichen (BF-63), der Name bleibt
