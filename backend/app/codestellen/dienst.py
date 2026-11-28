@@ -3,21 +3,20 @@
 Die Stellen selbst stehen nur im Begleiter; die Tabelle `codestellen` führt Buch für Buch, mit welcher Fassung erkannt
 wurde und wie weit die Vorprüfung ist. Erkannt wird in einem eigenen Prozess, ein Buch nach dem anderen: wer ein Buch öffnet,
 kommt zuerst dran, dann neue Bücher, dann der schonende Nachlauf der Pflege (je Runde nur wenige Bücher, die noch keine
-Erkennung haben). Ist das Original gerade nicht zu holen, bleibt das Buch für eine spätere Runde."""
+Erkennung haben). Ist das Original gerade nicht zu holen, bleibt das Buch für eine spätere Runde. Der Prozess hat Grenzen für
+Speicher und Zeit (core/arbeitsprozess.py); ein Buch darüber bekommt einen Grund und kommt nicht wieder dran."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
-import multiprocessing
 from collections.abc import Awaitable, Callable
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 from typing import Literal
 
 from backend.app.codestellen.erkennung import FORMATE, erkennen
 from backend.app.codestellen.modelle import FASSUNG, Begleiter
+from backend.app.core.arbeitsprozess import Abgestuerzt, Arbeitsprozess, ZuLange, grenze_mb
 from backend.app.core.database import db
 from backend.app.services.storage import get_original_file, get_sidecar_path
 from backend.app.texterkennung import ablage as erkennungsablage
@@ -58,7 +57,7 @@ class Codestellen:
         self._reihe: list[int] = []
         self._neu = asyncio.Event()
         self._lauf: asyncio.Task | None = None
-        self._prozess: ProcessPoolExecutor | None = None
+        self._prozess = Arbeitsprozess(aufgaben_je_prozess=10)
         self.erkannt: list[Callable[[int], Awaitable[None]]] = []     # wer nach einer Erkennung Bescheid bekommt
 
     # -- Leben -----------------------------------------------------------------------------------------------------------
@@ -70,9 +69,7 @@ class Codestellen:
         if self._lauf is not None:
             self._lauf.cancel()
             self._lauf = None
-        if self._prozess is not None:
-            self._prozess.shutdown(wait=False, cancel_futures=True)
-            self._prozess = None
+        self._prozess.beenden()
 
     # -- Aufträge --------------------------------------------------------------------------------------------------------
     def vormerken(self, buch: int, vorrang: bool = False) -> None:
@@ -164,19 +161,12 @@ class Codestellen:
     async def lesen(self, pfad: Path, fmt: str, erkennungen: Path | None = None) -> Begleiter:
         """In einem eigenen Prozess: die App antwortet weiter, und eine Datei, die den Leser abstürzen lässt, trifft nur sie.
         `erkennungen`: die Datei mit den Erkennungen eines Scans (BF-109)."""
-        if self._prozess is None:
-            self._prozess = ProcessPoolExecutor(max_workers=1, mp_context=multiprocessing.get_context("spawn"), max_tasks_per_child=10)
         art = FORMATE[fmt]
         try:
-            roh = await asyncio.wait_for(asyncio.get_running_loop().run_in_executor(
-                self._prozess, _im_prozess, str(pfad), fmt, str(erkennungen) if erkennungen else ""), ZEITGRENZE_S)
-        except BrokenProcessPool:
-            self._prozess = None
-            return Begleiter(format=art, grund="Die Datei bringt die Erkennung zum Absturz")
-        except TimeoutError:
-            if self._prozess is not None:
-                self._prozess.shutdown(wait=False, cancel_futures=True)
-                self._prozess = None
+            roh = await self._prozess.ausfuehren(_im_prozess, str(pfad), fmt, str(erkennungen) if erkennungen else "", frist_s=ZEITGRENZE_S)
+        except Abgestuerzt:
+            return Begleiter(format=art, grund=f"Die Datei bringt die Erkennung zum Absturz oder braucht mehr als {grenze_mb()} MB Speicher")
+        except ZuLange:
             return Begleiter(format=art, grund="Die Erkennung dauerte länger als eine halbe Stunde")
         return Begleiter.model_validate_json(roh)
 

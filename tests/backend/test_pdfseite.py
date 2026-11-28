@@ -67,3 +67,41 @@ def test_sichtbare_zeichnungen_ohne_hintergrund_und_beschnitten():
     zeichnungen = sichtbare_zeichnungen(seite)
     assert [(round(d["rect"].y0), round(d["rect"].y1), d["beschnitten"]) for d in zeichnungen] == [(700, 792, True),
                                                                                                     (720, 740, False)]
+
+
+def _viele_rechtecke(anzahl: int) -> fitz.Page:
+    """Eine Seite mit einer Abbildung aus vielen gefüllten Rechtecken (so war die Seite, die den Pi füllte, BF-120)."""
+    doc = fitz.open()
+    seite = doc.new_page()
+    seite.insert_text((72, 72), "Abbildung 1: ein Raster", fontsize=11)
+    form = seite.new_shape()
+    for i in range(anzahl):
+        x, y = 72 + (i % 200) * 2, 100 + (i // 200) * 2
+        form.draw_rect(fitz.Rect(x, y, x + 1.5, y + 1.5))
+        form.finish(fill=(i % 7 / 7, 0.2, 0.4), color=None)
+    form.commit()
+    return seite
+
+
+def test_zeichnungen_nur_bis_zur_grenze_des_inhalts(monkeypatch):
+    from backend.app.core.config import settings
+    from backend.app.services.pdfseite import gruppen, inhalt_kb, zeichnungen, zeichnungen_lesbar
+
+    seite = _viele_rechtecke(20_000)
+    assert inhalt_kb(seite) > 16
+    assert len(zeichnungen(seite)) == 20_000 and gruppen(seite)
+    monkeypatch.setattr(settings, "pdf_zeichnungen_bis_kb", 16)
+    assert not zeichnungen_lesbar(seite)
+    assert zeichnungen(seite) == [] and gruppen(seite) == [] and sichtbare_zeichnungen(seite) == []
+    assert "Abbildung 1" in seitentext(seite)                      # der Text bleibt lesbar
+
+
+def test_eine_schlichte_seite_liegt_weit_unter_der_grenze():
+    from backend.app.core.config import settings
+    from backend.app.services.pdfseite import inhalt_kb
+
+    doc = fitz.open()
+    seite = doc.new_page()
+    seite.insert_text((72, 72), "Ein Absatz Text. " * 40, fontsize=11)
+    seite.draw_rect(fitz.Rect(60, 60, 300, 120), color=(0, 0, 0))
+    assert inhalt_kb(seite) < settings.pdf_zeichnungen_bis_kb / 100

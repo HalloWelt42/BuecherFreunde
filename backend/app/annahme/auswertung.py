@@ -1,17 +1,15 @@
-"""Text, Umschlag und Angaben aus einer Buchdatei, in einem eigenen Prozess: die App antwortet weiter, und stürzt eine
-kaputte Datei den Prozess ab, betrifft das nur diese eine Aufnahme. Immer nur ein Buch zugleich (wenig Arbeitsspeicher)."""
+"""Text, Umschlag und Angaben aus einer Buchdatei, in einem eigenen Prozess mit Speicher- und Zeitgrenze (core/arbeitsprozess.py):
+die App antwortet weiter, und stürzt eine kaputte Datei den Prozess ab, betrifft das nur diese eine Aufnahme."""
 
 from __future__ import annotations
 
-import asyncio
-import multiprocessing
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures.process import BrokenProcessPool
 from dataclasses import dataclass
 from pathlib import Path
 
+from backend.app.core.arbeitsprozess import Abgestuerzt, Arbeitsprozess, ZuLange, grenze_mb
+
 ZEITGRENZE_S = 30 * 60
-_prozess: ProcessPoolExecutor | None = None
+_prozess = Arbeitsprozess(aufgaben_je_prozess=20)
 
 
 @dataclass
@@ -74,16 +72,13 @@ def _nur_angaben(pfad: str) -> Ergebnis:
 
 
 async def _im_prozess(art, pfad: Path) -> Ergebnis:
-    global _prozess
-    if _prozess is None:
-        _prozess = ProcessPoolExecutor(max_workers=1, mp_context=multiprocessing.get_context("spawn"), max_tasks_per_child=20)
     try:
-        return await asyncio.wait_for(asyncio.get_running_loop().run_in_executor(_prozess, art, str(pfad)), ZEITGRENZE_S)
-    except BrokenProcessPool:
-        _prozess = None
-        return Ergebnis(grund="Die Datei bringt den Leser zum Absturz")
-    except TimeoutError:
-        schliessen()
+        return await _prozess.ausfuehren(art, str(pfad), frist_s=ZEITGRENZE_S)
+    except Abgestuerzt:
+        return Ergebnis(grund=f"Die Datei bringt den Leser zum Absturz oder braucht mehr als {grenze_mb()} MB Speicher")
+    except MemoryError:
+        return Ergebnis(grund=f"Die Datei braucht zum Lesen mehr als {grenze_mb()} MB Speicher")
+    except ZuLange:
         return Ergebnis(grund="Das Lesen dauerte länger als eine halbe Stunde")
 
 
@@ -100,7 +95,4 @@ async def angaben(pfad: Path) -> Ergebnis:
 
 
 def schliessen() -> None:
-    global _prozess
-    if _prozess is not None:
-        _prozess.shutdown(wait=False, cancel_futures=True)
-        _prozess = None
+    _prozess.beenden()

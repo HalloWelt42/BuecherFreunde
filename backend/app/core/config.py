@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     umschlaege_dir: Path = Path("")
     zwischen_dir: Path = _project_root() / "zwischen"
     zwischen_mb: int = 900             # so viel dürfen Originale im Zwischenspeicher belegen
+    # Arbeitsprozesse für schwere Dateien (core/arbeitsprozess.py, BF-120): so viel Adressraum darf einer höchstens belegen;
+    # darüber scheitert nur das eine Buch, nie der Rechner (auf dem Pi greift keine Speichergrenze für Container)
+    arbeitsprozess_speicher_mb: int = Field(default=3072, ge=256)
+    # Zeichnungen einer PDF-Seite liest nur, wer ihren Inhalt bis zu dieser Größe (gepackt) hat (services/pdfseite.py, BF-120):
+    # eine Abbildung aus 3,4 Millionen Rechtecken (24 MB) belegte beim Auslesen alle 16 GB
+    pdf_zeichnungen_bis_kb: int = Field(default=1024, ge=16)
     ansagen_takt_s: float = Field(default=600, ge=1)   # so oft sieht der Auftrag "Ansagen erstellen" nach, auch ohne Anstoß (BF-78)
     stimmproben_erst_s: float = Field(default=60, ge=0)        # so lange nach dem Start sieht die Wache zum ersten Mal nach (BF-114)
     stimmproben_takt_s: float = Field(default=21600, ge=60)    # danach so oft: fehlen Stimmproben, stößt sie den Auftrag an

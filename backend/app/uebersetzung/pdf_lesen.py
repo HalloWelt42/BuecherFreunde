@@ -33,7 +33,7 @@ from functools import cached_property
 import fitz
 
 from backend.app.codestellen import pdf as codestellen_pdf
-from backend.app.services.pdfseite import TEXTART, fehlzeichen_der_seite, gerade, ligaturen_aufloesen
+from backend.app.services.pdfseite import TEXTART, fehlzeichen_der_seite, gerade, gruppen, ligaturen_aufloesen, zeichnungen as zeichnungen_der_seite
 from backend.app.services.textansicht import lesbar
 
 RAND = 0.12                     # Anteil der Seitenhöhe oben und unten, in dem Kopf- und Fußzeilen stehen
@@ -287,7 +287,7 @@ def _im_code(z: Zeile, teile: list[fitz.Rect]) -> bool:
 
 def _tabellen(seite: fitz.Page, nr: int, zeilen: list[Zeile], aussparen: list[fitz.Rect]) -> list[Tabelle]:
     """Tabellen aus den Linien der Seite; nur mit Linien, ab 2x2, mit Text in der Hälfte der Zellen."""
-    if not seite.get_drawings():
+    if not zeichnungen_der_seite(seite):
         return []
     try:
         gefunden = seite.find_tables().tables
@@ -366,7 +366,7 @@ def _flaechen(seite: fitz.Page, aussparen: list[fitz.Rect]) -> tuple[list[fitz.R
 
     bilder = [(fitz.Rect(b["bbox"]) & seite.rect, b.get("xref", 0)) for b in seite.get_image_info(xrefs=True)]
     bilder = [(r, x) for r, x in bilder if r.width >= MINDESTGROESSE and r.height >= MINDESTGROESSE and zaehlt(r)]
-    zeichnungen = [r for r in seite.cluster_drawings() if zaehlt(r)]
+    zeichnungen = [r for r in gruppen(seite) if zaehlt(r)]
     return _vereinigen(zeichnungen + [r for r, _ in bilder], NAEHE), bilder
 
 
@@ -417,7 +417,7 @@ def _abbildungen_und_kaesten(seite: fitz.Page, nr: int, zeilen: list[Zeile], aus
     """Abbildungen (mit dem Text darin und kurzen Beschriftungen daneben), Kästen (mit ihren Zeilen), abgesetzte Formeln;
     dazu die Zeilen, die damit vergeben sind (ihre Stelle in `zeilen`)."""
     flaechen, bilder = _flaechen(seite, aussparen)
-    zeichnungen = seite.get_drawings() if flaechen else []
+    zeichnungen = zeichnungen_der_seite(seite) if flaechen else []
     grund = _grundschrift(zeilen)
     vergeben: set[int] = set()
     abbildungen: list[Abbildung] = []

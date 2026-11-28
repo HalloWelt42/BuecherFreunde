@@ -14,6 +14,10 @@
   und schräge Linien gehören zu Grafiken. Sichtbar sind Zeichnungen auf der Seite (auf sie beschnitten: ein Kasten, der über
   den Seitenwechsel geht, zählt mit), ohne den Hintergrund der Seite: eine Fläche über fast die ganze Seite, oder eine weiße
   ohne Rand über mindestens die halbe (aus E-Books gedruckte PDF legen eine solche über das ganze Kapitel).
+- Grenze (BF-120): Zeichnungen liest nur, wer hier fragt (`zeichnungen`, `gruppen`), und nur bis zu einer Größe des Inhalts der
+  Seite (`pdf_zeichnungen_bis_kb`, gepackt, mit den Formularen, die sie zeichnet). PyMuPDF legt je Zeichnung ein Objekt an; eine
+  Abbildung aus 3,4 Millionen gefüllten Rechtecken (194 MB Inhalt) belegte so alle 16 GB des Rechners. Eine Seite darüber gilt
+  als ohne Zeichnungen: ihr Text bleibt lesbar, Kästen und Tafeln darauf erkennt die Ansicht dann nicht.
 - Lesbar (`lesbar`): ein Text trägt echte Zeichen, mindestens LESBAR_ANTEIL seiner sichtbaren Zeichen sind Buchstaben oder
   Ziffern; Zeichensalat aus Steuer- und Sonderzeichen (eine Schrift ohne Zeichenzuordnung) gilt nicht. Darauf baut auch die
   Regel der Texterkennung, welche Seite keinen lesbaren Text trägt (texterkennung/textschicht.py).
@@ -21,9 +25,14 @@
 
 from __future__ import annotations
 
+import logging
 import re
 
 import fitz
+
+from backend.app.core.config import settings
+
+logger = logging.getLogger("buecherfreunde.pdfseite")
 
 TEXTART = fitz.TEXTFLAGS_DICT & ~fitz.TEXT_PRESERVE_LIGATURES
 TEXTART_ROH = fitz.TEXTFLAGS_RAWDICT & ~fitz.TEXT_PRESERVE_LIGATURES
@@ -98,12 +107,39 @@ def seitentext(seite: fitz.Page) -> str:
     return text
 
 
+def inhalt_kb(seite: fitz.Page) -> int:
+    """Wie groß der Inhalt der Seite in der Datei ist (gepackt): ihre Inhaltsströme und die Formulare, die sie zeichnet."""
+    doc = seite.parent
+    xrefs = {*seite.get_contents(), *(x[0] for x in seite.get_xobjects())}
+    return sum(len(doc.xref_stream_raw(x) or b"") for x in xrefs if x > 0) // 1024
+
+
+def zeichnungen_lesbar(seite: fitz.Page) -> bool:
+    groesse = inhalt_kb(seite)
+    if groesse <= settings.pdf_zeichnungen_bis_kb:
+        return True
+    logger.info("Seite %d: %d KB Inhalt, über der Grenze von %d KB; Zeichnungen nicht gelesen", seite.number + 1, groesse,
+                settings.pdf_zeichnungen_bis_kb)
+    return False
+
+
+def zeichnungen(seite: fitz.Page) -> list[dict]:
+    """get_drawings, nur bis zur Grenze; darüber keine."""
+    return seite.get_drawings() if zeichnungen_lesbar(seite) else []
+
+
+def gruppen(seite: fitz.Page, gelesen: list[dict] | None = None) -> list[fitz.Rect]:
+    """cluster_drawings über schon gelesene Zeichnungen, sonst über `zeichnungen` (nie ohne Grenze)."""
+    liste = zeichnungen(seite) if gelesen is None else gelesen
+    return seite.cluster_drawings(drawings=liste) if liste else []
+
+
 def sichtbare_zeichnungen(seite: fitz.Page) -> list[dict]:
-    """Die Zeichnungen der Seite (get_drawings), auf die Seite beschnitten, ohne ihren Hintergrund; "beschnitten" sagt, ob
+    """Die Zeichnungen der Seite (bis zur Grenze), auf die Seite beschnitten, ohne ihren Hintergrund; "beschnitten" sagt, ob
     eine Zeichnung über die Seite hinausreicht."""
     seitenflaeche = seite.rect.width * seite.rect.height
     aus = []
-    for d in seite.get_drawings():
+    for d in zeichnungen(seite):
         r = fitz.Rect(d["rect"]) & seite.rect
         if r.is_empty:
             continue

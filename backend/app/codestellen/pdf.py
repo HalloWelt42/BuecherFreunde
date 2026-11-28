@@ -35,7 +35,7 @@ from pathlib import Path
 import fitz
 
 from backend.app.codestellen.sprache import dateiname
-from backend.app.services.pdfseite import TEXTART_ROH, fehlzeichen_der_seite, ligaturen_aufloesen, sichtbare_zeichnungen
+from backend.app.services.pdfseite import TEXTART_ROH, fehlzeichen_der_seite, gruppen as zeichnungsgruppen, ligaturen_aufloesen, sichtbare_zeichnungen
 
 RAND_OBEN, RAND_UNTEN = 0.075, 0.94       # Anteil der Seitenhöhe: darüber Kopfzeile, darunter Fußzeile (wie die Textansicht)
 MONO_ANTEIL = 0.85
@@ -285,7 +285,7 @@ def _flaechen(seite: fitz.Page) -> list[Flaeche]:
         else:
             vereint.append(Flaeche(fitz.Rect(f.rechteck), f.farbe))
     # Rahmen aus einzelnen Linien (lstlisting mit frame=single)
-    for r in seite.cluster_drawings(drawings=zeichnungen):
+    for r in zeichnungsgruppen(seite, zeichnungen):
         if r.width >= breite and r.height >= 3 * hoehe and not any(abs(r.x0 - f.rechteck.x0) < 1 and abs(r.y0 - f.rechteck.y0) < 1
                                                                     and abs(r.x1 - f.rechteck.x1) < 1 and abs(r.y1 - f.rechteck.y1) < 1
                                                                     for f in vereint):

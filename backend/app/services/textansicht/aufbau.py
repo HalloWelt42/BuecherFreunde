@@ -8,7 +8,7 @@ from pathlib import Path
 import fitz
 
 from backend.app.codestellen.pdf import ADRESSE, MONO_ANTEIL
-from backend.app.services.pdfseite import lesbar, sichtbare_zeichnungen
+from backend.app.services.pdfseite import gruppen as zeichnungsgruppen, lesbar, sichtbare_zeichnungen
 from backend.app.services.textansicht.code import (KASTEN_TEXT_AB, codebaustein, kastenrest, lose_codezeilen, tafel, tafelart,
                                                     tafelcode)
 from backend.app.services.textansicht.erkannt import bilder_der_erkennung, zeilen_der_erkennung
@@ -136,7 +136,7 @@ class _Seitenbau:
     def _flaechen(self) -> tuple[list[dict], list[fitz.Rect], list[fitz.Rect]]:
         """Die sichtbaren Zeichnungen, die Bilder und daraus die Flächen der Seite (nahe Teile zusammen, ohne Codestellen)."""
         zeichnungen = sichtbare_zeichnungen(self.seite)
-        gruppen = [r for r in self.seite.cluster_drawings(drawings=zeichnungen)
+        gruppen = [r for r in zeichnungsgruppen(self.seite, zeichnungen)
                    if (r.width >= MINDESTGROESSE or r.height >= MINDESTGROESSE) and not _im_code(r, self.codeteile)]
         bilder = self._bilder()
         bilder = [r for r in bilder if r.width >= MINDESTGROESSE and r.height >= MINDESTGROESSE]
