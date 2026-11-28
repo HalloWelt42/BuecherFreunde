@@ -92,7 +92,7 @@
       </div>
     {/if}
   {:else}
-    <p class="klein leise">{vorlesen.hinweis || "Hier gibt es keine Stimme zum Vorlesen."}</p>
+    <p class="klein leise">{vorlesen.stimmenKommen ? "Die Stimmen werden geholt." : vorlesen.hinweis || "Hier gibt es keine Stimme zum Vorlesen."}</p>
   {/if}
   {#if vorlesen.hinweis && vorlesen.stimmen.length}<p class="klein leise">{vorlesen.hinweis}</p>{/if}
   {#if vorlesen.freigabe}<p class="klein leise">{vorlesen.freigabe}</p>{/if}

@@ -23,6 +23,8 @@ export class Zulauf {
   #platz: (() => void) | null = null;
   fertig = false;
   fehler: Error | null = null;
+  /** Warum der letzte Versuch ohne Ton blieb, solange es weiter versucht; leer, sobald wieder Ton kommt */
+  stockt = "";
   /** Bis hierhin ist alles geholt */
   bis: Stelle;
 
@@ -86,6 +88,7 @@ export class Zulauf {
           if (this.#abbruch.signal.aborted) return;
           geholt = basis + satz.bis;
           versuch = 0;
+          this.stockt = "";
           this.bis = { einheit: ab.einheit, zeichen: ab.zeichen + geholt };
           this.#bereit.push({ ort: { einheit: ab.einheit, von: ab.zeichen + basis + satz.von, bis: ab.zeichen + geholt }, satz });
           this.gemeldet();
@@ -94,7 +97,10 @@ export class Zulauf {
         return;
       } catch (e) {
         if (this.#abbruch.signal.aborted || !text.slice(geholt).trim()) return;
-        if (versuch >= this.geduld.length) throw wache.eingeschlafen() ? new Error("Die Vertonung antwortet nicht") : e;
+        const grund = wache.eingeschlafen() ? new Error("Die Vertonung antwortet nicht") : e instanceof Error ? e : new Error(String(e));
+        if (versuch >= this.geduld.length) throw grund;
+        this.stockt = grund.message;
+        this.gemeldet();
       } finally {
         wache.ende();
       }

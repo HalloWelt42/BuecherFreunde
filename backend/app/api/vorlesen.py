@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.core.auth import braucht, profil
 from backend.app.familie.modelle import Profil
-from backend.app.vorlesen import beschreibung, proben, sprechen, stimmen, tonablage
+from backend.app.vorlesen import beschreibung, proben, sprechen, stimmen, strom, tonablage
 from backend.app.vorlesen.modelle import Beschreibung, Leserstimme, Stimmenliste, vertont
 
 router = APIRouter(prefix="/api/vorlesen", tags=["Vorlesen"], dependencies=[Depends(braucht("vorlesen"))])
@@ -41,14 +41,15 @@ async def beschreibung_lesen() -> Beschreibung:
 
 
 @router.post("", response_class=StreamingResponse)
-async def vorlesen_strom(v: Vorlesetext, p: Profil = Depends(profil)) -> StreamingResponse:
+async def vorlesen_strom(v: Vorlesetext, request: Request, p: Profil = Depends(profil)) -> Response:
     if v.stimme and not vertont(v.stimme):
         raise HTTPException(400, "Diese Stimme spricht die Vertonung nicht; bitte eine aus der Liste wählen")
     zeilen = sprechen.zeilen(v.text, v.stimme, p.einstellungen.vorlesen.werte)
     try:
-        erste = await anext(zeilen)                    # was vor dem ersten Satz scheitert, ist eine Antwort mit Grund
-    except StopAsyncIteration:
-        erste = b""
+        # was vor dem ersten Satz scheitert, ist eine Antwort mit Grund; geht der Leser vorher, endet auch die Anfrage an die Vertonung
+        erste = await strom.erste_zeile(zeilen, request.is_disconnected)
+    except strom.Gegangen:
+        return Response(status_code=strom.GEGANGEN)
     except VorlesenFehler as f:
         raise HTTPException(f.status, f.meldung) from f
 

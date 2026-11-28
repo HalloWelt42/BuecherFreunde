@@ -92,6 +92,41 @@ describe("Stimmenauswahl", () => {
     expect(v.stimmen.map((s) => s.id)).toEqual(["geraet:de-1"]);
     expect(v.stimme).toBe("geraet:de-1");
   });
+  // BF-121: ein Browser ohne Stimmen des Geräts zeigte "keine Stimme", solange die Stimmen der Vertonung unterwegs waren
+  it("solange die Stimmen der Vertonung kommen, sagt es das; scheitert es, fragt das nächste Mal neu", async () => {
+    vi.resetModules();
+    let antworte: (r: Response) => void = () => {};
+    let anfragen = 0;
+    vi.stubGlobal("fetch", vi.fn(() => {
+      anfragen++;
+      return anfragen === 1 ? Promise.reject(new TypeError("Netz weg")) : new Promise<Response>((r) => (antworte = r));
+    }));
+    vi.stubGlobal("speechSynthesis", { getVoices: () => [], addEventListener: () => {}, cancel: () => {} });
+    const { anschluesse } = await import("../src/lib/stand/anschluesse.svelte");
+    anschluesse.jetzt = { ...anschluesse.jetzt, vorlesen: true };
+    const { ich } = await import("../src/lib/stand/ich.svelte");
+    ich.setze(erwachsen() as unknown as Parameters<typeof ich.setze>[0]);
+    const { vorlesen } = await import("../src/lib/stand/vorlesen.svelte");
+    vorlesen.pruefe();
+    expect(vorlesen.stimmenKommen).toBe(true);
+    await new Promise((r) => setTimeout(r, 5));
+    expect([vorlesen.stimmenKommen, vorlesen.hinweis, vorlesen.stimmen.length]).toEqual([false, "Stimmen nicht geholt", 0]);
+    vorlesen.pruefe();
+    expect([anfragen, vorlesen.stimmenKommen]).toEqual([2, true]);
+    antworte(new Response(JSON.stringify(antwort)));
+    await new Promise((r) => setTimeout(r, 5));
+    expect([vorlesen.stimmenKommen, vorlesen.hinweis, vorlesen.stimme]).toEqual([false, "", "dienst:"]);
+    vorlesen.pruefe();
+    expect(anfragen).toBe(2);                                                              // einmal je Seite, wenn es gelang
+  });
+  it("ist die Vertonung beim ersten Blick noch nicht bekannt, fragt es, sobald sie angeschlossen ist", async () => {
+    const { v } = await frisch(antwort, { angeschlossen: false, profil: erwachsen() });
+    const { anschluesse } = await import("../src/lib/stand/anschluesse.svelte");
+    anschluesse.jetzt = { ...anschluesse.jetzt, vorlesen: true };
+    v.pruefe();
+    await new Promise((r) => setTimeout(r, 5));
+    expect(v.stimme).toBe("dienst:");
+  });
 });
 
 describe("Text teilen", () => {

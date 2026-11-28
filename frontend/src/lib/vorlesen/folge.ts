@@ -11,6 +11,8 @@ export interface Folgegriffe {
   ende(): void;
   /** Der Ton blieb aus; die Folge steht still und lässt sich fortsetzen */
   gerissen(grund: string): void;
+  /** Der Ton bleibt aus, die Folge versucht es weiter; einmal, bis wieder Ton kommt */
+  stockt?(grund: string): void;
   /** Die Schlafuhr hat angehalten */
   eingeschlafen(): void;
 }
@@ -44,6 +46,8 @@ export class Vorlesefolge {
   #fuehrt = 0;
   #klang = false;
   #gerissen = false;
+  /** Was zuletzt als Stocken gemeldet ist, damit es nur einmal kommt */
+  #gestockt = "";
   #schlaf: Schlaf = { art: "aus" };
   #schlafGrenze: Stelle | null = null;
   #schlafUm = 0;
@@ -151,6 +155,7 @@ export class Vorlesefolge {
     for (;;) {
       if (lauf !== this.#lauf) return null;
       const z = this.#zulauf;
+      if (!z.stockt) this.#gestockt = "";
       const amEnde = z.fertig || !!z.fehler;
       if (!z.leer && (!wartete || this.vorlauf.genug(z.sekunden, amEnde))) {
         if (this.#wartet) {
@@ -167,6 +172,10 @@ export class Vorlesefolge {
         continue;
       }
       if (z.leer && z.fertig) return null;
+      if (z.stockt && !this.#gestockt) {
+        this.#gestockt = z.stockt;
+        this.griffe.stockt?.(z.stockt);
+      }
       if (!wartete && this.#klang) this.vorlauf.abgerissen();
       wartete = true;
       if (!this.#wartet) {

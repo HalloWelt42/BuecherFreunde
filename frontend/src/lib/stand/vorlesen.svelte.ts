@@ -61,8 +61,13 @@ class Vorlesestand {
     return this.#lokal?.profil === profil ? this.#lokal.id : leserwert(ich.jetzt?.vorlesen?.stimme ?? "");
   });
   #dienst = $state<Dienststimmen | null>(null);
+  /** Die Stimmen der Vertonung kamen nicht an; das nächste `pruefe` fragt neu */
+  #ladefehler = $state("");
   #geraet = $state<Stimme[]>([]);
-  #gefragt = false;
+  #dienstGefragt = false;
+  #geraetGefragt = false;
+  /** Die Stimmen der Vertonung sind angefragt und noch nicht da */
+  stimmenKommen = $state(false);
   #sprecher: Record<string, Sprecher> = { dienst: new Dienstsprecher(), geraet: new Geraetesprecher() };
   #vorlauf = new Vorlauf();
   /** Die Probe einer Stimme der Vertonung: ein abgelegter Ton, kein Vorlesen (BF-114) */
@@ -99,7 +104,7 @@ class Vorlesestand {
   });
   /** Es gibt eine Stimme, mit der vorgelesen werden kann */
   bereit = $derived(this.stimme !== "");
-  hinweis = $derived(this.#dienst?.hinweis ?? "");
+  hinweis = $derived(this.#dienst?.hinweis || this.#ladefehler);
   /** Ohne Freigabe privater Stimmen: Grund und Weg dorthin */
   freigabe = $derived(freigabeHinweis(this.#dienst));
   name = $derived(this.quelle?.name(this.einheit) ?? "");
@@ -110,15 +115,40 @@ class Vorlesestand {
     return [...aus];
   });
 
-  /** Einmal je Seite; die Stimmen des Geräts melden manche Browser erst später. */
+  /** Einmal je Seite, was gelingt: die Stimmen der Vertonung, sobald sie angeschlossen ist (scheitert es, beim nächsten Mal neu);
+   *  die Stimmen des Geräts, die manche Browser erst später melden. */
   pruefe(): void {
     this.#frueheresUebernehmen();
-    if (this.#gefragt) return;
-    this.#gefragt = true;
-    if (anschluesse.jetzt.vorlesen) ladeDienststimmen().then((d) => (this.#dienst = d)).catch(() => (this.#gefragt = false));
-    if (!geraetDa()) return;
+    this.#frageDienst();
+    this.#frageGeraet();
+  }
+
+  #frageDienst(): void {
+    if (this.#dienstGefragt || !anschluesse.jetzt.vorlesen) return;
+    this.#dienstGefragt = true;
+    this.stimmenKommen = true;
+    ladeDienststimmen()
+      .then((d) => {
+        this.#dienst = d;
+        this.#ladefehler = "";
+      })
+      .catch(() => {
+        this.#dienstGefragt = false;
+        this.#ladefehler = "Stimmen nicht geholt";
+      })
+      .finally(() => (this.stimmenKommen = false));
+  }
+
+  #frageGeraet(): void {
+    if (this.#geraetGefragt || !geraetDa()) return;
+    this.#geraetGefragt = true;
     this.#geraet = geraetestimmen();
     speechSynthesis.addEventListener?.("voiceschanged", () => (this.#geraet = geraetestimmen()));
+  }
+
+  /** Was gesagt wird, wenn keine Stimme bereitsteht */
+  get #ohneStimme(): string {
+    return this.stimmenKommen ? "Die Stimmen werden noch geholt" : this.hinweis || "Hier gibt es keine Stimme zum Vorlesen";
   }
 
   /** Die Stimme, die dieser Browser früher für sich hatte, geht einmal an ein Erwachsenenprofil ohne eigene Wahl */
@@ -191,7 +221,7 @@ class Vorlesestand {
     this.#buch = buch;
     this.#gesichert = Date.now();
     const [sprecher, stimme] = this.#teile();
-    if (!sprecher) return void melde.warn(this.hinweis || "Hier gibt es keine Stimme zum Vorlesen");
+    if (!sprecher) return void melde.warn(this.#ohneStimme);
     sprecher.tempo = this.#tempo;
     sprecher.entsperre();
     Object.assign(this, { aktiv: true, wartet: true, pausiert: false, weg: false, was, quelle, einheit: strecke.von.einheit });
@@ -210,6 +240,8 @@ class Vorlesestand {
         this.#sichere();
         melde.warn(`${grund}. Weiter setzt an derselben Stelle fort.`);
       },
+      // Ohne Ton seit einer Weile: sagen, warum es still ist und dass es weiter versucht wird
+      stockt: (grund) => gilt() && melde.warn(`${grund}. Es wird weiter versucht, Stopp beendet das Warten.`),
       eingeschlafen: () => {
         if (!gilt()) return;
         this.schlaf = { art: "aus" };
@@ -238,7 +270,7 @@ class Vorlesestand {
   /** Im Tippen rufen. Die Stimmen der Vertonung spielen ihre abgelegte Probe, eine des Geräts spricht den Probesatz. */
   probe(): void {
     this.pruefe();
-    if (!this.#teile()[0]) return void melde.warn(this.hinweis || "Hier gibt es keine Stimme zum Vorlesen");
+    if (!this.#teile()[0]) return void melde.warn(this.#ohneStimme);
     if (this.was === PROBE_WAS) this.halt();
     this.#probe.spiele(() => holeStimmprobe(serverwert(this.stimme)), (text) => this.lies(text, PROBE_WAS), this.#tempo)
       .catch((e) => melde.schlecht(e, "Probe nicht abgespielt"));

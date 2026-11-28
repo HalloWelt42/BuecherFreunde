@@ -161,6 +161,18 @@ describe("Vorlesefolge", () => {
     expect(sprecher.gespielt.slice(0, 2)).toEqual(["Eins a.", "Eins b."]);
   });
 
+  it("bleibt der Ton aus, sagt sie es einmal und versucht weiter, bis er kommt (BF-121)", async () => {
+    const { griffe, sprecher, spiele } = folge();
+    const stockt = vi.fn();
+    griffe.stockt = stockt;
+    sprecher.scheitert = 3;
+    await ruhe(40);
+    expect(stockt.mock.calls).toEqual([["Die Vertonung antwortet nicht"]]);
+    expect(griffe.gerissen).not.toHaveBeenCalled();
+    await spiele(2);
+    expect(sprecher.gespielt.slice(0, 2)).toEqual(["Eins a.", "Eins b."]);
+  });
+
   it("schläft am Ende der Seite ein", async () => {
     const { f, sprecher, griffe, spiele } = folge();
     await ruhe();
