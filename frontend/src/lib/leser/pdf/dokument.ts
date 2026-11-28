@@ -37,7 +37,8 @@ interface Knoten {
   items: Knoten[];
 }
 
-async function seiteVon(doc: PDFDocumentProxy, ziel: string | unknown[] | null): Promise<number | null> {
+/** Die Seite, auf die ein Ziel der Datei zeigt (Verzeichnis, Links); null, wenn es keine nennt */
+export async function seiteVon(doc: PDFDocumentProxy, ziel: string | unknown[] | null): Promise<number | null> {
   try {
     const aufgeloest = typeof ziel === "string" ? await doc.getDestination(ziel) : ziel;
     const verweis = aufgeloest?.[0];

@@ -1,6 +1,7 @@
 // Zeichnet die Seiten eines PDF in ihre Rahmen ([data-seite]): nur, was sichtbar ist oder gleich wird; was weit weg ist,
 // wird wieder freigegeben. Ohne Svelte, der Leser steuert über Maß und Ansicht.
-import type { PdfBuch } from "./dokument";
+import { seiteVon, type PdfBuch } from "./dokument";
+import { dateiverweise, textverweise, verweisebene, type Linkanmerkung } from "./verweise";
 import { geblaettert, nachbarn, sichtbareSeiten, type Ansicht } from "./zoom";
 
 /** So viele Seiten um die gelesene bleiben gezeichnet */
@@ -12,6 +13,8 @@ export interface Anzeigegriffe {
   beiSeite(nr: number): void;
   /** Eine Seite ist samt Textebene gezeichnet */
   gezeichnet(nr: number, ebene: HTMLElement): void;
+  /** Ein Link der Datei zeigt auf diese Seite und wurde angeklickt (BF-125) */
+  springe(nr: number): void;
 }
 
 export class PdfAnzeige {
@@ -84,6 +87,7 @@ export class PdfAnzeige {
   #leere(r: HTMLElement): void {
     r.querySelector("canvas")?.remove();
     r.querySelector(".textLayer")?.remove();
+    r.querySelector(".verweisebene")?.remove();
   }
 
   // Platzhalter im Format der ersten Seite, sofort und ohne jede Seite einzeln zu laden (bei großen Büchern dauerte das
@@ -163,7 +167,8 @@ export class PdfAnzeige {
       r.style.width = `${blick.width}px`;
       r.style.height = `${blick.height}px`;
       r.append(bild);
-      await this.#textebene(seite, r, blick, nr, runde);
+      const ebene = await this.#textebene(seite, r, blick, nr, runde);
+      await this.#verweise(seite, r, blick, ebene, runde);
       if (runde === this.#runde) this.#fertig.add(nr);
     } catch (e) {
       console.warn(`Seite ${nr} nicht gezeichnet`, e);
@@ -172,7 +177,7 @@ export class PdfAnzeige {
     }
   }
 
-  async #textebene(seite: Awaited<ReturnType<PdfBuch["doc"]["getPage"]>>, r: HTMLElement, blick: ReturnType<typeof seite.getViewport>, nr: number, runde: number): Promise<void> {
+  async #textebene(seite: Awaited<ReturnType<PdfBuch["doc"]["getPage"]>>, r: HTMLElement, blick: ReturnType<typeof seite.getViewport>, nr: number, runde: number): Promise<HTMLElement> {
     const ebene = document.createElement("div");
     ebene.className = "textLayer";
     // Die Regeln von pdf.js rechnen mit diesem Maß
@@ -182,5 +187,16 @@ export class PdfAnzeige {
     r.append(ebene);
     await new this.buch.lib.TextLayer({ textContentSource: await seite.getTextContent(), container: ebene, viewport: blick }).render();
     if (runde === this.#runde) this.griffe.gezeichnet(nr, ebene);
+    return ebene;
+  }
+
+  /** Links der Datei und Adressen im Text als Flächen zum Anklicken über der Textebene (BF-125) */
+  async #verweise(seite: Awaited<ReturnType<PdfBuch["doc"]["getPage"]>>, r: HTMLElement, blick: ReturnType<typeof seite.getViewport>, ebene: HTMLElement, runde: number): Promise<void> {
+    const anmerkungen = (await seite.getAnnotations({ intent: "display" }).catch(() => [])) as Linkanmerkung[];
+    const datei = await dateiverweise(anmerkungen, (x) => blick.convertToViewportRectangle(x), (ziel) => seiteVon(this.buch.doc, ziel));
+    if (runde !== this.#runde || !ebene.isConnected) return;
+    const k = r.getBoundingClientRect();
+    const alle = [...datei, ...textverweise(ebene, { left: k.left + r.clientLeft, top: k.top + r.clientTop }, datei)];
+    if (alle.length) r.append(verweisebene(r.ownerDocument, alle, (nr) => this.griffe.springe(nr)));
   }
 }

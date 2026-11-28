@@ -121,7 +121,7 @@
   $effect(() => {
     const f = flaeche;
     if (!f) return;
-    anzeige = new PdfAnzeige(pdf, f, { beiSeite: gelesen, gezeichnet });
+    anzeige = new PdfAnzeige(pdf, f, { beiSeite: gelesen, gezeichnet, springe: (nr) => void zeige(nr, null, false) });
     mitlauf = new Mitlauf({ get stand() { return f.scrollTop; }, set stand(w) { f.scrollTop = w; }, get hoehe() { const s = sichtVon(f); return s.unten - s.oben; } }, f);
     return () => {
       anzeige?.zerstoere();
